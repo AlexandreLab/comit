@@ -15,6 +15,7 @@ Source input file under discussion: `data_template_archive/comit_input_1_4_0_pub
 | [02_site_data.md](02_site_data.md) | Where site information comes from; point vs non-point sources; aggregation logic |
 | [03_clusters_and_sectors.md](03_clusters_and_sectors.md) | The 10 active clusters, 16 modelled sectors (18→16 merges), and point-source site counts |
 | [04_site_energy_estimation.md](04_site_energy_estimation.md) | How a site's current energy use (gas / electricity / non-metered) is back-derived from emissions + ECUK/DUKES |
+| [05_paper_walkthrough.md](05_paper_walkthrough.md) | Cell-by-cell spreadsheet walkthrough of the Paper example — which sheets, filters, and commodity codes to use |
 
 ## Conventions
 - Units (from the workbook `Contents` sheet): energy/capacity in **PJ** (GW for CHP),
