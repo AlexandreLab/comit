@@ -14,76 +14,236 @@ directly. Current energy consumption is therefore **back-derived** top-down:
 national fuel statistics → sector fuel use → apportioned to each site by its
 emissions share. It is not measured per site.
 
-## Step 1 — Sector fuel mix from national statistics (ECUK / DUKES)
-ECUK provides fuel consumption split by fuel type (**coal, gas, oil, electricity**)
-for generic industrial processes in each sector. This national split defines the
-sector's fuels and technology set, and is the calibration target for modelled fuel
-use in the start year.
-
-Mapping to the "gas / electricity / non-metered" framing:
-- **Gas** → natural gas (`NGA`), grid-metered.
-- **Electricity** → `ELC`, grid-metered.
-- **Non-metered fuels** → everything else not delivered via gas/electricity grids:
-  coal, oil, LPG, biomass, coke-oven gas, etc. (the residual solid/liquid/other
-  fuels in the ECUK breakdown).
-
-(The literal three-way "metered gas / metered electricity / non-metered" split is
-the DESNZ **subnational energy** convention; COMIT's equivalent is the ECUK/DUKES
-fuel categories.)
-
-### Is the sector energy "coming from ECUK"?
-Yes, but **indirectly** — ECUK/DUKES is a *calibration source*, not a live input.
-There is no ECUK sheet in the workbook. The model computes sector base-year energy
-from the input template (`Technologies` × `technology_input_output`); those template
-values were **tuned during data prep so modelled start-year fuel use matches ECUK/
-DUKES**:
+## The five steps at a glance
 
 ```
-ECUK/DUKES ──(set existing_capacity_2020 & fuel profiles to match)──► input template ──► model
+Step 1  ECUK / DUKES (external gov.uk statistics)  →  which fuels each sector uses nationally
+Step 2  `technology_input_output` sheet            →  fuel burned per unit of output, per technology
+Step 3  `Technologies` sheet                       →  how much of each technology exists today
+                                                      (Step 2 × Step 3, summed = sector fuel totals)
+Step 4  `NAEI_df_clean_2023_revised` sheet         →  split the sector total between sites by
+                                                      each site's share of sector CO₂ emissions
+Step 5  `Emissions` + `traded_share` + `nps_sites` →  handle the sites NAEI does NOT list
+                                                      (the "non-point" remainder of each sector)
 ```
+
+## Before you start — where everything lives
+
+All sheet references below are to the input workbook
+`data_template_archive/comit_input_1_4_0_public_updated.xlsx`. One quirk to know:
+**row 1 of each sheet is a text description, and the real column headers are further
+down** — so if you open a sheet and see no headers, scroll a few rows:
+
+| Sheet | Header row | Columns used in this note |
+|---|---|---|
+| `Technologies` | row 7 | `code`, `name`, `sector`, `existing_capacity_2020`, `capacity_to_activity_factor`, `availability_factor` |
+| `technology_input_output` | row 7 | `technology_code`, `commodity`, `output` |
+| `commodities` | row 2 | `commodity`, `description`, `commodity_category` |
+| `NAEI_df_clean_2023_revised` | row 7 | `Site`, `Operator`, `IPM_sector`, `Emissions_tco2e` |
+| `Emissions` | row 7 | `IPM_sector`, `Total_emissions` (whole-sector 2021 MtCO₂, GHGI scope) |
+| `traded_share` | row 7 | `IPM_sector`, `traded_share`, `non_traded_point_share`, `non_point_share` |
+| `nps_sites` | row 7 | `SIC`, one column per region (business counts) |
+
+**ECUK and DUKES are not sheets in the workbook.** They are DESNZ national-statistics
+publications on gov.uk (ECUK = Energy Consumption in the UK; DUKES = Digest of UK
+Energy Statistics). They were used *offline, while the template was being built* —
+see Step 1.
+
+### How to read technology codes and fuel codes
+The workbook uses two kinds of codes you'll meet throughout this note.
+
+**Technology codes** (e.g. `IPPBOINGA01`) name a piece of equipment. The fuel it
+runs on is not stored in a separate column — it is a **3-letter tag embedded in the
+code itself**, following a sector–process–fuel–variant pattern:
+
+```
+IPPBOINGA01  =  IPP + BOI + NGA + 01
+                 │      │     │     └─ variant number
+                 │      │     └─ fuel: Natural GAs
+                 │      └─ process: BOIler
+                 └─ sector: Industry, Paper & Pulp
+```
+
+So `IOIDRYELC01` is "Other industries, DRYing, ELeCtricity, variant 01". You see
+these codes in column `code` of `Technologies` and column `technology_code` of
+`technology_input_output`.
+
+**Fuel (commodity) codes** are the second kind — the codes the model actually
+computes fuel quantities with. They live in the `commodities` sheet (headers on
+row 2). The ones behind this note's three buckets:
+
+| Commodity code (`commodity` col) | Description | `commodity_category` | Bucket |
+|---|---|---|---|
+| `IND_NGABOM` | Natural gas and biomethane | Gas | Gas |
+| `INDDISTELC` | Electricity for industry (after distribution grid) | Electricity | Electricity |
+| various | coal, oil, biomass commodities | Coal / Oil / Biomass and organic waste | Non-metered |
+
+The `commodity_category` column is what lets you bucket any fuel row into
+Gas / Electricity / Non-metered without memorising codes.
+
+## Step 1 — Which fuels does each sector use nationally? (ECUK / DUKES — external)
+
+**In plain words:** before looking at any individual site, the modellers needed to
+know, e.g., "the UK paper industry as a whole runs mostly on gas and electricity;
+the cement industry runs on coal". That picture comes from ECUK, which publishes
+each industrial sector's fuel consumption split by fuel type (coal, gas, oil,
+electricity, …), cross-checked against DUKES.
+
+**Where to look:** nothing to open in the workbook — there is no ECUK sheet. ECUK
+was a *calibration source used during data preparation*: the modellers chose which
+technologies each sector contains and how much capacity each one gets (the numbers
+you will meet in Steps 2 and 3) **so that the modelled start-year fuel use adds up
+to the ECUK/DUKES national picture**:
+
+```
+ECUK/DUKES ──(tune existing_capacity_2020 & fuel profiles to match)──► input template ──► model
+```
+
+**Where you can see its footprint:** open `Technologies` (headers row 7), filter
+`sector` = `Paper`, and the technology list itself *is* the ECUK fuel mix made
+concrete — gas boilers (`…NGA…`), electric equipment (`…ELC…`), biomass boilers,
+etc., each with a calibrated capacity.
 
 Qualifications:
-- ECUK is strongest for **energy-based sectors** (it defines their generic processes
-  and fuel split). For **process-based sectors** (cement, lime, iron & steel) the
-  processes come from real production-process data; ECUK/DUKES is more a cross-check.
-- ECUK sets the fuel **mix/intensity**, not the demand **quantity** — how much each
-  sector must produce comes from `Demand_drivers` (per `Contents`, sourced from EEP
-  2019). ECUK = *how* demand is met; `Demand_drivers` = *how much*.
-- In the **public file** these are dummy figures, so they will not actually match ECUK.
+- ECUK is strongest for **energy-based sectors** (generic heat/steam/drying
+  processes). For **process-based sectors** (cement, lime, iron & steel) the
+  technologies come from real production-process data; ECUK/DUKES is a cross-check.
+- ECUK sets the fuel **mix**, not the demand **quantity** — how much each sector
+  must produce comes from the `Demand_drivers` sheet (sourced from EEP 2019).
+  ECUK = *how* demand is met; `Demand_drivers` = *how much*.
+- The **public file** contains dummy figures, so its numbers will not actually
+  reproduce ECUK.
 
-## Step 2 — Technology "fuel-use profiles"
-`technology_input_output` specifies, for each technology, the input commodities
-(fuels) **per unit of output** — its fuel-use profile. Example: paper-sector gas
-boiler `IPPBOINGA01` uses **1.11 PJ gas per PJ** of low-temperature heat. Since a
-technology is effectively "a fuel + a process", the technology mix present *is* the
-fuel mix.
+(The three-way "metered gas / metered electricity / non-metered" framing is the
+DESNZ subnational-energy convention; COMIT's equivalent is the ECUK/DUKES fuel
+categories bucketed via `commodity_category` as above.)
 
-Fuel type is encoded in the technology code (3-3-3 pattern: sector–process–fuel):
-`IOIDRYELC01` = Other-industries drying by **ELC**; `IOIDRYNGA01` = same by **NGA**.
+## Step 2 — How much fuel per unit of output? (`technology_input_output`)
 
-## Step 3 — Baseline capacities calibrated to the statistics
-Actual installed capacity by technology in 2021 is unknown, so
-`existing_capacity_2021` is **estimated so modelled start-year fuel use aligns with
-ECUK/DUKES**, assuming *just enough capacity to meet demand, no spare*.
+**In plain words:** each technology is a recipe — "to make 1 unit of product, burn
+X units of fuel". This sheet holds the recipes.
+
+**Where to look:** sheet `technology_input_output`, headers on **row 7**. Each
+technology occupies several rows, one per commodity it touches. Sign convention in
+the `output` column: **negative = consumed (an input), positive = produced (an
+output)**.
+
+**Concrete example** (public file, rows 958–959): the Paper-sector gas boiler
+`IPPBOINGA01`:
+
+| `technology_code` | `commodity` | `output` | meaning |
+|---|---|---:|---|
+| `IPPBOINGA01` | `IND_NGABOM` | −1.075 | consumes 1.075 PJ of natural gas… |
+| `IPPBOINGA01` | `IPPLTH` | +1.000 | …to produce 1 PJ of low-temperature heat |
+
+i.e. ~1.08 PJ of gas in per PJ of heat out (a 93%-efficient boiler). To find which
+bucket a fuel belongs to, look its `commodity` code up in the `commodities` sheet
+and read `commodity_category`. Since each technology is essentially "one process +
+one fuel", the mix of technologies present in a sector *is* the sector's fuel mix.
+
+## Step 3 — How much of each technology exists today? (`Technologies`)
+
+**In plain words:** a recipe tells you fuel *per unit*; now you need to know how
+many units each sector actually produces with each technology. Nobody knows the
+true installed capacity per technology, so it was **estimated so that modelled
+start-year fuel use lines up with ECUK/DUKES** (Step 1), assuming just enough
+capacity to meet demand, with no spare.
+
+**Where to look:** sheet `Technologies`, headers on **row 7**. Three columns per
+technology drive the calculation: `existing_capacity_2020` (calibrated start-year
+capacity), `capacity_to_activity_factor` (capacity units → output units), and
+`availability_factor` (fraction of the year it actually runs).
+
+**The calculation**, continuing the `IPPBOINGA01` example (public-file values
+`existing_capacity_2020` = 7.34, `capacity_to_activity_factor` = 1,
+`availability_factor` = 0.98):
 
 ```
-start-year fuel use = fuel-use profile × availability_factor × existing_capacity
-implied output      = existing_capacity_2021 × capacity_to_activity_factor × availability_factor
+annual output  = existing_capacity_2020 × capacity_to_activity_factor × availability_factor
+               = 7.34 × 1 × 0.98                      = 7.21 PJ of heat per year
+annual gas use = annual output × fuel-per-unit (Step 2)
+               = 7.21 × 1.075                          = 7.75 PJ of gas per year
 ```
 
-This gives, per sector, the gas / electricity / non-metered fuel consumed to meet
-that sector's demand.
+Repeat this for **every** Paper technology with `existing_capacity_2020` > 0, bucket
+each fuel via `commodity_category`, and sum: that yields the sector totals (for
+Paper in the public file: gas 53.95 PJ, electricity 43.97 PJ, non-metered 32.36 PJ —
+see the worked example below).
 
-## Step 4 — Apportion sector total to each site by NAEI emissions share
-Sector-level starting capacities (hence fuel use) are **apportioned to individual
-sites in proportion to each site's share of that sector's NAEI emissions** (same
-mechanism as site demand):
+## Step 4 — Split the sector total between sites (`NAEI_df_clean_2023_revised`)
+
+**In plain words:** the model now knows the whole sector's fuel use but nothing
+about individual sites' fuel use — no site meters exist in the data. So it divides
+the sector pie between sites **in proportion to each site's share of the sector's
+CO₂ emissions**, which NAEI *does* report per site. A site producing 18% of the
+sector's emissions is assumed to use 18% of each of the sector's fuels.
+
+**Where to look:** sheet `NAEI_df_clean_2023_revised`, headers on **row 7**. Filter
+the sector column (`IPM_sector`) to your sector; each row is one site with its
+`Emissions_tco2e`.
+
+**The calculation:**
 
 ```
-site current gas use         ≈ (site_emissions / sector_total_emissions) × sector gas use
-site current electricity use ≈ (site_emissions / sector_total_emissions) × sector electricity use
-site current non-metered use ≈ (site_emissions / sector_total_emissions) × sector non-metered use
+site share                   = site Emissions_tco2e / Σ Emissions_tco2e over the sector
+site current gas use         ≈ site share × sector gas use          (from Step 3)
+site current electricity use ≈ site share × sector electricity use  (from Step 3)
+site current non-metered use ≈ site share × sector non-metered use  (from Step 3)
 ```
+
+Strictly, the NAEI share only divides up the **point-source part** of the sector —
+Step 5 explains where the rest goes.
+
+## Step 5 — Sites NAEI doesn't cover: the non-point remainder
+
+**In plain words:** NAEI only lists large "point source" sites — for some sectors
+just a handful. But the national statistics (ECUK energy, GHGI emissions) cover the
+**whole** sector, including thousands of small businesses with no NAEI entry. If the
+model divided the whole sector pie among just the NAEI sites, it would over-allocate
+to them. So each sector's national total is first cut into slices by a **fixed,
+per-sector assumption** — the ratio is *not* computed on the fly from NAEI coverage;
+it is an input:
+
+- `Emissions` sheet (headers row 7): `Total_emissions` — the whole sector's 2021
+  emissions in MtCO₂ (GHGI scope, i.e. everyone).
+- `traded_share` sheet (headers row 7): three fractions per sector that sum to 1 —
+  `traded_share` (large sites in the ETS carbon market), `non_traded_point_share`
+  (other NAEI point sources), and `non_point_share` (**everything NAEI does not
+  list**). Per its own row-1 note, this split "comes from a combination of GHGI,
+  NAEI and some manual imputation to solve discrepancies".
+
+**The calculation** (`R/fct_process_sites.R`, `get_sector_emission_totals()` and
+`get_non_point_sites_by_sector()`):
+
+```
+point-source slice = (traded_share + non_traded_point_share) × Total_emissions
+non-point slice    = non_point_share × Total_emissions
+```
+
+The NAEI emissions from Step 4 are then only used **within the point-source slice**:
+a site's `sector_share_by_traded` = its emissions ÷ Σ NAEI point-site emissions in
+that sector/traded group. NAEI provides the *relative* sizes of the big sites; the
+*absolute* total they share out is anchored to GHGI via the `traded_share` split.
+
+The non-point slice is not dropped — it becomes **artificial aggregated sites**, one
+per region × sector (named like `North West_Food & drink`, suffix `_npsg`). The
+slice is spread across the 12 regions in proportion to the number of registered
+businesses in that sector and region, taken from the `nps_sites` sheet (ONS business
+counts by SIC code × region, headers row 7, mapped to COMIT sectors via
+`ONS_sector_mapping` + `GHGI_sector_mapping`). Each artificial site then gets its
+energy estimated by the same emissions-share method as real sites.
+
+**Example values from the public file** (`traded_share` sheet):
+
+| Sector | `traded_share` | `non_traded_point_share` | `non_point_share` | Meaning |
+|---|---:|---:|---:|---|
+| Cement | 1.0 | 0 | 0 | NAEI point sources cover the whole sector |
+| Chemicals | 0.5 | 0 | 0.5 | half the sector's emissions come from sites not in NAEI |
+| Food & drink | 0.4 | 0 | 0.6 | most of the sector is small non-NAEI sites |
+
+So for a sector where NAEI lists only five or six sites, those sites share only the
+point-source fraction of the sector's energy and emissions; the rest is carried by
+the regional `_npsg` aggregates.
 
 ## Worked example — Paper sector, Kemsley Mill CHP
 
@@ -145,10 +305,11 @@ Top 5 Paper sites by emissions share for reference: Kemsley Mill CHP 17.6%,
 Partington Papermill 12.9%, Saddlebow Paper Mill 11.7%, Smurfit Kappa Townsend
 5.3%, Nechells 4.7%.
 
-> Refinement not shown here: the model apportions using a **traded-share**-adjusted
-> emissions share (`sector_share_by_traded`, see [02_site_data.md](02_site_data.md))
-> rather than the raw emissions share used above, and small sub-cut-off sites are
-> aggregated (`_psg`). The high-level logic is identical.
+> Refinement not shown here: the model apportions using the **traded-share**-adjusted
+> emissions share (`sector_share_by_traded`, see Step 5 and
+> [02_site_data.md](02_site_data.md)) rather than the raw emissions share used
+> above, and small sub-cut-off sites are aggregated (`_psg`). The high-level logic
+> is identical.
 
 ## Worked example 2 — Cement sector, Hope Cement Works (a process-based contrast)
 
