@@ -18,6 +18,7 @@ Source input file under discussion: `data_template_archive/comit_input_1_4_0_pub
 | [05_paper_walkthrough.md](05_paper_walkthrough.md) | Cell-by-cell spreadsheet walkthrough of the Paper example — which sheets, filters, and commodity codes to use |
 | [06_inputting_measured_site_energy.md](06_inputting_measured_site_energy.md) | How to feed measured site energy (electricity/gas/coal) into the model; the homogeneous-sites assumption and five input approaches, incl. per-site fuel-mix options |
 | [07_high_level_testing_strategy.md](07_high_level_testing_strategy.md) | Validating whole-model behaviour (not per-method units): post-solve invariants, table snapshots, metamorphic tests, a hand-checkable mini scenario, and property-based testing with hedgehog (R) / Hypothesis (Python) |
+| [08_python_redesign_approach.md](08_python_redesign_approach.md) | If COMIT were rebuilt in Python: linopy + xarray + pandera architecture, parallel-run migration with per-constraint parity checks, and a runnable mini-scenario proof-of-concept ([examples/comit_mini_linopy.py](examples/comit_mini_linopy.py)) |
 
 ## Conventions
 - Units (from the workbook `Contents` sheet): energy/capacity in **PJ** (GW for CHP),
