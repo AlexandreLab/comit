@@ -21,6 +21,7 @@ Source input file under discussion: `data_template_archive/comit_input_1_4_0_pub
 | [08_python_redesign_approach.md](08_python_redesign_approach.md) | If COMIT were rebuilt in Python: linopy + xarray + pandera architecture, parallel-run migration with per-constraint parity checks, and a runnable mini-scenario proof-of-concept ([examples/comit_mini_linopy.py](examples/comit_mini_linopy.py)) |
 | [09_objective_function.md](09_objective_function.md) | Plain-language explanation of what the model minimises: the eight configurable cost terms, discounting at 3.5%, capex as annuitised loans truncated at the horizon, traded/untraded carbon prices, and which sheets/code files each number comes from |
 | [10_site_level_pathways.md](10_site_level_pathways.md) | Why same-sector sites start as emissions-share-scaled copies, yet can take different least-cost pathways through eligibility, infrastructure, grid-headroom, and known-change constraints |
+| [11_sector_coverage_and_carb3_mapping.md](11_sector_coverage_and_carb3_mapping.md) | The 16 modelled sectors (+ Hydrogen pseudo-sector), the NAEI→COMIT sector folds, a COMIT↔CaRB3 (DESNZ NDBS) activity mapping, and the coverage gaps — waste, water, mining — that are candidates for new sector archetypes |
 
 ## Conventions
 - Units (from the workbook `Contents` sheet): energy/capacity in **PJ** (GW for CHP),
