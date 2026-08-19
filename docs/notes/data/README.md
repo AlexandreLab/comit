@@ -8,6 +8,9 @@ them from the workbook each time.
 | File | Companion note | Regenerate with |
 |---|---|---|
 | `emissions_source_classification.csv` | [14_emissions_source_split.md](../14_emissions_source_split.md) | [`../examples/build_emissions_classification.R`](../examples/build_emissions_classification.R) |
+| `carb3_factory_processes.json` | [15_carb3_process_comparison.md](../15_carb3_process_comparison.md) | *(supplied verbatim — not generated)* |
+| `comit_sector_processes.json` · `.csv` | [15_carb3_process_comparison.md](../15_carb3_process_comparison.md) | [`../examples/build_comit_process_taxonomy.R`](../examples/build_comit_process_taxonomy.R) |
+| `carb3_comit_crosswalk.csv` | [15_carb3_process_comparison.md](../15_carb3_process_comparison.md) | *(curated by hand — not generated)* |
 
 ---
 
@@ -102,3 +105,69 @@ Applied to `process_total` and `energy_direct` (indirect emissions are ignored):
    `direct_total_kt_per_unit`, `process_share_pct` and `emission_class` are all
    built on the **gross** figure, so a biomass-fired technology classed
    `D_pure_energy` here may book zero direct emissions in a run.
+
+
+---
+
+## `carb3_factory_processes.json`
+
+The supplied CaRB3 *Factory*-class list, **stored verbatim**: 55 activities, 128
+activity-process pairs (76 distinct process names), 247 equipment entries (218
+distinct).
+
+```json
+{ "<activity>": { "<process>": ["<equipment>", ...] } }
+```
+
+Provenance: supplied as a dictionary of processes and associated technologies per
+CaRB3 activity. **Not verified against the NDBS source document** — activity names
+are as supplied. Amend by editing directly; nothing regenerates this file.
+
+## `comit_sector_processes.json` and `.csv`
+
+COMIT's equivalent taxonomy in the **same three-level shape**, so the two can be
+compared directly: 17 sectors, 94 sector-process pairs (30 process families), 397
+technologies.
+
+```json
+{ "<sector>": { "<process description>": ["<technology name>", ...] } }
+```
+
+The middle level is the technology's **primary output commodity** — the energy
+service or product it delivers. That is the closest structural analogue to a CaRB3
+"process", but the two are not the same kind of thing: see §1 of note 15.
+
+The `.csv` is the flat form of the same data, carrying the codes needed for joins:
+
+| Column | Source |
+|---|---|
+| `sector` | `Technologies!sector` |
+| `process_commodity` | `Technologies!output_commodity` |
+| `process_description` | `commodities!description` for that commodity |
+| `technology_code` | `Technologies!code` — joins to `emissions_source_classification.csv` and to every output sheet |
+| `technology_name` | `Technologies!name` |
+| `technology_category` | `Technologies!technology_category` — the axis COMIT's variants actually vary on |
+| `output_unit` | `Technologies!output_unit` |
+
+Regenerate with:
+
+```bash
+Rscript docs/notes/examples/build_comit_process_taxonomy.R path/to/comit_input.xlsx
+```
+
+## `carb3_comit_crosswalk.csv`
+
+One row per CaRB3 activity (55 rows), mapping it to COMIT.
+
+| Column | Meaning |
+|---|---|
+| `carb3_activity` | Activity name, matching a top-level key in `carb3_factory_processes.json` |
+| `carb3_code` | FA code from note 11 (Table 28 of the NDBS report). **Blank on 9 rows** where note 11 gives no code — mostly the Mineral Production family. Not guessed. |
+| `comit_sector` | Matching COMIT sector, blank where none. Populated on 43 of 55 rows. |
+| `coverage` | `direct` (31) · `absent` (11) · `partial` (3) · `catch-all` (3) · `gap` (3) · `generic` (2) · `weak` (1) · `ambiguous` (1) |
+| `comit_process_analogue` | Which COMIT process(es) the activity's operations collapse into |
+| `notes` | Rationale, and what is lost in the mapping |
+
+**This file is analyst judgement**, built on the sector↔activity mapping in note 11
+§3-4. The `coverage` and `comit_process_analogue` columns are interpretive, not
+derived — review them before relying on them. Edit by hand; nothing regenerates it.
