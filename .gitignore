@@ -5,3 +5,6 @@
 .DS_Store
 .quarto
 .worktrees/
+
+# model run archives (the unpacked run dir is tracked, the zip is not)
+outputs/*.zip

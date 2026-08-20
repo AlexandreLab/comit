@@ -1,0 +1,240 @@
+{
+  "Workshop": {
+    "Machining": ["CNC lathe", "Milling machine"],
+    "Welding": ["MIG welding", "TIG welding"],
+    "Surface finishing": ["Powder coating", "Abrasive blasting"]
+  },
+  "Factory": {
+    "General assembly": ["Manual assembly line", "Robotic assembly"],
+    "Material handling": ["Conveyor belt system", "Automated guided vehicles (AGV)"],
+    "Packaging": ["Shrink wrapping", "Automated cartoning"]
+  },
+  "Vehicle repair workshop / garage": {
+    "Diagnostics": ["OBD-II scanner", "Engine analyzer"],
+    "Parts washing": ["Solvent parts washer", "Aqueous parts washer"],
+    "Spray painting": ["HVLP spray gun", "Paint booth"]
+  },
+  "Exhaust and tyre centre": {
+    "Tyre fitting": ["Tyre changer machine", "Wheel balancer"],
+    "Exhaust welding": ["MIG welding", "Oxy-acetylene welding"]
+  },
+  "Concrete batching plant": {
+    "Batching and weighing": ["Weigh hopper", "Load cell system"],
+    "Mixing": ["Twin-shaft mixer", "Pan mixer"]
+  },
+  "Scrap Metal/Breakers Yard": {
+    "Shredding": ["Hammermill shredder", "Rotary shear shredder"],
+    "Separation": ["Magnetic separator", "Eddy current separator"],
+    "Baling": ["Hydraulic baling press"]
+  },
+  "Mineral Production - Rock, Sand, Clay etc.": {
+    "Crushing": ["Jaw crusher", "Cone crusher"],
+    "Screening": ["Vibrating screen", "Trommel screen"]
+  },
+  "Laboratory": {
+    "Chemical synthesis": ["Fume hood", "Stirred-tank reactor"],
+    "Sterilisation": ["Steam autoclave", "Dry heat steriliser"],
+    "Analytical testing": ["Gas chromatography", "Mass spectrometry"]
+  },
+  "Post Office Sorting Centre": {
+    "Sorting": ["Optical character recognition (OCR) scanner", "Cross-belt sorter"],
+    "Conveying": ["Roller conveyor", "Belt conveyor"]
+  },
+  "Shipbuilding/ repair, boatyard": {
+    "Hull fabrication": ["Submerged arc welding", "Plasma cutting"],
+    "Surface preparation": ["Sandblasting", "Hydroblasting"]
+  },
+  "Aggregate/Mineral Processing Plant / Depot": {
+    "Crushing": ["Impact crusher", "Jaw crusher"],
+    "Drying": ["Direct-fired rotary dryer", "Fluidised bed dryer"]
+  },
+  "Food Processing Centre": {
+    "Mixing": ["Ribbon blender", "High-shear mixer"],
+    "Pasteurisation": ["Plate heat exchanger", "Tubular heat exchanger"],
+    "Freezing/chilling": ["Spiral freezer", "Blast chiller"]
+  },
+  "Brewery": {
+    "Milling": ["Hammer mill", "Roller mill"],
+    "Fermentation": ["Cylindro-conical vessel", "Open square fermenter"],
+    "Wort boiling": ["Internal calandria boiler", "External calandria kettle"]
+  },
+  "Chemical Works": {
+    "Chemical synthesis": ["Continuous stirred-tank reactor", "Tubular reactor"],
+    "Separation": ["Fractional distillation column", "Centrifuge"],
+    "Drying": ["Spray dryer", "Fluidised bed dryer"]
+  },
+  "Abattoir / Slaughter House": {
+    "Stunning": ["Captive bolt stunner", "Electrical waterbath"],
+    "Carcass chilling": ["Air blast chiller", "Evaporative cooling system"]
+  },
+  "Mineral Production - Putrescible": {
+    "Composting": ["Windrow turner", "In-vessel composter"],
+    "Anaerobic digestion": ["Continuous stirred-tank reactor", "Plug-flow digester"]
+  },
+  "Mineral Production - Inert": {
+    "Sorting": ["Trommel screen", "Air classifier"],
+    "Crushing": ["Impact crusher", "Jaw crusher"]
+  },
+  "Concrete Product Works": {
+    "Mixing": ["Pan mixer", "Planetary mixer"],
+    "Curing": ["Steam curing chamber", "Radiant heat curing"]
+  },
+  "Industrial Minerals NEC": {
+    "Drying": ["Rotary dryer", "Flash dryer"],
+    "Calcination": ["Rotary kiln", "Fluidised bed calciner"]
+  },
+  "Asphalt Plant": {
+    "Drying": ["Direct-fired rotary aggregate dryer"],
+    "Mixing": ["Pugmill mixer", "Drum mixer"]
+  },
+  "Works": {
+    "Fabrication": ["CNC plasma cutter", "Press brake"],
+    "Finishing": ["Powder coating oven", "Galvanizing bath"]
+  },
+  "Provender Mill": {
+    "Grinding": ["Hammer mill", "Roller mill"],
+    "Pelleting": ["Pellet mill", "Extruder"],
+    "Drying": ["Counterflow cooler", "Horizontal belt cooler"]
+  },
+  "Brickworks / clay tile/pipe works": {
+    "Forming": ["Vacuum extruder", "Soft mud moulding"],
+    "Drying": ["Continuous tunnel dryer", "Batch chamber dryer"],
+    "Firing": ["Tunnel kiln", "Roller kiln"]
+  },
+  "Concrete Block Works": {
+    "Moulding": ["Vibro-pressing machine", "Block machine"],
+    "Curing": ["Steam curing chamber", "Autoclave"]
+  },
+  "Iron and/or Steel Works": {
+    "Ore reduction": ["Blast furnace", "Direct reduced iron (DRI) shaft furnace"],
+    "Steelmaking": ["Basic oxygen furnace (BOF)", "Electric arc furnace (EAF)"],
+    "Rolling": ["Hot rolling mill", "Cold rolling mill"]
+  },
+  "Flour Mill": {
+    "Cleaning": ["Vibratory separator", "Optical sorter"],
+    "Milling": ["Roller mill", "Break rolls"]
+  },
+  "Foundry": {
+    "Melting": ["Cupola furnace", "Electric induction furnace"],
+    "Casting": ["Sand casting", "Die casting"]
+  },
+  "Pottery": {
+    "Forming": ["Slip casting", "Jiggering machine"],
+    "Drying": ["Chamber dryer", "Spray dryer"],
+    "Firing": ["Biscuit tunnel kiln", "Glost intermittent kiln"]
+  },
+  "Newspaper print works": {
+    "Printing": ["Web offset lithography press", "Flexographic press"],
+    "Drying": ["Hot air impingement dryer", "Infrared (IR) dryer"]
+  },
+  "Paper Mill": {
+    "Web forming": ["Fourdrinier machine", "Twin-wire former"],
+    "Drying": ["Steam-heated multi-cylinder drying", "Yankee cylinder"],
+    "Refining": ["Conical refiner", "Disc refiner"]
+  },
+  "Creamery": {
+    "Pasteurisation": ["Plate heat exchanger", "Tubular heat exchanger"],
+    "Separation": ["Centrifugal separator"],
+    "Drying": ["Spray dryer", "Fluidised bed dryer"]
+  },
+  "Mineral Production - Oil": {
+    "Extraction": ["Beam pump", "Electric submersible pump"],
+    "Separation": ["Gravity separator", "Hydrocyclone"]
+  },
+  "Mineral Production - Coal": {
+    "Extraction": ["Dragline excavator", "Longwall shearer"],
+    "Separation": ["Dense-medium cyclone", "Froth flotation"]
+  },
+  "Effluent Minewater Treatment Plant": {
+    "Aeration": ["Mechanical surface aerator", "Diffused air system"],
+    "Filtration": ["Sand filter", "Membrane bioreactor"]
+  },
+  "Aircraft works": {
+    "Machining": ["5-axis CNC milling", "Waterjet cutting"],
+    "Curing": ["Autoclave", "Out-of-autoclave oven"]
+  },
+  "Motor Vehicle Works": {
+    "Stamping": ["Hydraulic press", "Mechanical press"],
+    "Welding": ["Robotic spot welder", "Laser welding"],
+    "Painting": ["Electro-dip coating bath", "Paint curing oven"]
+  },
+  "Mill": {
+    "Milling": ["Ball mill", "Hammer mill"],
+    "Separation": ["Cyclone separator", "Air classifier"]
+  },
+  "Oil refinery, gas processing etc": {
+    "Distillation": ["Atmospheric distillation column", "Vacuum distillation column"],
+    "Cracking": ["Fluid catalytic cracker", "Hydrocracker"]
+  },
+  "Mineral Production - Gas": {
+    "Dehydration": ["Glycol contactor", "Solid desiccant bed"],
+    "Compression": ["Centrifugal compressor", "Reciprocating compressor"]
+  },
+  "Cement Works": {
+    "Calcination": ["Suspension preheater", "Rotary kiln"],
+    "Milling": ["Vertical roller mill", "Ball mill"]
+  },
+  "Pumping Mines": {
+    "Dewatering": ["Submersible pump", "Centrifugal pump"],
+    "Ventilation": ["Axial flow fan", "Centrifugal fan"]
+  },
+  "Maltings - Non Trad": {
+    "Germination": ["Saladin box", "Germination drum"],
+    "Drying": ["Forced-air indirect gas-fired kiln"]
+  },
+  "Aluminium Smelting Works": {
+    "Reduction": ["Hall-Héroult electrolytic cell"],
+    "Casting": ["Direct chill casting machine", "Ingot casting conveyor"]
+  },
+  "Cement Tile Works": {
+    "Forming": ["Extruder", "Hydraulic press"],
+    "Curing": ["Racked chamber", "Steam curing tunnel"]
+  },
+  "Distillery": {
+    "Fermentation": ["Washback (wooden or stainless steel)"],
+    "Distillation": ["Copper pot still", "Coffey/column still"]
+  },
+  "Mineral Production - Other Mineral Category": {
+    "Extraction": ["Hydraulic excavator", "Dragline"],
+    "Drying": ["Rotary dryer", "Fluidised bed dryer"]
+  },
+  "Tannery": {
+    "Tanning": ["Tanning drum", "Paddle vat"],
+    "Drying": ["Vacuum dryer", "Toggle dryer", "Paste drying unit"]
+  },
+  "Wafer Fabrication": {
+    "Polishing": ["Chemical mechanical planarization (CMP)"],
+    "Etching": ["Plasma etcher", "Wet chemical etching bath"],
+    "Deposition": ["Chemical vapour deposition (CVD)", "Physical vapour deposition (PVD)"]
+  },
+  "Maltings - Trad": {
+    "Germination": ["Manual floor turning", "Malt plough"],
+    "Drying": ["Direct-fired peat/anthracite kiln"]
+  },
+  "Large industrial (> 20,000 m2) NEC": {
+    "Fabrication": ["Heavy duty CNC machining", "Large scale welding positioner"],
+    "Material handling": ["Overhead bridge crane", "Gantry crane"]
+  },
+  "Beet Sugar Factory": {
+    "Extraction": ["Continuous diffuser", "Batch diffuser"],
+    "Evaporation": ["Multi-effect evaporator"],
+    "Drying": ["Rotary louvre dryer", "Fluidised bed dryer"]
+  },
+  "Mineral Production - Brine": {
+    "Extraction": ["Solution mining pump"],
+    "Evaporation": ["Multi-effect vacuum evaporator", "Mechanical vapour recompression (MVR)"],
+    "Drying": ["Fluidised bed dryer", "Rotary dryer"]
+  },
+  "Artificial Fibre Works": {
+    "Extrusion": ["Melt spinning extruder", "Wet spinning bath"],
+    "Drawing": ["Heated draw roll", "Godet roll"]
+  },
+  "Coking and Carbonising Plant": {
+    "Carbonisation": ["Coke oven battery", "Byproduct recovery oven"],
+    "Quenching": ["Wet quenching tower", "Dry quenching facility"]
+  },
+  "Industrial NEC": {
+    "Heating": ["Industrial boiler", "Thermal fluid heater"],
+    "Cleaning": ["Ultrasonic cleaner", "Vapour degreaser"]
+  }
+}
