@@ -11,7 +11,7 @@
 
 ### 1.1 What this document is
 
-A complete build specification for a model that takes one record per GB non-domestic
+A complete build specification for a model that takes one record per GB Factory-class
 premise — CaRB3 activity plus current energy consumption by vector — and produces a
 least-cost decarbonisation pathway for each.
 
@@ -139,7 +139,7 @@ The interface between the CaRB3 stock model and this model. One row per premise.
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK | Unique, stable across runs |
-| `carb3_activity` | string | — | yes | → `activity_process_register` | Must match a known activity |
+| `carb3_activity` | string | — | yes | → `activity_process_register` | Must match one of the **55 CaRB3 Factory-class activities** (D1). Any other class is rejected with reason `out_of_scope_activity` |
 | `latitude` | real | degrees | yes | — | Within GB bounding box |
 | `longitude` | real | degrees | yes | — | Within GB bounding box |
 | `nation` | enum{England, Wales, Scotland} | — | yes | — | NI rejected with reason `out_of_scope_nation` |
@@ -153,11 +153,20 @@ The interface between the CaRB3 stock model and this model. One row per premise.
 | `floorspace` | real | m² | no | — | > 0 if present |
 | `data_year` | integer | year | yes | — | Provenance |
 | `source` | string | — | yes | — | Provenance |
-| `throughput_quantity` | real | Mt/yr | no | — | Required for activities with mass-denominated processes (D5); see §3.4 |
-| `throughput_commodity` | string | — | no | → `commodity` | Required if `throughput_quantity` present |
+| `throughput_quantity` | real | Mt/yr | cond | — | **Required** for activities with mass-denominated processes (D5); see §3.4 and the note below |
+| `throughput_commodity` | string | — | cond | → `commodity` | Required if `throughput_quantity` present |
 
 **Rule.** At least one `energy_*` field must be strictly positive. A premise with zero
 total energy is rejected with reason `no_energy`.
+
+**On throughput (agreed 2026-08-21).** Physical throughput is **not** a best-effort
+optional field: without it, the mass denominators that D5 requires cannot be populated,
+and process emissions — calcination CO₂ and equivalents — lose their physical basis for
+precisely the activities where they dominate. The upstream stock model will be extended
+to supply it. This design therefore assumes `throughput_quantity` is present for every
+premise whose activity carries a mass-denominated process, and A1 rejects such a premise
+if it is absent (`missing_throughput`). For all other activities the field is optional
+and unused.
 
 ### 3.2 `activity_process_register` — activity → processes
 
@@ -185,12 +194,154 @@ energy per vector; the model needs it per process.
 | `process_id` | string | — | yes | PK part | → `activity_process_register` |
 | `vector` | enum{electricity, gas, oil, coal, biomass, other} | — | yes | PK part | — |
 | `energy_share` | real | fraction | yes | — | ∈ [0, 1] |
-| `provenance` | string | — | yes | — | Source of the estimate |
-| `confidence` | enum{high, medium, low} | — | yes | — | Reported alongside results |
+| `share_low` | real | fraction | no | — | ∈ [0, 1]; ≤ `energy_share`. Lower bound of the sensitivity band (§3.3.5) |
+| `share_high` | real | fraction | no | — | ∈ [0, 1]; ≥ `energy_share`. Upper bound of the sensitivity band |
+| `evidence_tier` | enum{metered, published_sec, engineering, fallback} | — | yes | — | §3.3.2 |
+| `provenance` | string | — | yes | — | Citation: document, table, page — not just a source name |
+| `confidence` | enum{high, medium, low} | — | yes | — | Derived from `evidence_tier` per §3.3.2; reported alongside results |
 
 **Rule (must be asserted at load).** For each `(carb3_activity, vector)`, the sum of
 `energy_share` over processes equals 1 within 1e-6. A profile that does not sum to 1
 silently loses or creates energy.
+
+#### 3.3.1 What the profile has to contain
+
+One row per `(activity, process, vector)` that can carry energy. For each of the 55
+Factory-class activities:
+
+1. **The process list** — already available from
+   [`../notes/data/carb3_factory_processes.json`](../notes/data/carb3_factory_processes.json).
+2. **Which vectors each process can consume.** A grinding mill takes electricity and
+   nothing else; a kiln takes coal, gas or biomass but not electricity unless an electric
+   variant exists. Combinations that cannot occur are simply absent — absent is not the
+   same as a zero share, and §3.3.3 depends on the distinction.
+3. **A share per surviving combination**, summing to 1 down each `(activity, vector)`
+   column.
+4. **A citation and an evidence tier** for every row.
+
+The quantity being split is the premise's **metered energy for one vector**. The profile
+never moves energy between vectors — that is the optimiser's job. It only answers: *of
+the gas this site burns, how much goes to the kiln versus the dryer?*
+
+#### 3.3.2 Evidence tiers
+
+Mirrors the cost provenance tiers of D6, and maps to `confidence` the same way.
+
+| Tier | What it is | Typical source | `confidence` |
+|---|---|---|---|
+| `metered` | Sub-metered or audited data for the actual process | Site energy audits, ESOS assessments, sector monitoring programmes | high |
+| `published_sec` | Specific energy consumption per unit operation from a published breakdown | BREF/BAT documents, trade association benchmarks (e.g. mineral products, steel, paper), sector decarbonisation roadmaps | high / medium |
+| `engineering` | Built up from an equipment inventory — rated load × utilisation × hours | Equipment lists, motor schedules, first-principles heat balances | medium |
+| `fallback` | A generic profile for an activity with no breakdown available | A sibling activity's profile, or a generic light-manufacturing split | low |
+
+**Rule.** An activity profiled entirely at `fallback` tier is usable but must be flagged
+in outputs (§8.5), and its per-process results should not be published on their own —
+only the premise total, which is unaffected by the split.
+
+#### 3.3.3 Rules the profile must satisfy
+
+Beyond the sum-to-1 rule above:
+
+**R1 — Technology consistency.** If the profile gives process *q* a non-zero share of
+vector *v*, at least one technology serving *q* must have `fuel_category` matching *v*.
+Otherwise A4 fails at step 4 with "no technology serves process q on vector v". Assert
+this at load, when it is cheap to diagnose, rather than mid-run.
+
+**R2 — Renormalisation for absent processes.** `activity_process_register.is_optional`
+allows a premise to lack a process its activity normally has. The shares then no longer
+sum to 1, and A3 would lose energy. Renormalise over the processes actually present:
+
+```
+FOR EACH vector v:
+1.    present := { q IN process_set(p) : profile[activity, q, v] EXISTS }
+2.    denom   := SUM over q IN present OF energy_share[activity, q, v]
+3.    IF denom = 0 AND p.energy_v > 0:
+4.        FAIL "premise consumes vector v but no present process can use it"
+5.    FOR EACH q IN present:
+6.        share'[q, v] := energy_share[activity, q, v] / denom
+```
+
+A3 uses `share'`, not the raw share. With no optional processes absent, `denom = 1` and
+`share' = share`, so the common case is unchanged.
+
+**R3 — Band ordering.** Where `share_low` and `share_high` are given,
+`share_low ≤ energy_share ≤ share_high`. The bands need not sum to 1 across processes;
+§3.3.5 says how they are used.
+
+#### 3.3.4 Worked examples
+
+Illustrative values, shown to fix the shape of the data. **Every number below must be
+replaced by a cited figure before use** — they are exactly the kind of estimate the
+`provenance` field exists to make auditable.
+
+**Example A — `Cement Works`.** Energy-intensive, mass-denominated, carries process
+emissions. The clearest case, because published breakdowns exist and the thermal and
+electrical stories are completely different.
+
+| Process | Electricity | Coal / gas / biomass |
+|---|---|---|
+| `quarry_crushing` | 0.08 | — |
+| `raw_milling` | 0.24 | 0.03 |
+| `kiln_pyroprocessing` | 0.22 | 0.97 |
+| `clinker_cooling` | 0.06 | — |
+| `cement_milling` | 0.34 | — |
+| `packing_dispatch` | 0.06 | — |
+| **Sum** | **1.00** | **1.00** |
+
+Thermal energy is almost entirely the kiln, with a little for raw material drying.
+Electricity is dominated by the two milling stages — which is why an electricity-side
+result for a cement works is really a statement about grinding, not about the kiln.
+Tier: `published_sec`, confidence high.
+
+**Example B — `Bread and Flour Confectionery`.** Mid-intensity, energy-denominated, no
+process emissions. Site services are a material share rather than a rounding error.
+
+| Process | Electricity | Gas |
+|---|---|---|
+| `ingredient_handling` | 0.05 | — |
+| `mixing` | 0.14 | — |
+| `proving` | 0.03 | 0.06 |
+| `baking_ovens` | 0.08 | 0.82 |
+| `cooling_refrigeration` | 0.32 | — |
+| `packaging` | 0.16 | — |
+| `site_services` | 0.22 | 0.12 |
+| **Sum** | **1.00** | **1.00** |
+
+Note `baking_ovens` appears on both vectors — 0.82 of the gas for the burners, 0.08 of
+the electricity for fans and controls. That is normal and R1 is satisfied as long as
+both a gas-fired and an electric oven technology exist. Tier: `published_sec` for the
+ovens, `engineering` for the rest, confidence medium.
+
+**Example C — `Fabricated Metal Products`.** Low-intensity, energy-denominated, and the
+case with no published unit-operation breakdown — the situation most of the 55
+activities will be in.
+
+| Process | Electricity | Gas |
+|---|---|---|
+| `cutting` | 0.14 | — |
+| `welding` | 0.22 | — |
+| `machining` | 0.26 | — |
+| `surface_treatment` | 0.10 | 0.35 |
+| `assembly` | 0.06 | — |
+| `site_services` | 0.22 | 0.65 |
+| **Sum** | **1.00** | **1.00** |
+
+Built from an equipment inventory, not a citation. Tier: `engineering` shading to
+`fallback`, confidence low. Per-process results here carry little weight; the premise
+total still does, because the split does not change it.
+
+#### 3.3.5 Sensitivity
+
+The profile is an assumption applied identically to every premise of an activity, so its
+error is **systematic, not random** — it does not average out across the stock. Treat it
+as follows:
+
+1. Where `share_low` / `share_high` are populated, re-run the affected premises at both
+   bounds and report the spread on per-process outputs. Premise totals are invariant.
+2. Report the `confidence` distribution alongside every aggregate (§8.5), so a reader can
+   see how much of a result rests on `fallback`-tier splits.
+3. Any conclusion that flips between the low and high bound must be reported as
+   unresolved, not as a finding.
 
 ### 3.4 `commodity` — extended
 
@@ -351,13 +502,14 @@ FAILS IF: the activity has no registered processes
 INPUT:  premise p, process_set(p), activity_process_energy_profile
 OUTPUT: process_energy[process, vector]  (PJ/yr)
 PRE:    profile sums to 1 per (activity, vector)   -- asserted at load, §3.3
+        R1 technology consistency asserted at load  -- §3.3.3
 
 1. FOR EACH vector v IN {electricity, gas, oil, coal, biomass, other}:
 2.     e_v := p.energy_{v}
 3.     IF e_v = 0: CONTINUE
-4.     FOR EACH process q IN process_set(p):
-5.         share := profile[p.carb3_activity, q, v].energy_share
-6.         process_energy[q, v] := e_v * share
+4.     share' := RENORMALISE(p, v)      -- §3.3.3 R2; identity if no optional
+5.     FOR EACH process q IN process_set(p) WHERE share'[q, v] EXISTS:
+6.         process_energy[q, v] := e_v * share'[q, v]
 7. ASSERT SUM over (q, v) of process_energy = SUM over v of p.energy_v   (within 1e-6)
 
 POST:   allocated energy equals metered energy exactly
@@ -365,7 +517,9 @@ FAILS IF: the assertion in step 7 fails -- indicates a malformed profile
 ```
 
 **This is the design's weakest step** (vision §10). The profile is a benchmark
-assumption. Results must carry the profile's `confidence` through to output.
+assumption, built and evidenced per §3.3.1–§3.3.5. Results must carry the profile's
+`confidence` through to output, and its error is systematic across every premise of an
+activity rather than random (§3.3.5).
 
 ### A4 — Back-solve implied existing capacity
 
@@ -847,6 +1001,10 @@ These must be met in Phase 1, **before** the technology data build is commission
 | G2 | 100,000 | Completes within a working day on available hardware |
 | G3 | 1,000,000 | Completes, or the design is revised to archetype aggregation |
 
+**On G3.** With scope now fixed to the Factory class (D1), the GB premise count is
+expected to be well below 1,000,000 — confirm it against the stock model before Phase 1
+and treat G3 as a headroom test rather than a forecast of the real run size.
+
 **If G3 fails, D1 is not achievable** and the design must fall back to representative
 archetypes. Learning that in Phase 1 costs days; learning it in Phase 4 costs the data
 build.
@@ -885,7 +1043,7 @@ Two cautions carried from COMIT:
 | **V1** | **Decoupling parity.** Run current COMIT and this model over the same 1,026 NAEI sites with coupling constraints disabled on both sides | Per-site results agree to solver tolerance. Isolates decomposition from every other change |
 | **V2** | **Baseline reproduction.** Recompute fuel use from `existing_capacity` produced by A4 | Reproduces the supplied per-vector energy within 1% |
 | **V3** | **Energy conservation.** A3's allocation | Allocated energy equals metered energy within 1e-6 |
-| **V4** | **Profile integrity.** `activity_process_energy_profile` | Shares sum to 1 per (activity, vector) within 1e-6 |
+| **V4** | **Profile integrity.** `activity_process_energy_profile` | Shares sum to 1 per (activity, vector) within 1e-6; R1 technology consistency and R3 band ordering hold at load; R2 renormalisation reproduces the raw shares when no optional process is absent (§3.3.3) |
 | **V5** | **Emissions invariants** (from [notes/14](../notes/14_emissions_source_split.md)) | `Direct (split by ghg type)` summed over gases equals `Direct (total CO2e)`; `available_capacity` equals cumulative `new_capacity`; `Generate_emissions = false` ⇒ zero ktCO₂e |
 | **V6** | **Non-negativity, correctly scoped** | Activity, energy and capacity are non-negative. Costs and emissions **may be negative** (retrofit differencing, BECCS). Do not assert blanket non-negativity — [notes/14](../notes/14_emissions_source_split.md) records this as a falsified invariant |
 | **V7** | **Scale gates** | G1–G3 per §9.2 |
