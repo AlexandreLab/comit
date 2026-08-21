@@ -27,6 +27,16 @@ Source input file under discussion: `data_template_archive/comit_input_1_4_0_pub
 | [14_emissions_source_split.md](14_emissions_source_split.md) | Splitting emissions into process chemistry vs energy combustion: the 3 process pseudo-commodities, an a-priori classification of all 397 technologies ([data/](data/emissions_source_classification.csv)), the kt/TWh detector, and what is hardcoded vs workbook-driven |
 | [15_carb3_process_comparison.md](15_carb3_process_comparison.md) | How the CaRB3 Factory activity/process/equipment taxonomy compares with COMIT's sector/service/fuel-variant one: they decompose industry on orthogonal axes — coverage of all 55 activities ([crosswalk](data/carb3_comit_crosswalk.csv)), and the 37 CaRB3 processes with no COMIT analogue |
 
+## Specifications
+
+Design documents live in [`../specs/`](../specs/).
+
+| Doc | Topic |
+|-----|-------|
+| [2026-08-19-carb3-site-decarbonisation-vision.md](../specs/2026-08-19-carb3-site-decarbonisation-vision.md) | **High-level plan.** Driving a modified COMIT from a CaRB3 building-stock register to assess per-premise decarbonisation across GB: why COMIT is the base, the three assumptions that block the route, the nine design decisions, and what is lost by solving each site independently |
+| [2026-08-19-carb3-site-decarbonisation-implementation.md](../specs/2026-08-19-carb3-site-decarbonisation-implementation.md) | **Detailed plan, language-agnostic** (implementable in R or Python). Data model, algorithms A1–A9 as pseudocode, the optimisation stated mathematically, constraint disposition, emissions rules, output schema, scale gates, validation, and a worked example |
+| [2026-08-05-site-heterogeneity-prd.md](../specs/2026-08-05-site-heterogeneity-prd.md) | ⚠️ **Superseded** by the two above. Site-level baselines, plans and pathways (F0–F6) specced against the current coupled model |
+
 ## Conventions
 - Units (from the workbook `Contents` sheet): energy/capacity in **PJ** (GW for CHP),
   emissions in **kt/Mt CO₂e**, cost in **£m**, distance in **km**, prices based to **2021**.

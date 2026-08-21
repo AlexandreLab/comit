@@ -1,6 +1,23 @@
 # PRD / Technical Specification — Site-Level Baselines, Plans, and Pathways
 
-**Status:** Draft v2 for review
+> ## ⚠️ Superseded
+>
+> **This document is superseded by
+> [2026-08-19-carb3-site-decarbonisation-vision.md](2026-08-19-carb3-site-decarbonisation-vision.md)
+> and its
+> [implementation specification](2026-08-19-carb3-site-decarbonisation-implementation.md)
+> (2026-08-19).**
+>
+> That design drives the model from a CaRB3 building-stock register with per-site
+> independent solves, which inverts two of this PRD's stated goals — Goal 4 (sector
+> calibration authoritative) and Goal 5 (zero-impact default). The two roadmaps cannot
+> be reconciled, so the coupled-model feature set F0–F6 below is **retired**.
+>
+> Kept for reference, not deletion: the F0 (site data model, ingestion, validation) and
+> F2 (site process register) thinking informed the successor's data model, and §2's
+> problem statement remains the clearest account of why site heterogeneity matters.
+
+**Status:** Superseded — was Draft v2 for review
 **Date:** 2026-08-05
 **Related reading:** [notes/04_site_energy_estimation.md](../notes/04_site_energy_estimation.md),
 [notes/06_inputting_measured_site_energy.md](../notes/06_inputting_measured_site_energy.md),
