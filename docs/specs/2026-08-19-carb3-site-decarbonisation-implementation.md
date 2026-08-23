@@ -7,7 +7,7 @@
 
 ---
 
-## 1. Scope, conventions, and how to read this
+## 1. Scope, inputs, conventions, and how to read this
 
 ### 1.1 What this document is
 
@@ -68,6 +68,110 @@ the widest reach:
   comparison (§6.3).
 - **D5 — hybrid denominators.** Each process declares whether its coefficients are
   denominated in energy or in physical mass.
+
+### 1.6 What the building stock model must supply
+
+This is the **interface contract with the upstream CaRB3 building-stock model** (D4),
+stated here in full because everything downstream depends on it and because it is the
+one part of this specification addressed to someone outside the modelling team.
+
+Nothing in this document derives baseline energy. The stock model is authoritative for
+what a premise *is* and what it *currently consumes*; this model decides only what it
+could do instead. §3.1 is the normative field-level contract with validation rules —
+this section states the requirement and why each item exists.
+
+#### 1.6.1 The unit of delivery
+
+**One record per premise, per data year, with a stable identifier.** `premise_id` must
+refer to the same physical site across re-runs and across vintages of the stock model;
+results are keyed on it and cannot be compared over time otherwise.
+
+#### 1.6.2 Required for every premise
+
+| Item | Unit | Why it is needed | Without it |
+|---|---|---|---|
+| `premise_id` | — | Keys every output row; joins results across runs | No stable results; no time comparison |
+| `carb3_activity` | — | Selects the process set (A2) and the technology set | The premise cannot be expanded into processes at all |
+| `energy_electricity` | PJ/yr | Split across processes (A3), then back-solved into implied capacity (A4) | No baseline; nothing to decarbonise from |
+| `energy_gas` | PJ/yr | As above | As above |
+| `energy_oil` | PJ/yr | As above | As above |
+| `energy_coal` | PJ/yr | As above | As above |
+| `energy_biomass` | PJ/yr | As above; also drives biomass zero-rating (§7.3) | Biomass is silently treated as a fossil fuel or omitted |
+| `latitude`, `longitude` | degrees | Assigns the premise to one of the 9 GB clusters (A1 step 11), which determines H₂/CO₂ availability (D7) | No infrastructure scenario can be applied |
+| `nation` | enum | Enforces GB scope (D8) | NI premises contaminate GB aggregates |
+| `data_year` | year | Provenance; anchors the baseline in time | Results cannot be dated or rebased |
+| `source` | — | Provenance; supports the confidence reporting in §8.5 | Result quality cannot be characterised |
+
+**The five energy vectors must be supplied separately.** A single total-energy figure is
+not sufficient: A4 back-solves existing capacity by matching each vector to the
+technologies that can consume it, so a total with no split cannot identify what
+equipment the site currently runs. This is the single most important requirement in this
+section.
+
+#### 1.6.3 Required for some premises
+
+| Item | Unit | When required | Why |
+|---|---|---|---|
+| `throughput_quantity` | Mt/yr | Activities carrying a mass-denominated process (D5) | Process emissions are kt CO₂ per tonne of material. Without physical throughput they have no denominator and cannot be modelled — and these are exactly the activities where process emissions dominate |
+| `throughput_commodity` | — | Whenever `throughput_quantity` is present | Identifies which material the tonnage refers to |
+| `energy_other_carrier` | — | Whenever `energy_other` > 0 | An unnamed carrier cannot be priced or given an emission factor |
+
+#### 1.6.4 Optional, and what it buys
+
+| Item | Unit | What it enables |
+|---|---|---|
+| `floorspace` | m² | Cross-checking energy intensity on ingest; a fallback basis for site-services energy where the profile needs one |
+| `energy_other` | PJ/yr | Coverage of carriers outside the five main vectors — LPG, waste-derived fuel, purchased heat |
+
+#### 1.6.5 What the stock model does *not* need to supply
+
+Bounding the ask matters as much as stating it. The stock model is **not** expected to
+provide:
+
+- **Emissions.** Computed here from energy and emission factors (§7). This is the point
+  of D4 — COMIT's existing dependency on CO₂ point-source data is what made most
+  premises unmodellable, and supplying energy directly removes it.
+- **Existing plant, capacity, or equipment lists.** Back-solved in A4 from energy.
+- **The split of energy across processes.** That is
+  `activity_process_energy_profile` (§3.3), a per-*activity* assumption maintained by
+  the modelling team, not per-premise data.
+- **Costs, technology options, or fuel prices.** Scenario inputs (§3.8).
+- **Anything about the future.** The record is a snapshot of the present; all projection
+  happens here.
+
+#### 1.6.6 Quality requirements
+
+1. **Units as stated** — PJ/yr for energy, Mt/yr for throughput. Deliveries in kWh, GWh,
+   or tonnes must be converted upstream, not guessed at on ingest.
+2. **Activity vocabulary** — every `carb3_activity` must be one of the 55 Factory-class
+   activities (D1). Premises outside that class should not be sent at all; if sent, they
+   are rejected rather than approximated.
+3. **Non-negative energy, and at least one vector strictly positive.** A zero-energy
+   premise is not modellable.
+4. **GB only** — England, Wales, Scotland (D8).
+5. **Consistent vintage** — a batch should share a `data_year`, or carry the differences
+   explicitly. Mixed vintages silently distort GB aggregates.
+6. **Coverage stated, not implied.** The batch should say what fraction of the
+   Factory-class stock it represents, since §8.5 reports results against it and A9
+   compares aggregates to ECUK/GHGI.
+
+#### 1.6.7 What happens when a requirement is not met
+
+A1 rejects rather than repairs, and every rejection is logged with a reason. Silent
+imputation is not permitted — a missing input must remain visible in the rejection log.
+
+| Reason | Trigger |
+|---|---|
+| `out_of_scope_nation` | `nation` is not England, Wales or Scotland |
+| `out_of_scope_activity` | A recognised CaRB3 activity outside the Factory class |
+| `unknown_activity` | An activity string matching no known CaRB3 activity |
+| `no_energy` | Total energy across all vectors is zero |
+| `negative_energy` | Any vector is negative |
+| `missing_throughput` | Mass-denominated activity with no `throughput_quantity` |
+
+**Batch-level gate.** If the rejection rate exceeds a configured threshold, the whole
+batch fails rather than proceeding on a filtered subset — a high rejection rate signals
+a contract mismatch, not a data-cleaning opportunity.
 
 ---
 
@@ -134,12 +238,13 @@ Nine entities. Each is specified as a field table. Types are abstract (§1.3).
 
 ### 3.1 `premise_record` — the input contract
 
-The interface between the CaRB3 stock model and this model. One row per premise.
+The interface between the CaRB3 stock model and this model. One row per premise. Stated
+in requirement terms, with rationale, in **§1.6**; this table is normative for validation.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK | Unique, stable across runs |
-| `carb3_activity` | string | — | yes | → `activity_process_register` | Must match one of the **55 CaRB3 Factory-class activities** (D1). Any other class is rejected with reason `out_of_scope_activity` |
+| `carb3_activity` | string | — | yes | → `activity_process_register` | Must match one of the **55 CaRB3 Factory-class activities** (D1). Any other class is rejected with reason `out_of_scope_activity`; an unrecognised string with `unknown_activity` (§1.6.7) |
 | `latitude` | real | degrees | yes | — | Within GB bounding box |
 | `longitude` | real | degrees | yes | — | Within GB bounding box |
 | `nation` | enum{England, Wales, Scotland} | — | yes | — | NI rejected with reason `out_of_scope_nation` |
@@ -459,8 +564,10 @@ PRE:    activity_process_register loaded; cluster list loaded (9 GB clusters)
 1. FOR EACH record r IN raw_premise_records:
 2.     IF r.nation NOT IN {England, Wales, Scotland}:
 3.         REJECT r REASON "out_of_scope_nation"; CONTINUE
-4.     IF r.carb3_activity NOT IN activity_process_register:
-5.         REJECT r REASON "unknown_activity"; CONTINUE
+4.     IF r.carb3_activity IS A KNOWN CaRB3 activity OUTSIDE the Factory class:
+5.         REJECT r REASON "out_of_scope_activity"; CONTINUE
+5a.    IF r.carb3_activity NOT IN activity_process_register:
+5b.        REJECT r REASON "unknown_activity"; CONTINUE
 6.     total_energy := SUM of r.energy_* fields
 7.     IF total_energy <= 0:
 8.         REJECT r REASON "no_energy"; CONTINUE

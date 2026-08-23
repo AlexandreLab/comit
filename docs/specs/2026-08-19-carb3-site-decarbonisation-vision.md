@@ -46,6 +46,10 @@ A **CaRB3 building-stock model** sits upstream and produces one record per premi
   processes (D5)
 - optionally floorspace and building attributes
 
+The full interface contract — what must be supplied, what must not, quality requirements
+and rejection behaviour — is set out in
+[implementation §1.6](2026-08-19-carb3-site-decarbonisation-implementation.md#16-what-the-building-stock-model-must-supply).
+
 **Deriving that baseline is explicitly out of scope here.** How the stock model turns
 floorspace, meter data or benchmarks into per-site energy is its own problem. This
 design begins at the point where a validated per-site energy record exists.
