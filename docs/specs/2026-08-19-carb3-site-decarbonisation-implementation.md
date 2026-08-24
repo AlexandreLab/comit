@@ -1229,7 +1229,11 @@ with $\mathrm{Em}_t$ the period's chargeable emissions from §7.
 `PV_H2_pipe_cluster_to_site`). Because infrastructure is exogenous here, they **collapse
 into per-unit tariffs** on the carriers consumed:
 
-$$Z^{\text{infra}}_t = \sum_{k \in K} \Big( u_{k,t}\,|\iota_{k,\text{H}_2}|\,\tau_{\text{H}_2,t} \;+\; \mathrm{CO}_2^{\text{captured}}_{k,t}\,\tau_{\text{CO}_2,t} \Big)$$
+$$Z^{\text{infra}}_t = \sum_{k \in K} \Big( u_{k,t}\,|\iota_{k,\text{H}_2}|\,\tau_{\text{H}_2,t} \;+\; \mathrm{Em}^{\text{cap}}_{k,t}\,\tau_{\text{CO}_2,t} \Big)$$
+
+where $\mathrm{Em}^{\text{cap}}_{k,t}$ is the CO₂ captured by technology $k$ in period
+$t$ — the process and fuel CO₂ expressions of §7.1 with $\rho_k$ replaced by
+$(1-\rho_k)$, since $\rho_k$ is the fraction **not** captured.
 
 This is the single largest structural simplification versus COMIT, and the direct
 consequence of D7.
@@ -1485,7 +1489,7 @@ Reference: `R/fct_emissions.R:255-290`.
 
 $$\mathrm{Em}^{\text{proc,nonCO}_2}_{k,t} = u_{k,t} \sum_{c \in C^{\text{proc}}} \iota_{k,c}\,(1-\theta_c)\,\mathbb{1}^{\text{dir}}_c$$
 
-**Two things to note, both load-bearing:**
+**Three things to note, all load-bearing:**
 
 1. There is **no $\rho_k$ term**. Non-CO₂ is entirely released.
 2. **CCS never abates non-CO₂.** COMIT fixes the captured non-CO₂ terms to zero
