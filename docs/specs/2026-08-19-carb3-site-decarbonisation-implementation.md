@@ -43,6 +43,33 @@ Solver-specific concerns are confined to **§9.3**. Everything else is solver-ne
 - `⟨entity⟩.⟨field⟩` refers to a field; `→` denotes a foreign key.
 - Pseudocode is 1-indexed and uses `FOR EACH`, `IF`, `ASSERT`, `FAIL`.
 
+**Labelled references.** Four label families are used throughout, often before the
+section that defines them:
+
+| Label | Meaning | Defined in |
+|---|---|---|
+| `A1`–`A9` | Algorithms — the processing steps, in order | §4 |
+| `C1`–`C9` | Components — the software pieces that run those algorithms | §2.1 |
+| `V1`–`V13` | Validation tests and acceptance criteria | §10 |
+| `D1`–`D10` | Design decisions | [Vision doc §6](2026-08-19-carb3-site-decarbonisation-vision.md) |
+
+**The algorithms at a glance**, since §1.6 refers to several of them before §4 arrives:
+
+| | Algorithm | What it does |
+|---|---|---|
+| **A1** | Ingest and validate | Accepts premise records, assigns each to a cluster, rejects bad rows with a reason |
+| **A2** | Expand to process set | Turns a premise's activity into the list of processes it runs |
+| **A3** | Allocate energy | Splits the premise's metered energy across those processes |
+| **A4** | Back-solve capacity | Infers what equipment capacity must already exist to consume that energy |
+| **A5** | Apply scenario | Attaches prices, carbon price and H₂/CO₂ availability |
+| **A6** | Build problem | Constructs the per-premise optimisation |
+| **A7** | Solve and extract | Runs the solver, handles infeasibility, pulls results out |
+| **A8** | Assemble output | Produces the per-premise pathway tables |
+| **A9** | Aggregate and compare | Rolls results up to GB and compares against ECUK/GHGI |
+
+A1–A8 run once per premise and are independent across premises (D2). A9 runs once over
+all results.
+
 ### 1.4 Glossary
 
 | Term | Meaning in this document |
@@ -59,8 +86,8 @@ Solver-specific concerns are confined to **§9.3**. Everything else is solver-ne
 
 ### 1.5 Design decisions assumed
 
-This document implements decisions D1–D9 recorded in the vision document. The two with
-the widest reach:
+This document implements decisions D1–D10 recorded in the vision document. The three
+with the widest reach:
 
 - **D2 — per-site independent solves.** Each premise is a separate optimisation. No
   constraint may couple two premises. Any requirement that appears to need cross-site
@@ -68,6 +95,9 @@ the widest reach:
   comparison (§6.3).
 - **D5 — hybrid denominators.** Each process declares whether its coefficients are
   denominated in energy or in physical mass.
+- **D10 — tiered site intelligence.** Where a premise's actual processes, capacities or
+  reported emissions are known, they replace the activity default outright. Tiers are
+  exclusive, and every output row records the tier it came from.
 
 ### 1.6 What the building stock model must supply
 
@@ -118,10 +148,28 @@ section.
 
 #### 1.6.4 Optional, and what it buys
 
+Everything below is genuinely optional — the model runs without any of it. But each item
+replaces an assumption with a fact for the premises that have it, and the tier used is
+recorded on every output row, so a reader can always tell a known site from an assumed
+one.
+
 | Item | Unit | What it enables |
 |---|---|---|
 | `floorspace` | m² | Cross-checking energy intensity on ingest; a fallback basis for site-services energy where the profile needs one |
 | `energy_other` | PJ/yr | Coverage of carriers outside the five main vectors — LPG, waste-derived fuel, purchased heat |
+| `process_set_id` | — | Selects a known process route instead of the activity default — e.g. a kraft versus recycled-fibre paper mill (§3.2). One field, and it replaces an activity-wide average with the right route for that site |
+| `premise_process_detail` rows | — | The site's actual process list, and where known its installed technology, capacity and commissioning year (§3.10). Highest tier of process evidence; A4 then infers utilisation rather than guessing capacity |
+| `premise_measured_emissions` rows | kt CO₂e/yr | Reported emissions from UK ETS, permits or NAEI (§3.11). Reconciles the computed baseline, corrects the combustion/process split, and optionally calibrates process intensity (§7.6) |
+| `import_capacity` | MW | **Future use (§5.6).** How much electrification the connection physically allows before reinforcement is needed |
+| `export_capacity` | MW | **Future use (§5.6).** Whether onsite generation can be exported, and how much |
+| `connection_voltage` | kV | **Future use (§5.6).** Sets which reinforcement cost curve applies |
+| `onsite_generation_capacity`, `onsite_generation_type` | MW, — | **Future use (§5.6).** Existing generation to be represented rather than double-counted |
+
+**On the four network fields.** Nothing in the model reads them today. They are requested
+now because they are far cheaper to collect while the stock model is being built than to
+retrofit later, and because two planned extensions — reinforcement cost in the objective,
+and onsite generation with export — cannot be built at all without them. See §5.6, which
+also flags that a **load factor** will be needed to connect annual energy to peak power.
 
 #### 1.6.5 What the stock model does *not* need to supply
 
@@ -134,7 +182,9 @@ provide:
 - **Existing plant, capacity, or equipment lists.** Back-solved in A4 from energy.
 - **The split of energy across processes.** That is
   `activity_process_energy_profile` (§3.3), a per-*activity* assumption maintained by
-  the modelling team, not per-premise data.
+  the modelling team, not per-premise data. Note the distinction from §3.10: a known
+  process *list* and its capacities are very welcome where they exist; the *share of
+  energy* each process takes is the modelling team's problem either way.
 - **Costs, technology options, or fuel prices.** Scenario inputs (§3.8).
 - **Anything about the future.** The record is a snapshot of the present; all projection
   happens here.
@@ -256,6 +306,12 @@ in requirement terms, with rationale, in **§1.6**; this table is normative for 
 | `energy_other` | real | PJ/yr | no | — | ≥ 0; carrier named in `energy_other_carrier` |
 | `energy_other_carrier` | string | — | no | → `commodity` | Required if `energy_other` > 0 |
 | `floorspace` | real | m² | no | — | > 0 if present |
+| `process_set_id` | string | — | no | → `activity_process_register` | Selects a named non-default process set (§3.2). Absent ⇒ the activity's default set |
+| `import_capacity` | real | MW | no | — | > 0 if present. Agreed grid import capacity at the connection point |
+| `export_capacity` | real | MW | no | — | ≥ 0 if present. Agreed export capacity; 0 ⇒ export not permitted |
+| `connection_voltage` | real | kV | no | — | > 0 if present. Distinguishes LV/HV/EHV connections for reinforcement costing |
+| `onsite_generation_capacity` | real | MW | no | — | ≥ 0 if present |
+| `onsite_generation_type` | string | — | no | → `technology` | Required if `onsite_generation_capacity` > 0 |
 | `data_year` | integer | year | yes | — | Provenance |
 | `source` | string | — | yes | — | Provenance |
 | `throughput_quantity` | real | Mt/yr | cond | — | **Required** for activities with mass-denominated processes (D5); see §3.4 and the note below |
@@ -281,12 +337,29 @@ Which processes run at a premise of a given activity. Seeded from
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `carb3_activity` | string | — | yes | PK part | — |
+| `process_set_id` | string | — | yes | PK part | Names the variant. Every activity has exactly one set with `is_default = true` |
+| `set_name` | string | — | yes | — | Human-readable, e.g. `kraft_pulping`, `recycled_fibre` |
+| `is_default` | boolean | — | yes | — | Exactly one true per `carb3_activity` |
 | `process_id` | string | — | yes | PK part | → `commodity.commodity_id` |
 | `process_name` | string | — | yes | — | Human-readable |
 | `is_optional` | boolean | — | yes | — | If true, may be absent at a given premise |
+| `provenance` | string | — | yes | — | For non-default sets: what intelligence justifies it |
 
-**Rule.** Every `(carb3_activity, process_id)` pair must have a matching row in
-`activity_process_energy_profile`, or the activity cannot be modelled.
+**On process sets.** An activity rarely has one universal process route. Two paper mills
+in the same CaRB3 activity may run kraft pulping and recycled-fibre lines that share
+almost no unit operations, and where that is known for a specific site it should be used
+rather than averaged away. Each activity therefore carries **one default set plus any
+number of named alternatives**, and a premise selects one via
+`premise_record.process_set_id` (§3.1). Absent that, the default applies. Finer-grained
+still, a premise may declare its processes explicitly in `premise_process_detail`
+(§3.10), which overrides both.
+
+**Rule.** Every `(carb3_activity, process_set_id, process_id)` triple must resolve to
+rows in `activity_process_energy_profile`, directly or by inheritance (§3.3), or the set
+cannot be modelled.
+
+**Rule.** `process_set_id` must be valid *for the premise's activity*. A set belonging to
+a different activity is rejected on ingest with reason `invalid_process_set`.
 
 ### 3.3 `activity_process_energy_profile` — how energy splits across processes
 
@@ -296,6 +369,7 @@ energy per vector; the model needs it per process.
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
+| `process_set_id` | string | — | yes | PK part | → `activity_process_register`. Use the activity's default set unless the variant genuinely splits energy differently |
 | `process_id` | string | — | yes | PK part | → `activity_process_register` |
 | `vector` | enum{electricity, gas, oil, coal, biomass, other} | — | yes | PK part | — |
 | `energy_share` | real | fraction | yes | — | ∈ [0, 1] |
@@ -305,9 +379,15 @@ energy per vector; the model needs it per process.
 | `provenance` | string | — | yes | — | Citation: document, table, page — not just a source name |
 | `confidence` | enum{high, medium, low} | — | yes | — | Derived from `evidence_tier` per §3.3.2; reported alongside results |
 
-**Rule (must be asserted at load).** For each `(carb3_activity, vector)`, the sum of
-`energy_share` over processes equals 1 within 1e-6. A profile that does not sum to 1
-silently loses or creates energy.
+**Rule (must be asserted at load).** For each `(carb3_activity, process_set_id, vector)`,
+the sum of `energy_share` over processes equals 1 within 1e-6. A profile that does not
+sum to 1 silently loses or creates energy.
+
+**Rule (inheritance).** A non-default process set need not restate every row. Where a
+`(process_id, vector)` combination has no row for that set, the default set's row is
+inherited, and the renormalisation of R2 (§3.3.3) then restores the sum-to-1 invariant
+over whichever processes the set actually contains. A set therefore only has to state
+the shares it genuinely changes.
 
 #### 3.3.1 What the profile has to contain
 
@@ -548,6 +628,56 @@ radius get `available = false` for hydrogen and CO₂ transport.
 
 One row per premise × process × technology × period. See §8 for the full output schema.
 
+### 3.10 `premise_process_detail` — known site processes and capacity
+
+**Optional per-premise intelligence.** Where the actual processes at a site are known —
+from a permit, an audit, a site visit, or an operator disclosure — they are stated here
+and override both the default set and any named variant. Zero rows for a premise is the
+normal case and means "use the register".
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `process_id` | string | — | yes | PK part | → `commodity.commodity_id` |
+| `known_capacity` | real | capacity units | no | — | > 0 if present. Units follow the process's denominator (D5): PJ/yr-equivalent for energy, Mt/yr for mass |
+| `technology_code` | string | — | no | → `technology` | The specific installed technology, where known |
+| `commissioned_year` | integer | year | no | — | Drives remaining life against `technology.lifetime` |
+| `provenance` | string | — | yes | — | Citation: permit number, audit reference, disclosure |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Rule (completeness).** The rows for a premise are treated as its **complete** process
+list. A partial list would silently delete processes the site runs and misstate its
+energy balance, so a premise with any rows must have rows for every process it runs. If
+only fragmentary knowledge exists, use a named `process_set_id` instead.
+
+**Rule (precedence).** Where `technology_code` is given, that technology is the premise's
+existing plant for that process and A4 does not choose between candidates. Where
+`known_capacity` is given, it is used directly and A4 back-solves *utilisation* instead
+of capacity (§A4).
+
+### 3.11 `premise_measured_emissions` — reported emissions, where they exist
+
+**Optional per-premise intelligence.** For sites in UK ETS, or covered by permit
+reporting or NAEI point-source data, measured emissions exist and are better evidence
+than anything this model computes. They are used to **reconcile and calibrate** the
+baseline, not to replace the computed value — see §7.6 for why that distinction is
+forced rather than chosen.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `emission_year` | integer | year | yes | PK part | Should match `premise_record.data_year` |
+| `source_category` | enum{combustion, process, total} | — | yes | PK part | `total` only where the split is unavailable |
+| `ghg` | enum{CO2, CH4, N2O, total_co2e} | — | yes | PK part | — |
+| `quantity` | real | kt CO₂e/yr | yes | — | ≥ 0 |
+| `scope` | enum{direct, indirect} | — | yes | — | Indirect excluded from the §7.4 direct comparison |
+| `provenance` | string | — | yes | — | Citation: UK ETS account, permit, NAEI reference |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Rule.** If both `total` and a `combustion`/`process` breakdown are supplied for the
+same premise-year, the parts must sum to the total within 1%, or the record is rejected
+with reason `emissions_inconsistent`.
+
 ---
 
 ## 4. Algorithms
@@ -589,19 +719,43 @@ nearest in-scope cluster instead.
 
 ### A2 — Expand premise to its process set
 
+**Three tiers of evidence**, most specific first. The tier used is recorded on every
+output row so a reader can tell a known site from an assumed one.
+
 ```
-INPUT:  validated_premise p, activity_process_register
-OUTPUT: process_set(p)
+INPUT:  validated_premise p, activity_process_register, premise_process_detail
+OUTPUT: process_set(p), process_evidence_tier(p)
 PRE:    p.carb3_activity is known
 
-1. process_set := ALL rows of activity_process_register WHERE carb3_activity = p.carb3_activity
-2. REMOVE processes marked is_optional that the premise is known not to run
-   (absent evidence, retain them — omission understates the site)
-3. ASSERT process_set is non-empty
+1. detail := rows of premise_process_detail WHERE premise_id = p.premise_id
+2. IF detail IS NON-EMPTY:                          -- TIER 1: known site
+3.     process_set := { d.process_id FOR d IN detail }
+4.     process_evidence_tier := "site_known"
+5.     -- treated as complete, per the §3.10 completeness rule
+6. ELSE IF p.process_set_id IS PRESENT:             -- TIER 2: named variant
+7.     ASSERT p.process_set_id belongs to p.carb3_activity
+            ELSE REJECT "invalid_process_set"
+8.     process_set := rows of activity_process_register
+                      WHERE carb3_activity = p.carb3_activity
+                        AND process_set_id = p.process_set_id
+9.     process_evidence_tier := "named_set"
+10. ELSE:                                           -- TIER 3: activity default
+11.     process_set := rows of activity_process_register
+                       WHERE carb3_activity = p.carb3_activity
+                         AND is_default = true
+12.     process_evidence_tier := "activity_default"
+13. REMOVE processes marked is_optional that the premise is known not to run
+    (absent evidence, retain them — omission understates the site)
+14. ASSERT process_set is non-empty
 
-POST:   |process_set| >= 1
-FAILS IF: the activity has no registered processes
+POST:   |process_set| >= 1; every process has profile rows resolvable per §3.3
+FAILS IF: the activity has no default set, or a named set is empty
 ```
+
+**Why tiering rather than blending.** A site either runs a process or it does not.
+Averaging a known process list against an activity default would produce a site that
+exists nowhere, so the tiers are strictly exclusive: better evidence replaces weaker
+evidence outright.
 
 ### A3 — Allocate premise energy across processes
 
@@ -648,23 +802,48 @@ PRE:    every process has at least one technology whose fuel_category matches an
 
 1. FOR EACH process q:
 2.     FOR EACH vector v WHERE process_energy[q, v] > 0:
-3.         candidates := technologies serving q WITH fuel_category matching v
-4.         IF candidates IS EMPTY:
-5.             FAIL "no technology serves process q on vector v"
-6.         allocate process_energy[q, v] across candidates in proportion to a
+3.         IF premise_process_detail[q].technology_code IS PRESENT:
+4.             candidates := { that technology }        -- known plant, no choice
+5.         ELSE:
+6.             candidates := technologies serving q WITH fuel_category matching v
+7.         IF candidates IS EMPTY:
+8.             FAIL "no technology serves process q on vector v"
+9.         allocate process_energy[q, v] across candidates in proportion to a
              configured prior (default: equal split; overridable per activity)
-7.         FOR EACH candidate k WITH allocated energy e_k:
-8.             io := |coefficient(k, fuel commodity of v)|
-9.             ASSERT io > 0
-10.            annual_output := e_k / io
-11.            existing_capacity[k] := annual_output
-                                       / (capacity_to_activity_factor(k)
-                                          × availability_factor(k))
+10.        FOR EACH candidate k WITH allocated energy e_k:
+11.            io := |coefficient(k, fuel commodity of v)|
+12.            ASSERT io > 0
+13.            annual_output := e_k / io
+14.            IF premise_process_detail[q].known_capacity IS PRESENT:
+15.                existing_capacity[k] := known_capacity          -- measured wins
+16.                utilisation[k] := annual_output
+                                     / (known_capacity
+                                        × capacity_to_activity_factor(k))
+17.                IF utilisation[k] > availability_factor(k):
+18.                    REPORT "capacity_energy_inconsistent" (premise, q, k)
+19.            ELSE:
+20.                existing_capacity[k] := annual_output
+                                           / (capacity_to_activity_factor(k)
+                                              × availability_factor(k))
+21.                utilisation[k] := availability_factor(k)
 
-POST:   recomputing fuel use from existing_capacity reproduces process_energy
-        within 1e-6  -- this is acceptance criterion V2, §10
+POST:   recomputing fuel use from existing_capacity and utilisation reproduces
+        process_energy within 1e-6  -- this is acceptance criterion V2, §10
 FAILS IF: any io coefficient is zero, or a process/vector pair has no technology
 ```
+
+**On known capacity (step 14).** Metered energy and stated capacity are two different
+measurements of the same site and will not generally agree. The resolution is not to
+pick one: capacity fixes `existing_capacity`, and energy then determines **utilisation**,
+which is the quantity nobody measured. Energy therefore still reconciles exactly, so V2
+and V3 hold unchanged, and the disagreement surfaces as a utilisation figure an engineer
+can sanity-check rather than as a silent adjustment.
+
+**Step 17 is a report, not a failure.** A utilisation above the technology's availability
+factor means the site consumed more energy than its stated capacity allows — usually a
+units error, a capacity stated as nameplate versus operating, or an out-of-date figure.
+It is worth surfacing loudly, but it is the input's problem, not the model's, and it must
+not stop a national run.
 
 ### A5 — Apply the infrastructure scenario
 
@@ -915,6 +1094,55 @@ This is why negative cost entries are legitimate and must not be clamped to zero
 
 ---
 
+### 5.6 Planned extensions — network capacity, reinforcement, and export
+
+**Not implemented. Specified so the inputs collected now are the right ones.**
+
+`premise_record` carries `import_capacity`, `export_capacity`, `connection_voltage`,
+`onsite_generation_capacity` and `onsite_generation_type` (§3.1). Nothing in the current
+model reads them: they are collected because they are far easier to obtain while the
+stock model is being built than to retrofit later, and because two extensions depend
+entirely on them.
+
+**Extension 1 — electrification limited by connection capacity.** Today the optimiser may
+electrify a site without limit. In reality a site's import capacity binds, and exceeding
+it requires a reinforcement that costs money and takes time. The constraint has the form
+
+$$P^{\text{peak}}_{t} \;\le\; \overline{P}^{\text{import}} + r_{t}$$
+
+where $r_t$ is reinforcement capacity purchased, entering the objective as a new term
+$Z^{\text{network}}_t = \sum_t \gamma(\overline{P}^{\text{import}}, r_t)$ with
+$\gamma$ a cost function of voltage level and increment.
+
+**This needs one input the model does not currently have.** Everything here is annual
+energy in PJ/yr, while a connection capacity is instantaneous power in MW. Converting one
+to the other requires a **load factor** — the ratio of average to peak electrical
+demand — and it varies enormously by activity: a continuous process runs near flat, a
+single-shift workshop does not. Options, in preference order:
+
+1. The stock model supplies a per-premise peak demand or load factor directly, where
+   metering supports it.
+2. A per-activity default load factor is added alongside the energy profile (§3.3), with
+   the same evidence tiers and the same systematic-error caveat.
+3. A single global load factor — cheapest, and almost certainly wrong for the activities
+   where reinforcement actually binds.
+
+Option 2 is the realistic default; option 1 for whichever premises can support it.
+
+**Extension 2 — onsite generation with export.** With `export_capacity` known, onsite
+generation becomes a technology whose output may either offset import or be exported,
+adding a revenue term $-\sum_t x_t \, p^{\text{export}}_t$ bounded by
+$x_t \le \overline{P}^{\text{export}}$. This changes the sign convention story: the
+objective acquires a genuinely negative term, so any implementation must not assume cost
+components are non-negative — a trap V6 already records for emissions.
+
+**Sequencing.** Both extensions are per-premise and therefore compatible with D2 — a
+connection capacity is a property of one site, not shared between sites. Neither should
+be attempted before Phase 2, and both should be specified against real load-factor
+evidence rather than assumed.
+
+---
+
 ## 6. Constraint disposition
 
 COMIT has 17 constraint families. Under D2 they divide three ways.
@@ -1027,6 +1255,45 @@ because they overlap by design and consumers must be able to filter:
 `Electricity` · `Hydrogen` · `Captured` · `Negative`
 
 **Net emissions = `Direct (total CO2e)` + `Negative`.**
+
+### 7.6 Reconciling against measured emissions
+
+Where `premise_measured_emissions` (§3.11) exists, it is the best evidence available
+about the site's baseline. It cannot, however, simply replace the computed figure.
+
+**Why an override is not possible.** Emissions here are *endogenous* — a function of the
+decision variables, recomputed every period from whatever fuel the optimiser chooses.
+Substituting a measured scalar would sever that link: the model would report the same
+emissions whether the site kept its coal kiln or electrified it, and the carbon cost term
+$Z^{\text{carbon}}$ would stop responding to the decision it exists to price. A measured
+emissions figure is a fact about **one historical year of one configuration**, not a
+property of the site that survives changing the configuration.
+
+**What measured emissions are used for instead**, in increasing order of intrusiveness:
+
+1. **Reconciliation (default, always on).** Compute baseline-year emissions from the
+   model, compare against the measured figure, and report the divergence per premise and
+   in the GB aggregate (V13). Divergence is surfaced, never silently corrected — the same
+   rule A9 applies to sector totals.
+2. **Split correction (default on where the split is supplied).** Where measured data
+   distinguishes `combustion` from `process`, and the model's split rests on a
+   low-confidence energy profile, the measured split is better evidence about *which
+   source* the emissions come from. Adopt the measured ratio for the baseline year and
+   report that it was adopted.
+3. **Intensity calibration (default OFF — opt-in per run).** A per-premise multiplier on
+   the process-emission intensity of that site's mass-denominated processes, chosen so
+   baseline computed emissions match the measured figure. This keeps emissions endogenous
+   — the multiplier scales a coefficient, not the result — while making year zero true.
+
+**Rule for calibration.** The multiplier must be bounded (suggested: $[0.5, 2.0]$) and
+recorded on every output row for the premise. A premise needing a multiplier outside the
+bound is not calibrated; it is reported as an unexplained divergence, because at that
+magnitude the disagreement is evidence of a data error rather than a site-specific
+intensity.
+
+**Rule for scope.** Only `scope = direct` measured emissions enter the comparison.
+Indirect emissions depend on grid factors that the measured source and this model will
+not have taken from the same vintage.
 
 ---
 
@@ -1157,6 +1424,9 @@ Two cautions carried from COMIT:
 | **V8** | **GB aggregate sanity** | Sector totals compared against ECUK/GHGI on a GB basis; divergence reported, never silently corrected |
 | **V9** | **Infrastructure sensitivity** | Every clustered energy-intensive premise run under at least two bounding scenarios; spread reported |
 | **V10** | **Determinism** | Same inputs reproduce the same outputs bit-for-bit, given the §9.3 tie-break |
+| **V11** | **Process set integrity.** `activity_process_register` and A2 tiering | Exactly one default set per activity; every named set resolves to profile rows by §3.3 inheritance; a premise citing a set belonging to another activity is rejected; `premise_process_detail` overrides both and is treated as complete |
+| **V12** | **Known-capacity reconciliation.** A4 steps 14–18 | Where `known_capacity` is supplied, energy still reconciles within 1e-6 (V2 unaffected) and the derived utilisation is reported. Utilisation exceeding the availability factor is logged as `capacity_energy_inconsistent`, not silently clipped |
+| **V13** | **Measured-emissions divergence.** §7.6 | Baseline computed emissions compared against `premise_measured_emissions` per premise and in aggregate; divergence reported and never silently corrected. With calibration enabled, every multiplier lies in the configured bound and is recorded on output |
 
 **On V1.** This is the single most valuable test, because it isolates the one change
 most likely to be wrong. Note that parity with *fully coupled* COMIT is **not** a valid

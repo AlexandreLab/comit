@@ -45,6 +45,9 @@ A **CaRB3 building-stock model** sits upstream and produces one record per premi
 - its **physical throughput** in Mt/yr, for activities carrying mass-denominated
   processes (D5)
 - optionally floorspace and building attributes
+- optionally **site intelligence** where it exists (D10) — the actual process list and
+  installed capacity, reported emissions, and the grid import/export capacity that two
+  planned extensions will need
 
 The full interface contract — what must be supplied, what must not, quality requirements
 and rejection behaviour — is set out in
@@ -138,6 +141,7 @@ solving a bigger problem.
 | **D7** | Infrastructure exogenous — H₂/CO₂ availability as scenario input | Simple, explicable; the assumption is owned and stated | **No infrastructure co-optimisation** — see §7 |
 | **D8** | Great Britain scope | Keeps Grangemouth and Peterhead; matches expected stock coverage | Excludes Northern Ireland — 56 sites and the Londonderry cluster |
 | **D9** | Supersedes the site-heterogeneity PRD | One direction, no conflicting roadmaps | Retires work already specced against the model that runs today |
+| **D10** | Tiered site intelligence — known site detail replaces activity defaults | Real sites modelled as themselves wherever evidence exists; the model improves as intelligence accumulates, without redesign | Mixed-evidence results; every output must carry its evidence tier or the quality is invisible |
 
 ### On D5 — why two denominators
 
@@ -153,6 +157,39 @@ to fuel efficiency, which is wrong.
 So: energy denominators by default; physical mass for the ~20 processes that carry
 process emissions. Those are concentrated in six sectors, all of which already have
 mass-denominated product chains in COMIT today.
+
+### On D10 — evidence tiers, not averages
+
+D4 makes the stock model authoritative for what a premise consumes. D10 extends the same
+logic to what a premise *is*. An activity is a classification, not a description: two
+paper mills in one CaRB3 activity may run kraft and recycled-fibre lines sharing almost
+no unit operations, and where that is known for a specific site, averaging it into an
+activity default throws away the best information available.
+
+So process detail is **tiered**, most specific first:
+
+1. **Known site** — the site's actual process list, and where known its installed
+   technology, capacity and commissioning year.
+2. **Named route** — the site is known to run one of several recognised routes for its
+   activity, so that route's process set is used.
+3. **Activity default** — no site-specific intelligence; the default set applies.
+
+The same applies to emissions. Where a site reports under UK ETS or a permit, those
+figures are better evidence than anything computed here, and are used to reconcile the
+baseline and correct the combustion/process split. They cannot simply *replace* the
+computed emissions — emissions must stay a function of the decision variables, or the
+carbon price stops pricing the decision it exists to price. [Implementation
+§7.6](2026-08-19-carb3-site-decarbonisation-implementation.md) sets out what is done
+instead.
+
+Two consequences worth stating plainly. First, the tiers are **exclusive, not blended** —
+better evidence replaces weaker evidence outright, because a blend of a known site and an
+average is a site that exists nowhere. Second, results become **mixed-evidence**, so every
+output row carries the tier it was produced from. Without that, a national aggregate
+silently mixes surveyed sites with defaulted ones and reads as uniformly reliable.
+
+This also means the model gets better as intelligence accumulates, with no structural
+change — new site knowledge is new rows, not a new design.
 
 ### On D7 — the deliberate simplification
 
