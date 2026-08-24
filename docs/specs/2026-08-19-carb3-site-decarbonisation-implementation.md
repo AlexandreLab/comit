@@ -1782,76 +1782,10 @@ commodity list (§7.4), the biomass category string (§7.3), non-CO₂ capture f
 
 ## 13. Worked example
 
-One premise, end to end. Illustrative values.
+Moved to a companion document so this specification stays a reference rather than a
+narrative: **[2026-08-19-carb3-site-decarbonisation-worked-example.md](2026-08-19-carb3-site-decarbonisation-worked-example.md)**.
 
-**Input.**
-
-```
-premise_id           P-000123
-carb3_activity       Cement Works
-nation               England
-latitude/longitude   53.35 / -1.75
-data_year            2024
-
-premise_energy (§3.1.1)
-  commodity_id  vector       quantity   data_status
-  electricity   electricity  0.42 PJ/yr measured
-  coal          coal         3.90 PJ/yr measured
-  natural_gas   gas          0.31 PJ/yr measured
-  fuel_oil      oil          0.00 PJ/yr not_consumed   -- explicit zero, not absence
-                                                        -- biomass row absent: not assessed
-
-premise_throughput (§3.1.2)
-  commodity_id  quantity     data_status
-  clinker       0.85 Mt/yr   measured
-```
-
-**A1 — validate.** Nation in scope; activity known; energy positive; throughput present
-(required, because Cement Works has a mass-denominated process). Nearest of the 9
-clusters assigned.
-
-**A2 — expand.** `Cement Works` registers two processes:
-`Calcination` (denominator **mass**, carries process emissions) and
-`Milling` (denominator **energy**).
-
-**A3 — allocate.** Applying the activity's energy profile:
-
-| Process | Electricity | Coal | Gas |
-|---|---|---|---|
-| Calcination | 0.08 | 3.90 | 0.28 |
-| Milling | 0.34 | 0.00 | 0.03 |
-| **Total** | **0.42** | **3.90** | **0.31** |
-
-Totals reconcile with the input (V3).
-
-**A4 — back-solve capacity.** For the coal-fired calcination technology, with
-`|io| = 4.6 PJ per Mt`, `capacity_to_activity = 1`, `availability = 0.9`:
-
-```
-annual_output = 3.90 / 4.6            = 0.848 Mt
-capacity      = 0.848 / (1 × 0.9)     = 0.942 Mt capacity
-```
-
-The implied output (0.848 Mt) reconciles with the declared throughput (0.85 Mt) to
-within 0.2% — a useful cross-check that the profile and coefficients agree.
-
-**A5 — scenario.** The premise's cluster has `co2_transport.available = true` from 2035
-at a tariff of £18m/Mt; hydrogen unavailable throughout.
-
-**A6/A7 — solve.** Available calcination technologies: coal kiln (incumbent), gas kiln,
-coal kiln with CCS (from 2035). The solver trades the CCS capex and CO₂ tariff against
-avoided carbon cost on both the fuel **and** the calcination process emissions — the
-latter being untouchable by fuel switching (D5, §7.1). Milling, being purely electric
-motor load, switches on fuel price alone.
-
-**A8 — output.** Rows emitted per process × technology × period across `Outputs`,
-`Energy`, `Emissions`, `Costs`, each carrying the lower of the technology's and the
-profile's confidence.
-
-**A9 — aggregate.** The premise contributes to the `Cement` sector total via the
-crosswalk, and to the GB energy and emissions trajectories.
-
-**What the example demonstrates:** the mass denominator is load-bearing. Had
-`Calcination` been denominated in PJ, its process emissions would have scaled with fuel
-efficiency, and a more efficient kiln would have appeared to emit less calcination CO₂ —
-which is physically wrong. That is the entire justification for D5.
+It carries one cement premise end to end through A1–A9, exercising every input entity —
+long-format energy including a waste-derived fuel row, known process detail and capacity,
+measured emissions, operating schedule and load shapes — and re-runs the same premise
+with the optional intelligence withheld to isolate what it buys.

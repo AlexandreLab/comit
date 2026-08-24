@@ -33,9 +33,10 @@ Design documents live in [`../specs/`](../specs/).
 
 | Doc | Topic |
 |-----|-------|
-| [2026-08-19-carb3-site-decarbonisation-vision.md](../specs/2026-08-19-carb3-site-decarbonisation-vision.md) | **High-level plan.** Driving a modified COMIT from a CaRB3 building-stock register to assess per-premise decarbonisation across GB: why COMIT is the base, the three assumptions that block the route, the nine design decisions, and what is lost by solving each site independently |
-| [2026-08-19-carb3-site-decarbonisation-implementation.md](../specs/2026-08-19-carb3-site-decarbonisation-implementation.md) | **Detailed plan, language-agnostic** (implementable in R or Python). Data model, algorithms A1–A9 as pseudocode, the optimisation stated mathematically, constraint disposition, emissions rules, output schema, scale gates, validation, and a worked example |
-| [2026-08-05-site-heterogeneity-prd.md](../specs/2026-08-05-site-heterogeneity-prd.md) | ⚠️ **Superseded** by the two above. Site-level baselines, plans and pathways (F0–F6) specced against the current coupled model |
+| [2026-08-19-carb3-site-decarbonisation-vision.md](../specs/2026-08-19-carb3-site-decarbonisation-vision.md) | **High-level plan.** Driving a modified COMIT from a CaRB3 building-stock register to assess per-premise decarbonisation across GB: why COMIT is the base, the three assumptions that block the route, the ten design decisions, and what is lost by solving each site independently |
+| [2026-08-19-carb3-site-decarbonisation-implementation.md](../specs/2026-08-19-carb3-site-decarbonisation-implementation.md) | **Detailed plan, language-agnostic** (implementable in R or Python). Data model, algorithms A1–A9 as pseudocode, the optimisation stated mathematically, constraint disposition, emissions rules, output schema, scale gates, and validation. The worked example lives in its own document |
+| [2026-08-19-carb3-site-decarbonisation-worked-example.md](../specs/2026-08-19-carb3-site-decarbonisation-worked-example.md) | **Worked example.** One cement premise carried end to end through A1–A9 with every input entity populated, plus the same premise re-run without site intelligence to show what the optional inputs contribute |
+| [2026-08-05-site-heterogeneity-prd.md](../specs/2026-08-05-site-heterogeneity-prd.md) | ⚠️ **Superseded** by the three above. Site-level baselines, plans and pathways (F0–F6) specced against the current coupled model |
 
 ## Conventions
 - Units (from the workbook `Contents` sheet): energy/capacity in **PJ** (GW for CHP),
