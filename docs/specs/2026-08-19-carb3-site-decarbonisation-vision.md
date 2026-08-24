@@ -46,8 +46,8 @@ A **CaRB3 building-stock model** sits upstream and produces one record per premi
   processes (D5)
 - optionally floorspace and building attributes
 - optionally **site intelligence** where it exists (D10) — the actual process list and
-  installed capacity, reported emissions, and the grid import/export capacity that two
-  planned extensions will need
+  installed capacity, reported emissions, the operating schedule, measured load
+  statistics, and the grid import/export capacity that two planned extensions will need
 
 The full interface contract — what must be supplied, what must not, quality requirements
 and rejection behaviour — is set out in
@@ -169,7 +169,8 @@ activity default throws away the best information available.
 So process detail is **tiered**, most specific first:
 
 1. **Known site** — the site's actual process list, and where known its installed
-   technology, capacity and commissioning year.
+   technology, capacity, commissioning year, operating schedule and measured load
+   statistics.
 2. **Named route** — the site is known to run one of several recognised routes for its
    activity, so that route's process set is used.
 3. **Activity default** — no site-specific intelligence; the default set applies.

@@ -50,7 +50,7 @@ section that defines them:
 |---|---|---|
 | `A1`–`A9` | Algorithms — the processing steps, in order | §4 |
 | `C1`–`C9` | Components — the software pieces that run those algorithms | §2.1 |
-| `V1`–`V13` | Validation tests and acceptance criteria | §10 |
+| `V1`–`V14` | Validation tests and acceptance criteria | §10 |
 | `D1`–`D10` | Design decisions | [Vision doc §6](2026-08-19-carb3-site-decarbonisation-vision.md) |
 
 **The algorithms at a glance**, since §1.6 refers to several of them before §4 arrives:
@@ -160,10 +160,20 @@ one.
 | `process_set_id` | — | Selects a known process route instead of the activity default — e.g. a kraft versus recycled-fibre paper mill (§3.2). One field, and it replaces an activity-wide average with the right route for that site |
 | `premise_process_detail` rows | — | The site's actual process list, and where known its installed technology, capacity and commissioning year (§3.10). Highest tier of process evidence; A4 then infers utilisation rather than guessing capacity |
 | `premise_measured_emissions` rows | kt CO₂e/yr | Reported emissions from UK ETS, permits or NAEI (§3.11). Reconciles the computed baseline, corrects the combustion/process split, and optionally calibrates process intensity (§7.6) |
+| Operating schedule — `operating_pattern`, `operating_hours_per_year`, `operating_days_per_week`, `shutdown_weeks` | h/yr, d/wk, wk/yr | The independent check on utilisation (§3.12, A4). A site running 24/7 and one running a single shift can consume identical annual energy on very different plant, and only the schedule distinguishes them |
+| Load statistics — `peak_electricity`, `peak_gas`, `load_factor_electricity`, `load_factor_gas`, `within_shift_peak_factor` | MW, fraction, ratio | **Future use (§5.6).** The true site peak, which is what a connection capacity is about. Derived from half-hourly or daily metering where it exists; gas is the better predictor of the *post-electrification* peak |
 | `import_capacity` | MW | **Future use (§5.6).** How much electrification the connection physically allows before reinforcement is needed |
 | `export_capacity` | MW | **Future use (§5.6).** Whether onsite generation can be exported, and how much |
 | `connection_voltage` | kV | **Future use (§5.6).** Sets which reinforcement cost curve applies |
 | `onsite_generation_capacity`, `onsite_generation_type` | MW, — | **Future use (§5.6).** Existing generation to be represented rather than double-counted |
+
+**On schedules versus load statistics.** They are not two grades of the same thing. A
+schedule gives *mean* demand during operating hours; a metered profile gives the *peak*.
+The gap between them is real and always in the same direction — the mean understates the
+peak — so a schedule is a floor to be adjusted upward, not a substitute for measurement
+(§5.6). Sites supplying both are disproportionately valuable, because they let the
+adjustment factor be observed rather than assumed and then applied to every site that has
+only a schedule.
 
 **On the four network fields.** Nothing in the model reads them today. They are requested
 now because they are far cheaper to collect while the stock model is being built than to
@@ -678,6 +688,45 @@ forced rather than chosen.
 same premise-year, the parts must sum to the total within 1%, or the record is rejected
 with reason `emissions_inconsistent`.
 
+### 3.12 `premise_operating_profile` — schedule and load shape
+
+**Optional per-premise intelligence.** Two distinct things live here, and they answer
+different questions. The **operating schedule** says when the site runs, which validates
+the utilisation A4 derives. The **load statistics** say how peaky it is, which is what a
+connection capacity is actually about (§5.6).
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK | → `premise_record` |
+| `operating_pattern` | enum{continuous, three_shift, double_day, single_shift, seasonal_campaign} | — | no | — | Coarse classification; `continuous` ⇒ ~8,760 h/yr |
+| `operating_hours_per_year` | real | h/yr | no | — | ∈ (0, 8784]. Preferred over `operating_pattern` where known |
+| `operating_days_per_week` | real | d/wk | no | — | ∈ (0, 7] |
+| `shutdown_weeks` | real | wk/yr | no | — | ≥ 0. Planned maintenance or campaign downtime |
+| `peak_electricity` | real | MW | no | — | > 0 if present. Measured maximum demand |
+| `peak_gas` | real | MW | no | — | > 0 if present. Peak gas offtake expressed as power |
+| `load_factor_electricity` | real | fraction | no | — | ∈ (0, 1]. Annual energy ÷ (peak × 8,760) |
+| `load_factor_gas` | real | fraction | no | — | ∈ (0, 1] |
+| `within_shift_peak_factor` | real | ratio | no | — | ≥ 1. Peak ÷ mean demand *during operating hours* (§5.6) |
+| `profile_basis` | enum{half_hourly, daily, monthly, schedule_only, estimated} | — | yes | — | What the statistics were derived from |
+| `provenance` | string | — | yes | — | Citation: meter operator, DNO connection record, site audit |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Rule (derived statistics, not raw profiles).** Half-hourly data is ~17,520 points per
+premise per year and does not belong in this contract — at stock scale it is larger than
+every other input combined, and this model is annual (§5.1) so it cannot consume the
+series directly. The stock model retains the raw profile; what crosses the interface is
+the **derived statistics above**. If richer shape information is later needed, extend
+this entity with a small number of representative day shapes or load-duration-curve
+percentiles, never the full series.
+
+**Rule (consistency).** Where both a peak and a load factor are supplied for a vector,
+they must reconcile against that vector's annual energy in `premise_record` within 5%:
+
+$$\text{load factor} = \frac{E\,[\text{PJ/yr}] \times 277{,}778}{P^{\text{peak}}\,[\text{MW}] \times 8{,}760}$$
+
+Divergence beyond that is reported as `profile_energy_inconsistent` — most often a
+vintage mismatch between the profile year and `data_year`.
+
 ---
 
 ## 4. Algorithms
@@ -838,6 +887,14 @@ pick one: capacity fixes `existing_capacity`, and energy then determines **utili
 which is the quantity nobody measured. Energy therefore still reconciles exactly, so V2
 and V3 hold unchanged, and the disagreement surfaces as a utilisation figure an engineer
 can sanity-check rather than as a silent adjustment.
+
+**Cross-check against the operating schedule.** Where `premise_operating_profile` gives
+`operating_hours_per_year`, the utilisation derived at step 16 has an independent check:
+a site running 8,760 h/yr should not back-solve to a utilisation of 0.2, and one running
+a single shift should not approach 1.0. Report the disagreement as
+`utilisation_schedule_inconsistent`. This is the main modelling value of the schedule —
+it is the only independent evidence available about a quantity that is otherwise inferred
+from two inputs that may both be wrong.
 
 **Step 17 is a report, not a failure.** A utilisation above the technology's availability
 factor means the site consumed more energy than its stated capacity allows — usually a
@@ -1114,20 +1171,56 @@ where $r_t$ is reinforcement capacity purchased, entering the objective as a new
 $Z^{\text{network}}_t = \sum_t \gamma(\overline{P}^{\text{import}}, r_t)$ with
 $\gamma$ a cost function of voltage level and increment.
 
-**This needs one input the model does not currently have.** Everything here is annual
-energy in PJ/yr, while a connection capacity is instantaneous power in MW. Converting one
-to the other requires a **load factor** — the ratio of average to peak electrical
-demand — and it varies enormously by activity: a continuous process runs near flat, a
-single-shift workshop does not. Options, in preference order:
+**This needs an input the model does not currently have.** Everything here is annual
+energy in PJ/yr, while a connection capacity is instantaneous power in MW. Bridging them
+needs a **load factor**, and it varies enormously by activity: a continuous kiln runs
+near flat, a single-shift workshop does not. `premise_operating_profile` (§3.12) supplies
+it, in three tiers of evidence — the D10 pattern again.
 
-1. The stock model supplies a per-premise peak demand or load factor directly, where
-   metering supports it.
-2. A per-activity default load factor is added alongside the energy profile (§3.3), with
-   the same evidence tiers and the same systematic-error caveat.
-3. A single global load factor — cheapest, and almost certainly wrong for the activities
-   where reinforcement actually binds.
+**Tier 1 — measured load statistics.** Where `peak_electricity` or `peak_gas` is
+available from half-hourly or daily metering, the peak is known and no inference is
+needed. This is the only tier that gives a *true* peak.
 
-Option 2 is the realistic default; option 1 for whichever premises can support it.
+**Tier 2 — operating schedule.** Where only the schedule is known, mean demand during
+operating hours follows directly:
+
+$$\overline{P} = \frac{E\,[\text{PJ/yr}] \times 277{,}778}{H\,[\text{h/yr}]}\;[\text{MW}]$$
+
+**A schedule alone does not give a peak — it gives a mean, and the difference matters.**
+Treating $\overline{P}$ as the peak assumes demand is flat whenever the site is open,
+which no real site is: start-up surges, batch cycles and non-coincident equipment all
+push the true maximum above the mean. So a schedule-derived peak is a **lower bound**,
+and using it unadjusted would systematically *understate* reinforcement need — the error
+runs in the dangerous direction, concluding that no reinforcement is required when it is.
+Hence `within_shift_peak_factor`:
+
+$$P^{\text{peak}} = \overline{P} \times \lambda, \qquad \lambda \ge 1$$
+
+$\lambda$ is close to 1 for continuous processes and substantially above it for batch
+and single-shift operation. Where a site supplies both a schedule and a measured peak,
+$\lambda$ is observed rather than assumed — which is the cheap way to build a credible
+per-activity default for every site that has only a schedule.
+
+**Tier 3 — per-activity default load factor**, maintained alongside the energy profile
+(§3.3) with the same evidence tiers and the same systematic-error caveat: it is one
+assumption applied to every premise of an activity, so its error does not average out.
+
+**Gas profiles matter more than they first appear.** For a connection-capacity question
+the instinct is to want electricity data, but the quantity being sized is the peak *after*
+electrification — and that is set by the shape of the load being converted, not by the
+site's current electrical load. A site's gas profile is therefore the better predictor of
+its post-electrification peak. Daily-metered gas is coarser than half-hourly electricity
+but is exactly the right signal.
+
+**What is still missing, and it is not an input.** The constraint binds on the peak the
+site has *after* the optimiser has changed its technology mix, not on its historical
+peak. Deriving that needs a load characteristic **per technology** — an electric arc
+furnace and a resistance dryer serving the same annual energy do not present the same
+maximum demand. `premise_operating_profile` fixes the baseline year truthfully; it cannot
+by itself tell you the peak of a configuration that does not exist yet. Building
+extension 1 therefore also means adding a load-shape attribute to `technology` (§3.5),
+which lands in the D6 data build and should be decided before that build is commissioned,
+not after.
 
 **Extension 2 — onsite generation with export.** With `export_capacity` known, onsite
 generation becomes a technology whose output may either offset import or be exported,
@@ -1427,6 +1520,7 @@ Two cautions carried from COMIT:
 | **V11** | **Process set integrity.** `activity_process_register` and A2 tiering | Exactly one default set per activity; every named set resolves to profile rows by §3.3 inheritance; a premise citing a set belonging to another activity is rejected; `premise_process_detail` overrides both and is treated as complete |
 | **V12** | **Known-capacity reconciliation.** A4 steps 14–18 | Where `known_capacity` is supplied, energy still reconciles within 1e-6 (V2 unaffected) and the derived utilisation is reported. Utilisation exceeding the availability factor is logged as `capacity_energy_inconsistent`, not silently clipped |
 | **V13** | **Measured-emissions divergence.** §7.6 | Baseline computed emissions compared against `premise_measured_emissions` per premise and in aggregate; divergence reported and never silently corrected. With calibration enabled, every multiplier lies in the configured bound and is recorded on output |
+| **V14** | **Operating profile coherence.** §3.12, A4 | Peak, load factor and annual energy reconcile within 5%; utilisation derived in A4 is consistent with `operating_hours_per_year`, with disagreement logged as `utilisation_schedule_inconsistent`; `within_shift_peak_factor` ≥ 1 wherever present |
 
 **On V1.** This is the single most valuable test, because it isolates the one change
 most likely to be wrong. Note that parity with *fully coupled* COMIT is **not** a valid
