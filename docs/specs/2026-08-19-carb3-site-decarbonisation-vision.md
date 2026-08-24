@@ -4,6 +4,7 @@
 **Date:** 2026-08-19
 **Scope:** Great Britain (England, Wales, Scotland) · CaRB3 **Factory class** only (55 activities)
 **Detailed specification:** [2026-08-19-carb3-site-decarbonisation-implementation.md](2026-08-19-carb3-site-decarbonisation-implementation.md)
+**Worked example:** [2026-08-19-carb3-site-decarbonisation-worked-example.md](2026-08-19-carb3-site-decarbonisation-worked-example.md)
 **Supersedes:** [2026-08-05-site-heterogeneity-prd.md](2026-08-05-site-heterogeneity-prd.md)
 
 **Related reading:** [notes/06](../notes/06_inputting_measured_site_energy.md) ·
@@ -128,7 +129,7 @@ compete for a national total — so they **decouple**, and each becomes a small,
 independent optimisation. Scaling becomes a matter of running more of them, not of
 solving a bigger problem.
 
-## 6. The nine decisions
+## 6. The ten decisions
 
 | # | Decision | What it buys | What it costs |
 |---|---|---|---|
