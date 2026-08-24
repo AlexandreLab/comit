@@ -122,11 +122,7 @@ results are keyed on it and cannot be compared over time otherwise.
 |---|---|---|---|
 | `premise_id` | — | Keys every output row; joins results across runs | No stable results; no time comparison |
 | `carb3_activity` | — | Selects the process set (A2) and the technology set | The premise cannot be expanded into processes at all |
-| `energy_electricity` | PJ/yr | Split across processes (A3), then back-solved into implied capacity (A4) | No baseline; nothing to decarbonise from |
-| `energy_gas` | PJ/yr | As above | As above |
-| `energy_oil` | PJ/yr | As above | As above |
-| `energy_coal` | PJ/yr | As above | As above |
-| `energy_biomass` | PJ/yr | As above; also drives biomass zero-rating (§7.3) | Biomass is silently treated as a fossil fuel or omitted |
+| `premise_energy` rows — one per carrier | PJ/yr | Split across processes (A3), then back-solved into implied capacity (A4). Biomass rows also drive zero-rating (§7.3) | No baseline; nothing to decarbonise from |
 | `latitude`, `longitude` | degrees | Assigns the premise to one of the 9 GB clusters (A1 step 11), which determines H₂/CO₂ availability (D7) | No infrastructure scenario can be applied |
 | `nation` | enum | Enforces GB scope (D8) | NI premises contaminate GB aggregates |
 | `data_year` | year | Provenance; anchors the baseline in time | Results cannot be dated or rebased |
@@ -134,17 +130,25 @@ results are keyed on it and cannot be compared over time otherwise.
 
 **The five energy vectors must be supplied separately.** A single total-energy figure is
 not sufficient: A4 back-solves existing capacity by matching each vector to the
-technologies that can consume it, so a total with no split cannot identify what
-equipment the site currently runs. This is the single most important requirement in this
-section.
+technologies that can consume it, so a total with no split cannot identify what equipment
+the site currently runs. This is the single most important requirement in this section.
+
+Energy arrives as **one row per carrier** (§3.1.1) rather than as fixed columns, so a
+carrier outside the five main vectors — LPG, waste-derived fuel, purchased heat — is just
+another row. Two consequences for the stock model:
+
+- **State all five main vectors for every premise**, using an explicit zero with
+  `data_status = not_consumed` where a carrier genuinely is not used.
+- **An absent row means "not assessed", not "zero".** The distinction is preserved
+  deliberately, and premises with incomplete carrier coverage are reported as such
+  (§8.5). Absence should be a last resort.
 
 #### 1.6.3 Required for some premises
 
 | Item | Unit | When required | Why |
 |---|---|---|---|
-| `throughput_quantity` | Mt/yr | Activities carrying a mass-denominated process (D5) | Process emissions are kt CO₂ per tonne of material. Without physical throughput they have no denominator and cannot be modelled — and these are exactly the activities where process emissions dominate |
-| `throughput_commodity` | — | Whenever `throughput_quantity` is present | Identifies which material the tonnage refers to |
-| `energy_other_carrier` | — | Whenever `energy_other` > 0 | An unnamed carrier cannot be priced or given an emission factor |
+| `premise_throughput` rows — one per product | Mt/yr | Activities carrying a mass-denominated process (D5) | Process emissions are kt CO₂ per tonne of material. Without physical throughput they have no denominator and cannot be modelled — and these are exactly the activities where process emissions dominate |
+| `data_status` on every energy and throughput row | — | Always | Distinguishes a measured zero from an unassessed carrier, and a measured tonnage from an estimated one |
 
 #### 1.6.4 Optional, and what it buys
 
@@ -156,7 +160,8 @@ one.
 | Item | Unit | What it enables |
 |---|---|---|
 | `floorspace` | m² | Cross-checking energy intensity on ingest; a fallback basis for site-services energy where the profile needs one |
-| `energy_other` | PJ/yr | Coverage of carriers outside the five main vectors — LPG, waste-derived fuel, purchased heat |
+| Additional `premise_energy` rows | PJ/yr | Carriers outside the five main vectors — LPG, waste-derived fuel, purchased heat. No schema change needed; each is simply another row |
+| Additional `premise_throughput` rows | Mt/yr | Multi-product sites — a paper mill making several grades, a chemical site with several outputs — each stated separately rather than collapsed into one tonnage |
 | `process_set_id` | — | Selects a known process route instead of the activity default — e.g. a kraft versus recycled-fibre paper mill (§3.2). One field, and it replaces an activity-wide average with the right route for that site |
 | `premise_process_detail` rows | — | The site's actual process list, and where known its installed technology, capacity and commissioning year (§3.10). Highest tier of process evidence; A4 then infers utilisation rather than guessing capacity |
 | `premise_measured_emissions` rows | kt CO₂e/yr | Reported emissions from UK ETS, permits or NAEI (§3.11). Reconciles the computed baseline, corrects the combustion/process split, and optionally calibrates process intensity (§7.6) |
@@ -228,7 +233,8 @@ imputation is not permitted — a missing input must remain visible in the rejec
 | `unknown_activity` | An activity string matching no known CaRB3 activity |
 | `no_energy` | Total energy across all vectors is zero |
 | `negative_energy` | Any vector is negative |
-| `missing_throughput` | Mass-denominated activity with no `throughput_quantity` |
+| `missing_throughput` | Mass-denominated activity with no `premise_throughput` row |
+| `vector_commodity_mismatch` | A `premise_energy` row whose `vector` contradicts its commodity's category |
 
 **Batch-level gate.** If the rejection rate exceeds a configured threshold, the whole
 batch fails rather than proceeding on a filtered subset — a high rejection rate signals
@@ -259,6 +265,8 @@ results.
 
 ```
 premise_record ──C1──► validated premise
+ + premise_energy            (§3.1.1, one row per carrier)
+ + premise_throughput        (§3.1.2, one row per product)
                         │
                         ├─C2─► process set              (activity_process_register)
                         ├─C3─► energy per process       (activity_process_energy_profile)
@@ -297,10 +305,12 @@ Great Britain — England, Wales, Scotland. Consequences the implementation must
 
 Nine entities. Each is specified as a field table. Types are abstract (§1.3).
 
-### 3.1 `premise_record` — the input contract
+### 3.1 `premise_record` — the premise itself
 
-The interface between the CaRB3 stock model and this model. One row per premise. Stated
-in requirement terms, with rationale, in **§1.6**; this table is normative for validation.
+The interface between the CaRB3 stock model and this model is three entities: this one,
+plus `premise_energy` (§3.1.1) and `premise_throughput` (§3.1.2). One row per premise
+here; the other two are long tables keyed on `premise_id`. Stated in requirement terms,
+with rationale, in **§1.6**; these tables are normative for validation.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -309,13 +319,6 @@ in requirement terms, with rationale, in **§1.6**; this table is normative for 
 | `latitude` | real | degrees | yes | — | Within GB bounding box |
 | `longitude` | real | degrees | yes | — | Within GB bounding box |
 | `nation` | enum{England, Wales, Scotland} | — | yes | — | NI rejected with reason `out_of_scope_nation` |
-| `energy_electricity` | real | PJ/yr | yes | — | ≥ 0 |
-| `energy_gas` | real | PJ/yr | yes | — | ≥ 0 |
-| `energy_oil` | real | PJ/yr | yes | — | ≥ 0 |
-| `energy_coal` | real | PJ/yr | yes | — | ≥ 0 |
-| `energy_biomass` | real | PJ/yr | yes | — | ≥ 0 |
-| `energy_other` | real | PJ/yr | no | — | ≥ 0; carrier named in `energy_other_carrier` |
-| `energy_other_carrier` | string | — | no | → `commodity` | Required if `energy_other` > 0 |
 | `floorspace` | real | m² | no | — | > 0 if present |
 | `process_set_id` | string | — | no | → `activity_process_register` | Selects a named non-default process set (§3.2). Absent ⇒ the activity's default set |
 | `import_capacity` | real | MW | no | — | > 0 if present. Agreed grid import capacity at the connection point |
@@ -325,20 +328,69 @@ in requirement terms, with rationale, in **§1.6**; this table is normative for 
 | `onsite_generation_type` | string | — | no | → `technology` | Required if `onsite_generation_capacity` > 0 |
 | `data_year` | integer | year | yes | — | Provenance |
 | `source` | string | — | yes | — | Provenance |
-| `throughput_quantity` | real | Mt/yr | cond | — | **Required** for activities with mass-denominated processes (D5); see §3.4 and the note below |
-| `throughput_commodity` | string | — | cond | → `commodity` | Required if `throughput_quantity` present |
 
-**Rule.** At least one `energy_*` field must be strictly positive. A premise with zero
-total energy is rejected with reason `no_energy`.
+Energy and throughput are **not** columns here. Both are one-to-many — a premise consumes
+several carriers and may make several products — so both are long tables keyed on
+`premise_id`, matching the shape already used by `premise_measured_emissions` (§3.11) and
+`premise_weekly_profile` (§3.14).
+
+#### 3.1.1 `premise_energy` — consumption by carrier
+
+One row per premise per carrier. Replaces the fixed `energy_electricity` … `energy_other`
+columns: a new carrier is a new row, not a schema change, and the `energy_other` /
+`energy_other_carrier` pair disappears because every carrier now names itself.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `commodity_id` | string | — | yes | PK part | → `commodity`. The carrier as metered |
+| `vector` | enum{electricity, gas, oil, coal, biomass, other} | — | yes | — | The grouping used to join `activity_process_energy_profile` (§3.3). Must be consistent with the commodity's `commodity_category` |
+| `quantity` | real | PJ/yr | yes | — | ≥ 0 |
+| `data_status` | enum{measured, estimated, modelled, not_consumed} | — | yes | — | See the absence rule below |
+| `data_year` | integer | year | no | — | Defaults to `premise_record.data_year`; set only where a carrier is metered on a different vintage |
+| `source` | string | — | yes | — | Provenance for this carrier specifically |
+
+**Rule (at least one positive).** A premise must have at least one row with
+`quantity > 0`, or it is rejected with reason `no_energy`.
+
+**Rule (absence is not zero — the one trap in this format).** A wide table with required
+columns forces every carrier to be stated, so a zero is unambiguous. A long table loses
+that: a missing row could mean *"this site burns no oil"* or *"nobody checked whether it
+burns oil"*, and those two lead to very different conclusions about a site's
+decarbonisation options. So:
+
+- A carrier **known not to be consumed** is stated explicitly: `quantity = 0` with
+  `data_status = not_consumed`.
+- A carrier that was **not assessed** is simply absent, and any result for that premise
+  is reported as having incomplete carrier coverage (§8.5).
+
+The stock model should aim to state all five main vectors for every premise, whether by a
+positive quantity or an explicit zero. Absence is a last resort, not the default.
+
+**Rule (one row per carrier).** `(premise_id, commodity_id)` is unique. A site with two
+gas meters is one row; meter-level detail belongs upstream.
+
+#### 3.1.2 `premise_throughput` — physical output by commodity
+
+One row per premise per product. Long for the same reason, and it lifts a real
+limitation: the previous single `throughput_quantity` column could not represent a site
+making more than one product, which paper, chemicals and food sites routinely do.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `commodity_id` | string | — | yes | PK part | → `commodity`. Must have `denominator_kind = mass` (D5) |
+| `quantity` | real | Mt/yr | yes | — | > 0 |
+| `data_status` | enum{measured, estimated, modelled} | — | yes | — | — |
+| `source` | string | — | yes | — | Provenance |
 
 **On throughput (agreed 2026-08-21).** Physical throughput is **not** a best-effort
-optional field: without it, the mass denominators that D5 requires cannot be populated,
+optional input: without it, the mass denominators that D5 requires cannot be populated,
 and process emissions — calcination CO₂ and equivalents — lose their physical basis for
 precisely the activities where they dominate. The upstream stock model will be extended
-to supply it. This design therefore assumes `throughput_quantity` is present for every
-premise whose activity carries a mass-denominated process, and A1 rejects such a premise
-if it is absent (`missing_throughput`). For all other activities the field is optional
-and unused.
+to supply it. A premise whose activity carries a mass-denominated process must therefore
+have at least one `premise_throughput` row, and A1 rejects it otherwise
+(`missing_throughput`). Activities with no mass-denominated process need no rows at all.
 
 ### 3.2 `activity_process_register` — activity → processes
 
@@ -451,7 +503,7 @@ sum to 1, and A3 would lose energy. Renormalise over the processes actually pres
 FOR EACH vector v:
 1.    present := { q IN process_set(p) : profile[activity, q, v] EXISTS }
 2.    denom   := SUM over q IN present OF energy_share[activity, q, v]
-3.    IF denom = 0 AND p.energy_v > 0:
+3.    IF denom = 0 AND premise_energy[p, v].quantity > 0:
 4.        FAIL "premise consumes vector v but no present process can use it"
 5.    FOR EACH q IN present:
 6.        share'[q, v] := energy_share[activity, q, v] / denom
@@ -722,7 +774,8 @@ this entity with a small number of representative day shapes or load-duration-cu
 percentiles, never the full series.
 
 **Rule (consistency).** Where both a peak and a load factor are supplied for a vector,
-they must reconcile against that vector's annual energy in `premise_record` within 5%:
+they must reconcile against that vector's annual energy in `premise_energy` (§3.1.1)
+within 5%:
 
 $$\text{load factor} = \frac{E\,[\text{PJ/yr}] \times 277{,}778}{P^{\text{peak}}\,[\text{MW}] \times 8{,}760}$$
 
@@ -823,14 +876,18 @@ PRE:    activity_process_register loaded; cluster list loaded (9 GB clusters)
 5.         REJECT r REASON "out_of_scope_activity"; CONTINUE
 5a.    IF r.carb3_activity NOT IN activity_process_register:
 5b.        REJECT r REASON "unknown_activity"; CONTINUE
-6.     total_energy := SUM of r.energy_* fields
-7.     IF total_energy <= 0:
+6.     energy_rows := premise_energy WHERE premise_id = r.premise_id
+7.     IF SUM of energy_rows.quantity <= 0:
 8.         REJECT r REASON "no_energy"; CONTINUE
-9.     IF ANY r.energy_* < 0:
+9.     IF ANY energy_rows.quantity < 0:
 10.        REJECT r REASON "negative_energy"; CONTINUE
+10a.   IF ANY energy_rows.vector INCONSISTENT WITH commodity_category:
+10b.       REJECT r REASON "vector_commodity_mismatch"; CONTINUE
+10c.   RECORD carrier_coverage(r) := which of the five main vectors have a row
+              (positive or an explicit not_consumed zero)  -- §3.1.1, reported in §8.5
 11.    r.cluster_id := nearest cluster to (r.latitude, r.longitude) among the 9
 12.    r.cluster_distance := distance to that cluster
-13.    IF activity requires mass denominator AND r.throughput_quantity IS ABSENT:
+13.    IF activity requires mass denominator AND premise_throughput HAS NO ROW for r:
 14.        REJECT r REASON "missing_throughput"; CONTINUE
 15.    ACCEPT r INTO validated_premises
 
@@ -890,13 +947,14 @@ OUTPUT: process_energy[process, vector]  (PJ/yr)
 PRE:    profile sums to 1 per (activity, vector)   -- asserted at load, §3.3
         R1 technology consistency asserted at load  -- §3.3.3
 
-1. FOR EACH vector v IN {electricity, gas, oil, coal, biomass, other}:
-2.     e_v := p.energy_{v}
-3.     IF e_v = 0: CONTINUE
+1. FOR EACH row e IN premise_energy WHERE premise_id = p.premise_id:
+2.     v := e.vector;  e_v := e.quantity
+3.     IF e_v = 0: CONTINUE          -- includes every not_consumed row
 4.     share' := RENORMALISE(p, v)      -- §3.3.3 R2; identity if no optional
 5.     FOR EACH process q IN process_set(p) WHERE share'[q, v] EXISTS:
 6.         process_energy[q, v] := e_v * share'[q, v]
-7. ASSERT SUM over (q, v) of process_energy = SUM over v of p.energy_v   (within 1e-6)
+7. ASSERT SUM over (q, v) of process_energy
+          = SUM over premise_energy rows of quantity          (within 1e-6)
 
 POST:   allocated energy equals metered energy exactly
 FAILS IF: the assertion in step 7 fails -- indicates a malformed profile
@@ -1631,7 +1689,7 @@ Two cautions carried from COMIT:
 |---|---|---|
 | **V1** | **Decoupling parity.** Run current COMIT and this model over the same 1,026 NAEI sites with coupling constraints disabled on both sides | Per-site results agree to solver tolerance. Isolates decomposition from every other change |
 | **V2** | **Baseline reproduction.** Recompute fuel use from `existing_capacity` produced by A4 | Reproduces the supplied per-vector energy within 1% |
-| **V3** | **Energy conservation.** A3's allocation | Allocated energy equals metered energy within 1e-6 |
+| **V3** | **Energy conservation and carrier integrity.** A3's allocation, §3.1.1 | Allocated energy equals the sum of `premise_energy` quantities within 1e-6; `(premise_id, commodity_id)` is unique; every row's `vector` agrees with its commodity's category; a `not_consumed` row carries `quantity = 0`; carrier coverage is recorded per premise and reported |
 | **V4** | **Profile integrity.** `activity_process_energy_profile` | Shares sum to 1 per (activity, vector) within 1e-6; R1 technology consistency and R3 band ordering hold at load; R2 renormalisation reproduces the raw shares when no optional process is absent (§3.3.3) |
 | **V5** | **Emissions invariants** (from [notes/14](../notes/14_emissions_source_split.md)) | `Direct (split by ghg type)` summed over gases equals `Direct (total CO2e)`; `available_capacity` equals cumulative `new_capacity`; `Generate_emissions = false` ⇒ zero ktCO₂e |
 | **V6** | **Non-negativity, correctly scoped** | Activity, energy and capacity are non-negative. Costs and emissions **may be negative** (retrofit differencing, BECCS). Do not assert blanket non-negativity — [notes/14](../notes/14_emissions_source_split.md) records this as a falsified invariant |
@@ -1729,10 +1787,19 @@ premise_id           P-000123
 carb3_activity       Cement Works
 nation               England
 latitude/longitude   53.35 / -1.75
-energy_electricity   0.42 PJ/yr
-energy_coal          3.90 PJ/yr
-energy_gas           0.31 PJ/yr
-throughput_quantity  0.85 Mt/yr   (clinker)
+data_year            2024
+
+premise_energy (§3.1.1)
+  commodity_id  vector       quantity   data_status
+  electricity   electricity  0.42 PJ/yr measured
+  coal          coal         3.90 PJ/yr measured
+  natural_gas   gas          0.31 PJ/yr measured
+  fuel_oil      oil          0.00 PJ/yr not_consumed   -- explicit zero, not absence
+                                                        -- biomass row absent: not assessed
+
+premise_throughput (§3.1.2)
+  commodity_id  quantity     data_status
+  clinker       0.85 Mt/yr   measured
 ```
 
 **A1 — validate.** Nation in scope; activity known; energy positive; throughput present
