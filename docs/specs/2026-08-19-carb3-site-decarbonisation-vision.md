@@ -2,7 +2,7 @@
 
 **Status:** Draft v1 for review
 **Date:** 2026-08-19
-**Scope:** Great Britain (England, Wales, Scotland)
+**Scope:** Great Britain (England, Wales, Scotland) · CaRB3 **Factory class** only (55 activities)
 **Detailed specification:** [2026-08-19-carb3-site-decarbonisation-implementation.md](2026-08-19-carb3-site-decarbonisation-implementation.md)
 **Supersedes:** [2026-08-05-site-heterogeneity-prd.md](2026-08-05-site-heterogeneity-prd.md)
 
@@ -19,7 +19,8 @@
 
 ## 1. The question this answers
 
-For **every non-domestic premise in Great Britain**, we want to answer:
+For **every industrial premise in Great Britain** — every premise whose CaRB3 activity
+falls in the 55-activity **Factory class** — we want to answer:
 
 > What would it cost this site to decarbonise, and what would it actually do — switch
 > fuels, or switch the process itself?
@@ -37,10 +38,20 @@ terms, with its own measured energy and its own options.
 
 A **CaRB3 building-stock model** sits upstream and produces one record per premise:
 
-- its **CaRB3 activity** (one of the 55 Factory-class activities, or a wider class)
+- its **CaRB3 activity** (one of the 55 Factory-class activities — see D1; premises
+  outside the Factory class are out of scope)
 - its **current energy consumption by vector** — electricity, gas, oil, coal, biomass
 - its **location**
+- its **physical throughput** in Mt/yr, for activities carrying mass-denominated
+  processes (D5)
 - optionally floorspace and building attributes
+- optionally **site intelligence** where it exists (D10) — the actual process list and
+  installed capacity, reported emissions, the operating schedule, measured load
+  statistics, and the grid import/export capacity that two planned extensions will need
+
+The full interface contract — what must be supplied, what must not, quality requirements
+and rejection behaviour — is set out in
+[implementation §1.6](2026-08-19-carb3-site-decarbonisation-implementation.md#16-what-the-building-stock-model-must-supply).
 
 **Deriving that baseline is explicitly out of scope here.** How the stock model turns
 floorspace, meter data or benchmarks into per-site energy is its own problem. This
@@ -83,7 +94,7 @@ bypassed — and with it the assumption that sites within a sector are homogeneo
 ### 4.2 Scale
 
 COMIT today: **1,026 sites → ~638,000 capacity variables**, roughly 30 technologies and
-620 variables per site. That scales linearly. The GB non-domestic stock is orders of
+620 variables per site. That scales linearly. The GB Factory-class stock is orders of
 magnitude larger than 1,026, so a single coupled optimisation is not reachable — and
 [note 11 §5.2](../notes/11_sector_coverage_and_carb3_mapping.md) already flagged that
 even 5,374 sites would strain the current MILP.
@@ -121,7 +132,7 @@ solving a bigger problem.
 
 | # | Decision | What it buys | What it costs |
 |---|---|---|---|
-| **D1** | Full CaRB3 stock, every premise | Coverage of the whole building stock, not just point sources | Rules out a single coupled optimisation |
+| **D1** | Full CaRB3 **Factory-class** stock — all 55 activities, every premise | Coverage of the whole industrial stock, not just the ~1,026 point sources | Rules out a single coupled optimisation; non-Factory premises (offices, retail, schools, warehouses) are excluded |
 | **D2** | Per-site independent solves | Linear scaling; embarrassingly parallel; genuinely per-site answers | Removes national and cluster coupling entirely |
 | **D3** | Full CaRB3 unit operations as processes | Process switching becomes a real lever, not just fuel switching | Replaces the process taxonomy; a large data build |
 | **D4** | Baseline energy supplied upstream | Removes the emissions-proxy problem; real heterogeneity per site | Creates a hard dependency on the stock model's quality |
@@ -130,6 +141,7 @@ solving a bigger problem.
 | **D7** | Infrastructure exogenous — H₂/CO₂ availability as scenario input | Simple, explicable; the assumption is owned and stated | **No infrastructure co-optimisation** — see §7 |
 | **D8** | Great Britain scope | Keeps Grangemouth and Peterhead; matches expected stock coverage | Excludes Northern Ireland — 56 sites and the Londonderry cluster |
 | **D9** | Supersedes the site-heterogeneity PRD | One direction, no conflicting roadmaps | Retires work already specced against the model that runs today |
+| **D10** | Tiered site intelligence — known site detail replaces activity defaults | Real sites modelled as themselves wherever evidence exists; the model improves as intelligence accumulates, without redesign | Mixed-evidence results; every output must carry its evidence tier or the quality is invisible |
 
 ### On D5 — why two denominators
 
@@ -145,6 +157,40 @@ to fuel efficiency, which is wrong.
 So: energy denominators by default; physical mass for the ~20 processes that carry
 process emissions. Those are concentrated in six sectors, all of which already have
 mass-denominated product chains in COMIT today.
+
+### On D10 — evidence tiers, not averages
+
+D4 makes the stock model authoritative for what a premise consumes. D10 extends the same
+logic to what a premise *is*. An activity is a classification, not a description: two
+paper mills in one CaRB3 activity may run kraft and recycled-fibre lines sharing almost
+no unit operations, and where that is known for a specific site, averaging it into an
+activity default throws away the best information available.
+
+So process detail is **tiered**, most specific first:
+
+1. **Known site** — the site's actual process list, and where known its installed
+   technology, capacity, commissioning year, operating schedule and measured load
+   statistics.
+2. **Named route** — the site is known to run one of several recognised routes for its
+   activity, so that route's process set is used.
+3. **Activity default** — no site-specific intelligence; the default set applies.
+
+The same applies to emissions. Where a site reports under UK ETS or a permit, those
+figures are better evidence than anything computed here, and are used to reconcile the
+baseline and correct the combustion/process split. They cannot simply *replace* the
+computed emissions — emissions must stay a function of the decision variables, or the
+carbon price stops pricing the decision it exists to price. [Implementation
+§7.6](2026-08-19-carb3-site-decarbonisation-implementation.md) sets out what is done
+instead.
+
+Two consequences worth stating plainly. First, the tiers are **exclusive, not blended** —
+better evidence replaces weaker evidence outright, because a blend of a known site and an
+average is a site that exists nowhere. Second, results become **mixed-evidence**, so every
+output row carries the tier it was produced from. Without that, a national aggregate
+silently mixes surveyed sites with defaulted ones and reads as uniformly reliable.
+
+This also means the model gets better as intelligence accumulates, with no structural
+change — new site knowledge is new rows, not a new design.
 
 ### On D7 — the deliberate simplification
 
@@ -183,6 +229,10 @@ Anyone reading results from this model needs to know these five things:
 5. **Northern Ireland is excluded.** 56 sites and the Londonderry cluster drop out; the
    cluster list goes from 10 to 9. National totals are **GB**, not UK, and cannot be
    compared against UK GHGI without adjustment.
+6. **Non-Factory premises are excluded.** Scope is the CaRB3 Factory class only (D1).
+   Offices, retail, schools, hospitals and warehouses are not modelled, so results are
+   an **industrial** total and not a non-domestic-stock total. Comparisons against ECUK
+   must be taken on the industrial sub-total, not the whole service sector.
 
 ## 8. Relationship to existing work
 
@@ -227,7 +277,7 @@ the data work than after.
 
 | Risk | Why it matters | Mitigation |
 |---|---|---|
-| **Activity → process energy profile** is the weakest link | The stock model supplies *total* site energy; a per-process model needs it split. That split is a benchmark assumption with little empirical grounding | Make the profile an explicit, versioned, reviewable input; report per-process results with a sensitivity band |
+| **Activity → process energy profile** is the weakest link | The stock model supplies *total* site energy; a per-process model needs it split. That split is a benchmark assumption with little empirical grounding | Specified in [implementation §3.3](2026-08-19-carb3-site-decarbonisation-implementation.md): explicit evidence tiers, mandatory citation, optional low/high bands, and a systematic-error warning. Report per-process results with a sensitivity band |
 | **Tier-3 proxy cost estimates** | A meaningful share of technologies will have proxy costs with no calibration anchor | Mandatory `provenance` and `confidence` fields; results filterable by confidence; proxies concentrated in low-energy activities |
 | **Sensitivity to the infrastructure scenario (D7)** | Cement/steel/chemicals pathways may swing entirely on the assumption | Always run at least two bounding scenarios; never publish a single-scenario result for clustered sites |
 | **Stock model quality (D4)** | Everything downstream inherits its errors, and this design has no independent check | Validation gate on ingestion; GB aggregate comparison against ECUK/GHGI as an outside check |
