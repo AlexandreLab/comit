@@ -50,7 +50,7 @@ section that defines them:
 |---|---|---|
 | `A1`–`A9` | Algorithms — the processing steps, in order | §4 |
 | `C1`–`C9` | Components — the software pieces that run those algorithms | §2.1 |
-| `V1`–`V14` | Validation tests and acceptance criteria | §10 |
+| `V1`–`V15` | Validation tests and acceptance criteria | §10 |
 | `D1`–`D10` | Design decisions | [Vision doc §6](2026-08-19-carb3-site-decarbonisation-vision.md) |
 
 **The algorithms at a glance**, since §1.6 refers to several of them before §4 arrives:
@@ -162,6 +162,7 @@ one.
 | `premise_measured_emissions` rows | kt CO₂e/yr | Reported emissions from UK ETS, permits or NAEI (§3.11). Reconciles the computed baseline, corrects the combustion/process split, and optionally calibrates process intensity (§7.6) |
 | Operating schedule — `operating_pattern`, `operating_hours_per_year`, `operating_days_per_week`, `shutdown_weeks` | h/yr, d/wk, wk/yr | The independent check on utilisation (§3.12, A4). A site running 24/7 and one running a single shift can consume identical annual energy on very different plant, and only the schedule distinguishes them |
 | Load statistics — `peak_electricity`, `peak_gas`, `load_factor_electricity`, `load_factor_gas`, `within_shift_peak_factor` | MW, fraction, ratio | **Future use (§5.6).** The true site peak, which is what a connection capacity is about. Derived from half-hourly or daily metering where it exists; gas is the better predictor of the *post-electrification* peak |
+| `premise_weekly_profile` rows | fraction, MW | **Future use (§5.6).** A representative half-hourly week — 336 points per vector — plus the separately-recorded annual peak (§3.14). Gives observed diversity between processes rather than an assumed factor, and is the calibration point for any projected peak |
 | `import_capacity` | MW | **Future use (§5.6).** How much electrification the connection physically allows before reinforcement is needed |
 | `export_capacity` | MW | **Future use (§5.6).** Whether onsite generation can be exported, and how much |
 | `connection_voltage` | kV | **Future use (§5.6).** Sets which reinforcement cost curve applies |
@@ -579,6 +580,7 @@ One row per *(process × equipment type × fuel)* combination.
 | `emissions_released` | real | fraction | yes | — | ∈ [0, 1]. Fraction **not** captured |
 | `start_year` | integer | year | no | — | Earliest build year |
 | `retrofit_to` | string | — | no | → `technology` | Costs differenced against the base (§5.5) |
+| `load_shape_override` | string | — | no | → `process_load_shape` | **Exception only.** Set where this technology's demand shape differs materially from its process's default (§3.13) |
 | `provenance` | enum{comit_reuse, bref, proxy} | — | yes | — | **D6** |
 | `confidence` | enum{high, medium, low} | — | yes | — | **D6.** Results filterable by this |
 
@@ -726,6 +728,80 @@ $$\text{load factor} = \frac{E\,[\text{PJ/yr}] \times 277{,}778}{P^{\text{peak}}
 
 Divergence beyond that is reported as `profile_energy_inconsistent` — most often a
 vintage mismatch between the profile year and `data_year`.
+
+### 3.13 `process_load_shape` — how a process presents its demand
+
+**The shape belongs to the process, not to the technology.** A kiln runs continuously
+whether it is fired by gas or by hydrogen; a batch dryer is batchy whether it is gas or
+electric. What a unit operation *does* determines when it draws power, so the shape is
+declared once per process and inherited by every technology serving it. Technologies
+override it only by exception (`technology.load_shape_override`, §3.5).
+
+This is the decomposition that makes the peak question tractable. Declaring shapes per
+technology would multiply the data build by the fuel variants — 82 of 94 COMIT processes
+differ only by fuel — for information that does not vary along that axis.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `shape_id` | string | — | yes | PK | — |
+| `process_id` | string | — | yes | → `commodity` | The process this describes |
+| `shape_class` | enum{flat, throughput_following, batch_cyclic, intermittent, standing, seasonal} | — | yes | — | See below |
+| `duty_factor` | real | fraction | yes | — | ∈ (0, 1]. Share of operating hours in which the process draws power |
+| `peak_to_mean` | real | ratio | yes | — | ≥ 1. Peak ÷ mean demand across the hours it is running |
+| `runs_when_idle` | boolean | — | yes | — | True ⇒ draws power outside the site's operating hours |
+| `seasonality` | enum{none, winter_weighted, summer_weighted, campaign} | — | yes | — | Drives whether the annual peak falls outside a representative week |
+| `provenance` | string | — | yes | — | Citation |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**The shape classes.**
+
+| Class | Meaning | Typical `duty_factor` | Typical `peak_to_mean` | Examples |
+|---|---|---|---|---|
+| `flat` | Constant while the site operates | ~1.0 | ~1.0–1.1 | Rotary kiln, continuous furnace, continuous digester |
+| `throughput_following` | Proportional to production rate | 0.7–1.0 | 1.1–1.4 | Mills, crushers, conveyors, pumps |
+| `batch_cyclic` | Repeating on/off cycles | 0.3–0.7 | 2–4 | Batch ovens, autoclaves, curing, electric melting |
+| `intermittent` | Driven by operator activity | 0.1–0.4 | 3–6 | Welding, hand tools, workshop equipment |
+| `standing` | Runs regardless of production | ~1.0 | ~1.0 | Refrigeration, lighting, compressed air, site services |
+| `seasonal` | Weather- or campaign-driven | varies | varies | Space heating, seasonal processing campaigns |
+
+Values are indicative of the shape's character, not defaults to be adopted unexamined.
+
+**Rule.** `standing` processes must have `runs_when_idle = true`; every other class must
+have it false unless a citation says otherwise. This distinction is what makes a
+single-shift site's peak differ from its energy — refrigeration runs through the night
+and the presses do not.
+
+### 3.14 `premise_weekly_profile` — measured shape, where it exists
+
+**Optional, and deliberately small.** A representative **half-hourly week** — 336
+points — captures the daily cycle and the weekday/weekend difference, which is most of
+what shape means for a connection question, at ~2% of a full year's data. Supplied per
+premise per vector, and per process only where sub-metering makes that real.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `vector` | enum{electricity, gas} | — | yes | PK part | The metered vectors only |
+| `process_id` | string | — | no | PK part | Present only where sub-metered; absent ⇒ whole site |
+| `season` | enum{annual, winter, summer, shoulder} | — | yes | PK part | `annual` ⇒ a single representative week |
+| `interval_index` | integer | — | yes | PK part | 1–336, Monday 00:00 to Sunday 23:30 |
+| `fraction_of_peak` | real | fraction | yes | — | ∈ [0, 1]. Normalised so the maximum across the week is 1 |
+| `annual_peak` | real | MW | yes | — | The **annual** maximum, recorded separately — see the rule below |
+| `provenance` | string | — | yes | — | Citation: meter operator, DNO record |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Rule (the representative week does not contain the annual peak).** A typical week is
+typical by construction, so its maximum is not the year's maximum — and the year's
+maximum is exactly what a connection capacity is sized against. The week gives the
+*shape*; `annual_peak` carries the *level*, taken from the full series upstream. Using
+the week's own maximum as the site peak understates it, and for `seasonal` processes
+substantially.
+
+**Rule (seasons are optional but recommended where seasonality is not `none`).** One
+`annual` week suffices for a continuous process. Where §3.13 declares
+`winter_weighted`, `summer_weighted` or `campaign` seasonality, supply `winter`, `summer`
+and `shoulder` weeks — 1,008 points, still small — or the annual peak cannot be
+attributed to the right process when the mix changes.
 
 ---
 
@@ -1212,15 +1288,61 @@ site's current electrical load. A site's gas profile is therefore the better pre
 its post-electrification peak. Daily-metered gas is coarser than half-hourly electricity
 but is exactly the right signal.
 
-**What is still missing, and it is not an input.** The constraint binds on the peak the
-site has *after* the optimiser has changed its technology mix, not on its historical
-peak. Deriving that needs a load characteristic **per technology** — an electric arc
-furnace and a resistance dryer serving the same annual energy do not present the same
-maximum demand. `premise_operating_profile` fixes the baseline year truthfully; it cannot
-by itself tell you the peak of a configuration that does not exist yet. Building
-extension 1 therefore also means adding a load-shape attribute to `technology` (§3.5),
-which lands in the D6 data build and should be decided before that build is commissioned,
-not after.
+**Deriving the peak of a configuration that does not exist yet.** The constraint binds on
+the peak the site has *after* the optimiser has changed its technology mix, not on its
+historical peak. `premise_operating_profile` fixes the baseline year truthfully but
+cannot answer that on its own — so the shape has to be attached to something the model
+still knows about after the mix changes. That something is the **process** (§3.13), not
+the technology: what a unit operation does determines when it draws power, and a kiln
+runs continuously whether fired by gas or hydrogen.
+
+Peak is then rebuilt from the optimiser's own output:
+
+```
+INPUT:  process_energy_by_technology[q, k, t] from the solved pathway,
+        process_load_shape, premise_operating_profile, premise_weekly_profile
+OUTPUT: P_peak[t]  (MW)
+
+1. FOR EACH period t:
+2.     FOR EACH process q IN process_set(p):
+3.         E_q  := electrical energy at q in period t, summed over technologies
+4.         shape := load_shape_override(k) IF SET ELSE process_load_shape(q)
+5.         H_q  := 8,760 IF shape.runs_when_idle ELSE operating_hours_per_year
+6.         mean_q := E_q [PJ/yr] × 277,778 / (H_q × shape.duty_factor)   -- MW
+7.         peak_q := mean_q × shape.peak_to_mean
+8.     P_peak[t] := DIVERSIFY( { peak_q } )                             -- step 9
+9.     -- processes do not peak simultaneously. Either sum the weekly
+10.    -- profiles of §3.14 interval by interval and take the maximum, or
+11.    -- apply a per-activity diversity factor to the sum of peaks.
+12.    CALIBRATE: in the baseline period, P_peak must reproduce
+13.               premise_operating_profile.peak_electricity within tolerance;
+14.               carry the residual as a per-premise correction into later periods
+```
+
+**Step 8 is the part that must not be skipped.** Summing per-process peaks assumes every
+process peaks at the same instant, which overstates the site maximum — often badly for
+`intermittent` and `batch_cyclic` processes. Where §3.14 weekly profiles exist, the
+diversity is *observed*: add the interval-by-interval shapes and read off the maximum.
+Where they do not, a per-activity diversity factor is the fallback, and it is another
+systematic assumption of the §3.3 kind.
+
+**Step 12 is what makes the trajectory credible.** The baseline year has a measured peak.
+Any method that cannot reproduce it should not be trusted about 2040, so the baseline is
+a calibration point, not merely a validation one.
+
+**Why a half-hourly week is the right size.** 336 points per premise per vector captures
+the daily cycle and the weekday/weekend split — most of what shape means here — at ~2% of
+a full year. Three seasonal weeks (1,008 points) cover the seasonality cases. The full
+8,760-hour series buys little beyond this for an annual model and costs ~17× more per
+premise at stock scale. What the week cannot supply is the annual maximum, which §3.14
+carries separately as `annual_peak`.
+
+**What this changes about the D6 data build.** Shapes attach to ~30–76 processes rather
+than to 94+ technologies, and they do not multiply by fuel variant — 82 of 94 COMIT
+processes differ only by fuel, and none of that affects when the process runs. The
+`technology.load_shape_override` field exists for the genuine exceptions, where the
+equipment's duty differs from its process's default: arc furnaces, electrolysis operated
+flexibly, heat pumps with thermal storage. Expect these to be a handful, not the norm.
 
 **Extension 2 — onsite generation with export.** With `export_capacity` known, onsite
 generation becomes a technology whose output may either offset import or be exported,
@@ -1521,6 +1643,7 @@ Two cautions carried from COMIT:
 | **V12** | **Known-capacity reconciliation.** A4 steps 14–18 | Where `known_capacity` is supplied, energy still reconciles within 1e-6 (V2 unaffected) and the derived utilisation is reported. Utilisation exceeding the availability factor is logged as `capacity_energy_inconsistent`, not silently clipped |
 | **V13** | **Measured-emissions divergence.** §7.6 | Baseline computed emissions compared against `premise_measured_emissions` per premise and in aggregate; divergence reported and never silently corrected. With calibration enabled, every multiplier lies in the configured bound and is recorded on output |
 | **V14** | **Operating profile coherence.** §3.12, A4 | Peak, load factor and annual energy reconcile within 5%; utilisation derived in A4 is consistent with `operating_hours_per_year`, with disagreement logged as `utilisation_schedule_inconsistent`; `within_shift_peak_factor` ≥ 1 wherever present |
+| **V15** | **Load shape coherence.** §3.13, §3.14, §5.6 | Every process resolves to a shape; `standing` ⇔ `runs_when_idle`; `peak_to_mean` ≥ 1 and `duty_factor` ∈ (0,1]; weekly profiles are normalised to a maximum of 1 over 336 intervals; the §5.6 method reproduces the measured baseline peak within tolerance before any projected peak is reported |
 
 **On V1.** This is the single most valuable test, because it isolates the one change
 most likely to be wrong. Note that parity with *fully coupled* COMIT is **not** a valid
