@@ -11,9 +11,13 @@ Sources in the spec:
                 plus entity names mentioned in the body (read edges)
 
 Emits, into docs/specs/diagrams/:
-  spec_flow.md    Mermaid in a fenced block, so it previews in VS Code (with the
-                  Markdown Preview Mermaid Support extension) and renders on GitHub
-  spec_flow.svg   dependency-free SVG; drop into Mural, or any tool that takes SVG
+  spec_journey.md     Mermaid sequence diagram: the journey from ingesting a premise
+                      to writing its pathway, step by step
+  spec_data_model.md  Mermaid class diagram: entities, their fields and foreign keys
+  spec_flow.svg       dependency-free SVG overview; drop into Mural or any SVG tool
+
+The two Markdown files preview in VS Code with a Mermaid extension and render
+inline on GitHub.
 
 No third-party packages. Standard library only.
 
@@ -61,6 +65,38 @@ def find_entities(text: str) -> list[str]:
     """Entity names from the data-model headings."""
     pattern = re.compile(r"^#{3,4} 3\.[\d.]+ `([a-z_]+)`", re.M)
     return [m.group(1) for m in pattern.finditer(text)]
+
+
+def find_entity_fields(text: str) -> dict[str, list[dict]]:
+    """Field tables of the data model, one list per entity.
+
+    Foreign keys are written as an arrow to a backticked entity name, and may
+    appear in either the Key column or the Validation column, so both are
+    scanned.
+    """
+    heads = list(re.finditer(r"^#{3,4} 3\.[\d.]+ `([a-z_]+)`.*$", text, re.M))
+    fields: dict[str, list[dict]] = {}
+    for i, h in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
+        rows = []
+        for line in text[h.end() : end].split("\n"):
+            m = re.match(r"^\| `([a-z_0-9]+)` \| ([^|]+)\| [^|]*\| ([^|]*)\| ([^|]*)\| ([^|]*)\|", line)
+            if not m:
+                continue
+            name, typ, req, key, valid = (g.strip() for g in m.groups())
+            fk = re.search(r"→ `([a-z_]+)`", key + " " + valid)
+            rows.append(
+                {
+                    "name": name,
+                    "type": typ.split("{")[0].strip() or "string",
+                    "required": req == "yes",
+                    "pk": "PK" in key,
+                    "fk": fk.group(1) if fk else None,
+                }
+            )
+        if rows:
+            fields[h.group(1)] = rows
+    return fields
 
 
 def find_algorithms(text: str) -> list[dict]:
@@ -120,6 +156,11 @@ def build_graph(text: str) -> dict:
 
     for a in algos:
         inp, out, body = io_lines(a["block"])
+        # a name inside a bracketed index is a dimension, not the entity:
+        # A4 outputs existing_capacity[technology], which is not a write to the
+        # technology table. Strip index expressions before matching.
+        inp = re.sub(r"\[[^\]]*\]", "", inp)
+        out = re.sub(r"\[[^\]]*\]", "", out)
         # prose around the block counts as a read: A4 cross-checks against
         # premise_operating_profile in its notes rather than in its pseudocode
         body = body + "\n" + a.get("prose", "")
@@ -183,28 +224,85 @@ MERMAID_CLASSES = """
 """
 
 
-def to_markdown(g: dict, counts: tuple[int, int, int]) -> str:
-    """Mermaid inside a fenced block.
+LANES = {
+    "input": ("Stock", "CaRB3 stock model"),
+    "reference": ("Ref", "Reference data"),
+    "scenario": ("Scen", "Scenario data"),
+    "output": ("Out", "Results"),
+}
 
-    A bare .mmd file opens as plain text in most editors: the VS Code Mermaid
-    extensions hook Markdown *preview*, not a standalone mermaid file. Wrapping
-    the same graph in Markdown makes it previewable there and on GitHub, with
-    no second format to keep in step.
+
+def to_sequence(g: dict) -> str:
+    """The journey: each algorithm in turn, with what it reads and writes.
+
+    Data stores are collapsed into four lanes by ownership rather than drawn as
+    fifteen participants, which would be unreadable. The entity name travels on
+    the arrow instead, so nothing is lost.
     """
-    entities, algos, edges = counts
-    return (
-        "# CaRB3 per-site model — data flow\n\n"
-        "Generated from "
-        "[the implementation specification]"
-        "(../2026-08-19-carb3-site-decarbonisation-implementation.md) by "
-        "`docs/notes/examples/build_spec_flow_diagram.py`. Do not edit by hand — "
-        "regenerate.\n\n"
-        f"{entities} entities · {algos} algorithms · {edges} edges. Cylinders are data, "
-        "boxes are algorithms; dashed edges are reads, solid are writes and the pipeline "
-        "order. Colour marks who owns the data — see "
-        "[the README](README.md).\n\n"
-        "```mermaid\n" + to_mermaid(g) + "```\n"
-    )
+    role = {n["id"]: n["role"] for n in g["nodes"]}
+    label = {n["id"]: n["label"] for n in g["nodes"]}
+    algos = [n["id"] for n in g["nodes"] if n["type"] == "algorithm"]
+
+    out = ["sequenceDiagram", "    autonumber"]
+    for _, (short, name) in LANES.items():
+        out.append(f"    participant {short} as {name}")
+    for a in algos:
+        out.append(f'    participant {a} as {label[a].replace(":", "")}')
+
+    for i, a in enumerate(algos):
+        reads = [e["from"] for e in g["edges"] if e["to"] == a and e["kind"] == "reads"]
+        writes = [e["to"] for e in g["edges"] if e["from"] == a and e["kind"] == "writes"]
+        out.append(f"    activate {a}")
+        for r in reads:
+            lane = LANES.get(role.get(r, "reference"), LANES["reference"])[0]
+            out.append(f"    {lane}->>{a}: {r}")
+        for w in writes:
+            out.append(f"    {a}-->>Out: {w}")
+        if i + 1 < len(algos):
+            out.append(f"    {a}->>{algos[i + 1]}: hand off")
+        out.append(f"    deactivate {a}")
+    return "\n".join(out) + "\n"
+
+
+def to_classes(fields: dict[str, list[dict]]) -> str:
+    """Entities, their fields, and the foreign keys between them."""
+    out = ["classDiagram"]
+    for entity, rows in fields.items():
+        out.append(f"    class {entity} {{")
+        for r in rows:
+            mark = " PK" if r["pk"] else (" FK" if r["fk"] else "")
+            req = "+" if r["required"] else "-"
+            out.append(f'        {req}{r["type"]} {r["name"]}{mark}')
+        out.append("    }")
+    seen = set()
+    for entity, rows in fields.items():
+        for r in rows:
+            target = r["fk"]
+            if not target or target not in fields or target == entity:
+                continue
+            key = (entity, target, r["name"])
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(f'    {entity} "*" --> "1" {target} : {r["name"]}')
+    return "\n".join(out) + "\n"
+
+
+HEADER = (
+    "Generated from [the implementation specification]"
+    "(../2026-08-19-carb3-site-decarbonisation-implementation.md) by "
+    "`docs/notes/examples/build_spec_flow_diagram.py`. Do not edit by hand — regenerate.\n"
+)
+
+
+def wrap(title: str, intro: str, body: str) -> str:
+    """A mermaid graph in a fenced block, inside a Markdown document.
+
+    A bare .mmd file opens as plain text: the VS Code Mermaid extensions hook
+    Markdown *preview*, not a standalone mermaid file. The fence makes it
+    previewable there and on GitHub.
+    """
+    return f"# {title}\n\n{HEADER}\n{intro}\n\n```mermaid\n{body}```\n"
 
 
 def to_mermaid(g: dict) -> str:
@@ -321,12 +419,34 @@ def to_svg(g: dict, pos: dict[str, dict]) -> str:
 def main() -> None:
     text = read_spec()
     g = build_graph(text)
+    fields = find_entity_fields(text)
     pos = layout(g)
     OUT.mkdir(parents=True, exist_ok=True)
     entities = sum(1 for n in g["nodes"] if n["type"] == "entity")
     algos = sum(1 for n in g["nodes"] if n["type"] == "algorithm")
-    counts = (entities, algos, len(g["edges"]))
-    (OUT / "spec_flow.md").write_text(to_markdown(g, counts), encoding="utf-8")
+
+    (OUT / "spec_journey.md").write_text(
+        wrap(
+            "The journey of one premise",
+            f"What happens to a single premise between arriving from the stock model and "
+            f"leaving as a pathway. {algos} steps, in the order §4 specifies them. Data "
+            f"stores are grouped into four lanes by who owns them — the entity name travels "
+            f"on the arrow, so nothing is lost. Solid arrows into a step are reads; dashed "
+            f"arrows out are writes.",
+            to_sequence(g),
+        ),
+        encoding="utf-8",
+    )
+    (OUT / "spec_data_model.md").write_text(
+        wrap(
+            "Data model",
+            f"The {len(fields)} entities of §3 with their fields and foreign keys. "
+            f"`+` marks a required field, `-` an optional one; `PK` marks a primary-key "
+            f"part and `FK` a foreign key. Arrows read many-to-one.",
+            to_classes(fields),
+        ),
+        encoding="utf-8",
+    )
     (OUT / "spec_flow.svg").write_text(to_svg(g, pos), encoding="utf-8")
     print(f"{entities} entities, {algos} algorithms, {len(g['edges'])} edges")
     for f in sorted(OUT.iterdir()):

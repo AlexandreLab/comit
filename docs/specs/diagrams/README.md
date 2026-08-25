@@ -25,14 +25,20 @@ is information, not a defect.
 
 ## Files
 
-| File | Use |
-|---|---|
-| `spec_flow.md` | Mermaid in a fenced block. Previews in VS Code with the **Markdown Preview Mermaid Support** extension (⇧⌘V), and renders inline on GitHub |
-| `spec_flow.svg` | Self-contained SVG. Opens anywhere, and drops straight onto a Mural or Miro canvas |
+Three views, each answering a different question. The two Markdown files preview in
+VS Code with the **Markdown Preview Mermaid Support** extension (⇧⌘V) and render inline
+on GitHub.
 
-Two outputs, deliberately. The Markdown one is for reading in the repository, since both
-GitHub and a VS Code preview render the diagram inline; the SVG is for taking somewhere
-else, since it needs no toolchain at the far end. Mural accepts `svg` among its supported
+| File | Question it answers |
+|---|---|
+| `spec_journey.md` | *What happens to one premise, in order?* A sequence diagram: the nine steps of §4, with what each reads and writes |
+| `spec_data_model.md` | *How is the data shaped?* A class diagram: entities, fields, and the foreign keys between them |
+| `spec_flow.svg` | *What is the whole thing at a glance?* The overview graph, as a self-contained SVG that drops onto a Mural or Miro canvas |
+
+The journey and the data model are the two questions worth asking of a pipeline, and one
+diagram cannot answer both: a sequence diagram loses the shape of the data, and a class
+diagram loses the order of operations. The SVG keeps the at-a-glance overview and is the
+one to take somewhere else, since it needs no toolchain at the far end. Mural accepts `svg` among its supported
 image formats, so it imports through the toolbar or by dropping the file on the canvas —
 as a flat image rather than editable shapes.
 
