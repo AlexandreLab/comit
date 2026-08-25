@@ -1689,27 +1689,516 @@ Two cautions carried from COMIT:
 
 ## 10. Validation and test plan
 
-| # | Test | Criterion |
-|---|---|---|
-| **V1** | **Decoupling parity.** Run current COMIT and this model over the same 1,026 NAEI sites with coupling constraints disabled on both sides | Per-site results agree to solver tolerance. Isolates decomposition from every other change |
-| **V2** | **Baseline reproduction.** Recompute fuel use from `existing_capacity` produced by A4 | Reproduces the supplied per-vector energy within 1% |
-| **V3** | **Energy conservation and carrier integrity.** A3's allocation, §3.1.1 | Allocated energy equals the sum of `premise_energy` quantities within 1e-6; `(premise_id, commodity_id)` is unique; every row's `vector` agrees with its commodity's category; a `not_consumed` row carries `quantity = 0`; carrier coverage is recorded per premise and reported |
-| **V4** | **Profile integrity.** `activity_process_energy_profile` | Shares sum to 1 per (activity, vector) within 1e-6; R1 technology consistency and R3 band ordering hold at load; R2 renormalisation reproduces the raw shares when no optional process is absent (§3.3.3) |
-| **V5** | **Emissions invariants** (from [notes/14](../notes/14_emissions_source_split.md)) | `Direct (split by ghg type)` summed over gases equals `Direct (total CO2e)`; `available_capacity` equals cumulative `new_capacity`; `Generate_emissions = false` ⇒ zero ktCO₂e |
-| **V6** | **Non-negativity, correctly scoped** | Activity, energy and capacity are non-negative. Costs and emissions **may be negative** (retrofit differencing, BECCS). Do not assert blanket non-negativity — [notes/14](../notes/14_emissions_source_split.md) records this as a falsified invariant |
-| **V7** | **Scale gates** | G1–G3 per §9.2 |
-| **V8** | **GB aggregate sanity** | Sector totals compared against ECUK/GHGI on a GB basis; divergence reported, never silently corrected |
-| **V9** | **Infrastructure sensitivity** | Every clustered energy-intensive premise run under at least two bounding scenarios; spread reported |
-| **V10** | **Determinism** | Same inputs reproduce the same outputs bit-for-bit, given the §9.3 tie-break |
-| **V11** | **Process set integrity.** `activity_process_register` and A2 tiering | Exactly one default set per activity; every named set resolves to profile rows by §3.3 inheritance; a premise citing a set belonging to another activity is rejected; `premise_process_detail` overrides both and is treated as complete |
-| **V12** | **Known-capacity reconciliation.** A4 steps 14–18 | Where `known_capacity` is supplied, energy still reconciles within 1e-6 (V2 unaffected) and the derived utilisation is reported. Utilisation exceeding the availability factor is logged as `capacity_energy_inconsistent`, not silently clipped |
-| **V13** | **Measured-emissions divergence.** §7.6 | Baseline computed emissions compared against `premise_measured_emissions` per premise and in aggregate; divergence reported and never silently corrected. With calibration enabled, every multiplier lies in the configured bound and is recorded on output |
-| **V14** | **Operating profile coherence.** §3.12, A4 | Peak, load factor and annual energy reconcile within 5%; utilisation derived in A4 is consistent with `operating_hours_per_year`, with disagreement logged as `utilisation_schedule_inconsistent`; `within_shift_peak_factor` ≥ 1 wherever present |
-| **V15** | **Load shape coherence.** §3.13, §3.14, §5.6 | Every process resolves to a shape; `standing` ⇔ `runs_when_idle`; `peak_to_mean` ≥ 1 and `duty_factor` ∈ (0,1]; weekly profiles are normalised to a maximum of 1 over 336 intervals; the §5.6 method reproduces the measured baseline peak within tolerance before any projected peak is reported |
+### 10.1 How to read this section
 
-**On V1.** This is the single most valuable test, because it isolates the one change
-most likely to be wrong. Note that parity with *fully coupled* COMIT is **not** a valid
-criterion (vision §7.4).
+Fifteen tests. Each is specified with the same six fields, so that a test can be
+implemented from this section alone:
+
+| Field | Meaning |
+|---|---|
+| **Checks** | The property being asserted, in one sentence |
+| **Scope** | When it runs — see §10.2 |
+| **Blocking** | Whether failure stops the work, or is recorded and carried forward |
+| **Procedure** | Numbered steps, language-agnostic |
+| **Pass criterion** | The precise threshold, with its tolerance |
+| **On failure** | What a failure indicates, and what to do about it |
+
+**Blocking has a specific meaning here.** A *blocking* failure stops the thing it
+guards — a load-time test stops the reference data being loaded, a per-premise test
+rejects that premise, a release test stops the release. An *advisory* failure is
+recorded, attached to the affected outputs, and reported in aggregate (§8.5); the run
+continues. Advisory does not mean optional: an unreported advisory failure is a defect.
+
+The distinction matters because this model runs at stock scale. A blocking test that
+fires on one premise in a million-premise run must not fail the run — it rejects that
+premise and the batch continues, subject to the batch-level gate in §1.6.7.
+
+### 10.2 Scopes
+
+| Scope | Runs | Guards |
+|---|---|---|
+| **Load** | Once, when reference data is loaded, before any premise is processed | The register, profile, technology and shape tables |
+| **Premise** | Once per premise, inside the pipeline | That premise's inputs and derived values |
+| **Batch** | Once per run, after all premises are solved | Aggregates and cross-premise reporting |
+| **Release** | Before shipping a model version; not part of a normal run | The implementation itself |
+
+Load-scope tests are the cheapest place to catch a problem and should never be deferred
+to a per-premise check. A profile that does not sum to 1 is one assertion at load, or a
+million confusing energy-balance failures at premise scope.
+
+### 10.3 The tests
+
+#### V1 — Decoupling parity
+
+**Checks.** That solving each site independently reproduces what the current model
+produces when its cross-site constraints are switched off — isolating the decomposition
+(D2) from every other change in this design.
+
+**Scope.** Release. **Blocking.** Yes.
+
+**Procedure.**
+
+```
+1. Take the 1,026 NAEI point-source sites the current COMIT model runs on.
+2. In current COMIT, disable every constraint listed in §6.2 (the cluster and
+   national couplings). Keep everything else — technologies, prices, horizon.
+3. In this model, run the same 1,026 sites with the same scenario parameters,
+   supplying their existing energy as premise_energy rows so no baseline
+   inference differs between the two.
+4. For each site, compare: objective value, per-technology capacity by period,
+   per-vector energy by period, emissions by category.
+5. Where a technology mix differs but the objective matches, classify the site
+   as a solver tie rather than a discrepancy (see below).
+```
+
+**Pass criterion.** Per-site objective values agree to solver tolerance. Per-site
+capacities agree to solver tolerance **or** are recorded as ties with identical
+objective values.
+
+**On failure.** A genuine objective difference means the decomposition changed the
+answer, which is the single most consequential way this design can be wrong. Diagnose
+before proceeding: the usual causes are a constraint in §6.1 that couples premises
+after all, or a scenario parameter applied at different granularity on the two sides.
+
+**Two cautions.** First, parity with *fully coupled* COMIT is **not** a valid criterion
+and must not be substituted — the coupled model answers a different question (vision
+§7.4). Second, COMIT's LP is degenerate (§9.3): several technology mixes reach the same
+cost, so mix differences at equal objective value are expected and are not failures.
+This is why the comparison leads on the objective, not the mix.
+
+#### V2 — Baseline reproduction
+
+**Checks.** That the capacity A4 infers, run forwards again, reproduces the energy the
+stock model supplied — i.e. that the back-solve is self-consistent.
+
+**Scope.** Premise. **Blocking.** Yes.
+
+**Procedure.**
+
+```
+1. Take existing_capacity[k] and utilisation[k] from A4.
+2. FOR EACH technology k:
+       implied_output := existing_capacity[k] × capacity_to_activity_factor(k)
+                          × utilisation[k]
+       implied_fuel   := implied_output × |io_coefficient(k, fuel commodity)|
+3. Sum implied_fuel by vector.
+4. Compare against the premise_energy quantities for the same vectors.
+```
+
+**Pass criterion.** Reproduces the supplied per-vector energy within **1%**.
+
+**On failure.** The chain from energy to capacity has lost information. Check in this
+order: a zero or wrong-signed `io_coefficient`; an `availability_factor` of zero;
+a technology allocated energy on a vector its `fuel_category` does not match (which V4's
+R1 check should already have caught at load); or a `known_capacity` in different units
+from the technology's capacity units.
+
+#### V3 — Energy conservation and carrier integrity
+
+**Checks.** That A3 neither creates nor destroys energy, and that the long-format
+carrier table is internally coherent.
+
+**Scope.** Premise (conservation) and Load (uniqueness, vector agreement).
+**Blocking.** Yes.
+
+**Procedure.**
+
+```
+1. ASSERT (premise_id, commodity_id) is unique across premise_energy.
+2. FOR EACH premise_energy row:
+       ASSERT row.vector agrees with commodity(row.commodity_id).commodity_category
+       ASSERT row.data_status = not_consumed IMPLIES row.quantity = 0
+3. After A3: SUM over (process, vector) of process_energy
+              = SUM over premise_energy rows of quantity
+4. RECORD carrier_coverage: which of the five main vectors have a row for this
+   premise, whether positive or an explicit not_consumed zero.
+```
+
+**Pass criterion.** Step 3 holds within **1e-6**. Steps 1–2 hold exactly.
+
+**On failure.** Conservation failures point at the profile, not the allocation: either
+shares that do not sum to 1 (V4), or an R2 renormalisation that divided by a zero
+denominator. Note that carrier coverage is **recorded, not asserted** — an incomplete
+premise is reported (§8.5), never rejected.
+
+#### V4 — Profile integrity
+
+**Checks.** That `activity_process_energy_profile` obeys the three rules of §3.3.3
+before any premise uses it.
+
+**Scope.** Load. **Blocking.** Yes.
+
+**Procedure.**
+
+```
+1. FOR EACH (carb3_activity, process_set_id, vector):
+       ASSERT SUM of energy_share over processes = 1
+2. R1 — FOR EACH profile row with energy_share > 0:
+       ASSERT at least one technology serving that process has a
+              fuel_category matching that row's vector
+3. R3 — FOR EACH row carrying a band:
+       ASSERT share_low <= energy_share <= share_high
+4. R2 — for a premise with no optional process absent, ASSERT the renormalised
+       shares equal the raw shares (denom = 1, so the identity must hold)
+```
+
+**Pass criterion.** Step 1 holds within **1e-6**; steps 2–4 hold exactly.
+
+**On failure.** All four are data defects, not code defects, and all four are cheap to
+fix at load. R1 is the one worth checking first: it is the difference between a
+diagnosable load-time message and an opaque "no technology serves process q on vector v"
+failure in the middle of a national run.
+
+**Note the key.** The sum is over `(activity, process_set_id, vector)` — per process
+*set*, not per activity. An activity with a named variant has one such group per set.
+
+#### V5 — Emissions invariants
+
+**Checks.** The post-solve emissions identities that COMIT already satisfies, carried
+over unchanged from [notes/14](../notes/14_emissions_source_split.md).
+
+**Scope.** Release, and Batch on any run whose technology data has changed.
+**Blocking.** Yes.
+
+**Procedure.**
+
+```
+1. ASSERT `Direct (split by ghg type)` summed over gases
+          = `Direct (total CO2e)`
+2. ASSERT available_capacity = cumulative new_capacity, per technology per period
+3. FOR EACH technology with Generate_emissions = false:
+       ASSERT reported emissions = 0 ktCO2e
+```
+
+**Pass criterion.** All three hold within solver tolerance.
+
+**On failure.** These are structural. A break in (1) usually means a gas was added to
+the split without being added to the total; (2) means capacity accounting has diverged
+from the build decisions; (3) means an emissions path bypassed the `Generate_emissions`
+switch.
+
+#### V6 — Non-negativity, correctly scoped
+
+**Checks.** That non-negativity is asserted on the quantities that genuinely cannot go
+negative, and **not** on the ones that can.
+
+**Scope.** Premise. **Blocking.** Yes.
+
+**Procedure.**
+
+```
+1. ASSERT activity, energy and capacity >= 0 for every technology and period.
+2. DO NOT assert non-negativity on cost or emissions.
+```
+
+**Pass criterion.** Step 1 holds for all rows.
+
+**On failure of step 1**, the solver has produced a physically impossible result and the
+problem formulation should be suspected before the data.
+
+**Why step 2 is stated as a prohibition.** Costs may be negative through retrofit
+differencing (§5.5), and emissions may be negative through BECCS. [notes/14](../notes/14_emissions_source_split.md)
+records blanket non-negativity as a **falsified** invariant — it was asserted, and real
+model output broke it. Re-adding that assertion will produce false failures on correct
+results, which is worse than no test at all. If §5.6's export revenue term is ever
+implemented, the objective acquires another genuinely negative component.
+
+#### V7 — Scale gates
+
+**Checks.** That per-premise independence delivers the linear scaling D1 depends on, at
+the premise counts a national run implies.
+
+**Scope.** Release. **Blocking.** Yes for G1 and G2; G3 is blocking for D1 but not for
+Phase 1 (§11).
+
+**Procedure.**
+
+```
+1. G1 — run 10,000 premises. Record wall-clock, peak memory, and per-premise
+        memory. Confirm per-premise memory is bounded, not growing with count.
+2. G2 — run 100,000 premises. Confirm completion within a working day on the
+        available hardware.
+3. G3 — run 1,000,000 premises. Record the result whether or not it completes.
+4. At each gate, record solve status and wall-clock per premise (§9.4) so that
+   a slow tail can be distinguished from a slow average.
+```
+
+**Pass criterion.** G1 and G2 complete within the stated bounds; G3 completes, **or** its
+failure is recorded and the archetype fallback is triggered.
+
+**On failure.** G3 failing means D1 — every premise individually — is not achievable, and
+the design falls back to representative archetypes (§9.2). Learning this in Phase 1 costs
+days; learning it in Phase 4 costs the technology data build. Note also that the
+Factory-class premise count is expected to be well below 1,000,000, so G3 is headroom
+rather than a forecast.
+
+#### V8 — GB aggregate sanity
+
+**Checks.** That aggregated results are of a credible magnitude against independent
+national statistics.
+
+**Scope.** Batch. **Blocking.** No — advisory.
+
+**Procedure.**
+
+```
+1. Aggregate energy by vector, emissions and cost by COMIT sector, mapping
+   activities through ../notes/data/carb3_comit_crosswalk.csv.
+2. Compare against ECUK/GHGI sector totals on a GB basis.
+3. Report divergence per sector and in total.
+4. Report the share of the result resting on proxy-tier costs, fallback-tier
+   energy profiles, and premises with incomplete carrier coverage.
+5. DO NOT rescale results to match.
+```
+
+**Pass criterion.** Divergence is computed and reported for every sector. There is no
+numeric threshold, and that is deliberate — see below.
+
+**On failure.** The failure mode for this test is *silence*, not divergence. A large
+divergence is a finding to be explained; an unreported divergence is a defect. Two
+structural reasons for expected divergence must be stated whenever the comparison is
+published: this is an **industrial** total covering only the Factory class (D1), not a
+whole-economy or whole-non-domestic total; and it is **GB**, while GHGI is UK (D8).
+
+#### V9 — Infrastructure sensitivity
+
+**Checks.** That results which depend on the exogenous infrastructure assumption (D7)
+are never presented as if they did not.
+
+**Scope.** Batch. **Blocking.** No — advisory, but blocking for publication.
+
+**Procedure.**
+
+```
+1. Identify clustered energy-intensive premises — those whose activity carries a
+   mass-denominated process, or which sit within the cluster radius of an H2 or
+   CO2 carrier.
+2. Run each under at least two bounding infrastructure_scenario cases: one where
+   the carrier is available early, one where it is never available.
+3. For each premise, report the spread in pathway, cost and emissions.
+4. Flag any premise whose chosen technology differs between the two scenarios.
+```
+
+**Pass criterion.** Every premise in the identified subset has results under at least two
+scenarios, and the spread is reported alongside any single-scenario figure.
+
+**On failure.** A single-scenario result for a clustered energy-intensive premise is not
+a finding — it is a conditional statement presented as an unconditional one. For cement,
+steel and chemicals the pathway can swing entirely on this assumption (vision §7.1), so
+publishing one scenario for these premises misrepresents the model's confidence.
+
+#### V10 — Determinism
+
+**Checks.** That the same inputs produce the same outputs, run to run and machine to
+machine.
+
+**Scope.** Release. **Blocking.** Yes.
+
+**Procedure.**
+
+```
+1. Run the same premise set twice in the same environment; compare outputs
+   byte for byte.
+2. Run it again with a different partition across workers; compare again.
+3. Run it on a second machine or solver build; compare again.
+4. Where any comparison differs, check whether the objective values are equal —
+   a degenerate tie — and whether the §9.3 tie-break was applied.
+```
+
+**Pass criterion.** Identical outputs in (1) and (2). In (3), identical outputs, or
+differences confined to documented ties with equal objective values.
+
+**On failure.** The likely cause is the LP degeneracy of §9.3: several mixes reach the
+same cost and the solver picks arbitrarily. The remedy is the deterministic tie-break —
+lexicographic by `technology_code` — not a tolerance. Partition-dependent results in (2)
+are more serious: they mean state is leaking between premise solves, which contradicts
+D2.
+
+#### V11 — Process set integrity
+
+**Checks.** That the register's process sets are well formed and that A2's tiering
+resolves in the intended order.
+
+**Scope.** Load (register structure) and Premise (tier resolution). **Blocking.** Yes.
+
+**Procedure.**
+
+```
+1. FOR EACH carb3_activity: ASSERT exactly one set has is_default = true.
+2. FOR EACH (activity, set, process): ASSERT profile rows resolve, directly or
+   by the §3.3 inheritance rule.
+3. FOR a premise citing a process_set_id belonging to a different activity:
+   ASSERT rejection with reason invalid_process_set.
+4. FOR a premise with premise_process_detail rows: ASSERT the detail overrides
+   both the named set and the default, and is treated as the complete list.
+5. ASSERT the tier used is recorded on every output row.
+```
+
+**Pass criterion.** All five hold exactly.
+
+**On failure of step 5** in particular, the results are not wrong but they are
+unreadable: a national aggregate that mixes surveyed premises with defaulted ones, and
+cannot say which is which, presents uniform confidence it does not have.
+
+#### V12 — Known-capacity reconciliation
+
+**Checks.** That supplying a known capacity improves the answer without breaking the
+energy balance.
+
+**Scope.** Premise. **Blocking.** Partly — the reconciliation is blocking, the
+consistency report is advisory.
+
+**Procedure.**
+
+```
+1. FOR a premise with premise_process_detail.known_capacity:
+       ASSERT V2 still passes — energy reconciles within 1e-6.
+2. ASSERT utilisation was derived and is present on output.
+3. IF utilisation > availability_factor:
+       REPORT capacity_energy_inconsistent. DO NOT clip, scale or reject.
+4. Compare the same premise run with and without known_capacity; record the
+   difference in inferred capacity.
+```
+
+**Pass criterion.** Step 1 holds within **1e-6**; step 2 holds exactly; step 3 produces a
+report rather than a silent adjustment.
+
+**On failure.** A step 3 report is usually an input problem, not a model problem —
+nameplate versus operating capacity, an out-of-date figure, or a units error. It must be
+surfaced loudly and must not stop a national run. Step 4 is diagnostic rather than
+pass/fail: a large difference tells you how much the back-solve prior was doing.
+
+#### V13 — Measured-emissions divergence
+
+**Checks.** That reported emissions are used to reconcile the baseline, and never to
+overwrite it.
+
+**Scope.** Premise (comparison) and Batch (aggregate reporting). **Blocking.** No —
+advisory, except the calibration bound.
+
+**Procedure.**
+
+```
+1. FOR a premise with premise_measured_emissions:
+       compute baseline-year emissions from the model
+       compare against measured, scope = direct only
+       report divergence per premise
+2. Aggregate divergence across all such premises and report it.
+3. IF the measured combustion/process split is supplied AND the model's split
+   rests on a low-confidence profile: adopt the measured ratio for the baseline
+   year and record that it was adopted.
+4. IF intensity calibration is enabled:
+       ASSERT every multiplier lies within the configured bound (suggested
+              [0.5, 2.0]) and is recorded on every output row for that premise
+       a premise needing a multiplier outside the bound is NOT calibrated and
+              is reported as an unexplained divergence
+5. ASSERT emissions remain a function of the decision variables in every case.
+```
+
+**Pass criterion.** Divergence reported at premise and aggregate level; step 4's bound
+holds; step 5 holds structurally.
+
+**On failure of step 5**, the implementation has substituted a measured scalar for the
+computed value. This is the failure this test exists to catch: it makes reported
+emissions identical whether a site keeps its coal kiln or electrifies, and the carbon
+price stops pricing the decision it exists to price (§7.6).
+
+#### V14 — Operating profile coherence
+
+**Checks.** That the schedule and load statistics agree with each other, with the
+premise's energy, and with the utilisation derived in A4.
+
+**Scope.** Load (internal coherence) and Premise (cross-check against A4).
+**Blocking.** No — advisory.
+
+**Procedure.**
+
+```
+1. WHERE both a peak and a load factor are supplied for a vector:
+       ASSERT load_factor = (E [PJ/yr] × 277,778) / (peak [MW] × 8,760)
+2. ASSERT within_shift_peak_factor >= 1 wherever present.
+3. Compare A4's derived utilisation against operating_hours_per_year:
+       a continuous site should not back-solve to a low utilisation, and a
+       single-shift site should not approach 1.0
+4. REPORT disagreement as utilisation_schedule_inconsistent.
+```
+
+**Pass criterion.** Step 1 reconciles within **5%**; step 2 holds exactly; step 3
+produces a report rather than an adjustment.
+
+**On failure.** A step 1 divergence is most often a vintage mismatch — the profile year
+differs from `data_year` — and is reported as `profile_energy_inconsistent`. Step 3 is
+the only independent evidence available about utilisation, which is otherwise inferred
+from two inputs that may both be wrong; a disagreement says one of capacity, coefficients
+or energy is wrong, without saying which.
+
+#### V15 — Load shape coherence
+
+**Checks.** That the shape data is well formed and that any projected peak is anchored to
+a measured one.
+
+**Scope.** Load (shape data) and Release (the §5.6 method). **Blocking.** Yes for the
+data checks; blocking for publication of any projected peak.
+
+**Procedure.**
+
+```
+1. ASSERT every process in the register resolves to a process_load_shape,
+   directly or through technology.load_shape_override.
+2. ASSERT shape_class = standing IF AND ONLY IF runs_when_idle = true.
+3. ASSERT peak_to_mean >= 1 and duty_factor IN (0, 1].
+4. FOR EACH premise_weekly_profile series: ASSERT 336 intervals per season and
+   a maximum fraction_of_peak of exactly 1.
+5. ASSERT annual_peak is present and >= the week's own maximum in MW terms.
+6. Run the §5.6 derivation on the baseline period and compare against
+   premise_operating_profile.peak_electricity.
+```
+
+**Pass criterion.** Steps 1–5 hold exactly. Step 6 reproduces the measured baseline peak
+within tolerance **before** any projected peak is reported.
+
+**On failure of step 6**, the projection is not trustworthy: a method that cannot
+reproduce a peak that was actually measured should not be believed about 2040. Step 5 is
+the subtle one — a representative week is typical by construction, so its maximum is
+below the annual maximum, and treating the week's peak as the site peak understates it,
+substantially for seasonal processes.
+
+### 10.4 What runs when
+
+| Stage | Tests |
+|---|---|
+| Reference data load | V3 (uniqueness, vector agreement), V4, V11 (structure), V14 (internal coherence), V15 (steps 1–5) |
+| Per premise | V2, V3 (conservation), V6, V11 (tier resolution), V12, V13 (comparison), V14 (A4 cross-check) |
+| Per batch | V8, V9, V13 (aggregate) |
+| Per release | V1, V5, V7, V10, V15 (step 6) |
+
+**Eight tests are not currently named in any phase exit criterion** (§11): V4, V6, V10,
+V11, V12, V13, V14 and V15. Most were added after the phasing was written. A test that is
+never an exit criterion is decorative, so each needs either a phase or an explicit
+decision that it is continuous rather than gating. The natural homes, offered as a
+proposal rather than a change:
+
+| Test | Suggested phase | Why |
+|---|---|---|
+| V4, V6, V10 | Phase 1 | Profile integrity, correctly-scoped non-negativity and determinism all guard the core pipeline, which Phase 1 builds |
+| V11, V12, V14 | Phase 1, if the optional inputs exist by then; otherwise Phase 2 | They guard D10's tiering and the A4 cross-checks |
+| V13 | Phase 2 | Belongs with aggregation and comparison reporting |
+| V15 | Phase 3 | Load shapes attach to processes, so it follows the taxonomy build |
+
+### 10.5 What the tests need that a normal run does not
+
+Three tests require inputs or environments beyond a standard run, and each should be
+provisioned before the phase that depends on it (§11):
+
+1. **V1** needs the current COMIT model runnable with its cross-site constraints
+   disabled, and the 1,026 NAEI sites expressed as `premise_energy` rows. Confirm the
+   coupling can actually be switched off before planning a phase around this test.
+2. **V7** needs synthetic premise sets at 10k, 100k and 1M, and hardware representative
+   of the intended production environment. The premises need not be realistic — only
+   structurally valid — so they can be generated.
+3. **V13** needs a subset of premises with reported emissions, which in practice means
+   UK ETS or permit-covered sites. These are a small and non-random subset of the stock,
+   so the aggregate divergence they show is not representative of the whole.
 
 ---
 
