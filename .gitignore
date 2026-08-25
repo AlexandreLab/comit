@@ -8,3 +8,7 @@
 
 # model run archives (the unpacked run dir is tracked, the zip is not)
 outputs/*.zip
+
+# python bytecode
+__pycache__/
+*.pyc
