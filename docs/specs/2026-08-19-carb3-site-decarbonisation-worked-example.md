@@ -29,14 +29,20 @@ latitude / longitude         53.35 / -1.75
 floorspace                   —                          (not supplied)
 data_year                    2024
 source                       CaRB3 stock model v3.1
-
-import_capacity              25 MW
-export_capacity              0 MW
-connection_voltage           33 kV
-onsite_generation_capacity   0 MW
 ```
 
-### 1.2 `premise_energy` (§3.1.1)
+### 1.2 `premise_connection` (§3.1.3)
+
+A single electricity connection, so `connection_id` may be omitted everywhere downstream
+and the defaults apply. A works with a second supply serving, say, the cement mills would
+carry a second row here — and its headroom would be assessed separately, never added to
+the first.
+
+| `connection_id` | `carrier` | `is_default` | `import_capacity` | `export_capacity` | `connection_voltage` | `metering_type` |
+|---|---|---|---|---|---|---|
+| `C-01` | electricity | true | 25 MW | 0 MW | 33 kV | half_hourly |
+
+### 1.3 `premise_energy` (§3.1.1)
 
 | `commodity_id` | `vector` | `quantity` (PJ/yr) | `data_status` |
 |---|---|---|---|
@@ -47,7 +53,7 @@ onsite_generation_capacity   0 MW
 | `fuel_oil` | oil | 0.00 | **not_consumed** |
 | — | biomass | — | **row absent — not assessed** |
 
-**Total 4.38 PJ/yr.** Three things this table shows that the previous wide format could
+**Total 4.38 PJ/yr**, all through the single connection `C-01`. Three things this table shows that the previous wide format could
 not:
 
 1. **Waste-derived fuel is just a row.** Cement kilns co-fire substantial quantities of
@@ -60,7 +66,7 @@ not:
    Carrier coverage for this premise is therefore recorded as incomplete and reported in
    §8.5 (§3.1.1, absence rule).
 
-### 1.3 `premise_throughput` (§3.1.2)
+### 1.4 `premise_throughput` (§3.1.2)
 
 | `commodity_id` | `quantity` (Mt/yr) | `data_status` |
 |---|---|---|
@@ -68,7 +74,7 @@ not:
 
 Required, because `Cement Works` carries a mass-denominated process (D5).
 
-### 1.4 `premise_process_detail` (§3.10) — D10 tier 1
+### 1.5 `premise_process_detail` (§3.10) — D10 tier 1
 
 From the site's environmental permit:
 
@@ -85,7 +91,7 @@ Six rows, so this is the site's **complete** process list (§3.10 completeness r
 the kiln carries a capacity and a named technology; the rest are listed to establish that
 they exist and nothing more.
 
-### 1.5 `premise_measured_emissions` (§3.11)
+### 1.6 `premise_measured_emissions` (§3.11)
 
 From the site's UK ETS account, 2024:
 
@@ -96,7 +102,7 @@ From the site's UK ETS account, 2024:
 
 Parts sum to 743 kt, consistent to within the 1% rule.
 
-### 1.6 `premise_operating_profile` (§3.12)
+### 1.7 `premise_operating_profile` (§3.12)
 
 ```
 operating_pattern            continuous
@@ -109,7 +115,7 @@ profile_basis                half_hourly
 confidence                   high
 ```
 
-### 1.7 `process_load_shape` (§3.13)
+### 1.8 `process_load_shape` (§3.13)
 
 | `process_id` | `shape_class` | `duty_factor` | `peak_to_mean` | `runs_when_idle` |
 |---|---|---|---|---|
@@ -278,8 +284,8 @@ the kiln for free. This is the single clearest argument for extension 1.
 
 ## 11. The same premise, without site intelligence
 
-Identical `premise_record`, `premise_energy` and `premise_throughput`; §1.4 to §1.7
-withheld. This section is deliberately shorter than the walkthrough above — it is not a
+Identical `premise_record`, `premise_energy`, `premise_connection` and
+`premise_throughput`; §1.5 to §1.8 withheld. This section is deliberately shorter than the walkthrough above — it is not a
 second example, but the same one re-run to isolate what the optional inputs contribute.
 
 | Step | With intelligence (tier 1) | Without (tier 3) |
