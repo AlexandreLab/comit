@@ -59,7 +59,7 @@ section that defines them:
 | `A1`–`A9` | Algorithms — the processing steps, in order | §4 |
 | `S1`–`S9` | Stages — the pipeline components that run those algorithms | §2.1 |
 | `C1`–`C9` | Constraints of the per-premise optimisation | §5.5 |
-| `V1`–`V15` | Validation tests and acceptance criteria | §10 |
+| `V1`–`V16` | Validation tests and acceptance criteria | §10 |
 | `D1`–`D10` | Design decisions | [Vision doc §6](2026-08-19-carb3-site-decarbonisation-vision.md) |
 
 **The algorithms at a glance**, since §1.6 refers to several of them before §4 arrives:
@@ -139,7 +139,7 @@ results are keyed on it and cannot be compared over time otherwise.
 | `latitude`, `longitude` | degrees | Assigns the premise to one of the 9 GB clusters (A1 step 11), which determines H₂/CO₂ availability (D7) | No infrastructure scenario can be applied |
 | `nation` | enum | Enforces GB scope (D8) | NI premises contaminate GB aggregates |
 | `data_year` | year | Provenance; anchors the baseline in time | Results cannot be dated or rebased |
-| `source` | — | Provenance; supports the confidence reporting in §8.5 | Result quality cannot be characterised |
+| `source` | — | Provenance; supports the confidence reporting in §8.6 | Result quality cannot be characterised |
 
 **The five energy vectors must be supplied separately.** A single total-energy figure is
 not sufficient: A4 back-solves existing capacity by matching each vector to the
@@ -154,7 +154,7 @@ another row. Two consequences for the stock model:
   `data_status = not_consumed` where a carrier genuinely is not used.
 - **An absent row means "not assessed", not "zero".** The distinction is preserved
   deliberately, and premises with incomplete carrier coverage are reported as such
-  (§8.5). Absence should be a last resort.
+  (§8.6). Absence should be a last resort.
 
 #### 1.6.3 Required for some premises
 
@@ -231,7 +231,7 @@ provide:
 5. **Consistent vintage** — a batch should share a `data_year`, or carry the differences
    explicitly. Mixed vintages silently distort GB aggregates.
 6. **Coverage stated, not implied.** The batch should say what fraction of the
-   Factory-class stock it represents, since §8.5 reports results against it and A9
+   Factory-class stock it represents, since §8.6 reports results against it and A9
    compares aggregates to ECUK/GHGI.
 
 #### 1.6.7 What happens when a requirement is not met
@@ -379,7 +379,7 @@ decarbonisation options. So:
 - A carrier **known not to be consumed** is stated explicitly: `quantity = 0` with
   `data_status = not_consumed`.
 - A carrier that was **not assessed** is simply absent, and any result for that premise
-  is reported as having incomplete carrier coverage (§8.5).
+  is reported as having incomplete carrier coverage (§8.6).
 
 The stock model should aim to state all five main vectors for every premise, whether by a
 positive quantity or an explicit zero. Absence is a last resort, not the default.
@@ -503,7 +503,7 @@ Mirrors the cost provenance tiers of D6, and maps to `confidence` the same way.
 | `fallback` | A generic profile for an activity with no breakdown available | A sibling activity's profile, or a generic light-manufacturing split | low |
 
 **Rule.** An activity profiled entirely at `fallback` tier is usable but must be flagged
-in outputs (§8.5), and its per-process results should not be published on their own —
+in outputs (§8.6), and its per-process results should not be published on their own —
 only the premise total, which is unaffected by the split.
 
 #### 3.3.3 Rules the profile must satisfy
@@ -606,7 +606,7 @@ as follows:
 
 1. Where `share_low` / `share_high` are populated, re-run the affected premises at both
    bounds and report the spread on per-process outputs. Premise totals are invariant.
-2. Report the `confidence` distribution alongside every aggregate (§8.5), so a reader can
+2. Report the `confidence` distribution alongside every aggregate (§8.6), so a reader can
    see how much of a result rests on `fallback`-tier splits.
 3. Any conclusion that flips between the low and high bound must be reported as
    unresolved, not as a finding.
@@ -880,7 +880,7 @@ attributed to the right process when the mix changes.
 
 ## 4. Algorithms
 
-*Section last updated: 2026-08-24*
+*Section last updated: 2026-08-25*
 
 Each is stated with inputs, outputs, preconditions, postconditions and failure modes.
 
@@ -906,7 +906,7 @@ PRE:    activity_process_register loaded; cluster list loaded (9 GB clusters)
 10a.   IF ANY energy_rows.vector INCONSISTENT WITH commodity_category:
 10b.       REJECT r REASON "vector_commodity_mismatch"; CONTINUE
 10c.   RECORD carrier_coverage(r) := which of the five main vectors have a row
-              (positive or an explicit not_consumed zero)  -- §3.1.1, reported in §8.5
+              (positive or an explicit not_consumed zero)  -- §3.1.1, reported in §8.6
 11.    r.cluster_id := nearest cluster to (r.latitude, r.longitude) among the 9
 12.    r.cluster_distance := distance to that cluster
 13.    IF activity requires mass denominator AND premise_throughput HAS NO ROW for r:
@@ -1165,7 +1165,7 @@ only a scenario-parameter sweep and a convergence test.
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-08-24*
+*Section last updated: 2026-08-25*
 
 This section is the authoritative definition. Everything else serves it.
 
@@ -1437,6 +1437,12 @@ $x_t \le \overline{P}^{\text{export}}$. This changes the sign convention story: 
 objective acquires a genuinely negative term, so any implementation must not assume cost
 components are non-negative — a trap V6 already records for emissions.
 
+**Where this surfaces.** The `Network` table (§8.5) already defines how these quantities
+are reported, and §8.5.1 recommends emitting them with `is_enforced = false` **before**
+the constraint exists — deriving the peak from the pathway the optimiser chose and
+reporting the headroom against the connection. That makes the model's blind spot visible
+at the cost of a reporting step rather than a formulation change.
+
 **Sequencing.** Both extensions are per-premise and therefore compatible with D2 — a
 connection capacity is a property of one site, not shared between sites. Neither should
 be attempted before Phase 2, and both should be specified against real load-factor
@@ -1658,13 +1664,82 @@ Values in kt; negative permitted for the `Negative` category.
 ### 8.4 `Costs`
 
 As `Outputs`, plus `cost_type` ∈ {`Capex`, `Capex_lump`, `Opex`, `Fuel cost`,
-`Carbon cost`, `Infrastructure tariff`}. Values in £m per period, un-discounted and
-rebased to `base_price_year`.
+`Carbon cost`, `Infrastructure tariff`, `Network reinforcement`, `Export revenue`}.
+Values in £m per period, un-discounted and rebased to `base_price_year`.
 
 **`Capex` and `Capex_lump` are two views of the same money** — annuitised stream and
 build-year spike. Never sum them.
 
-### 8.5 Run metadata
+**`Network reinforcement` and `Export revenue` appear only once §5.6's extensions are
+implemented**, and `Export revenue` is **negative** — it is income. This is the second
+place after emissions where a blanket non-negativity assertion would falsely fail on
+correct output, which is why V6 states non-negativity as a prohibition on cost as well as
+on emissions.
+
+### 8.5 `Network` — power quantities in MW
+
+**Why this is a separate table and not columns on the others.** The four tables above are
+keyed premise × process × technology × period, and their values are energy, emissions or
+money. A connection capacity is none of those things: it is a **premise-level fact in
+MW**, and putting it on `Outputs` would repeat one value across every technology row at
+that premise, inviting exactly the double-counting §8.4 warns about for capex. The
+existing tables are already separated by unit family — PJ, kt, £m — so MW gets its own,
+following the same rule.
+
+Long in dimensions, wide in periods, as elsewhere.
+
+| Field | Type | Note |
+|---|---|---|
+| `premise_id` | string | |
+| `cluster_id` | string | One of 9 |
+| `process_id` | string | **Optional.** Present on per-process peak contributions; absent on whole-premise rows |
+| `network_metric` | enum | See the table below |
+| `basis` | enum{measured, derived_from_profile, derived_from_schedule, activity_default} | How the value was arrived at — the §5.6 tiers. `measured` only where `premise_operating_profile` supplied it |
+| `is_enforced` | boolean | Whether the value constrained the solve, or was computed and reported only. See below |
+| `confidence` | enum | Lowest of the shape and profile confidence contributing to it |
+| `⟨period⟩_MW` | real | The value in that period |
+
+**The metrics.**
+
+| `network_metric` | Meaning |
+|---|---|
+| `import_capacity` | The connection's agreed import capacity, as supplied (§3.1) |
+| `export_capacity` | Agreed export capacity; 0 where export is not permitted |
+| `peak_demand_electricity` | Modelled electrical peak in that period, from the §5.6 derivation |
+| `peak_demand_baseline` | The baseline-year peak, measured where available — the calibration anchor of §5.6 |
+| `headroom` | `import_capacity + reinforcement − peak_demand_electricity`. **Negative means the pathway exceeds the connection** |
+| `reinforcement_required` | Additional capacity the pathway implies, i.e. `max(0, −headroom)` before any reinforcement |
+| `reinforcement_purchased` | Reinforcement actually taken, once extension 1 makes this a decision variable. Equals `reinforcement_required` while the model only reports |
+| `onsite_generation` | Installed generation capacity |
+| `exported_power` | Peak power exported, bounded by `export_capacity` |
+
+**Per-process rows are diagnostic.** Where `process_id` is present the row carries that
+process's own peak contribution *before* diversification (§5.6 step 8), which is what
+tells a reader which process drives a site's peak. They therefore **sum to more than** the
+whole-premise `peak_demand_electricity` row, and must not be added to reach a site total.
+
+**Money and energy stay in their own tables.** Reinforcement cost is a cost, so it belongs
+in §8.4 as a `cost_type`, not here. Exported *energy* in PJ belongs in §8.2; only exported
+*power* in MW appears here.
+
+#### 8.5.1 Report before you constrain
+
+`is_enforced` exists because this table is useful **before** extension 1 is built, and
+that is the recommended sequencing.
+
+With the constraint unimplemented, the model can still derive a peak from the pathway it
+chose and compare it against the connection. A premise whose least-cost pathway implies
+128 MW against a 25 MW connection is a finding worth surfacing immediately, even though
+the optimiser was not told it could not do that. Emitting these rows with
+`is_enforced = false` makes the model's blind spot visible instead of invisible.
+
+**Rule.** While `is_enforced = false`, a negative `headroom` means the pathway is
+**not deliverable as costed** — the reinforcement it implies has not been priced into the
+result. Any such premise must be flagged in §8.6 and must not be reported as a completed
+least-cost pathway without that caveat. When extension 1 lands, the same rows switch to
+`is_enforced = true` and `headroom` becomes non-negative by construction.
+
+### 8.6 Run metadata
 
 Every output set carries:
 
@@ -1679,6 +1754,8 @@ Every output set carries:
 | Count of premises with **incomplete carrier coverage** (§3.1.1) | Where a vector was never assessed, so absence is not zero |
 | Count of premises reporting `capacity_energy_inconsistent`, `utilisation_schedule_inconsistent`, `profile_energy_inconsistent` | Input disagreements surfaced by V12 and V14 |
 | Aggregate **measured-emissions divergence** and the count of premises calibrated (§7.6) | Required by V13 |
+| Count of premises whose pathway **exceeds their connection** — negative `headroom` in any period (§8.5) | While the constraint is unenforced these pathways are not deliverable as costed |
+| Total `reinforcement_required` across the run, in MW | The network investment the pathway implies but has not priced |
 | Any validation test **deferred** rather than passed, with its reason (§11.5) | A deferred test must never read as a passed one |
 
 **Rule.** Several sections promise that a condition is "reported" rather than corrected —
@@ -1769,7 +1846,7 @@ implemented from this section alone:
 **Blocking has a specific meaning here.** A *blocking* failure stops the thing it
 guards — a load-time test stops the reference data being loaded, a per-premise test
 rejects that premise, a release test stops the release. An *advisory* failure is
-recorded, attached to the affected outputs, and reported in aggregate (§8.5); the run
+recorded, attached to the affected outputs, and reported in aggregate (§8.6); the run
 continues. Advisory does not mean optional: an unreported advisory failure is a defect.
 
 The distinction matters because this model runs at stock scale. A blocking test that
@@ -1882,7 +1959,7 @@ carrier table is internally coherent.
 **On failure.** Conservation failures point at the profile, not the allocation: either
 shares that do not sum to 1 (V4), or an R2 renormalisation that divided by a zero
 denominator. Note that carrier coverage is **recorded, not asserted** — an incomplete
-premise is reported (§8.5), never rejected.
+premise is reported (§8.6), never rejected.
 
 #### V4 — Profile integrity
 
@@ -2226,13 +2303,46 @@ the subtle one — a representative week is typical by construction, so its maxi
 below the annual maximum, and treating the week's peak as the site peak understates it,
 substantially for seasonal processes.
 
+#### V16 — Network reporting coherence
+
+**Checks.** That the MW quantities in the `Network` table are internally consistent, and
+that an unenforced connection limit is never mistaken for a satisfied one.
+
+**Scope.** Batch. **Blocking.** No — advisory, but blocking for publication of any
+premise with negative headroom.
+
+**Procedure.**
+
+```
+1. FOR EACH premise and period:
+       ASSERT headroom = import_capacity + reinforcement_purchased
+                          - peak_demand_electricity
+2. ASSERT exported_power <= export_capacity.
+3. ASSERT the baseline period's peak_demand_electricity reconciles with
+   peak_demand_baseline within the §5.6 calibration tolerance.
+4. Per-process rows: ASSERT their sum >= the whole-premise peak row, since
+   they are pre-diversification contributions (§8.5).
+5. IF is_enforced = false AND headroom < 0:
+       FLAG the premise as not deliverable as costed; count it in §8.6.
+6. IF is_enforced = true: ASSERT headroom >= 0 for every premise and period.
+```
+
+**Pass criterion.** Steps 1–4 hold; step 5 produces a flag and a count; step 6 holds
+whenever the constraint is enforced.
+
+**On failure.** A step 4 violation means diversification was applied twice, or the
+per-process rows were written post-diversification — either way the table cannot answer
+which process drives the peak. Step 5 is the one that matters before extension 1 exists:
+its failure mode is a premise quietly reported as a completed least-cost pathway when the
+reinforcement it implies was never priced.
+
 ### 10.4 What runs when
 
 | Stage | Tests |
 |---|---|
 | Reference data load | V3 (uniqueness, vector agreement), V4, V11 (structure), V14 (internal coherence), V15 (steps 1–5) |
 | Per premise | V2, V3 (conservation), V6, V11 (tier resolution), V12, V13 (comparison), V14 (A4 cross-check) |
-| Per batch | V8, V9, V13 (aggregate) |
+| Per batch | V8, V9, V13 (aggregate), V16 |
 | Per release | V1, V5, V7, V10, V15 (step 6) |
 
 **Every test gates a phase.** §11 assigns each of the fifteen to the phase that builds
@@ -2241,9 +2351,9 @@ what it guards, and a test stays in force once introduced:
 | Phase | Tests first gating here |
 |---|---|
 | 1 — Architecture | V1, V2, V3, V4, V6, V7 (G1–G2), V10, V11; V12 and V14 conditionally (§11.5) |
-| 2 — Scenarios and aggregation | V8, V9, V13; V12 and V14 if deferred |
+| 2 — Scenarios and aggregation | V8, V9, V13, V16; V12 and V14 if deferred |
 | 3 — Process taxonomy | V5, V15; V4 re-run across the new processes |
-| 4 — Full coverage | V7 (G3), and all of V1–V15 re-run on the full stock |
+| 4 — Full coverage | V7 (G3), and all of V1–V16 re-run on the full stock |
 
 A test whose inputs do not exist in its phase is **deferred with the reason recorded**,
 never marked passed — see §11.5.
@@ -2313,6 +2423,7 @@ in Phase 1 costs a fix; finding it in Phase 4 invalidates every run made in betw
 | **V8** | GB aggregates are compared against ECUK/GHGI and divergence is reported |
 | **V9** | Every clustered energy-intensive premise is run under at least two bounding scenarios, and the spread is reported |
 | **V13** | Measured emissions reconcile the baseline without overwriting it |
+| **V16** | Network quantities are coherent, and any premise exceeding its connection is flagged rather than reported as complete (§8.5.1). Deferred per §11.5 if network reporting is not yet emitted |
 | **V12**, **V14** | If deferred from Phase 1, they pass here — no further deferral |
 
 Plus: a two-scenario spread is produced and reviewed for the clustered energy-intensive
@@ -2356,7 +2467,7 @@ table that is about to change.
 | Test | What it establishes here |
 |---|---|
 | **V7** | G3 passes at full stock scale, or the archetype fallback is triggered (§9.2) |
-| **All of V1–V15** | Re-run on the full stock; nothing regressed as coverage widened |
+| **All of V1–V16** | Re-run on the full stock; nothing regressed as coverage widened |
 
 Plus: a complete GB run is produced with its confidence profile.
 
