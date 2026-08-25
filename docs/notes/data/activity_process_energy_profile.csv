@@ -1,0 +1,491 @@
+carb3_activity,process_set_id,process_id,vector,energy_share,share_low,share_high,evidence_tier,provenance,confidence
+Abattoir / Slaughter House,default,compressed_air,electricity,0.1,,,published_sec,"[FOYLE_EA] Sub-metered compressors 105,393 kWh of 935,236 kWh ≈ 11% (Table 1.2)",medium
+Abattoir / Slaughter House,default,refrigeration_chilling,electricity,0.5,0.44,0.65,published_sec,"[DECC2015FD] Meat/poultry/fish processing refrigeration = 50% of electricity (Section 3.2.7, p35); BREF range 45-90% (Exec Summary p ii); Foyle sub-metering shows 44% (Table 1.2)",high
+Abattoir / Slaughter House,default,site_services,electricity,0.2,,,engineering,[FOYLE_EA] Lighting + office + canteen ≈14% plus unmonitored 6% at Foyle (Table 1.2),medium
+Abattoir / Slaughter House,default,slaughter_line_processing,electricity,0.2,,,engineering,[FOYLE_EA] Process plantroom boards ≈24% of sub-metered load at Foyle (Table 1.2); rounded within remaining balance,medium
+Abattoir / Slaughter House,default,hot_water_sterilisation_cleaning,gas,0.85,,,engineering,[FOYLE_EA] At the evidenced UK site 100% of LPG feeds one hot-water boiler for sterilisation and cleaning (Section 1.1.2); generic allowance made for space heating,medium
+Abattoir / Slaughter House,default,site_services,gas,0.15,,,engineering,Space heating of amenity/office areas at larger sites,medium
+Aggregate/Mineral Processing Plant / Depot,default,conveying,electricity,0.05,,,published_sec,"[DOE_STONE] Table 9-3, p.9-9: conveying 165 of 3,152 Btu/ton.",medium
+Aggregate/Mineral Processing Plant / Depot,default,crushing,electricity,0.84,,,published_sec,"[DOE_STONE] Table 9-3, p.9-9 (processing operations only, which is exactly the scope of this activity): crushing 2,655 of 3,152 Btu/ton electric.",medium
+Aggregate/Mineral Processing Plant / Depot,default,screening,electricity,0.11,,,published_sec,"[DOE_STONE] Table 9-3, p.9-9: screening 332 of 3,152 Btu/ton.",medium
+Aggregate/Mineral Processing Plant / Depot,default,mobile_plant,oil,1.0,,,engineering,"[NSSGA_GHG] Engineering rationale: with no extraction, drilling or long-distance internal haulage, wheel loaders/material handlers are the only significant gas-oil consumers; NSSGA (p.7-8) confirms mobile equipment is the dominant fuel use at aggregates sites generally.",medium
+Aircraft works,default,machine_drive,electricity,0.29,,,published_sec,"[MECS2022_T52] MECS 2022 Table 5.2, NAICS 3364: machine drive ~9 of ~32 TBtu allocated net electricity. Transcription of this block was noisy; values reconstructed from the fetched PDF and validated against process/nonprocess subtotals and the sector total, which are mutually consistent. Sector-level US proxy.",medium
+Aircraft works,default,other_process,electricity,0.03,,,published_sec,[MECS2022_T52] NAICS 3364 other process ~1/32.,medium
+Aircraft works,default,process_cooling,electricity,0.1,,,published_sec,[MECS2022_T52] NAICS 3364 process cooling ~3/32.,medium
+Aircraft works,default,process_heating,electricity,0.13,,,published_sec,[MECS2022_T52] NAICS 3364 process heating electricity ~4/32 (same reconstruction caveat).,medium
+Aircraft works,default,site_services,electricity,0.45,,,published_sec,[MECS2022_T52] NAICS 3364 facility HVAC ~8 + lighting 5 + other facility ~1 = ~14/32; aerospace is notably site-services-heavy versus other manufacturing.,medium
+Aircraft works,default,other_process,gas,0.04,,,published_sec,[MECS2022_T52] NAICS 3364 other process gas ~1/28.,medium
+Aircraft works,default,process_heating,gas,0.22,,,published_sec,"[MECS2022_T52] NAICS 3364 natural gas process heating ~6 of ~28 TBtu allocated (autoclaves, heat treatment, ovens); reconstruction validated against subtotals.",medium
+Aircraft works,default,site_services,gas,0.08,,,published_sec,[MECS2022_T52] NAICS 3364 other facility support ~1 + other nonprocess ~1 = ~2/28.,medium
+Aircraft works,default,space_heating,gas,0.33,,,published_sec,[MECS2022_T52] NAICS 3364 facility HVAC gas ~9/28.,medium
+Aircraft works,default,steam_hot_water,gas,0.33,,,published_sec,[MECS2022_T52] NAICS 3364 indirect boiler (~4) + CHP (~5) = ~9/28.,medium
+Aluminium Smelting Works,default,anode_production_baking,electricity,0.02,,,engineering,[LBNL_AL2016] Electrical fraction of ~1.6 GJ/t anode production (Section 2.2.3); mostly fuel-fired baking.,medium
+Aluminium Smelting Works,default,cast_house,electricity,0.03,,,engineering,[LBNL_AL2016] Cast house drives/fans portion of ~1 GJ/t casting energy (Section 2.2.4).,medium
+Aluminium Smelting Works,default,electrolysis_potlines,electricity,0.9,0.85,0.95,engineering,"[LBNL_AL2016] Derived from published step intensities: electrolysis ~13,000 kWh/t vs casting ~278 kWh/t and anode ~444 kWh/t (Sections 2.2.3-2.2.4); LBNL Figure 2 shows electrolysis at 83% of total primary energy including mining.",medium
+Aluminium Smelting Works,default,site_services,electricity,0.05,,,engineering,[IAI_SEI] Auxiliaries beyond the IAI smelting-AC boundary (casting and carbon plants excluded from that metric) plus general services; rated-equipment logic.,medium
+Aluminium Smelting Works,default,anode_production_baking,gas,0.35,,,engineering,[LBNL_AL2016] Anode baking furnaces are fuel-fired; ~1.6 GJ/t anode at ~0.45 t anode per t Al gives a gas demand comparable to but below cast house.,medium
+Aluminium Smelting Works,default,cast_house,gas,0.55,,,engineering,[LBNL_AL2016] Gas-fired holding/casting furnaces (~1 GJ/t) are the main site gas users where an anode plant is small or absent; electrolysis itself uses no gas.,medium
+Aluminium Smelting Works,default,site_services,gas,0.1,,,engineering,Space heating of pot rooms is minimal (process heat rejection) but workshops/offices take a small share; engineering rationale.,medium
+Artificial Fibre Works,default,compressed_air,electricity,0.05,,,engineering,Typical industrial compressed-air share; interlacing jets.,medium
+Artificial Fibre Works,default,drawing_texturing,electricity,0.15,,,engineering,Draw/texturing machine drives and heaters where fitted; rated-equipment logic.,medium
+Artificial Fibre Works,default,polymer_melt_extrusion,electricity,0.3,,,engineering,[POLBREF2007] Extruder drives and electrically heated barrels/spin beams are the largest rated process loads; BREF cited document level only.,medium
+Artificial Fibre Works,default,site_services,electricity,0.1,,,engineering,"Lighting, offices, ancillaries; engineering residual.",medium
+Artificial Fibre Works,default,spinning_hvac,electricity,0.2,,,engineering,Conditioned quench/hall air at high volumes; comparable to cleanroom-style HVAC loads in fibre halls (engineering).,medium
+Artificial Fibre Works,default,spinning_quench_winding,electricity,0.2,,,engineering,"High-speed winders, godets and quench fans; rated-equipment logic.",medium
+Artificial Fibre Works,default,chip_drying,gas,0.25,,,engineering,Steam/hot air for chip drying and heat setting; engineering allocation.,medium
+Artificial Fibre Works,default,polymer_melt_extrusion,gas,0.45,,,engineering,Gas-fired heat-transfer-medium heaters serving spin beams/melt lines where not electric; engineering allocation.,medium
+Artificial Fibre Works,default,site_services,gas,0.3,,,engineering,Space heating and hot water; engineering residual.,medium
+Asphalt Plant,default,aggregate_drying_heating,electricity,0.2,,,engineering,[ES_ASPHALT_2023] Drum drive and burner blower motors; rated-equipment logic.,medium
+Asphalt Plant,default,bitumen_storage_heating,electricity,0.05,,,engineering,"Binder pumps, hot-oil circulation pumps, tank agitators (some plants use electric tank heating - not assumed here); rated-equipment logic.",medium
+Asphalt Plant,default,cold_feed_conveying,electricity,0.08,,,engineering,Feeder and conveyor motors; rated-equipment logic.,medium
+Asphalt Plant,default,exhaust_baghouse,electricity,0.3,,,engineering,"[ES_ASPHALT_2023] Electricity is 4% of plant energy (3.32 kWh/ton, Section 1.2, p.8) but no published sub-split; the exhaust/baghouse fan is the largest motor at HMA plants. Rated-equipment logic.",medium
+Asphalt Plant,default,loadout_storage,electricity,0.07,,,engineering,Silo drag conveyors and load-out; rated-equipment logic.,medium
+Asphalt Plant,default,screening_mixing,electricity,0.15,,,engineering,"Hot elevator, screens and pugmill drives (batch plants); rated-equipment logic.",medium
+Asphalt Plant,default,site_services,electricity,0.15,,,engineering,"Control cabin, compressed air, lighting; typical auxiliary allowance.",medium
+Asphalt Plant,default,aggregate_drying_heating,gas,0.87,,,published_sec,"[ES_ASPHALT_2023] Figure 4, p.8: burner fuel 80% and hot oil heater 12% of total plant energy; renormalised over the two gas-fired heat uses (80/92) for the gas vector. US source.",medium
+Asphalt Plant,default,bitumen_storage_heating,gas,0.13,,,published_sec,"[ES_ASPHALT_2023] Figure 4, p.8: hot oil heater 12% of total energy; renormalised (12/92) for the gas vector.",medium
+Asphalt Plant,default,aggregate_drying_heating,oil,0.83,,,published_sec,"[ES_ASPHALT_2023] Figure 4, p.8 non-electric split (burner 80 / hot oil 12 / equipment 4, renormalised over 96) applied to an oil-fired plant; 'most dryer burners can burn liquid and gaseous fuels' (Section 4.1, p.25).",medium
+Asphalt Plant,default,bitumen_storage_heating,oil,0.13,,,published_sec,"[ES_ASPHALT_2023] Figure 4, p.8: hot oil heater share renormalised over non-electric energy (12/96).",medium
+Asphalt Plant,default,mobile_plant,oil,0.04,,,published_sec,"[ES_ASPHALT_2023] Figure 4, p.8: 'Equipment' 4% of total energy (diesel yard equipment), renormalised over non-electric energy.",medium
+Beet Sugar Factory,default,lime_kiln,coal,1.0,,,published_sec,"[PBL_SUGAR] Lime kiln fired on cokes, 3.4 GJ/t lime (Table 8) — solid fuel at a beet factory is the lime kiln (historic UK boiler coal now converted to gas per British Sugar blog)",medium
+Beet Sugar Factory,default,beet_reception_preparation,electricity,0.2,,,engineering,"Fluming/washing pumps and slicers are large motor loads; rated-equipment logic (total electricity 0.557 GJ/t sugar, PBL Table 2)",low
+Beet Sugar Factory,default,crystallisation_sugar_house,electricity,0.25,,,engineering,Centrifugals and vacuum systems; rated-equipment logic,low
+Beet Sugar Factory,default,extraction_diffusion,electricity,0.1,,,engineering,Diffuser drives and juice pumping; rated-equipment logic,low
+Beet Sugar Factory,default,pulp_pressing_drying,electricity,0.25,,,engineering,Pulp presses and dryer fans; rated-equipment logic,low
+Beet Sugar Factory,default,site_services,electricity,0.2,,,engineering,"Lighting, compressed air, water/effluent treatment",low
+Beet Sugar Factory,default,crystallisation_sugar_house,gas,0.15,,,engineering,"[PBL_SUGAR] Vacuum pan steam within the 64% steam share; allocation by engineering rationale (heat-integrated plant, no published sub-split)",low
+Beet Sugar Factory,default,evaporation,gas,0.34,,,engineering,[PBL_SUGAR] Steam demand 2.805 GJ/t sugar (Table 2) vs pulp-drying gas ≈1.8 GJ/t sugar (Table 3 × pulp yield) gives ~64:36 steam:drying; evaporation taken as the largest steam sink within the heat-integrated train,medium
+Beet Sugar Factory,default,extraction_diffusion,gas,0.1,,,engineering,[PBL_SUGAR] Juice heating/diffusion steam within the steam share; engineering rationale,low
+Beet Sugar Factory,default,pulp_pressing_drying,gas,0.36,0.3,0.42,engineering,[PBL_SUGAR] 6.10 GJ gas/t dry pulp (Table 3) × ~0.29 t dry pulp/t sugar ≈ 1.8 GJ/t sugar vs 3.1 GJ gas for steam; range reflects sites selling pressed pulp undried,medium
+Beet Sugar Factory,default,site_services,gas,0.05,,,engineering,Space heating and miscellaneous hot water,low
+Brewery,default,brewhouse,electricity,0.07,,,published_sec,[BA_ENERGY] p6 chart: brewhouse 7%,medium
+Brewery,default,compressed_air,electricity,0.1,,,published_sec,[BA_ENERGY] p6 chart: compressed air 10%,medium
+Brewery,default,packaging,electricity,0.25,,,published_sec,[BA_ENERGY] p6 chart: packaging 25% (US data),medium
+Brewery,default,refrigeration,electricity,0.35,,,published_sec,"[BA_ENERGY] Chart 'Energy Consumption In Breweries (All Sizes)', p6: refrigeration 35%; independently matched by DECC2015FD (35% for breweries, Section 3.2.7 p35)",high
+Brewery,default,site_services,electricity,0.23,,,published_sec,[BA_ENERGY] p6 chart: lighting 6% + boiler house 5% + other 12% merged,medium
+Brewery,default,brewhouse,gas,0.45,,,published_sec,"[BA_ENERGY] p6 chart, natural gas end uses: brewhouse 45%",medium
+Brewery,default,cip_utilities,gas,0.2,,,published_sec,[BA_ENERGY] p6 chart: utilities 20%,medium
+Brewery,default,packaging,gas,0.25,,,published_sec,[BA_ENERGY] p6 chart: packaging (pasteurising/washing) 25%,medium
+Brewery,default,site_services,gas,0.1,,,published_sec,[BA_ENERGY] p6 chart: space heating 10%,medium
+Brickworks / clay tile/pipe works,default,clay_preparation,electricity,0.3,,,engineering,[DECC_CERAMIC_2015] No published electricity split found for brickworks; grinding/mixing drives are the largest motor group (particle size reduction named in Section 3.2.1). Rated-equipment logic.,medium
+Brickworks / clay tile/pipe works,default,drying,electricity,0.2,,,engineering,[ZI_BRICK_EE_P1] Dryer circulation/recirculation fans run continuously and are a recognised major electrical load in heavy clay plants; rated-equipment logic.,medium
+Brickworks / clay tile/pipe works,default,kiln_firing,electricity,0.15,,,engineering,"[ZI_BRICK_EE_P1] Kiln combustion-air, exhaust and cooling fans plus kiln car traction; rated-equipment logic.",medium
+Brickworks / clay tile/pipe works,default,setting_handling,electricity,0.08,,,engineering,"Setting/dehacking robots and packaging lines; intermittent duty, modest share. Rated-equipment logic.",medium
+Brickworks / clay tile/pipe works,default,shaping_extrusion,electricity,0.15,,,engineering,[DECC_CERAMIC_2015] Vacuum extruders are large continuous motor loads; rated-equipment logic.,medium
+Brickworks / clay tile/pipe works,default,site_services,electricity,0.12,,,engineering,"Compressed air, lighting, offices; typical auxiliary allowance.",medium
+Brickworks / clay tile/pipe works,default,drying,gas,0.27,0.17,0.37,engineering,"[DECC_CERAMIC_2015] Complement of the kiln share; dryer heat demand is large (Zi article Figure 3 notes dryer heat can even exceed kiln heat for high-moisture clay blocks) but at UK works is partly met by cascaded kiln waste heat, reducing metered dryer gas.",medium
+Brickworks / clay tile/pipe works,default,kiln_firing,gas,0.7,0.6,0.8,engineering,"[DECC_CERAMIC_2015] Engineering split. DECC Figure 10 shows kiln firing dominating fuel use with the dryer a notable second; benchmark SEC ranges (IEE_EGYPT_CERAMICS Table 6, p.30: drying 0.25-0.75 GJ/t vs tunnel-kiln firing several GJ/t) support ~2-3x firing:drying. Range reflects plants where kiln waste heat displaces most dryer gas (share higher) vs stand-alone dryers (lower).",medium
+Brickworks / clay tile/pipe works,default,site_services,gas,0.03,,,engineering,[DECC_CERAMIC_2015] Small allowance for space heating of workshops/offices; no published figure.,medium
+Brickworks / clay tile/pipe works,default,clay_extraction_mobile_plant,oil,1.0,,,engineering,"Engineering: dryers and kilns fire on gas at UK works, so metered oil/gas-oil is attributed to pit mobile plant. A site with an oil-fired kiln needs premise_process_detail. Scoping decision 2026-08-24 (A. Canet): mobile plant and mobile machinery diesel are IN scope of premise_energy and must be captured in the profile.",medium
+Cement Tile Works,default,batching_mixing,electricity,0.2,,,fallback,[LBNL_CONCRETE_2011] As sibling 'Concrete Block Works' mixing share.,low
+Cement Tile Works,default,coating_finishing,electricity,0.1,,,fallback,"Coating line pumps and driers; no direct evidence, sized as a minor line load.",low
+Cement Tile Works,default,curing_chambers,electricity,0.1,,,fallback,"Chamber fans, boiler auxiliaries and rack transfer; as sibling curing auxiliary share.",low
+Cement Tile Works,default,depalletting_packaging,electricity,0.15,,,fallback,"Pallet circulation, depalletter and packaging lines; adapted from sibling handling/packaging shares.",low
+Cement Tile Works,default,extrusion_pressing,electricity,0.3,,,fallback,[LBNL_CONCRETE_2011] Adapted from the 'Concrete Block Works' engineering split (block machine 0.35) with the extruder as dominant motor load.,low
+Cement Tile Works,default,site_services,electricity,0.15,,,fallback,"Compressed air, lighting, offices; as sibling auxiliary allowance.",low
+Cement Tile Works,default,curing_chambers,gas,0.85,,,fallback,"[LBNL_CONCRETE_2011] Borrowed from sibling activity 'Concrete Product Works' (precast): 85% of gas to curing boiler, 15% building heat (Table 5, p.12). No tile-specific breakdown located.",low
+Cement Tile Works,default,site_services,gas,0.15,,,fallback,"[LBNL_CONCRETE_2011] Borrowed from 'Concrete Product Works' (building heat share, Table 5, p.12).",low
+Cement Tile Works,default,mobile_plant,oil,1.0,,,fallback,"[LBNL_CONCRETE_2011] Borrowed from sibling activity 'Concrete Block Works': site diesel is forklift/loader fuel (Table 4, p.11).",low
+Cement Works,default,kiln_pyroprocessing,biomass,1.0,,,published_sec,"[DECC_CEMENT_2015] Section 3.3.4/Figure 7: biomass-derived waste fuels (~18% of fuel input, 2012) are co-fired in the kiln system only.",high
+Cement Works,default,kiln_pyroprocessing,coal,1.0,,,published_sec,"[ES_CEMENT_2013] Section 3.3, p.7: clinker production takes 'virtually all of the fuel use'; DECC Cement Report Section 3.3.3 confirms the kiln is ~three quarters of all site energy in the UK, and coal is >50% of UK kiln fuel (Section 3.3.4).",high
+Cement Works,default,cement_grinding,electricity,0.38,,,published_sec,"[ES_CEMENT_2013] Section 3.3, p.9: cement grinding 38% of electricity.",medium
+Cement Works,default,kiln_pyroprocessing,electricity,0.22,,,published_sec,"[ES_CEMENT_2013] Section 3.3, p.9: clinker production incl. grinding of solid fuels 22% of electricity (includes kiln drives, ID/cooler fans).",medium
+Cement Works,default,packing_dispatch,electricity,0.05,,,published_sec,"[ES_CEMENT_2013] Section 3.3, p.9: conveying and packaging 5% of electricity.",medium
+Cement Works,default,quarrying_crushing,electricity,0.05,,,published_sec,"[ES_CEMENT_2013] Section 3.3, p.9: raw material extraction 5% of electricity in dry kiln plants (US data).",medium
+Cement Works,default,raw_grinding_blending,electricity,0.24,,,published_sec,"[ES_CEMENT_2013] Section 3.3, p.9: raw material grinding 24% of electricity.",medium
+Cement Works,default,raw_meal_homogenisation,electricity,0.06,,,published_sec,"[ES_CEMENT_2013] Section 3.3, p.9: raw material homogenization 6% of electricity.",medium
+Cement Works,default,kiln_pyroprocessing,gas,1.0,,,published_sec,"[ES_CEMENT_2013] Same 'virtually all fuel' statement (Section 3.3, p.7); gas is a minor kiln/warm-up fuel at UK works.",medium
+Cement Works,default,kiln_pyroprocessing,oil,0.2,0.05,0.4,engineering,[ES_CEMENT_2013] Oil at cement works is kiln start-up/support firing only; share of metered oil reduced from 1.0 after quarry mobile plant was brought into scope (Scoping decision 2026-08-24 (A. Canet): mobile plant and mobile machinery diesel are IN scope of premise_energy and must be captured in the profile.),medium
+Cement Works,default,quarry_mobile_plant,oil,0.8,0.6,0.95,engineering,Engineering: quarry haulage/loading diesel dominates gas-oil use at integrated works (cf. [DOE_STONE] ~50% of quarry energy is haulage diesel); kiln oil confined to start-up. Scoping decision 2026-08-24 (A. Canet): mobile plant and mobile machinery diesel are IN scope of premise_energy and must be captured in the profile.,medium
+Cement Works,default,kiln_pyroprocessing,other,1.0,,,published_sec,"[DECC_CEMENT_2015] Section 3.3.4: waste-derived fuels (~40% of fuel input, 2012) are fired in the kiln/precalciner only.",high
+Chemical Works,default,electrochemical_processes,electricity,0.1,,,engineering,"[DOECHEM2015] Sector-average allowance (Fig 2-6 p13); zero at most individual sites, large at chlor-alkali.",medium
+Chemical Works,default,process_machine_drives,electricity,0.5,,,engineering,[DOECHEM2015] Fig 2-6 p13: machine-driven equipment is the dominant electricity end use (no percentage published).,medium
+Chemical Works,default,refrigeration,electricity,0.15,,,engineering,[UKCHEM2015] Chillers named as a main electricity use (s3.2); engineering estimate.,medium
+Chemical Works,default,site_services,electricity,0.25,,,engineering,"Lighting, HVAC, compressed air, control rooms, labs; engineering residual.",medium
+Chemical Works,default,distillation_separation,gas,0.35,,,engineering,[DOECHEM2015] Fig 2-7 p14: steam (raised from the ~60% of fuel routed via boilers/CHP) is mostly process heating; distillation/evaporation is the largest steam sink in organic chemicals — engineering allocation.,medium
+Chemical Works,default,drying,gas,0.1,,,engineering,Engineering allowance for sites making solid products; zero at wholly fluid-product sites.,medium
+Chemical Works,default,reaction_heating,gas,0.25,,,engineering,[UKCHEM2015] Direct-fired heaters plus steam to reactors; s3.2 document level.,medium
+Chemical Works,default,site_services,gas,0.1,,,engineering,[DOECHEM2015] Facility heating/ventilation appears as a steam end use (Fig 2-7 p14).,medium
+Chemical Works,default,utilities_steam,gas,0.2,,,engineering,"[DOECHEM2015] Boiler/CHP conversion and distribution losses retained at the utility, per Fig 2-4 p10 (60% of fuel via boilers/CHP).",medium
+Coking and Carbonising Plant,default,oven_battery_carbonisation,coal,1.0,,,engineering,[IS_BREF2013] All purchased coking coal is charged to the ovens; trivially complete allocation (document level).,medium
+Coking and Carbonising Plant,default,byproduct_plant,electricity,0.4,,,engineering,"[IS_BREF2013] Document level: COG exhausters, pumps and cooling systems run continuously and are the largest motor loads on a by-product coke plant; rated-equipment logic.",medium
+Coking and Carbonising Plant,default,coal_handling_preparation,electricity,0.15,,,engineering,"[IS_BREF2013] Crushers, blending and conveying motors; rated-equipment logic (document level).",medium
+Coking and Carbonising Plant,default,coke_quenching_handling,electricity,0.15,,,engineering,"[IS_BREF2013] Quench car, screening and coke conveying motors; rated-equipment logic (document level).",medium
+Coking and Carbonising Plant,default,oven_battery_carbonisation,electricity,0.15,,,engineering,[IS_BREF2013] Charging/pushing machinery and battery ventilation; rated-equipment logic (document level).,medium
+Coking and Carbonising Plant,default,site_services,electricity,0.15,,,engineering,"Lighting, compressed air, offices; engineering rationale.",medium
+Coking and Carbonising Plant,default,oven_battery_carbonisation,gas,0.9,,,engineering,"[STET2024_COKE] Underfiring is the dominant fuel-gas demand (coking heat 51.2% of oven energy input; most plants underfire with returned COG, so any metered gas substitutes underfiring).",medium
+Coking and Carbonising Plant,default,site_services,gas,0.1,,,engineering,Space heating of workshops/offices; engineering rationale.,medium
+Concrete Block Works,default,aggregate_handling,electricity,0.1,,,engineering,Conveyor and elevator motors; rated-equipment logic.,medium
+Concrete Block Works,default,batching_mixing,electricity,0.2,,,engineering,Mixer and batcher drives; rated-equipment logic.,medium
+Concrete Block Works,default,block_machine_pressing,electricity,0.35,,,engineering,"[LBNL_CONCRETE_2011] Electricity is 13% of plant energy (9.2 kWh/yd3, Table 4/p.11) with no published sub-split; the block machine (vibration + hydraulics) is the dominant motor load. Rated-equipment logic.",medium
+Concrete Block Works,default,cubing_packaging,electricity,0.1,,,engineering,"Cuber, splitter and packaging drives; rated-equipment logic.",medium
+Concrete Block Works,default,curing_kilns,electricity,0.1,,,engineering,"Boiler auxiliaries, chamber fans and racks transfer systems; rated-equipment logic.",medium
+Concrete Block Works,default,site_services,electricity,0.15,,,engineering,"Compressed air, lighting, offices; typical auxiliary allowance.",medium
+Concrete Block Works,default,curing_kilns,gas,1.0,,,published_sec,"[LBNL_CONCRETE_2011] Table 4, p.11 attributes all natural gas (146.3 of 235.1 kBtu/yd3) to the kiln/boiler serving curing; curing is 60% of plant energy (p.11). Any space-heating gas is not separately identified.",medium
+Concrete Block Works,default,mobile_plant,oil,1.0,,,published_sec,"[LBNL_CONCRETE_2011] Table 4, p.11: diesel 57.5 kBtu/yd3 assigned to forklifts/loaders (light trucks 24% of total plant energy).",medium
+Concrete Product Works,default,batching_mixing,electricity,0.3,,,engineering,"[LBNL_CONCRETE_2011] Electricity is ~17% of overall precast energy (29 kWh/yd3, p.12) but no published sub-split; mixers and material feed are the largest continuous motor loads. Rated-equipment logic.",medium
+Concrete Product Works,default,curing,electricity,0.1,,,engineering,"Boiler auxiliaries, circulation pumps and chamber fans; rated-equipment logic.",medium
+Concrete Product Works,default,forming_casting_vibration,electricity,0.2,,,engineering,"Vibrators, casting machines and finishing tools; rated-equipment logic.",medium
+Concrete Product Works,default,site_services,electricity,0.25,,,engineering,"Compressed air, lighting, ventilation of production halls, offices; rated-equipment logic.",medium
+Concrete Product Works,default,stripping_handling_cranes,electricity,0.15,,,engineering,Overhead cranes and gantries handling heavy units; rated-equipment logic.,medium
+Concrete Product Works,default,curing,gas,0.85,,,published_sec,"[LBNL_CONCRETE_2011] Table 5, p.12: natural gas 253.5 kBtu/yd3, of which 215.5 to industrial boiler (curing steam/heat) = 85%.",medium
+Concrete Product Works,default,site_services,gas,0.15,,,published_sec,"[LBNL_CONCRETE_2011] Table 5, p.12: 38.0 of 253.5 kBtu/yd3 natural gas to building heat = 15%.",medium
+Concrete Product Works,default,curing,oil,0.62,,,engineering,"[LBNL_CONCRETE_2011] Table 5, p.12 lists fuel oil 107.8 kBtu/yd3 alongside diesel 67.1 (light trucks); fuel oil assumed to fire the curing boiler (stationary use), giving 107.8/174.9 = 62% of the oil vector. Assumption stated.",medium
+Concrete Product Works,default,mobile_plant_trucks,oil,0.38,,,engineering,"[LBNL_CONCRETE_2011] Diesel for light trucks 67.1 of 174.9 kBtu/yd3 combined oil = 38% (Table 5, p.12).",medium
+Concrete batching plant,default,aggregate_handling_conveying,electricity,0.06,,,engineering,[LBNL_CONCRETE_2011] Half of the 12% residual after the published 88% (mixer+pump+dust extractor); conveyors/hoists. Rated-equipment logic.,medium
+Concrete batching plant,default,batching_mixing,electricity,0.65,,,published_sec,[LBNL_CONCRETE_2011] p.10: on-site mixer 65% of electricity (US ready-mix data; total ~3.1 kWh/yd3).,medium
+Concrete batching plant,default,dust_extraction,electricity,0.03,,,published_sec,[LBNL_CONCRETE_2011] p.10: dust extractor 3% of electricity.,medium
+Concrete batching plant,default,site_services,electricity,0.06,,,engineering,"[LBNL_CONCRETE_2011] Remaining residual: lighting, office, compressed air. Rated-equipment logic.",medium
+Concrete batching plant,default,water_supply_pumping,electricity,0.2,,,published_sec,[LBNL_CONCRETE_2011] p.10: water pump 20% of electricity.,medium
+Concrete batching plant,default,site_services,gas,0.24,,,published_sec,"[LBNL_CONCRETE_2011] Table 3, p.10: 24% of natural gas to building heat.",medium
+Concrete batching plant,default,water_aggregate_heating,gas,0.76,,,published_sec,"[LBNL_CONCRETE_2011] Table 3, p.10: 76% of natural gas to boiler (water/aggregate heating).",medium
+Concrete batching plant,default,mobile_plant_trucks,oil,0.4,,,published_sec,"[LBNL_CONCRETE_2011] Table 3, p.10: 40% of diesel to light trucks.",medium
+Concrete batching plant,default,site_services,oil,0.06,,,published_sec,"[LBNL_CONCRETE_2011] Table 3, p.10: 6% of diesel to building heat.",medium
+Concrete batching plant,default,water_aggregate_heating,oil,0.54,,,published_sec,"[LBNL_CONCRETE_2011] Table 3, p.10: 54% of diesel to boiler heat.",medium
+Creamery,default,compressed_air,electricity,0.05,,,engineering,[FOCUS_DAIRY] Carved from the machine-drive/other balance using Table 1 (p12) compressed air shares of 0.5-8% by product,medium
+Creamery,default,processing_machinery_pumping,electricity,0.4,,,published_sec,"[LBNL_DAIRY] 'Around 40% of electricity usage was used for machine drive applications to power pumps, motors, fans, and compressors' (p24)",medium
+Creamery,default,refrigeration,electricity,0.31,0.25,0.35,published_sec,"[LBNL_DAIRY] 31% process cooling/freezing/cold storage (Figure 4.3, pp23-24, US); UK liquid milk = 25% (DECC2015FD Section 3.2.7 p35) taken as range low",medium
+Creamery,default,site_services,electricity,0.24,,,engineering,"[LBNL_DAIRY] Lighting/HVAC 18% plus 'other' ~11% less the compressed-air carve-out (Figure 4.3, pp23-24)",medium
+Creamery,default,cip_hot_water,gas,0.2,,,engineering,"[FOCUS_DAIRY] CIP 9.5-26% of product energy across dairy products (Table 1, p12), mostly hot water/steam",medium
+Creamery,default,evaporation_drying,gas,0.25,,,engineering,"[FOCUS_DAIRY] Evaporation+drying = 96% of energy for milk powder (Table 1, p12); weighted for a mixed creamery where powder/concentrate is one line among several — set to zero at sites without evaporators",medium
+Creamery,default,heat_treatment_pasteurisation,gas,0.35,,,engineering,"[LBNL_DAIRY] 80% of dairy fuel goes to direct process heating and boiler steam (p24); sub-allocated across heat treatment, evaporation/drying and CIP using Focus on Energy Table 1 product-level shares",medium
+Creamery,default,site_services,gas,0.2,,,published_sec,"[LBNL_DAIRY] 'The remaining 20% is used for miscellaneous process and building demands, such as HVAC systems' (p24)",medium
+Distillery,default,distillation,biomass,0.85,,,engineering,"[SE_H2_DIST] 8% of sector fuel is renewable heating fuel (p5); biomass boilers raise the same process steam, so the gas split is mirrored",low
+Distillery,default,milling_mashing,biomass,0.1,,,engineering,[SE_H2_DIST] Mirror of gas split,low
+Distillery,default,site_services,biomass,0.05,,,engineering,[SE_H2_DIST] Mirror of gas split,low
+Distillery,default,compressed_air,electricity,0.05,,,engineering,Typical utility share at small process sites,low
+Distillery,default,cooling_systems,electricity,0.2,,,engineering,[BALMENACH_CS] Condenser cooling water pumping/cooling towers and yeast refrigeration; rated-equipment logic,low
+Distillery,default,milling_mashing,electricity,0.1,,,engineering,Malt mill and mash tun drives; rated-equipment logic,low
+Distillery,default,process_pumps_motors,electricity,0.4,,,engineering,[BALMENACH_CS] Case study lists pumps as a principal electricity use; no metered split published — allocation by rated-equipment logic,low
+Distillery,default,site_services,electricity,0.25,,,engineering,[BALMENACH_CS] Lighting and electric space heating explicitly listed as electricity uses at Balmenach,low
+Distillery,default,distillation,gas,0.85,0.85,0.9,published_sec,[SE_H2_DIST] 'About 85% of the heat demand at a distillery (without maltings) is consumed for distillation' (p14); Briggs paper states ~90% of thermal energy is used in the still house,high
+Distillery,default,milling_mashing,gas,0.1,,,engineering,[SE_H2_DIST] Mashing named as the main secondary heat demand (p14); bulk of the non-distillation residual assigned to mash/hot liquor heating,medium
+Distillery,default,site_services,gas,0.05,,,engineering,[SE_H2_DIST] Residual: CIP hot water and space heating; document level,medium
+Distillery,default,distillation,oil,0.85,,,engineering,"[SE_H2_DIST] 31% of sector scope 1&2 emissions are from fossil fuel oils (p5) — oil is used in the same steam boilers as gas, so the gas split is mirrored",medium
+Distillery,default,milling_mashing,oil,0.1,,,engineering,[SE_H2_DIST] Mirror of gas split — same steam system,medium
+Distillery,default,site_services,oil,0.05,,,engineering,[SE_H2_DIST] Mirror of gas split — same steam system,medium
+Distillery,grain_distillery,continuous_distillation,gas,0.45,,,engineering,"[SE_H2_DIST] Column stills remain the largest single heat user but are more heat-integrated than pot stills, and dark grains plants take a large share — distillation share reduced from the malt-site 85%",low
+Distillery,grain_distillery,cooking_conversion,gas,0.15,,,engineering,[SE_H2_DIST] No published grain-distillery split located; cereal cooking is a steam demand absent at malt sites — allocation by engineering rationale,low
+Distillery,grain_distillery,coproduct_evaporation_drying,gas,0.3,,,engineering,"[GOVSCOT_BYPROD] Dark grains manufacture (evaporation + rotary drying + pelletising, document level) is the major secondary heat sink at integrated grain sites",low
+Distillery,grain_distillery,site_services,gas,0.1,,,engineering,"CIP, hot water and space heating residual",low
+Effluent Minewater Treatment Plant,default,aeration_treatment,electricity,0.12,,,engineering,[COAL_AUTH] Engineering rationale: powered aeration/mixing where fitted is the largest non-pumping load; zero at fully passive schemes.,medium
+Effluent Minewater Treatment Plant,default,dosing_sludge_handling,electricity,0.03,,,engineering,[COAL_AUTH] Engineering rationale: dosing and sludge pumps are small intermittent loads at active schemes.,medium
+Effluent Minewater Treatment Plant,default,minewater_pumping,electricity,0.8,,,engineering,[COAL_AUTH] Document level: Coal Authority links its 30.48 GWh electricity purchase and its growth directly to volumes of mine water pumped; treatment steps at most schemes are passive (lagoons/wetlands). Exact 80% is engineering judgement.,medium
+Effluent Minewater Treatment Plant,default,site_services,electricity,0.05,,,engineering,Engineering allowance for telemetry/lighting; closes balance to 1.00.,medium
+Exhaust and tyre centre,default,site_services,electricity,0.64,,,fallback,[MIDAM_AUTOSHOP] Borrowed from 'Vehicle repair workshop / garage'.,low
+Exhaust and tyre centre,default,space_heating,electricity,0.03,,,fallback,[MIDAM_AUTOSHOP] Borrowed from 'Vehicle repair workshop / garage'.,low
+Exhaust and tyre centre,default,workshop_equipment,electricity,0.33,,,fallback,[MIDAM_AUTOSHOP] Borrowed from sibling activity 'Vehicle repair workshop / garage' (MidAmerican auto-shop chart).,low
+Exhaust and tyre centre,default,space_heating,gas,0.99,,,fallback,[MIDAM_AUTOSHOP] Borrowed from 'Vehicle repair workshop / garage' (gas 99% space heating).,low
+Exhaust and tyre centre,default,water_heating,gas,0.01,,,fallback,[MIDAM_AUTOSHOP] Borrowed from 'Vehicle repair workshop / garage'.,low
+Factory,default,machine_drive,electricity,0.47,,,published_sec,"[MECS2022_T52] MECS 2022 Table 5.2, NAICS 333: machine drive 31 TBtu of ~66 TBtu allocated net electricity (values transcribed from fetched PDF; ~10 TBtu withheld cells excluded before normalising). Sector-level US proxy, hence medium confidence.",medium
+Factory,default,other_process,electricity,0.04,,,published_sec,[MECS2022_T52] NAICS 333 other process use 3/66.,medium
+Factory,default,process_cooling,electricity,0.05,,,published_sec,[MECS2022_T52] NAICS 333 process cooling 3/66.,medium
+Factory,default,process_heating,electricity,0.06,,,published_sec,[MECS2022_T52] NAICS 333 process heating electricity 4/66.,medium
+Factory,default,site_services,electricity,0.38,,,published_sec,[MECS2022_T52] NAICS 333 facility HVAC 15 + lighting 7 + other facility support 3 = 25/66.,medium
+Factory,default,other_process,gas,0.07,,,published_sec,"[MECS2022_T52] NAICS 333 machine drive gas 3 + other process 1 = 4/55, pooled as other process uses.",medium
+Factory,default,process_heating,gas,0.36,,,published_sec,"[MECS2022_T52] NAICS 333 natural gas: process heating 20 of ~55 TBtu allocated (total 60, withheld cells excluded).",medium
+Factory,default,site_services,gas,0.02,,,published_sec,[MECS2022_T52] NAICS 333 other facility support gas 1/55.,medium
+Factory,default,space_heating,gas,0.46,,,published_sec,[MECS2022_T52] NAICS 333 facility HVAC gas 25/55.,medium
+Factory,default,steam_hot_water,gas,0.09,,,published_sec,[MECS2022_T52] NAICS 333 indirect boiler+CHP gas 5/55.,medium
+Flour Mill,default,compressed_air,electricity,0.04,,,engineering,Filter pulsing and actuation; small utility share,low
+Flour Mill,default,flour_packing_handling,electricity,0.07,,,engineering,Packing and outloading; rated-equipment logic,low
+Flour Mill,default,grinding_roller_mills,electricity,0.4,,,engineering,[ALIU2018] Roller mills identified as largest consumer in a published mill energy audit (abstract level); ~75% of mill electricity is motors overall (WORLDGRAIN2010),medium
+Flour Mill,default,pneumatic_conveying_aspiration,electricity,0.25,0.23,0.28,published_sec,[BUHLER_MILL] High-pressure fan 23-28% of mill section energy (Bühler article),medium
+Flour Mill,default,sifting_purification,electricity,0.1,,,engineering,Plansifter/purifier drives; rated-equipment logic,low
+Flour Mill,default,site_services,electricity,0.06,,,engineering,Lighting and offices,low
+Flour Mill,default,wheat_cleaning_conditioning,electricity,0.08,,,engineering,Cleaning house machinery; rated-equipment logic,low
+Flour Mill,default,site_services,gas,1.0,,,engineering,Flour milling is an essentially all-electric process (no thermal unit operation); any metered gas is space heating/amenity hot water,low
+Food Processing Centre,default,compressed_air,electricity,0.1,,,engineering,"[DECC2015FD] Scaled from compressed air 2% of total sector energy (Section 1.3, p11)",medium
+Food Processing Centre,default,machinery_motors,electricity,0.45,,,engineering,"[DECC2015FD] Motors:refrigeration:compressed air = 12:5:2 of sector energy (Section 1.3, p11) scaled to the electricity vector with a lighting/site residual",medium
+Food Processing Centre,default,refrigeration,electricity,0.25,0.15,0.5,engineering,"[DECC2015FD] Subsector refrigeration electricity shares range 25% (liquid milk) to 50%+ (meat, ready meals) (Section 3.2.7, p35); 0.25 taken as generic mixed-site value",medium
+Food Processing Centre,default,site_services,electricity,0.2,,,engineering,"[DECC2015FD] Residual for lighting, HVAC, offices; document level",medium
+Food Processing Centre,default,boiler_steam_hot_water,gas,0.62,,,engineering,"[DECC2015FD] Gas is ~2/3 of sector fuel and boilers:direct heating = 54:27 (Section 1.3, p11); gas allocated pro-rata to the two heat technologies plus a small space-heat allowance",medium
+Food Processing Centre,default,direct_heating,gas,0.31,,,engineering,"[DECC2015FD] Pro-rata from boilers:direct heating = 54:27 (Section 1.3, p11)",medium
+Food Processing Centre,default,site_services,gas,0.07,,,engineering,[DECC2015FD] Residual allowance for gas space heating of buildings; document level,medium
+Food Processing Centre,default,boiler_steam_hot_water,oil,0.85,,,engineering,[DECC2015FD] Oil in food sites is overwhelmingly a boiler/backup boiler fuel (minor oil use noted at document level); direct oil firing of food is rare,low
+Food Processing Centre,default,site_services,oil,0.15,,,engineering,Allowance for oil-fired space heating at off-gas-grid sites,low
+Foundry,default,melting_holding,coal,1.0,,,engineering,[SF_BREF2024] Document level: cupola foundry coke (classed under the solid-fuel/coal vector) is consumed entirely in the melting furnace.,medium
+Foundry,default,fettling_finishing,electricity,0.06,,,published_sec,[EPPICH2004] Cleaning/processing 14.5% at one facility (Exhibit 3.36); conservative central value.,medium
+Foundry,default,fume_extraction,electricity,0.12,,,published_sec,"[EPPICH2004] Dust collection/emission systems 15-17% where measured (Exhibits 3.7, 3.41); slightly moderated as not all foundries have full extraction. Source band (0.15-0.17) retained in note only; central value moderated below it, so bounds omitted.",medium
+Foundry,default,melting_holding,electricity,0.5,0.28,0.51,published_sec,"[EPPICH2004] Melting furnaces 47-51% of electricity at induction/arc facilities, 28.3% at the stainless facility (Exhibits 3.7, 3.36, 3.41, 3.46); central value taken for electric-melting foundries. US, 2003 data.",medium
+Foundry,default,mould_making,electricity,0.1,,,published_sec,[EPPICH2004] Muller/moulding equipment 14% of electricity at the steel arc facility (Exhibit 3.41); moderated across facility types.,medium
+Foundry,default,shakeout_sand_reclamation,electricity,0.04,,,published_sec,[EPPICH2004] Shakeout/cooling 8% of electricity at the steel arc facility (Exhibit 3.41); moderated.,medium
+Foundry,default,site_services,electricity,0.18,0.13,0.29,published_sec,"[EPPICH2004] Compressed air 13-27% plus lighting/HVAC across audited facilities (Exhibits 3.7, 3.36, 3.46).",medium
+Foundry,default,core_making,gas,0.05,,,published_sec,[EPPICH2004] Core ovens within the ~22% 'core ovens/unit heaters' gas block at the steel arc facility (Exhibit 3.43).,medium
+Foundry,default,heat_treatment,gas,0.25,0.13,0.51,published_sec,"[EPPICH2004] Heat treating 13% (Exhibit 3.22) to 50.7% (annealing, Exhibit 3.43) of gas across audited facilities.",medium
+Foundry,default,melting_holding,gas,0.35,0.3,0.74,published_sec,"[EPPICH2004] Melting-department gas 35% (ductile cupola, Exhibit 3.22), 68% (gray iron cupola, Exhibit 3.11), 74% incl. ladle preheat (pipe plant, Exhibit 3.26); ladle preheat 44.8% at stainless (Exhibit 3.38). Central value for mixed UK stock where much melting is electric.",medium
+Foundry,default,shakeout_sand_reclamation,gas,0.05,,,published_sec,[EPPICH2004] Thermal sand reclaimer 16.9% of gas at the steel arc facility (Exhibit 3.43); moderated since many foundries lack thermal reclamation.,medium
+Foundry,default,site_services,gas,0.3,0.26,0.48,published_sec,"[EPPICH2004] Plant heating 32% (Exhibit 3.11), 48% (Exhibit 3.22) of gas; makeup air 16.6% (Exhibit 3.38).",medium
+Industrial Minerals NEC,default,kiln_calcination,biomass,1.0,,,published_sec,"[EULA_ECOFYS_2014] Biomass is 7% of the EU lime fuel mix (Figure 11, p.29), co-fired in kilns.",medium
+Industrial Minerals NEC,default,kiln_calcination,coal,1.0,,,published_sec,"[EULA_ECOFYS_2014] p.29: 'By far the majority of the energy consumption... is heat required in the kiln'; solid fossil fuels are 51% of the EU lime fuel mix (Figure 11, p.29), all fired in kilns.",medium
+Industrial Minerals NEC,default,hydration,electricity,0.12,,,engineering,"[EULA_ECOFYS_2014] Midpoint of BREF range 'hydrating 5-30 kWh/tonne' (p.30), pro-rated for hydrate being a fraction of output.",medium
+Industrial Minerals NEC,default,kiln_calcination,electricity,0.3,,,engineering,"[EULA_ECOFYS_2014] Midpoint of BREF range 'Kiln 5-50 kWh/tonne' (p.30) against ~60 kWh/t site total: kiln fans, charging and drives.",medium
+Industrial Minerals NEC,default,lime_grinding_milling,electricity,0.25,,,engineering,[EULA_ECOFYS_2014] Midpoint of BREF range 'grinding: 4-40 kWh/tonne' (p.30) against ~60 kWh/t site total.,medium
+Industrial Minerals NEC,default,packing_dispatch,electricity,0.05,,,engineering,"Silo aeration, packers, pneumatic loadout; rated-equipment logic.",medium
+Industrial Minerals NEC,default,quarrying_crushing_screening,electricity,0.18,,,engineering,"[EULA_ECOFYS_2014] Total electricity ~60 kWh/t (~5% of total energy, p.30). Crushing/sieving is not separately quantified there; share estimated from crusher/screen ratings relative to the p.30 BREF ranges (kiln 5-50, hydrating 5-30, grinding 4-40 kWh/t).",medium
+Industrial Minerals NEC,default,site_services,electricity,0.1,,,engineering,"Compressed air, lighting, offices; typical auxiliary allowance.",medium
+Industrial Minerals NEC,default,kiln_calcination,gas,1.0,,,published_sec,"[EULA_ECOFYS_2014] Natural gas is 34% of the EU lime fuel mix (Figure 11, p.29), used as kiln fuel; same p.29 statement.",medium
+Industrial Minerals NEC,default,kiln_calcination,oil,1.0,,,engineering,"[EULA_ECOFYS_2014] Oil, where used, is a kiln fuel; consistent with p.29 statement that kiln heat is by far the majority of energy use.",medium
+Industrial Minerals NEC,default,kiln_calcination,other,1.0,,,published_sec,"[EULA_ECOFYS_2014] Waste fuels are 8% of the EU lime fuel mix (Figure 11, p.29), fired in kilns.",medium
+Industrial NEC,default,machine_drive,electricity,0.47,,,fallback,[MECS2022_T52] Borrowed from sibling activity 'Factory' (MECS NAICS 333 split).,low
+Industrial NEC,default,other_process,electricity,0.04,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+Industrial NEC,default,process_cooling,electricity,0.05,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+Industrial NEC,default,process_heating,electricity,0.06,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+Industrial NEC,default,site_services,electricity,0.38,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+Industrial NEC,default,other_process,gas,0.07,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+Industrial NEC,default,process_heating,gas,0.36,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+Industrial NEC,default,site_services,gas,0.02,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+Industrial NEC,default,space_heating,gas,0.46,,,fallback,[MECS2022_T52] Borrowed from 'Factory'; smaller NEC industrial units are likely even more heating-dominated (cf. CTV059 p.8).,low
+Industrial NEC,default,steam_hot_water,gas,0.09,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,coal,0.25,0.2,0.3,engineering,"[STUBBLES2000] Pulverised coal injection at tuyeres (avg 220 lb/NTHM, 3.75 MBtu/NTHM in Stubbles good practice).",medium
+Iron and/or Steel Works,bf_bof,coke_ovens,coal,0.75,0.7,0.8,engineering,[STUBBLES2000] From Stubbles ratios: coke to BF 8.45 MBtu/NTHM (plus coal energy leaving as by-product gases) vs tuyere injectant coal 3.75 MBtu/NTHM — coking coal roughly three-quarters of purchased coal energy.,medium
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,electricity,0.12,,,engineering,"[IS_BREF2013] Document level: BF blowers, PCI mills and cooling-water pumps; rated-equipment logic.",medium
+Iron and/or Steel Works,bf_bof,bof_steelmaking,electricity,0.13,,,engineering,[STUBBLES2000] Includes oxygen plant (0.32 MBtu/t as oxygen) and BOF shop electricity 0.26 MBtu/t cast product in Stubbles itemisation.,medium
+Iron and/or Steel Works,bf_bof,coke_ovens,electricity,0.05,,,engineering,"[IS_BREF2013] Document level: oven machines, exhausters and by-product plant; small relative to mills.",medium
+Iron and/or Steel Works,bf_bof,continuous_casting,electricity,0.05,,,engineering,[STUBBLES2000] Caster 0.15 MBtu/t cast product in Stubbles itemisation.,medium
+Iron and/or Steel Works,bf_bof,hot_rolling,electricity,0.35,,,engineering,"[STUBBLES2000] Rolling (esp. cold rolling, 4.2 MBtu/ton electricity) is the largest electricity end use in integrated works.",medium
+Iron and/or Steel Works,bf_bof,secondary_metallurgy,electricity,0.05,,,engineering,[STUBBLES2000] Ladle furnace arcing and degasser vacuum systems; rated-equipment logic.,medium
+Iron and/or Steel Works,bf_bof,sinter_plant,electricity,0.1,,,engineering,[IS_BREF2013] Document level: BREF identifies sinter strand main fans as major electricity consumers; share by rated-equipment logic.,medium
+Iron and/or Steel Works,bf_bof,site_services,electricity,0.15,,,engineering,"[IS_BREF2013] Document level: water treatment, compressed air, lighting and environmental plant across a very large site.",medium
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,gas,0.15,,,engineering,[STUBBLES2000] Natural gas tuyere injection 40-200 lb/NTHM cited by Stubbles as an alternative injectant.,medium
+Iron and/or Steel Works,bf_bof,reheat_furnaces,gas,0.55,,,engineering,[STUBBLES2000] Purchased natural gas mainly supplements works gases in reheating/annealing (reheating identified as the main natural-gas process; hot rolling 2.2 MBtu/ton).,medium
+Iron and/or Steel Works,bf_bof,secondary_metallurgy,gas,0.1,,,engineering,[STUBBLES2000] Ladle preheating and ladle-furnace gas identified in BOF shop energy itemisation; rated-equipment logic.,medium
+Iron and/or Steel Works,bf_bof,site_services,gas,0.2,,,engineering,"[DECC2015_IS] Natural gas only 9.7% of UK sector energy (Figure 8, 2012); a material part of that serves space heating/utilities across very large works — engineering allocation.",medium
+Iron and/or Steel Works,eaf,eaf_melting,coal,1.0,,,engineering,"[WSA_ENERGY] worldsteel Table 1: coal is 5-15% of EAF route inputs, used as charge/injection carbon entirely in the furnace.",medium
+Iron and/or Steel Works,eaf,continuous_casting,electricity,0.03,,,engineering,"[STUBBLES2000] Caster drives/pumps small relative to furnace; part of Stubbles auxiliary block, split out by rated-equipment logic.",medium
+Iron and/or Steel Works,eaf,eaf_melting,electricity,0.6,0.55,0.68,engineering,"[STUBBLES2000] Derived from Stubbles: ~500 kWh/t EAF vs ~100 kWh/t auxiliaries plus mill-drive and services loads; document figures seen (EAF section, 5.65 MBtu/ton tapped).",medium
+Iron and/or Steel Works,eaf,fume_extraction_auxiliaries,electricity,0.1,,,engineering,"[STUBBLES2000] Stubbles: ~100 kWh/t auxiliary electricity for baghouses, cranes, caster, ladle heating (EAF section).",medium
+Iron and/or Steel Works,eaf,hot_rolling_mill,electricity,0.14,,,engineering,[STUBBLES2000] Long-product mill drives ~80-120 kWh/t against ~750 kWh/t site total; consistent with Stubbles long-product shipment energy 9.94 MBtu/ton.,medium
+Iron and/or Steel Works,eaf,scrap_handling_preparation,electricity,0.02,,,engineering,"[STUBBLES2000] Cranes/magnets minor; rated-equipment logic, document level.",medium
+Iron and/or Steel Works,eaf,secondary_metallurgy,electricity,0.05,,,engineering,[STUBBLES2000] Ladle furnace arcing typically 30-50 kWh/t; rated-equipment logic against Stubbles totals.,medium
+Iron and/or Steel Works,eaf,site_services,electricity,0.06,,,engineering,[STUBBLES2000] Residual after metered process loads; typical for heavy-industry sites.,medium
+Iron and/or Steel Works,eaf,eaf_melting,gas,0.15,,,engineering,[STUBBLES2000] EAF oxy-gas burners 0.30 MBtu/ton tapped (EAF section).,medium
+Iron and/or Steel Works,eaf,reheat_furnaces,gas,0.6,0.45,0.75,engineering,[STUBBLES2000] Stubbles: reheat 0.5-2.2 MBtu/ton vs EAF burner gas 0.30 MBtu/ton — reheating dominates site gas; range reflects hot-charging practice.,medium
+Iron and/or Steel Works,eaf,secondary_metallurgy,gas,0.12,,,engineering,[EPPICH2004] Ladle preheating is a major gas user in electric melt shops (Eppich Exhibit 3.38: ladle preheat 44.8% of gas at a stainless melt shop); scaled down for a works with reheat furnaces.,medium
+Iron and/or Steel Works,eaf,site_services,gas,0.13,,,engineering,"[EPPICH2004] Space heating of large melt-shop/mill buildings; analogous plant-heating gas shares of 16-48% seen in Eppich electric-melting facilities, moderated for a works with reheat furnaces.",medium
+Laboratory,default,hvac_ventilation,electricity,0.6,0.56,0.75,engineering,[SLAB2011] Derived from Table 7 p16 by removing the heating (gas) share and renormalising: 45/80 (life science) to 60/80 (chemistry) of non-heating energy.,medium
+Laboratory,default,lab_equipment,electricity,0.28,0.19,0.31,engineering,[SLAB2011] Derived from Table 7 p16 (15-25% of total energy) renormalised to the electricity vector.,medium
+Laboratory,default,lighting,electricity,0.12,0.06,0.13,engineering,[SLAB2011] Derived from Table 7 p16 (5-10% of total energy) renormalised to the electricity vector.,medium
+Laboratory,default,space_water_heating,gas,1.0,,,engineering,[SLAB2011] Table 7 p16: space/water heating (20% of total energy) is the fossil-fired end use; all metered gas assigned to it (includes AHU reheat).,medium
+"Large industrial (> 20,000 m2) NEC",default,machine_drive,electricity,0.47,,,fallback,[MECS2022_T52] Borrowed from sibling activity 'Factory' (MECS NAICS 333 split) — activity is not-elsewhere-classified so no direct evidence can exist.,low
+"Large industrial (> 20,000 m2) NEC",default,other_process,electricity,0.04,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+"Large industrial (> 20,000 m2) NEC",default,process_cooling,electricity,0.05,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+"Large industrial (> 20,000 m2) NEC",default,process_heating,electricity,0.06,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+"Large industrial (> 20,000 m2) NEC",default,site_services,electricity,0.38,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+"Large industrial (> 20,000 m2) NEC",default,other_process,gas,0.07,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+"Large industrial (> 20,000 m2) NEC",default,process_heating,gas,0.36,,,fallback,[MECS2022_T52] Borrowed from 'Factory' (MECS NAICS 333 gas split); consistent in direction with BESS2018 Chart 2.3 heat dominance of industrial process energy.,low
+"Large industrial (> 20,000 m2) NEC",default,site_services,gas,0.02,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+"Large industrial (> 20,000 m2) NEC",default,space_heating,gas,0.46,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+"Large industrial (> 20,000 m2) NEC",default,steam_hot_water,gas,0.09,,,fallback,[MECS2022_T52] Borrowed from 'Factory'.,low
+Maltings - Non Trad,default,kilning_heat,biomass,1.0,,,engineering,[MAGB_ENERGY] MAGB notes biomass adoption by member maltsters (document level); biomass at maltings serves kiln air heating,low
+Maltings - Non Trad,default,germination_vessels,electricity,0.25,,,engineering,Continuous forced ventilation and turning of germination vessels; rated-equipment logic,low
+Maltings - Non Trad,default,grain_handling_dressing,electricity,0.15,,,engineering,"Elevators, screens, conveying",low
+Maltings - Non Trad,default,kiln_fans,electricity,0.35,,,engineering,"[MAGB_ENERGY] Kiln fans largest motor load (MAGB fan/VSD emphasis, document level)",low
+Maltings - Non Trad,default,refrigeration_attemperation,electricity,0.1,,,engineering,Chilling of process air/water in warm periods,low
+Maltings - Non Trad,default,site_services,electricity,0.1,,,engineering,"Lighting, offices, compressed air",low
+Maltings - Non Trad,default,steeping,electricity,0.05,,,engineering,Aeration and pumping,low
+Maltings - Non Trad,default,kilning_heat,gas,0.9,,,engineering,[EMH_KILN] Kilning heat (~800 kWh/t) is essentially the sole large fuel demand; modern plants recover kiln exhaust heat but it remains the gas sink,medium
+Maltings - Non Trad,default,site_services,gas,0.1,,,engineering,Steep water warming and space heating allowance,medium
+Maltings - Trad,default,floor_germination_turning,electricity,0.05,,,engineering,"Floor turning is largely manual/light mechanical — minimal load, unlike pneumatic plants",low
+Maltings - Trad,default,grain_handling_dressing,electricity,0.2,,,engineering,"Elevators, screens and conveying; rated-equipment logic",low
+Maltings - Trad,default,kiln_fans,electricity,0.4,,,engineering,[MAGB_ENERGY] Kiln fans are the largest motor load; MAGB highlights fan VSDs as the key electricity measure (document level),low
+Maltings - Trad,default,site_services,electricity,0.2,,,engineering,Lighting (large floor areas) and offices,low
+Maltings - Trad,default,steeping,electricity,0.15,,,engineering,"Aeration blowers, CO2 extraction and water pumping; rated-equipment logic",low
+Maltings - Trad,default,kilning_heat,gas,0.9,,,engineering,[EMH_KILN] Kilning heat (~800 kWh/t malt) is essentially the only large fuel demand in malting; steeping and floor germination are ambient/unheated. Residual left for steep water and space heating,medium
+Maltings - Trad,default,site_services,gas,0.1,,,engineering,Steep water warming and building space heating allowance,medium
+Mill,default,milling_grinding,electricity,0.5,,,fallback,[MECS2022_T52] Borrowed from sibling activity 'Works' (NAICS 332 machine drive 0.48 plus 0.02 electro-chemical reassigned as not applicable to mills).,low
+Mill,default,other_process,electricity,0.04,,,fallback,[MECS2022_T52] Borrowed from 'Works'.,low
+Mill,default,process_cooling,electricity,0.02,,,fallback,[MECS2022_T52] Borrowed from 'Works'.,low
+Mill,default,process_heating_drying,electricity,0.16,,,fallback,[MECS2022_T52] Borrowed from 'Works' process heating share.,low
+Mill,default,site_services,electricity,0.28,,,fallback,[MECS2022_T52] Borrowed from 'Works'.,low
+Mill,default,process_heating_drying,gas,0.64,,,fallback,[MECS2022_T52] Borrowed from 'Works' (NAICS 332) gas split; only applies to mills with gas-fired drying — for non-drying mills space heating will dominate instead.,low
+Mill,default,site_services,gas,0.02,,,fallback,[MECS2022_T52] Borrowed from 'Works'.,low
+Mill,default,space_heating,gas,0.15,,,fallback,[MECS2022_T52] Borrowed from 'Works'; likely an underestimate for legacy mill buildings without process drying.,low
+Mill,default,steam_hot_water,gas,0.19,,,fallback,[MECS2022_T52] Borrowed from 'Works'.,low
+Mineral Production - Brine,default,brine_well_pumping,electricity,0.25,,,engineering,[SALT_ASSOC] Engineering rationale: continuous high-volume injection and brine transfer pumping over km-scale brinefields is a principal motor load.,medium
+Mineral Production - Brine,default,centrifuging,electricity,0.15,,,engineering,[SALT_ASSOC] Engineering rationale: centrifuge drives are significant but intermittent-duty loads.,medium
+Mineral Production - Brine,default,drying_grading,electricity,0.1,,,engineering,[SALT_ASSOC] Engineering rationale: drier fans and grading/conveying drives.,medium
+Mineral Production - Brine,default,site_services,electricity,0.15,,,engineering,"Engineering allowance for handling, packaging, compressed air, buildings; closes balance to 1.00.",medium
+Mineral Production - Brine,default,vacuum_evaporation,electricity,0.35,,,engineering,[SALT_ASSOC] Engineering rationale: evaporator circulation pumps and vacuum plant run continuously on the largest circuits.,medium
+Mineral Production - Brine,default,drying_grading,gas,0.1,,,engineering,"[SALT_ASSOC] Engineering rationale: fluid-bed drying removes only residual surface moisture after centrifuging, a small fraction of evaporator duty.",medium
+Mineral Production - Brine,default,site_services,gas,0.05,,,engineering,Engineering allowance for space heating; closes balance to 1.00.,medium
+Mineral Production - Brine,default,vacuum_evaporation,gas,0.85,,,engineering,"[SALT_ASSOC] Engineering rationale: raising steam for multiple-effect evaporation carries the latent-heat load of removing ~2-3 t water per t salt and dwarfs all other thermal duties; process description at document level, no published percentage located.",medium
+Mineral Production - Coal,default,coal_preparation,electricity,0.55,,,engineering,[DOE_BAND] Exhibit 20 (p.27) values allocated to the electricity vector (grinding 194.8 of 352.0 TBtu/yr electric-type operations = 55%); allocation of exhibit categories to vectors is the engineering step.,medium
+Mineral Production - Coal,default,crushing,electricity,0.04,,,engineering,[DOE_BAND] Exhibit 20: crushing 14.6 of 352.0 = 4%.,medium
+Mineral Production - Coal,default,materials_handling_conveyors,electricity,0.13,,,engineering,[DOE_BAND] Exhibit 20: materials handling-electric 45.3 of 352.0 = 13%.,medium
+Mineral Production - Coal,default,ventilation,electricity,0.28,,,engineering,[DOE_BAND] Exhibit 20: ventilation 97.3 of 352.0 = 28%. Zero for surface-only sites (the norm for remaining UK coal).,medium
+Mineral Production - Coal,default,digging_loading,oil,0.24,,,engineering,[DOE_BAND] Exhibit 20: digging 26.4 of 110.8 = 24% (treated as diesel for surface operations).,medium
+Mineral Production - Coal,default,drilling,oil,0.25,,,engineering,[DOE_BAND] Exhibit 20: drilling 27.7 of 110.8 = 25%.,medium
+Mineral Production - Coal,default,haulage_mobile_plant,oil,0.51,,,engineering,"[DOE_BAND] Exhibit 20 diesel-type operations: materials handling-diesel 56.7 of 110.8 TBtu/yr = 51%; coal MH is 80% diesel (Section 3.2, pp.10-11).",medium
+Mineral Production - Gas,default,gas_compression,gas,0.55,,,engineering,[NSTA_EMR] Engineering rationale: turbine-driven compression is the largest fuel-gas duty at gas terminals/production sites; consistent with NSTA finding that combustion for power/drive dominates upstream fuel use (Fig.3 p.8). No terminal-level process split is published (EMR 2024 aggregates combustion sources).,medium
+Mineral Production - Gas,default,power_generation,gas,0.25,,,engineering,"[NSTA_EMR] Engineering allocation of remaining fuel gas to on-site generation, supported by power generation's dominance of upstream combustion (p.4, Fig.3 p.8).",medium
+Mineral Production - Gas,default,process_heating_regeneration,gas,0.15,,,engineering,Engineering rationale: glycol/amine reboiler and fired-heater duties are material but well below compression/generation load.,medium
+Mineral Production - Gas,default,site_services,gas,0.05,,,engineering,Engineering allowance for space heating/utilities; closes balance to 1.00.,medium
+Mineral Production - Inert,default,crushing,electricity,0.84,,,fallback,"[DOE_STONE] Borrowed from sibling activity 'Mineral Production - Rock, Sand, Clay etc.' (Table 9-3 crushing share); MDPI_RA confirms plant electricity exists (1.23 kWh/t) but gives no equipment-level split.",low
+Mineral Production - Inert,default,screening,electricity,0.11,,,fallback,[DOE_STONE] Borrowed from sibling aggregates activity (Table 9-3 screening share).,low
+Mineral Production - Inert,default,site_services,electricity,0.05,,,fallback,[DOE_STONE] Sibling activity's conveying residual reassigned to site services/conveying at a recycling site; closes the balance to 1.00.,low
+Mineral Production - Inert,default,internal_haulage,oil,0.38,,,engineering,[MDPI_RA] Internal CDW movement (0.153) + RA transport to storage (0.077) = 0.229 L/t of 0.598 L/t = 38%.,medium
+Mineral Production - Inert,default,materials_handling_loaders,oil,0.62,,,engineering,[MDPI_RA] Derived from Section 3.1/Figure 5 on-site diesel items (external transport excluded): loader operations 0.368 L/t of 0.598 L/t on-site total = 62%.,medium
+Mineral Production - Oil,default,artificial_lift,electricity,0.4,,,engineering,Engineering rationale (rated-equipment logic): downhole/beam pumps are the dominant continuous electrical load at pumped onshore wells. No published UK onshore unit-operation breakdown was located.,medium
+Mineral Production - Oil,default,processing_separation_export,electricity,0.15,,,engineering,"Engineering rationale: separation trains, heater circulation and export pumps are secondary loads relative to lift/injection.",medium
+Mineral Production - Oil,default,site_services,electricity,0.15,,,engineering,"Engineering allowance for controls, instrument air, buildings and lighting; closes balance to 1.00.",medium
+Mineral Production - Oil,default,water_injection,electricity,0.3,,,engineering,Engineering rationale: high-pressure injection pumping is comparable in scale to lift where waterflood operates; high water cuts at mature fields make lift+injection the bulk of load.,medium
+Mineral Production - Other Mineral Category,default,conveying,electricity,0.05,,,fallback,[DOE_STONE] Borrowed from aggregates sibling (Table 9-3).,low
+Mineral Production - Other Mineral Category,default,crushing,electricity,0.84,,,fallback,"[DOE_STONE] Borrowed from sibling activity 'Mineral Production - Rock, Sand, Clay etc.' (Table 9-3, p.9-9).",low
+Mineral Production - Other Mineral Category,default,screening,electricity,0.11,,,fallback,[DOE_STONE] Borrowed from aggregates sibling (Table 9-3).,low
+Mineral Production - Other Mineral Category,default,drilling,oil,0.24,,,fallback,[DOE_STONE] Borrowed from aggregates sibling (Table 9-2 mining split); Exhibit 22 of DOE_BAND confirms drilling is proportionally larger for industrial minerals.,low
+Mineral Production - Other Mineral Category,default,extraction_loading,oil,0.23,,,fallback,[DOE_STONE] Borrowed from aggregates sibling (Table 9-2).,low
+Mineral Production - Other Mineral Category,default,haulage,oil,0.5,,,fallback,[DOE_STONE] Borrowed from aggregates sibling (Table 9-2/p.9-8).,low
+Mineral Production - Other Mineral Category,default,site_services,oil,0.03,,,fallback,[DOE_STONE] Borrowed from aggregates sibling (residual of Table 9-2).,low
+Mineral Production - Putrescible,default,aeration_odour_control,electricity,0.1,,,engineering,[HAAREN] Aeration/biofilter fans are modest continuous loads; ASP air blowing measured at only 0.75 kWh/ton (p.17).,medium
+Mineral Production - Putrescible,default,digestate_processing,electricity,0.15,,,engineering,[IEA_FW] Engineering allocation within the published parasitic total; separation/dewatering drives are significant but duty-cycled.,medium
+Mineral Production - Putrescible,default,digester_mixing_pumping,electricity,0.35,,,engineering,"[IEA_FW] Engineering: continuous mixers and feed/recirculation pumps are the dominant 24/7 loads of an AD plant; within the published 59.1 kWh/t total (Table 5, p.20).",medium
+Mineral Production - Putrescible,default,reception_depackaging_shredding,electricity,0.25,,,engineering,"[IEA_FW] Total AD parasitic electricity is published (59.1 kWh/t, 8.4% of gross output - Table 5, p.20) but not sub-divided; sub-split is engineering judgement from rated duties (high-torque depackaging/shredding is the largest intermittent load).",medium
+Mineral Production - Putrescible,default,site_services,electricity,0.15,,,engineering,"[IEA_FW] Engineering allowance for controls, compressors, lighting, offices; closes balance to 1.00.",medium
+Mineral Production - Putrescible,default,mobile_plant,oil,0.25,,,engineering,[HAAREN] Rolling stock (loaders) named as fuel consumer (p.17); share is engineering judgement.,medium
+Mineral Production - Putrescible,default,reception_depackaging_shredding,oil,0.35,,,engineering,"[HAAREN] Windrow composting energy is 29 kWh/ton, 71% fuel (p.15); grinding/shredding of feedstock is the heaviest fuel operation among the listed equipment - sub-split is engineering judgement.",medium
+Mineral Production - Putrescible,default,screening_refining,oil,0.15,,,engineering,[HAAREN] Diesel-driven trommels/screens named as fuel consumers (p.17); share is engineering judgement.,medium
+Mineral Production - Putrescible,default,windrow_turning,oil,0.25,,,engineering,[HAAREN] Turning is a core diesel operation of windrow composting (p.15); share is engineering judgement within the published 71% fuel fraction.,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,conveying,electricity,0.05,,,published_sec,"[DOE_STONE] Table 9-3, p.9-9: conveying 165 Btu/ton of 3,152 electric total.",medium
+"Mineral Production - Rock, Sand, Clay etc.",default,crushing,electricity,0.84,,,published_sec,"[DOE_STONE] Table 9-3, p.9-9: secondary (995) + tertiary (1,660) crushing = 2,655 of 3,152 Btu/ton total electric processing energy; normalised over crushing/screening/conveying. Medium confidence: US, 2002, excludes washing and site services.",medium
+"Mineral Production - Rock, Sand, Clay etc.",default,screening,electricity,0.11,,,published_sec,"[DOE_STONE] Table 9-3, p.9-9: screening 332 Btu/ton of 3,152 electric total.",medium
+"Mineral Production - Rock, Sand, Clay etc.",default,drilling,oil,0.24,,,published_sec,"[DOE_STONE] Table 9-2, p.9-8: percussion drilling (diesel) = 24% of total mining energy.",medium
+"Mineral Production - Rock, Sand, Clay etc.",default,extraction_loading,oil,0.23,,,published_sec,"[DOE_STONE] Table 9-2, p.9-8: hydraulic shovel (diesel) = 23% of total mining energy.",medium
+"Mineral Production - Rock, Sand, Clay etc.",default,haulage,oil,0.5,,,published_sec,[DOE_STONE] p.9-8: 'Transportation vehicles... combined consume an estimated 50 percent of the total energy consumed per ton'. NSSGA_GHG (p.7-8) independently identifies haul-truck fuel as dominant.,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,site_services,oil,0.03,,,engineering,"[DOE_STONE] Residual of Table 9-2 mining energy after drilling/loading/hauling (water tanker and minor support vehicles, ~3%); assigned to site services to close the balance to 1.00.",medium
+Motor Vehicle Works,default,compressed_air,electricity,0.11,0.09,0.14,published_sec,[LBNL50939] Table 2: compressed air 9-14% of electricity.,medium
+Motor Vehicle Works,default,materials_handling,electricity,0.07,0.07,0.08,published_sec,[LBNL50939] Table 2: materials handling/tools 7-8% of electricity.,medium
+Motor Vehicle Works,default,metal_forming,electricity,0.05,0.02,0.09,published_sec,[LBNL50939] Table 2: metal forming 2-9% of electricity.,medium
+Motor Vehicle Works,default,paint_shop,electricity,0.37,0.27,0.5,published_sec,"[LBNL50939] Table 2, p.7: paint systems (fans) 27-50% of electricity (~230-320 kWh/car); midpoints of all Table 2 ranges normalised to sum to 1. Corroborated by ESTAR_AUTO_2015 (paint booths 30-50%). US data, 2008 vintage, hence medium.",medium
+Motor Vehicle Works,default,site_services,electricity,0.3,,,published_sec,"[LBNL50939] Table 2: HVAC 11-20% plus lighting 15-16%, midpoints normalised (composite, so no single published range).",medium
+Motor Vehicle Works,default,welding,electricity,0.1,0.09,0.11,published_sec,[LBNL50939] Table 2: welding 9-11% of electricity.,medium
+Motor Vehicle Works,default,paint_shop,gas,0.39,,,published_sec,"[MECS2022_T52] MECS 2022 NAICS 336 (transportation equipment, auto-dominated): direct process heating gas 50 of ~127 TBtu allocated, attributed to paint-shop ovens/booth air heating per LBNL-50939 narrative that fuels serve hot water, steam and paint process heat. Sector-level proxy.",medium
+Motor Vehicle Works,default,site_services,gas,0.06,,,published_sec,"[MECS2022_T52] NAICS 336 other facility support 3 + onsite transport 1 + other process 3 = ~7/127, pooled.",medium
+Motor Vehicle Works,default,space_heating,gas,0.39,,,published_sec,[MECS2022_T52] NAICS 336 facility HVAC gas 50/127.,medium
+Motor Vehicle Works,default,steam_hot_water,gas,0.16,,,published_sec,[MECS2022_T52] NAICS 336 indirect boiler (10) + CHP (10) gas = 20/127.,medium
+Newspaper print works,default,mailroom_finishing,electricity,0.12,,,engineering,Engineering estimate: conveyors/inserters run at full plant output; no published share located.,medium
+Newspaper print works,default,prepress_platemaking,electricity,0.05,,,engineering,Engineering estimate; minor rated load relative to presses.,medium
+Newspaper print works,default,press_auxiliaries,electricity,0.15,,,engineering,[PRINTCITY] Compressed air ~5% (p4) plus chilled water/dampening cooling from press-level breakdown (p8).,medium
+Newspaper print works,default,press_drives,electricity,0.4,0.25,0.4,engineering,[PRINTCITY] PrintCity p4 (MEGTEC data): machine drives 25-40% of production energy; coldset has no dryer so drives take a larger electricity share.,medium
+Newspaper print works,default,site_services,electricity,0.28,0.2,0.3,engineering,"[PRINTCITY] PrintCity p4: production is 70-80% of energy, remainder building and services; lighting <10%.",medium
+Newspaper print works,default,site_services,gas,1.0,,,engineering,"[PRINTCITY] Coldset newspaper printing has no heatset dryer (the only process gas user in web offset per this report), so metered gas is space heating/hot water.",medium
+"Oil refinery, gas processing etc",default,alkylation,electricity,0.04,,,engineering,[ESREF2015] Refrigeration compressors; pro-rata allocation.,medium
+"Oil refinery, gas processing etc",default,catalytic_reforming,electricity,0.07,,,engineering,[ESREF2015] Pro-rata allocation on Table 3 shares.,medium
+"Oil refinery, gas processing etc",default,crude_vacuum_distillation,electricity,0.2,,,engineering,[ESREF2015] Pro-rata allocation on Table 3 shares (charge/product pumping).,medium
+"Oil refinery, gas processing etc",default,fcc,electricity,0.04,,,engineering,[ESREF2015] Main air blower and wet gas compressor; pro-rata allocation.,medium
+"Oil refinery, gas processing etc",default,hydrocracking,electricity,0.04,,,engineering,[ESREF2015] Pro-rata allocation on Table 3 shares.,medium
+"Oil refinery, gas processing etc",default,hydrogen_production,electricity,0.05,,,engineering,[ESREF2015] Pro-rata allocation on Table 3 shares.,medium
+"Oil refinery, gas processing etc",default,hydrotreating,electricity,0.2,,,engineering,[ESREF2015] Remaining 70% of electricity spread across units in proportion to their Table 3 energy shares (recycle-H2 compressors are large motor loads).,medium
+"Oil refinery, gas processing etc",default,other_units,electricity,0.06,,,engineering,[ESREF2015] Pro-rata residual across remaining units.,medium
+"Oil refinery, gas processing etc",default,site_services,electricity,0.05,,,engineering,"Lighting, control rooms, offices; engineering estimate.",medium
+"Oil refinery, gas processing etc",default,utilities_steam,electricity,0.25,,,engineering,"[ESREF2015] Cooling water pumps, boiler feed pumps, instrument air, water treatment; guide treats pump/motor systems as major electricity users (document level).",medium
+"Oil refinery, gas processing etc",default,hydrogen_production,gas,0.4,,,engineering,[ESREF2015] Guide (Fig 9 p21 context): natural gas serves multiple purposes including hydrogen production and fuel; SMR feed+fuel is the largest dedicated natural-gas sink.,medium
+"Oil refinery, gas processing etc",default,other_units,gas,0.25,,,engineering,[ESREF2015] Supplemental natural-gas firing across process fired heaters; engineering allocation.,medium
+"Oil refinery, gas processing etc",default,utilities_steam,gas,0.35,,,engineering,"[ESREF2015] Purchased natural gas supplements refinery gas in boilers/cogen; engineering allocation, document level.",medium
+"Oil refinery, gas processing etc",default,alkylation,other,0.05,,,published_sec,[ESREF2015] Table 3 p23: 5.6% (rounded within the normalised set).,medium
+"Oil refinery, gas processing etc",default,catalytic_reforming,other,0.1,,,published_sec,[ESREF2015] Table 3 p23: 9.8%.,medium
+"Oil refinery, gas processing etc",default,crude_vacuum_distillation,other,0.29,,,published_sec,[ESREF2015] Table 3 p23: CDU 20.1% + VDU 8.5%.,medium
+"Oil refinery, gas processing etc",default,fcc,other,0.05,,,published_sec,"[ESREF2015] Table 3 p23: 5.1%; FCC heat comes from catalyst coke, an internal fuel mapped to the 'other' vector.",medium
+"Oil refinery, gas processing etc",default,hydrocracking,other,0.05,,,published_sec,[ESREF2015] Table 3 p23: 5.3%.,medium
+"Oil refinery, gas processing etc",default,hydrogen_production,other,0.07,,,published_sec,[ESREF2015] Table 3 p23: 6.7%.,medium
+"Oil refinery, gas processing etc",default,hydrotreating,other,0.29,,,published_sec,"[ESREF2015] Table 3 p23 (28.7% of 2011 US refinery energy), normalised across listed units; US not UK data.",medium
+"Oil refinery, gas processing etc",default,other_units,other,0.1,,,published_sec,[ESREF2015] Residual of the Table 3 p23 energy balance (units not itemised above).,medium
+Paper Mill,default,effluent_water_services,electricity,0.13,,,engineering,"[LBNLPP2009] Pumping/aeration share of the >70% of motor electricity in pumps, fans and materials processing.",medium
+Paper Mill,default,paper_machine_drying,electricity,0.07,,,engineering,[LBNLPP2009] Dryer hood supply/exhaust fans and dryer-section drives; fans are a major motor end use (document level).,medium
+Paper Mill,default,paper_machine_wet_end,electricity,0.3,,,engineering,[UKPP2015] s3.3.3: paper machine drives and vacuum system among biggest electrical loads; vacuum alone is typically a top-3 mill motor load.,medium
+Paper Mill,default,site_services,electricity,0.15,,,engineering,"[LBNLPP2009] Compressed air, lighting, HVAC, offices; consistent with ~10% of electricity being non-motor plus compressed air.",medium
+Paper Mill,default,stock_preparation,electricity,0.35,0.25,0.4,engineering,[UKPP2015] s3.3.3 names stock preparation among the biggest electrical loads; refining/repulping is the dominant discretionary electrical load at recycled-fibre mills.,medium
+Paper Mill,default,paper_machine_drying,gas,0.75,0.65,0.8,engineering,"[UKPP2015] Derived: s3.3.3 states paper machine ~2/3 of all energy dominated by dryer, and >80% of fuel is boiler fuel raising steam whose dominant user is the dryer (LBNLPP2009).",medium
+Paper Mill,default,site_services,gas,0.13,,,engineering,"[LBNLPP2009] Residual: space heating, hot water and steam distribution losses not attributable to the dryer; document level.",medium
+Paper Mill,default,stock_preparation,gas,0.12,,,engineering,[LBNLPP2009] Raw-material prep uses ~3% of steam in US operations; grossed up for recycled-fibre hot-water/deink heat and broke handling.,medium
+Post Office Sorting Centre,default,materials_handling,electricity,0.1,0.07,0.1,engineering,[CTV073] CTV073 p.9: forklifts 7-10% of warehouse non-road energy; upper end used for a high-throughput hub.,medium
+Post Office Sorting Centre,default,site_services,electricity,0.5,,,engineering,"[CTV073] Residual: lighting-dominated per CTV073 (lighting 65-95% of ambient warehouse energy) plus 24h offices/ICT and ventilation, scaled down for the sortation load.",medium
+Post Office Sorting Centre,default,sortation_machinery,electricity,0.4,,,engineering,"[CTV073] Engineering estimate: CTV073's 65-95% lighting share applies to non-automated ambient warehouses; in an automated sortation hub the sorter/conveyor load displaces a large part of that, estimated at ~40% of electricity. No published Royal Mail end-use split found.",medium
+Post Office Sorting Centre,default,space_heating,gas,0.95,,,engineering,[CTV073] Engineering: gas at ambient warehouse-type buildings serves almost exclusively space heating (CTV073 main-uses statement; MIDAM_AUTOSHOP analog shows 99% for comparable workshop sheds).,medium
+Post Office Sorting Centre,default,water_heating,gas,0.05,,,engineering,[CTV073] Engineering allowance for welfare/canteen hot water at a large shift-working site.,medium
+Pottery,default,biscuit_firing,electricity,0.06,,,engineering,[DECC_CERAMIC_2015] 'Around 10% of the sector's electricity consumption is used to heat kilns' (Section 3.3.3) plus kiln fans; allocated across the two firing stages.,medium
+Pottery,default,drying,electricity,0.1,,,engineering,Dryer circulation fans; rated-equipment logic.,medium
+Pottery,default,forming,electricity,0.12,,,engineering,"Presses, casting benches and machine drives; rated-equipment logic.",medium
+Pottery,default,glazing_decoration,electricity,0.08,,,engineering,Spray booth extraction and line drives; rated-equipment logic.,medium
+Pottery,default,glost_decoration_firing,electricity,0.06,,,engineering,[DECC_CERAMIC_2015] As biscuit_firing row: balance of electric kiln heating and kiln auxiliaries.,medium
+Pottery,default,raw_material_preparation,electricity,0.25,,,engineering,"[DECC_CERAMIC_2015] Ball milling/blunging are the dominant continuous motor loads; rated-equipment logic, no published pottery electricity split found.",medium
+Pottery,default,site_services,electricity,0.33,,,engineering,"Compressed air (glaze spraying), lighting, ventilation and offices; labour-intensive multi-building sites make services a large electrical share. Rated-equipment logic.",medium
+Pottery,default,biscuit_firing,gas,0.45,0.35,0.55,engineering,"[MDPI_TABLEWARE_2023] Firing takes 87% of total energy in the factory tableware scenario (MDPI LCA); allocated here across two firing stages with a near-equal split (biscuit slightly higher, being the higher-temperature/longer fire in UK tableware practice) — assumed split, no published biscuit/glost ratio found.",medium
+Pottery,default,drying,gas,0.1,,,engineering,[QUALICER_MONFORT_2010] Ware drying measured at 9% of thermal energy in ceramic tile manufacture (Table 12); used as analogue for pottery drying.,medium
+Pottery,default,glost_decoration_firing,gas,0.4,0.3,0.5,engineering,[MDPI_TABLEWARE_2023] Balance of the ~85% combined firing share (see biscuit_firing row); Qualicer tile data (firing 55% where spray drying takes 36%) supports firing dominating gas use where no spray dryer exists.,medium
+Pottery,default,site_services,gas,0.05,,,engineering,Space heating allowance for factory/offices; no published figure.,medium
+Provender Mill,default,compressed_air,electricity,0.05,,,published_sec,[FEEDADD] Compressor ≈5% of plant consumption (article text); carved from the published 19% 'other',medium
+Provender Mill,default,grinding,electricity,0.26,,,published_sec,[FEEDGRAIN_EQ] Milling 26% (article text),medium
+Provender Mill,default,material_handling,electricity,0.06,,,published_sec,[FEEDGRAIN_EQ] Material handling 6% (article text),medium
+Provender Mill,default,mixing_batching,electricity,0.09,,,published_sec,[FEEDGRAIN_EQ] Mixing 9% (article text),medium
+Provender Mill,default,pelleting_press,electricity,0.4,,,published_sec,"[FEEDGRAIN_EQ] '40% pelleting, 26% milling, 9% mixing, 6% material handling, 19% other' (article text)",medium
+Provender Mill,default,site_services,electricity,0.14,,,engineering,[FEEDGRAIN_EQ] Remainder of the published 19% 'other' after the compressed-air carve-out,medium
+Provender Mill,default,site_services,gas,0.15,0.1,0.2,engineering,"Balance of boiler output: space heating, molasses/fat heating, amenity hot water",medium
+Provender Mill,default,steam_conditioning,gas,0.85,0.8,0.9,published_sec,[FEEDADD] Pelleting 'consumes 80-90% of steam used in the facility' (article text); boiler gas allocated accordingly,medium
+Pumping Mines,default,dewatering_pumping,electricity,0.9,,,engineering,[COAL_AUTH] Document level: the Coal Authority attributes its electricity demand and its year-on-year increase to mine water pumping volumes; pumping stations have no other significant load. Exact 90% is engineering judgement.,medium
+Pumping Mines,default,site_services,electricity,0.05,,,engineering,"Engineering allowance for telemetry, controls and lighting; closes balance to 1.00.",medium
+Pumping Mines,default,ventilation,electricity,0.05,,,engineering,"[DOE_BAND] Engineering allowance where fans are installed; ventilation is a recognised mine unit operation (Exhibit 17, p.21) but minor at pumping-only stations.",medium
+Scrap Metal/Breakers Yard,default,material_handling,electricity,0.1,,,engineering,"Electric cranes/magnets where fitted; most handling is diesel, so electricity share is small.",medium
+Scrap Metal/Breakers Yard,default,shearing_baling,electricity,0.2,,,engineering,Static shear/baler hydraulic power packs are the next-largest motor loads; rated-equipment logic.,medium
+Scrap Metal/Breakers Yard,default,shredding_separation,electricity,0.55,,,engineering,[BMRA2023] Rated-equipment logic: shredder main motors (typically multi-MW) dwarf other yard electrical loads; BMRA confirms shredder electricity as the key energy cost (document level). Applies to yards with shredders.,medium
+Scrap Metal/Breakers Yard,default,site_services,electricity,0.15,,,engineering,"Yard lighting, weighbridge, offices; engineering rationale.",medium
+Scrap Metal/Breakers Yard,default,site_services,gas,1.0,,,engineering,Yards have no natural-gas process plant; any metered gas serves office/workshop space heating.,medium
+Scrap Metal/Breakers Yard,default,material_handling,oil,0.75,,,engineering,"Diesel/gasoil for material handlers, grab cranes and loading shovels is the dominant liquid-fuel use in yards; rated-equipment logic.",medium
+Scrap Metal/Breakers Yard,default,shearing_baling,oil,0.15,,,engineering,Mobile diesel-hydraulic shears/balers; engineering rationale.,medium
+Scrap Metal/Breakers Yard,default,site_services,oil,0.1,,,engineering,"Site vehicles, generators and heating oil where used; engineering rationale.",medium
+Scrap Metal/Breakers Yard,default,torch_cutting,other,1.0,,,engineering,LPG/propane (classed 'other') is consumed entirely in oxy-fuel cutting of heavy scrap; engineering rationale.,medium
+"Shipbuilding/ repair, boatyard",default,cranes_material_handling,electricity,0.1,,,engineering,Large electric dock/goliath cranes with low duty cycle; rated-equipment logic.,medium
+"Shipbuilding/ repair, boatyard",default,dry_dock_services,electricity,0.1,,,engineering,"Dock dewatering pumps (MW-scale, intermittent) and shore power to vessels; rated-equipment logic.",medium
+"Shipbuilding/ repair, boatyard",default,machining_outfitting,electricity,0.05,,,engineering,Machine and pipe shops; rated-equipment logic.,medium
+"Shipbuilding/ repair, boatyard",default,painting_coating,electricity,0.07,,,engineering,[EPA_SHIP] Paint cell ventilation and extraction fans; coatings named among top energy uses (document level).,medium
+"Shipbuilding/ repair, boatyard",default,site_services,electricity,0.25,,,engineering,"[EPA_SHIP] Central compressed air, extensive shed/yard lighting and offices; large share typical of fabrication sites with dispersed loads (document level).",medium
+"Shipbuilding/ repair, boatyard",default,steel_prep_cutting,electricity,0.08,,,engineering,[EPA_SHIP] Plasma cutting and plate machinery; rated-equipment logic (document level).,medium
+"Shipbuilding/ repair, boatyard",default,surface_prep_blasting,electricity,0.1,,,engineering,[EPA_SHIP] Blasting compressors/ventilation; blasting named among top energy uses (document level).,medium
+"Shipbuilding/ repair, boatyard",default,welding_fabrication,electricity,0.25,,,engineering,[EPA_SHIP] EPA identifies electric arc welding as the sector's leading energy-intensive process and electricity as 75-80% of sector energy spend (2004); share by rated-equipment logic.,medium
+"Shipbuilding/ repair, boatyard",default,painting_coating,gas,0.15,,,engineering,Heated/ventilated paint halls and coating curing; engineering rationale.,medium
+"Shipbuilding/ repair, boatyard",default,site_services,gas,0.6,,,engineering,[EPA_SHIP] Fossil fuels are only 20-25% of sector energy spend; space heating of large fabrication sheds is the principal gas use in UK-climate yards; engineering rationale.,medium
+"Shipbuilding/ repair, boatyard",default,steel_prep_cutting,gas,0.25,,,engineering,[EPA_SHIP] Gas-fired heating for forming/forging and preheat named by EPA as a fossil-fuel process use (document level).,medium
+"Shipbuilding/ repair, boatyard",default,cranes_material_handling,oil,0.6,,,engineering,"Diesel mobile cranes, transporters and yard vehicles; rated-equipment logic.",medium
+"Shipbuilding/ repair, boatyard",default,dry_dock_services,oil,0.25,,,engineering,Diesel generators/pumps serving docks and vessels under repair; engineering rationale.,medium
+"Shipbuilding/ repair, boatyard",default,site_services,oil,0.15,,,engineering,Oil-fired heating and small plant at yards off the gas grid; engineering rationale.,medium
+Tannery,default,compressed_air,electricity,0.08,,,engineering,Typical industrial compressed-air share where spray finishing is present.,medium
+Tannery,default,effluent_treatment,electricity,0.1,,,engineering,[TANBREF2013] Aeration/pumping load flagged as significant in BREF/UNIDO framework; document level.,medium
+Tannery,default,finishing,electricity,0.12,,,engineering,"Spray lines, conveyors and presses; engineering estimate.",medium
+Tannery,default,process_drums_machinery,electricity,0.4,,,engineering,[KANO2020] Factory machinery 39% of electricity in the Kano audit; drums are the dominant motor load.,medium
+Tannery,default,site_services,electricity,0.3,,,engineering,"[KANO2020] Lighting 26% plus ventilation in the Kano audit (its 27% space cooling would be far smaller in the UK, offset here by heating fans/ventilation).",medium
+Tannery,default,leather_drying,gas,0.35,,,engineering,"[TANBREF2013] Drying identified as the other principal thermal use (s4.12, Table 4.26 referenced); document level.",medium
+Tannery,default,process_float_heating,gas,0.45,,,engineering,"[MDPITAN2023] Gas is 72-75% of the Catalonian tannery's energy, used mainly for hot water/steam for process floats; split between floats and drying is an engineering allocation.",medium
+Tannery,default,site_services,gas,0.2,,,engineering,Space heating of production halls in a UK climate; engineering residual.,medium
+Vehicle repair workshop / garage,default,site_services,electricity,0.64,,,published_sec,"[MIDAM_AUTOSHOP] Sum of lighting 29% + ventilation 12% + computing 8% + space cooling 7% + office equipment 4% + refrigeration 3% = 63/99, normalised.",medium
+Vehicle repair workshop / garage,default,space_heating,electricity,0.03,,,published_sec,[MIDAM_AUTOSHOP] 3% electric space heating slice on the published chart.,medium
+Vehicle repair workshop / garage,default,workshop_equipment,electricity,0.33,,,published_sec,"[MIDAM_AUTOSHOP] Auto-shop electricity pie chart: 33% miscellaneous (shop equipment), of 99% total shown, normalised. US utility source, hence medium not high.",medium
+Vehicle repair workshop / garage,default,space_heating,gas,0.99,,,published_sec,[MIDAM_AUTOSHOP] Natural gas end-use chart: '1% water heating and 99% space heating'.,medium
+Vehicle repair workshop / garage,default,water_heating,gas,0.01,,,published_sec,"[MIDAM_AUTOSHOP] Same chart, 1% water heating.",medium
+Vehicle repair workshop / garage,default,space_heating,oil,0.99,,,engineering,[MIDAM_AUTOSHOP] Engineering: oil-heated garages (incl. waste-oil heaters) serve the same space-heating duty as gas; gas split applied to oil.,medium
+Vehicle repair workshop / garage,default,water_heating,oil,0.01,,,engineering,[MIDAM_AUTOSHOP] Mirror of gas split.,medium
+Wafer Fabrication,default,bulk_gases_cda,electricity,0.08,,,engineering,"[HUCHUAH2003] Sub-allocation of facility share (gases, CDA, vacuum).",medium
+Wafer Fabrication,default,chilled_water_plant,electricity,0.18,,,engineering,[HUCHUAH2003] Sub-allocation of the 56.6% facility share; chiller plant is its largest component.,medium
+Wafer Fabrication,default,cleanroom_hvac,electricity,0.25,,,engineering,[HUCHUAH2003] Sub-allocation of the published 56.6% facility share; consistent with SST2004 (HVAC up to 50% of fab electricity when chillers included).,medium
+Wafer Fabrication,default,process_tools,electricity,0.4,,,published_sec,[HUCHUAH2003] Abstract: process tools ~40.4% of fab power (Taiwan survey; medium because non-UK and 2003).,medium
+Wafer Fabrication,default,site_services,electricity,0.04,,,engineering,[HUCHUAH2003] Residual after published tools (40.4%) and facility (56.6%) shares.,medium
+Wafer Fabrication,default,ultrapure_water,electricity,0.05,,,engineering,[HUCHUAH2003] Sub-allocation of facility share (UPW system).,medium
+Wafer Fabrication,default,cleanroom_hvac,gas,0.75,,,engineering,"Fab gas is dominated by boilers for makeup-air heating/humidification and hot water; engineering allocation, no published split found.",medium
+Wafer Fabrication,default,exhaust_abatement,gas,0.25,,,engineering,Fuel-fired point-of-use abatement and thermal oxidisers; engineering allocation.,medium
+Works,default,machine_drive,electricity,0.48,,,published_sec,"[MECS2022_T52] MECS 2022 Table 5.2, NAICS 332: machine drive 66 of 138 TBtu allocated net electricity (transcribed from fetched PDF; row/subtotal consistency checked). US sector-level proxy.",medium
+Works,default,other_process,electricity,0.04,,,published_sec,[MECS2022_T52] NAICS 332 other process 6/138.,medium
+Works,default,process_cooling,electricity,0.02,,,published_sec,[MECS2022_T52] NAICS 332 process cooling 3/138.,medium
+Works,default,process_heating,electricity,0.16,,,published_sec,[MECS2022_T52] NAICS 332 process heating electricity 22/138.,medium
+Works,default,site_services,electricity,0.28,,,published_sec,[MECS2022_T52] NAICS 332 facility HVAC 20 + lighting 12 + other facility 4 + minor nonprocess ~2 = 38/138.,medium
+Works,default,surface_treatment,electricity,0.02,,,published_sec,[MECS2022_T52] NAICS 332 electro-chemical 3/138.,medium
+Works,default,process_heating,gas,0.64,,,published_sec,"[MECS2022_T52] NAICS 332 natural gas process heating 175/275. Derived from the rows (heating, boiler, HVAC) and subtotals that were internally consistent in the fetched transcription; one garbled machine-drive gas cell excluded.",medium
+Works,default,site_services,gas,0.02,,,published_sec,[MECS2022_T52] NAICS 332 other facility support 3 + onsite transport 2 + small residual = ~9/275.,medium
+Works,default,space_heating,gas,0.15,,,published_sec,[MECS2022_T52] NAICS 332 facility HVAC gas 40/275.,medium
+Works,default,steam_hot_water,gas,0.19,,,published_sec,[MECS2022_T52] NAICS 332 indirect boiler gas 51/275.,medium
+Workshop,default,machining_metalworking,electricity,0.47,,,fallback,"[MECS2022_T52] Borrowed from sibling activity 'Factory' (MECS 2022 NAICS 333 machinery electricity end-use split, machine drive 31 of ~66 TBtu allocated); document-level transcription of Table 5.2.",low
+Workshop,default,other_process,electricity,0.04,,,fallback,[MECS2022_T52] Borrowed from 'Factory' (NAICS 333 other process 3/66).,low
+Workshop,default,process_cooling,electricity,0.05,,,fallback,[MECS2022_T52] Borrowed from 'Factory' (NAICS 333 process cooling 3/66).,low
+Workshop,default,process_heating,electricity,0.06,,,fallback,[MECS2022_T52] Borrowed from 'Factory' (NAICS 333 process heating electricity 4/66).,low
+Workshop,default,site_services,electricity,0.38,,,fallback,[MECS2022_T52] Borrowed from 'Factory' (NAICS 333 facility HVAC 15 + lighting 7 + other facility 3 of 66).,low
+Workshop,default,process_heating,gas,0.1,,,engineering,[MECS2022_T52] Engineering allowance for the minority of workshops with gas-fired brazing/ovens; scaled down from NAICS 333 sector share (36%).,medium
+Workshop,default,space_heating,gas,0.85,,,engineering,[CTV059] Engineering rationale: small low-intensity workshops are heating-dominated on gas; CTV059 p.8 (space heating >45% in some sub-sectors) and garage evidence (MIDAM_AUTOSHOP: 99% of gas is space heating) bound the estimate above the MECS 333 sector figure of 46%.,medium
+Workshop,default,water_heating,gas,0.05,,,engineering,"[MIDAM_AUTOSHOP] Engineering: welfare hot water small share, consistent with 1% water heating at garages; rounded up for washdown use.",medium
