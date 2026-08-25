@@ -11,7 +11,8 @@ Sources in the spec:
                 plus entity names mentioned in the body (read edges)
 
 Emits, into docs/specs/diagrams/:
-  spec_flow.mmd   Mermaid source; renders on GitHub and in Artifacts
+  spec_flow.md    Mermaid in a fenced block, so it previews in VS Code (with the
+                  Markdown Preview Mermaid Support extension) and renders on GitHub
   spec_flow.svg   dependency-free SVG; drop into Mural, or any tool that takes SVG
 
 No third-party packages. Standard library only.
@@ -182,6 +183,30 @@ MERMAID_CLASSES = """
 """
 
 
+def to_markdown(g: dict, counts: tuple[int, int, int]) -> str:
+    """Mermaid inside a fenced block.
+
+    A bare .mmd file opens as plain text in most editors: the VS Code Mermaid
+    extensions hook Markdown *preview*, not a standalone mermaid file. Wrapping
+    the same graph in Markdown makes it previewable there and on GitHub, with
+    no second format to keep in step.
+    """
+    entities, algos, edges = counts
+    return (
+        "# CaRB3 per-site model — data flow\n\n"
+        "Generated from "
+        "[the implementation specification]"
+        "(../2026-08-19-carb3-site-decarbonisation-implementation.md) by "
+        "`docs/notes/examples/build_spec_flow_diagram.py`. Do not edit by hand — "
+        "regenerate.\n\n"
+        f"{entities} entities · {algos} algorithms · {edges} edges. Cylinders are data, "
+        "boxes are algorithms; dashed edges are reads, solid are writes and the pipeline "
+        "order. Colour marks who owns the data — see "
+        "[the README](README.md).\n\n"
+        "```mermaid\n" + to_mermaid(g) + "```\n"
+    )
+
+
 def to_mermaid(g: dict) -> str:
     lines = ["flowchart LR"]
     for n in g["nodes"]:
@@ -298,10 +323,11 @@ def main() -> None:
     g = build_graph(text)
     pos = layout(g)
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "spec_flow.mmd").write_text(to_mermaid(g), encoding="utf-8")
-    (OUT / "spec_flow.svg").write_text(to_svg(g, pos), encoding="utf-8")
     entities = sum(1 for n in g["nodes"] if n["type"] == "entity")
     algos = sum(1 for n in g["nodes"] if n["type"] == "algorithm")
+    counts = (entities, algos, len(g["edges"]))
+    (OUT / "spec_flow.md").write_text(to_markdown(g, counts), encoding="utf-8")
+    (OUT / "spec_flow.svg").write_text(to_svg(g, pos), encoding="utf-8")
     print(f"{entities} entities, {algos} algorithms, {len(g['edges'])} edges")
     for f in sorted(OUT.iterdir()):
         print(f"  {f.relative_to(REPO)}  {f.stat().st_size:,} bytes")

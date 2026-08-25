@@ -27,14 +27,19 @@ is information, not a defect.
 
 | File | Use |
 |---|---|
-| `spec_flow.mmd` | Mermaid source. Renders natively on GitHub, and in any Markdown viewer that supports Mermaid |
+| `spec_flow.md` | Mermaid in a fenced block. Previews in VS Code with the **Markdown Preview Mermaid Support** extension (⇧⌘V), and renders inline on GitHub |
 | `spec_flow.svg` | Self-contained SVG. Opens anywhere, and drops straight onto a Mural or Miro canvas |
 
-Two outputs, deliberately. Mermaid is the one to read in the repository, since GitHub
-renders it inline in a pull request; the SVG is the one to take somewhere else, since it
-needs no toolchain at the far end. Mural accepts `svg` among its supported image formats,
-so it imports through the toolbar or by dropping the file on the canvas — as a flat image
-rather than editable shapes.
+Two outputs, deliberately. The Markdown one is for reading in the repository, since both
+GitHub and a VS Code preview render the diagram inline; the SVG is for taking somewhere
+else, since it needs no toolchain at the far end. Mural accepts `svg` among its supported
+image formats, so it imports through the toolbar or by dropping the file on the canvas —
+as a flat image rather than editable shapes.
+
+**Why Markdown rather than a bare `.mmd`.** The VS Code Mermaid extensions hook Markdown
+*preview*; a standalone `.mmd` file just opens as text. Wrapping the same graph in a
+fenced block makes it previewable there and on GitHub without keeping a second format in
+step.
 
 ## Colour key
 

@@ -1,3 +1,10 @@
+# CaRB3 per-site model — data flow
+
+Generated from [the implementation specification](../2026-08-19-carb3-site-decarbonisation-implementation.md) by `docs/notes/examples/build_spec_flow_diagram.py`. Do not edit by hand — regenerate.
+
+15 entities · 9 algorithms · 44 edges. Cylinders are data, boxes are algorithms; dashed edges are reads, solid are writes and the pipeline order. Colour marks who owns the data — see [the README](README.md).
+
+```mermaid
 flowchart LR
     premise_record[(premise_record)]
     premise_energy[(premise_energy)]
@@ -78,3 +85,4 @@ flowchart LR
     class infrastructure_scenario,scenario_parameters scenario;
     class site_pathway output;
     class A1,A2,A3,A4,A5,A6,A7,A8,A9 algorithm;
+```
