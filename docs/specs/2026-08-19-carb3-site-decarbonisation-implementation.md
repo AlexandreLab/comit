@@ -2172,18 +2172,18 @@ substantially for seasonal processes.
 | Per batch | V8, V9, V13 (aggregate) |
 | Per release | V1, V5, V7, V10, V15 (step 6) |
 
-**Eight tests are not currently named in any phase exit criterion** (§11): V4, V6, V10,
-V11, V12, V13, V14 and V15. Most were added after the phasing was written. A test that is
-never an exit criterion is decorative, so each needs either a phase or an explicit
-decision that it is continuous rather than gating. The natural homes, offered as a
-proposal rather than a change:
+**Every test gates a phase.** §11 assigns each of the fifteen to the phase that builds
+what it guards, and a test stays in force once introduced:
 
-| Test | Suggested phase | Why |
-|---|---|---|
-| V4, V6, V10 | Phase 1 | Profile integrity, correctly-scoped non-negativity and determinism all guard the core pipeline, which Phase 1 builds |
-| V11, V12, V14 | Phase 1, if the optional inputs exist by then; otherwise Phase 2 | They guard D10's tiering and the A4 cross-checks |
-| V13 | Phase 2 | Belongs with aggregation and comparison reporting |
-| V15 | Phase 3 | Load shapes attach to processes, so it follows the taxonomy build |
+| Phase | Tests first gating here |
+|---|---|
+| 1 — Architecture | V1, V2, V3, V4, V6, V7 (G1–G2), V10, V11; V12 and V14 conditionally (§11.5) |
+| 2 — Scenarios and aggregation | V8, V9, V13; V12 and V14 if deferred |
+| 3 — Process taxonomy | V5, V15; V4 re-run across the new processes |
+| 4 — Full coverage | V7 (G3), and all of V1–V15 re-run on the full stock |
+
+A test whose inputs do not exist in its phase is **deferred with the reason recorded**,
+never marked passed — see §11.5.
 
 ### 10.5 What the tests need that a normal run does not
 
@@ -2204,36 +2204,112 @@ provisioned before the phase that depends on it (§11):
 
 ## 11. Phasing with acceptance criteria
 
+Every test in §10 gates exactly one phase. A test first appears at the phase that builds
+the thing it guards, and **remains in force from then on** — a Phase 1 exit criterion is
+not retired when Phase 2 begins, it becomes part of the standing bar every later phase
+must also clear. Where a test cannot be exercised in its phase because the inputs it
+needs are absent, §11.5 says what to do rather than leaving it silently unmet.
+
 ### Phase 1 — Architecture
 
 **Entry:** premise records available for 2–3 activities.
 **Build:** C1–C8 using **existing COMIT technologies only**; no new process taxonomy.
-**Exit:** V1, V2, V3, V7 (G1 and G2) all pass; G3 attempted and its result recorded.
+
+**Exit:**
+
+| Test | What it establishes here |
+|---|---|
+| **V1** | Decoupling reproduces coupled-off COMIT — the decomposition itself is sound |
+| **V2** | The back-solve from energy to capacity is self-consistent |
+| **V3** | A3 conserves energy and the carrier table is coherent |
+| **V4** | The profile obeys R1–R3 at load, on the activities in scope |
+| **V6** | Non-negativity is asserted where it holds and **not** where it does not |
+| **V10** | Results are reproducible and no state leaks between premise solves |
+| **V11** | Process sets are well formed and A2's tiering resolves in order |
+| **V7** | G1 and G2 pass; G3 attempted and its result recorded |
+| **V12**, **V14** | Conditional — see §11.5 |
 
 *Deliberately shallow on process depth. If the architecture does not hold, this is where
 it should fail.*
 
+**Why V10 belongs here rather than later.** It is the test that detects state leaking
+between premise solves, and that is a defect in the core loop D2 depends on. Finding it
+in Phase 1 costs a fix; finding it in Phase 4 invalidates every run made in between.
+
 ### Phase 2 — Scenarios and aggregation
 
-**Entry:** Phase 1 exit met.
+**Entry:** Phase 1 exit met, and all Phase 1 criteria still passing.
 **Build:** A5, A9; the infrastructure scenario entity; GB comparison reporting.
-**Exit:** V8, V9 pass; a two-scenario spread is produced and reviewed for the clustered
-energy-intensive subset.
+
+**Exit:**
+
+| Test | What it establishes here |
+|---|---|
+| **V8** | GB aggregates are compared against ECUK/GHGI and divergence is reported |
+| **V9** | Every clustered energy-intensive premise is run under at least two bounding scenarios, and the spread is reported |
+| **V13** | Measured emissions reconcile the baseline without overwriting it |
+| **V12**, **V14** | If deferred from Phase 1, they pass here — no further deferral |
+
+Plus: a two-scenario spread is produced and reviewed for the clustered energy-intensive
+subset.
+
+**Why V13 belongs here.** It is a reconciliation against an external source, which is the
+same job §11's Phase 2 gives V8. Both need aggregation reporting to exist before they can
+say anything, and both share the discipline that divergence is reported and never
+silently corrected.
 
 ### Phase 3 — Process taxonomy, high-energy activities
 
-**Entry:** Phase 2 exit met; cost provenance tiers agreed (D6).
+**Entry:** Phase 2 exit met, and all earlier criteria still passing; cost provenance
+tiers agreed (D6).
 **Build:** commodities, technologies and coefficients for Cement, Iron & steel,
 Chemicals, Food & drink, Paper — the sectors with real product chains and process
 emissions.
-**Exit:** V5 passes on the new taxonomy; every new technology carries provenance and
-confidence; the proxy-tier share is reported.
+
+**Exit:**
+
+| Test | What it establishes here |
+|---|---|
+| **V5** | The emissions invariants hold on the new taxonomy |
+| **V15** | Every new process resolves to a load shape, and the §5.6 method reproduces measured baseline peaks |
+| **V4** | Re-run — the profile still obeys R1–R3 across the newly added processes |
+
+Plus: every new technology carries provenance and confidence, and the proxy-tier share is
+reported.
+
+**Why V15 belongs here.** Load shapes attach to processes (§3.13), so the shape table can
+only be complete once the process taxonomy is. Attempting it in Phase 2 would validate a
+table that is about to change.
 
 ### Phase 4 — Full coverage
 
-**Entry:** Phase 3 exit met.
+**Entry:** Phase 3 exit met, and all earlier criteria still passing.
 **Build:** remaining activities; full-stock run.
-**Exit:** V7 (G3) passes; a complete GB run is produced with its confidence profile.
+
+**Exit:**
+
+| Test | What it establishes here |
+|---|---|
+| **V7** | G3 passes at full stock scale, or the archetype fallback is triggered (§9.2) |
+| **All of V1–V15** | Re-run on the full stock; nothing regressed as coverage widened |
+
+Plus: a complete GB run is produced with its confidence profile.
+
+### 11.5 Tests that may not be exercisable in their phase
+
+**V12** (known-capacity reconciliation) and **V14** (operating profile coherence) depend
+on optional site intelligence — `premise_process_detail`, `premise_operating_profile`. If
+no premise in the Phase 1 activity set carries those inputs, the tests are vacuous rather
+than passing, and recording them as passed would be false.
+
+**The rule.** A test whose inputs are absent is **deferred, with the reason recorded**,
+never marked passed. Deferral is permitted once, to the next phase. If the inputs are
+still absent at Phase 2, that is itself a finding: it means D10's tiering has never been
+exercised on real data, and the tier-1 path is untested code shipping to a national run.
+
+Two ways to close it, in preference order: obtain a premise that carries the inputs, or
+construct a synthetic premise that does — the same approach V7 already takes for the
+scale gates, where structural validity is enough and realism is not required.
 
 ---
 
