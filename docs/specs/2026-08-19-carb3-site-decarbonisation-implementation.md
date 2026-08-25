@@ -9,6 +9,8 @@
 
 ## 1. Scope, inputs, conventions, and how to read this
 
+*Section last updated: 2026-08-25*
+
 ### 1.1 What this document is
 
 A complete build specification for a model that takes one record per GB Factory-class
@@ -36,6 +38,12 @@ true, it holds to four rules:
 
 Solver-specific concerns are confined to **§9.3**. Everything else is solver-neutral.
 
+**Section dates.** Every `##` section carries a *Section last updated* line. They are not
+decoration: this document is edited section by section, and the oldest dates are where
+staleness accumulates. The three oldest sections at the last review — §6, §8 and §12,
+all dated 2026-08-20 — were also the three found to be out of date with the data model.
+When reviewing, start at the top of the date order, not the top of the document.
+
 ### 1.3 Notation
 
 - Entity field tables use: `field · type · unit · required · key · validation`.
@@ -49,7 +57,8 @@ section that defines them:
 | Label | Meaning | Defined in |
 |---|---|---|
 | `A1`–`A9` | Algorithms — the processing steps, in order | §4 |
-| `C1`–`C9` | Components — the software pieces that run those algorithms | §2.1 |
+| `S1`–`S9` | Stages — the pipeline components that run those algorithms | §2.1 |
+| `C1`–`C9` | Constraints of the per-premise optimisation | §5.5 |
 | `V1`–`V15` | Validation tests and acceptance criteria | §10 |
 | `D1`–`D10` | Design decisions | [Vision doc §6](2026-08-19-carb3-site-decarbonisation-vision.md) |
 
@@ -79,9 +88,13 @@ all results.
 | **Process** | A unit operation performed at a premise (e.g. `Calcination`, `Welding`). The middle level of the CaRB3 taxonomy. |
 | **Energy service** | COMIT's existing middle level (high-temperature heat, motor drive). A *process* may map onto one. |
 | **Technology** | A specific way of performing a process, distinguished by equipment type **and fuel**. The decision variable's subject. |
-| **Vector** | An energy carrier as metered at the premise: electricity, gas, oil, coal, biomass. |
+| **Vector** | The grouping an energy carrier belongs to: electricity, gas, oil, coal, biomass, or `other`. Used to join the energy profile (§3.3). Each `premise_energy` row also names its specific `commodity_id`, so a carrier such as waste-derived fuel is an ordinary row rather than a special case. |
 | **Commodity** | A modelled flow — a fuel, an intermediate material, a process-emission pseudo-commodity, or a process's output. |
 | **Denominator** | The unit a technology's coefficients are expressed per: PJ of useful energy, or a physical mass. See D5. |
+| **Process set** | A named route through an activity — e.g. kraft versus recycled fibre at a paper mill. Each activity has one default set plus any named alternatives (§3.2, D10). |
+| **Evidence tier** | Which quality of evidence produced a value. Used in three places with three separate scales: process detail (`site_known` / `named_set` / `activity_default`, §A2), energy profile (`metered` / `published_sec` / `engineering` / `fallback`, §3.3.2), and cost provenance (`comit_reuse` / `bref` / `proxy`, D6). |
+| **Utilisation** | The fraction of its capacity a technology actually runs at. Back-solved in A4 where capacity is known, and equal to the availability factor where capacity is inferred instead (§A4). |
+| **Load shape** | How a process presents its demand over time — its class, duty factor and peak-to-mean ratio (§3.13). A property of the process, not of the technology serving it. |
 | **Period** | One model time step. Periods run from `start_year` to `end_year` in steps of `timestep`. |
 
 ### 1.5 Design decisions assumed
@@ -244,40 +257,42 @@ a contract mismatch, not a data-cleaning opportunity.
 
 ## 2. System overview
 
+*Section last updated: 2026-08-25*
+
 ### 2.1 Components
 
 | # | Component | Responsibility |
 |---|---|---|
-| C1 | **Ingestion and validation** | Accept premise records, validate, reject with reasons |
-| C2 | **Process expansion** | Premise → its set of processes, via the activity register |
-| C3 | **Energy allocation** | Split the premise's metered energy across its processes |
-| C4 | **Baseline capacity solve** | Back-solve implied existing technology capacity per process |
-| C5 | **Scenario application** | Attach fuel prices, carbon price, infrastructure availability |
-| C6 | **Problem builder** | Construct the per-premise optimisation (§5) |
-| C7 | **Solver driver** | Solve, extract, handle infeasibility |
-| C8 | **Output assembly** | Produce the per-premise pathway tables (§8) |
-| C9 | **Aggregation and comparison** | Roll up to GB; compare against ECUK/GHGI |
+| S1 | **Ingestion and validation** | Accept premise records, validate, reject with reasons |
+| S2 | **Process expansion** | Premise → its set of processes, resolving the three evidence tiers of D10 (§A2) |
+| S3 | **Energy allocation** | Split the premise's metered energy across its processes |
+| S4 | **Baseline capacity solve** | Back-solve implied existing capacity per process — or, where capacity is known, back-solve utilisation instead (§A4) |
+| S5 | **Scenario application** | Attach fuel prices, carbon price, infrastructure availability |
+| S6 | **Problem builder** | Construct the per-premise optimisation (§5) |
+| S7 | **Solver driver** | Solve, extract, handle infeasibility |
+| S8 | **Output assembly** | Produce the per-premise pathway tables (§8) |
+| S9 | **Aggregation and comparison** | Roll up to GB; compare against ECUK/GHGI |
 
-C1–C8 run per premise and are independent across premises. C9 runs once over all
+S1–S8 run per premise and are independent across premises. S9 runs once over all
 results.
 
 ### 2.2 Data flow
 
 ```
-premise_record ──C1──► validated premise
+premise_record ──S1──► validated premise
  + premise_energy            (§3.1.1, one row per carrier)
  + premise_throughput        (§3.1.2, one row per product)
                         │
-                        ├─C2─► process set              (activity_process_register)
-                        ├─C3─► energy per process       (activity_process_energy_profile)
-                        ├─C4─► implied existing capacity (technology, technology_input_output)
-                        └─C5─► prices, availability     (scenario_parameters, infrastructure_scenario)
+                        ├─S2─► process set              (activity_process_register)
+                        ├─S3─► energy per process       (activity_process_energy_profile)
+                        ├─S4─► implied existing capacity (technology, technology_input_output)
+                        └─S5─► prices, availability     (scenario_parameters, infrastructure_scenario)
                                     │
                                     ▼
-                              C6 build problem ──► C7 solve ──► C8 site_pathway
+                              S6 build problem ──► S7 solve ──► S8 site_pathway
                                                                      │
                                                                      ▼
-                                                          C9 aggregate → GB comparison
+                                                          S9 aggregate → GB comparison
 ```
 
 ### 2.3 Boundaries
@@ -302,6 +317,8 @@ Great Britain — England, Wales, Scotland. Consequences the implementation must
 ---
 
 ## 3. Data model
+
+*Section last updated: 2026-08-25*
 
 Nine entities. Each is specified as a field table. Types are abstract (§1.3).
 
@@ -394,8 +411,11 @@ have at least one `premise_throughput` row, and A1 rejects it otherwise
 
 ### 3.2 `activity_process_register` — activity → processes
 
-Which processes run at a premise of a given activity. Seeded from
-[`../notes/data/carb3_factory_processes.json`](../notes/data/carb3_factory_processes.json).
+Which processes run at a premise of a given activity. Populated by
+[`../notes/data/activity_process_register.csv`](../notes/data/activity_process_register.csv) —
+376 rows covering all 55 activities, with provenance per row. That table supersedes
+[`carb3_factory_processes.json`](../notes/data/carb3_factory_processes.json), which
+remains as the narrower source it was expanded from.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -860,6 +880,8 @@ attributed to the right process when the mix changes.
 
 ## 4. Algorithms
 
+*Section last updated: 2026-08-24*
+
 Each is stated with inputs, outputs, preconditions, postconditions and failure modes.
 
 ### A1 — Ingest and validate premise records
@@ -1143,6 +1165,8 @@ only a scenario-parameter sweep and a convergence test.
 
 ## 5. The optimisation model
 
+*Section last updated: 2026-08-24*
+
 This section is the authoritative definition. Everything else serves it.
 
 ### 5.1 Sets and indices
@@ -1422,7 +1446,12 @@ evidence rather than assumed.
 
 ## 6. Constraint disposition
 
+*Section last updated: 2026-08-25*
+
 COMIT has 17 constraint families. Under D2 they divide three ways.
+
+**The `C` labels in the tables below are the constraints of §5.5**, not the pipeline
+stages of §2.1 — the two were both numbered `C` until the stages were renamed `S`.
 
 ### 6.1 Survive per-premise, unchanged in meaning
 
@@ -1465,6 +1494,8 @@ it prominently.
 ---
 
 ## 7. Emissions accounting
+
+*Section last updated: 2026-08-24*
 
 These rules must be reproduced exactly. COMIT's implementation is the reference.
 
@@ -1576,6 +1607,8 @@ not have taken from the same vintage.
 
 ## 8. Output schema
 
+*Section last updated: 2026-08-25*
+
 Reuse the structure documented in [notes/12](../notes/12_output_data_schema.md), extended
 with a **process** dimension. Convention: long in dimensions, wide in periods; the period
 columns are generated from `start_year`/`end_year`/`timestep` and **must not be
@@ -1594,8 +1627,18 @@ hardcoded**.
 | `equipment_type` | string | **New** |
 | `fuel_category` | string | The switching axis |
 | `unit` | string | From the process denominator (D5) |
+| `process_set_id` | string | **New (D10).** Which process set this premise resolved to (§3.2) |
+| `process_evidence_tier` | enum{site_known, named_set, activity_default} | **New (D10).** Which tier A2 used. Required by V11 — without it an aggregate cannot say which premises were surveyed and which were defaulted |
+| `utilisation` | real | **New.** Derived in A4. Equals the availability factor where capacity was back-solved, and the energy-implied value where capacity was known (§A4) |
+| `carrier_coverage` | enum{complete, incomplete} | **New.** Whether all five main vectors were stated for this premise, whether positive or an explicit `not_consumed` zero (§3.1.1) |
+| `emissions_calibration_multiplier` | real | **New.** Present only where §7.6 intensity calibration was enabled. Required by V13 |
 | `confidence` | enum | Lowest of technology and profile confidence |
 | `⟨period⟩` | real | Activity in that period |
+
+**Rule.** The five fields marked new are not decoration. Three validation tests assert
+their presence — V11 on the evidence tier, V12 on utilisation, V13 on the calibration
+multiplier — because each is the only way a reader can tell how much of a result rests on
+evidence rather than on a default.
 
 ### 8.2 `Energy`
 
@@ -1623,13 +1666,31 @@ build-year spike. Never sum them.
 
 ### 8.5 Run metadata
 
-Every output set carries: scenario id, infrastructure scenario id, period definition,
-counts of premises accepted/rejected/infeasible, and the **share of results resting on
-proxy-tier costs and low-confidence energy profiles**.
+Every output set carries:
+
+| Item | Why |
+|---|---|
+| Scenario id, infrastructure scenario id, period definition | Identifies the run |
+| Counts of premises accepted / rejected / infeasible | Basic completeness |
+| Rejection counts **by reason** (§1.6.7) | A batch failing on one reason is a contract problem; failing on many is a data problem |
+| Share of results resting on **proxy-tier costs** (D6) | Cost confidence |
+| Share resting on **fallback-tier energy profiles** (§3.3.2) | Profile confidence |
+| Distribution of **`process_evidence_tier`** across premises (D10) | How much of the run is surveyed versus defaulted |
+| Count of premises with **incomplete carrier coverage** (§3.1.1) | Where a vector was never assessed, so absence is not zero |
+| Count of premises reporting `capacity_energy_inconsistent`, `utilisation_schedule_inconsistent`, `profile_energy_inconsistent` | Input disagreements surfaced by V12 and V14 |
+| Aggregate **measured-emissions divergence** and the count of premises calibrated (§7.6) | Required by V13 |
+| Any validation test **deferred** rather than passed, with its reason (§11.5) | A deferred test must never read as a passed one |
+
+**Rule.** Several sections promise that a condition is "reported" rather than corrected —
+carrier coverage (§3.1.1), emissions divergence (§7.6), aggregate divergence (§A9),
+utilisation disagreements (§A4). This table is where that promise is kept. A condition
+detected and not surfaced here is a defect, not a silent success.
 
 ---
 
 ## 9. Performance and parallelisation
+
+*Section last updated: 2026-08-21*
 
 ### 9.1 The scaling argument
 
@@ -1688,6 +1749,8 @@ Two cautions carried from COMIT:
 ---
 
 ## 10. Validation and test plan
+
+*Section last updated: 2026-08-25*
 
 ### 10.1 How to read this section
 
@@ -2204,6 +2267,8 @@ provisioned before the phase that depends on it (§11):
 
 ## 11. Phasing with acceptance criteria
 
+*Section last updated: 2026-08-25*
+
 Every test in §10 gates exactly one phase. A test first appears at the phase that builds
 the thing it guards, and **remains in force from then on** — a Phase 1 exit criterion is
 not retired when Phase 2 begins, it becomes part of the standing bar every later phase
@@ -2213,7 +2278,7 @@ needs are absent, §11.5 says what to do rather than leaving it silently unmet.
 ### Phase 1 — Architecture
 
 **Entry:** premise records available for 2–3 activities.
-**Build:** C1–C8 using **existing COMIT technologies only**; no new process taxonomy.
+**Build:** S1–S8 using **existing COMIT technologies only**; no new process taxonomy.
 
 **Exit:**
 
@@ -2315,6 +2380,8 @@ scale gates, where structural validity is enough and realism is not required.
 
 ## 12. Reference map
 
+*Section last updated: 2026-08-25*
+
 Where each specified behaviour currently lives in COMIT. Cited so an implementer in
 either language can verify against a working model.
 
@@ -2333,7 +2400,12 @@ either language can verify against a working model.
 | §7.5 | Emissions categories and their overlap | [notes/12 §4.4](../notes/12_output_data_schema.md), [notes/13](../notes/13_emissions_calculation.md) |
 | §8 | Output table structure and traps | [notes/12](../notes/12_output_data_schema.md) |
 | §9.3 | Solver invocation and selection | `R/comit_solver.R:284`, `:327` |
-| §3.2 | CaRB3 activity → process register source | [`../notes/data/carb3_factory_processes.json`](../notes/data/carb3_factory_processes.json) |
+| §3.2 | CaRB3 activity → process register | [`../notes/data/activity_process_register.csv`](../notes/data/activity_process_register.csv) (376 rows, 55 activities) |
+| §3.2 | The narrower source the register was expanded from | [`../notes/data/carb3_factory_processes.json`](../notes/data/carb3_factory_processes.json) |
+| §3.3 | Activity → process energy profile | [`../notes/data/activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv) (490 rows, 137 (activity, set, vector) groups) |
+| §3.3 | Per-activity evidence notes and known gaps | [`../notes/data/activity_profile_coverage_notes.csv`](../notes/data/activity_profile_coverage_notes.csv) |
+| §3.2, §3.3 | Source bibliography for both tables | [`../notes/data/references.csv`](../notes/data/references.csv) |
+| §3.5, D6 | Decarbonisation options per process, with maturity evidence | [`../notes/data/process_decarbonisation_options.csv`](../notes/data/process_decarbonisation_options.csv), [`../notes/data/decarbonisation_options_library.csv`](../notes/data/decarbonisation_options_library.csv) |
 | §8.1, A9 | Activity → COMIT sector mapping | [`../notes/data/carb3_comit_crosswalk.csv`](../notes/data/carb3_comit_crosswalk.csv) |
 | §3.5 | Existing technology structure to reuse (D6 tier 1) | [`../notes/data/comit_sector_processes.csv`](../notes/data/comit_sector_processes.csv) |
 | §7 | Which technologies carry process emissions | [`../notes/data/emissions_source_classification.csv`](../notes/data/emissions_source_classification.csv) |
@@ -2346,6 +2418,8 @@ commodity list (§7.4), the biomass category string (§7.3), non-CO₂ capture f
 ---
 
 ## 13. Worked example
+
+*Section last updated: 2026-08-24*
 
 Moved to a companion document so this specification stays a reference rather than a
 narrative: **[2026-08-19-carb3-site-decarbonisation-worked-example.md](2026-08-19-carb3-site-decarbonisation-worked-example.md)**.
