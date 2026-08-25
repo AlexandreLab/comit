@@ -1,0 +1,633 @@
+{
+  "endpoint": "POST /murals/{muralId}/widgets/shape",
+  "auth": "OAuth2, scope murals:write",
+  "limit": "1000 shapes per request",
+  "shapes": [
+    {
+      "shape": "rounded_rectangle",
+      "x": 40,
+      "y": 265,
+      "width": 240,
+      "height": 64,
+      "text": "premise_record",
+      "title": "premise_record",
+      "style": {
+        "backgroundColor": "#dbeafeFF",
+        "borderColor": "#1e40afFF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 40,
+      "y": 355,
+      "width": 240,
+      "height": 64,
+      "text": "premise_energy",
+      "title": "premise_energy",
+      "style": {
+        "backgroundColor": "#dbeafeFF",
+        "borderColor": "#1e40afFF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 40,
+      "y": 445,
+      "width": 240,
+      "height": 64,
+      "text": "premise_throughput",
+      "title": "premise_throughput",
+      "style": {
+        "backgroundColor": "#dbeafeFF",
+        "borderColor": "#1e40afFF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 40,
+      "y": 535,
+      "width": 240,
+      "height": 64,
+      "text": "premise_connection",
+      "title": "premise_connection",
+      "style": {
+        "backgroundColor": "#dbeafeFF",
+        "borderColor": "#1e40afFF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 40,
+      "y": 625,
+      "width": 240,
+      "height": 64,
+      "text": "premise_process_detail",
+      "title": "premise_process_detail",
+      "style": {
+        "backgroundColor": "#dbeafeFF",
+        "borderColor": "#1e40afFF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 40,
+      "y": 715,
+      "width": 240,
+      "height": 64,
+      "text": "premise_measured_emissions",
+      "title": "premise_measured_emissions",
+      "style": {
+        "backgroundColor": "#dbeafeFF",
+        "borderColor": "#1e40afFF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 40,
+      "y": 805,
+      "width": 240,
+      "height": 64,
+      "text": "premise_operating_profile",
+      "title": "premise_operating_profile",
+      "style": {
+        "backgroundColor": "#dbeafeFF",
+        "borderColor": "#1e40afFF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 430,
+      "y": 355,
+      "width": 240,
+      "height": 64,
+      "text": "activity_process_register",
+      "title": "activity_process_register",
+      "style": {
+        "backgroundColor": "#ede9feFF",
+        "borderColor": "#5b21b6FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 430,
+      "y": 445,
+      "width": 240,
+      "height": 64,
+      "text": "activity_process_energy_profile",
+      "title": "activity_process_energy_profile",
+      "style": {
+        "backgroundColor": "#ede9feFF",
+        "borderColor": "#5b21b6FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 430,
+      "y": 535,
+      "width": 240,
+      "height": 64,
+      "text": "commodity",
+      "title": "commodity",
+      "style": {
+        "backgroundColor": "#ede9feFF",
+        "borderColor": "#5b21b6FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 430,
+      "y": 625,
+      "width": 240,
+      "height": 64,
+      "text": "technology",
+      "title": "technology",
+      "style": {
+        "backgroundColor": "#ede9feFF",
+        "borderColor": "#5b21b6FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 430,
+      "y": 715,
+      "width": 240,
+      "height": 64,
+      "text": "technology_input_output",
+      "title": "technology_input_output",
+      "style": {
+        "backgroundColor": "#ede9feFF",
+        "borderColor": "#5b21b6FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rectangle",
+      "x": 820,
+      "y": 175,
+      "width": 240,
+      "height": 64,
+      "text": "A1 Ingest and validate premise records",
+      "title": "A1",
+      "style": {
+        "backgroundColor": "#f1f5f9FF",
+        "borderColor": "#334155FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rectangle",
+      "x": 820,
+      "y": 265,
+      "width": 240,
+      "height": 64,
+      "text": "A2 Expand premise to its process set",
+      "title": "A2",
+      "style": {
+        "backgroundColor": "#f1f5f9FF",
+        "borderColor": "#334155FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rectangle",
+      "x": 820,
+      "y": 355,
+      "width": 240,
+      "height": 64,
+      "text": "A3 Allocate premise energy across processes",
+      "title": "A3",
+      "style": {
+        "backgroundColor": "#f1f5f9FF",
+        "borderColor": "#334155FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rectangle",
+      "x": 820,
+      "y": 445,
+      "width": 240,
+      "height": 64,
+      "text": "A4 Back-solve implied existing capacity",
+      "title": "A4",
+      "style": {
+        "backgroundColor": "#f1f5f9FF",
+        "borderColor": "#334155FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rectangle",
+      "x": 820,
+      "y": 535,
+      "width": 240,
+      "height": 64,
+      "text": "A5 Apply the infrastructure scenario",
+      "title": "A5",
+      "style": {
+        "backgroundColor": "#f1f5f9FF",
+        "borderColor": "#334155FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rectangle",
+      "x": 820,
+      "y": 625,
+      "width": 240,
+      "height": 64,
+      "text": "A6 Build the per-premise optimisation problem",
+      "title": "A6",
+      "style": {
+        "backgroundColor": "#f1f5f9FF",
+        "borderColor": "#334155FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rectangle",
+      "x": 820,
+      "y": 715,
+      "width": 240,
+      "height": 64,
+      "text": "A7 Solve and extract",
+      "title": "A7",
+      "style": {
+        "backgroundColor": "#f1f5f9FF",
+        "borderColor": "#334155FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rectangle",
+      "x": 820,
+      "y": 805,
+      "width": 240,
+      "height": 64,
+      "text": "A8 Assemble output tables",
+      "title": "A8",
+      "style": {
+        "backgroundColor": "#f1f5f9FF",
+        "borderColor": "#334155FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rectangle",
+      "x": 820,
+      "y": 895,
+      "width": 240,
+      "height": 64,
+      "text": "A9 Aggregate to GB and compare",
+      "title": "A9",
+      "style": {
+        "backgroundColor": "#f1f5f9FF",
+        "borderColor": "#334155FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 1210,
+      "y": 490,
+      "width": 240,
+      "height": 64,
+      "text": "infrastructure_scenario",
+      "title": "infrastructure_scenario",
+      "style": {
+        "backgroundColor": "#fef3c7FF",
+        "borderColor": "#92400eFF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 1210,
+      "y": 580,
+      "width": 240,
+      "height": 64,
+      "text": "scenario_parameters",
+      "title": "scenario_parameters",
+      "style": {
+        "backgroundColor": "#fef3c7FF",
+        "borderColor": "#92400eFF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    },
+    {
+      "shape": "rounded_rectangle",
+      "x": 1600,
+      "y": 535,
+      "width": 240,
+      "height": 64,
+      "text": "site_pathway",
+      "title": "site_pathway",
+      "style": {
+        "backgroundColor": "#dcfce7FF",
+        "borderColor": "#166534FF",
+        "borderWidth": 2,
+        "fontColor": "#0F172AFF"
+      }
+    }
+  ],
+  "connectors": [
+    {
+      "from": "premise_record",
+      "to": "A1",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_energy",
+      "to": "A1",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_throughput",
+      "to": "A1",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "activity_process_register",
+      "to": "A1",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "activity_process_register",
+      "to": "A2",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_process_detail",
+      "to": "A2",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_energy",
+      "to": "A3",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "activity_process_energy_profile",
+      "to": "A3",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "technology",
+      "to": "A3",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "commodity",
+      "to": "A4",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "A4",
+      "to": "technology",
+      "kind": "writes",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "technology",
+      "to": "A4",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "technology_input_output",
+      "to": "A4",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_process_detail",
+      "to": "A4",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_operating_profile",
+      "to": "A4",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "infrastructure_scenario",
+      "to": "A5",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "technology",
+      "to": "A6",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "scenario_parameters",
+      "to": "A6",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "technology",
+      "to": "A7",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "commodity",
+      "to": "A8",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "technology",
+      "to": "A8",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "A8",
+      "to": "site_pathway",
+      "kind": "writes",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_record",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_energy",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_connection",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "activity_process_register",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "activity_process_energy_profile",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "commodity",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "technology",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "technology_input_output",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "infrastructure_scenario",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "scenario_parameters",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "site_pathway",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_process_detail",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_measured_emissions",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "premise_operating_profile",
+      "to": "A9",
+      "kind": "reads",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "A1",
+      "to": "A2",
+      "kind": "flow",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "A2",
+      "to": "A3",
+      "kind": "flow",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "A3",
+      "to": "A4",
+      "kind": "flow",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "A4",
+      "to": "A5",
+      "kind": "flow",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "A5",
+      "to": "A6",
+      "kind": "flow",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "A6",
+      "to": "A7",
+      "kind": "flow",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "A7",
+      "to": "A8",
+      "kind": "flow",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    },
+    {
+      "from": "A8",
+      "to": "A9",
+      "kind": "flow",
+      "note": "resolve endpoints to widget ids returned by the shape call"
+    }
+  ]
+}

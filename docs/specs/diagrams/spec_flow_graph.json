@@ -1,0 +1,370 @@
+{
+  "nodes": [
+    {
+      "id": "premise_record",
+      "label": "premise_record",
+      "type": "entity",
+      "role": "input"
+    },
+    {
+      "id": "premise_energy",
+      "label": "premise_energy",
+      "type": "entity",
+      "role": "input"
+    },
+    {
+      "id": "premise_throughput",
+      "label": "premise_throughput",
+      "type": "entity",
+      "role": "input"
+    },
+    {
+      "id": "premise_connection",
+      "label": "premise_connection",
+      "type": "entity",
+      "role": "input"
+    },
+    {
+      "id": "activity_process_register",
+      "label": "activity_process_register",
+      "type": "entity",
+      "role": "reference"
+    },
+    {
+      "id": "activity_process_energy_profile",
+      "label": "activity_process_energy_profile",
+      "type": "entity",
+      "role": "reference"
+    },
+    {
+      "id": "commodity",
+      "label": "commodity",
+      "type": "entity",
+      "role": "reference"
+    },
+    {
+      "id": "technology",
+      "label": "technology",
+      "type": "entity",
+      "role": "reference"
+    },
+    {
+      "id": "technology_input_output",
+      "label": "technology_input_output",
+      "type": "entity",
+      "role": "reference"
+    },
+    {
+      "id": "infrastructure_scenario",
+      "label": "infrastructure_scenario",
+      "type": "entity",
+      "role": "scenario"
+    },
+    {
+      "id": "scenario_parameters",
+      "label": "scenario_parameters",
+      "type": "entity",
+      "role": "scenario"
+    },
+    {
+      "id": "site_pathway",
+      "label": "site_pathway",
+      "type": "entity",
+      "role": "output"
+    },
+    {
+      "id": "premise_process_detail",
+      "label": "premise_process_detail",
+      "type": "entity",
+      "role": "input"
+    },
+    {
+      "id": "premise_measured_emissions",
+      "label": "premise_measured_emissions",
+      "type": "entity",
+      "role": "input"
+    },
+    {
+      "id": "premise_operating_profile",
+      "label": "premise_operating_profile",
+      "type": "entity",
+      "role": "input"
+    },
+    {
+      "id": "A1",
+      "label": "A1 Ingest and validate premise records",
+      "type": "algorithm",
+      "role": "algorithm"
+    },
+    {
+      "id": "A2",
+      "label": "A2 Expand premise to its process set",
+      "type": "algorithm",
+      "role": "algorithm"
+    },
+    {
+      "id": "A3",
+      "label": "A3 Allocate premise energy across processes",
+      "type": "algorithm",
+      "role": "algorithm"
+    },
+    {
+      "id": "A4",
+      "label": "A4 Back-solve implied existing capacity",
+      "type": "algorithm",
+      "role": "algorithm"
+    },
+    {
+      "id": "A5",
+      "label": "A5 Apply the infrastructure scenario",
+      "type": "algorithm",
+      "role": "algorithm"
+    },
+    {
+      "id": "A6",
+      "label": "A6 Build the per-premise optimisation problem",
+      "type": "algorithm",
+      "role": "algorithm"
+    },
+    {
+      "id": "A7",
+      "label": "A7 Solve and extract",
+      "type": "algorithm",
+      "role": "algorithm"
+    },
+    {
+      "id": "A8",
+      "label": "A8 Assemble output tables",
+      "type": "algorithm",
+      "role": "algorithm"
+    },
+    {
+      "id": "A9",
+      "label": "A9 Aggregate to GB and compare",
+      "type": "algorithm",
+      "role": "algorithm"
+    }
+  ],
+  "edges": [
+    {
+      "from": "premise_record",
+      "to": "A1",
+      "kind": "reads"
+    },
+    {
+      "from": "premise_energy",
+      "to": "A1",
+      "kind": "reads"
+    },
+    {
+      "from": "premise_throughput",
+      "to": "A1",
+      "kind": "reads"
+    },
+    {
+      "from": "activity_process_register",
+      "to": "A1",
+      "kind": "reads"
+    },
+    {
+      "from": "activity_process_register",
+      "to": "A2",
+      "kind": "reads"
+    },
+    {
+      "from": "premise_process_detail",
+      "to": "A2",
+      "kind": "reads"
+    },
+    {
+      "from": "premise_energy",
+      "to": "A3",
+      "kind": "reads"
+    },
+    {
+      "from": "activity_process_energy_profile",
+      "to": "A3",
+      "kind": "reads"
+    },
+    {
+      "from": "technology",
+      "to": "A3",
+      "kind": "reads"
+    },
+    {
+      "from": "commodity",
+      "to": "A4",
+      "kind": "reads"
+    },
+    {
+      "from": "A4",
+      "to": "technology",
+      "kind": "writes"
+    },
+    {
+      "from": "technology",
+      "to": "A4",
+      "kind": "reads"
+    },
+    {
+      "from": "technology_input_output",
+      "to": "A4",
+      "kind": "reads"
+    },
+    {
+      "from": "premise_process_detail",
+      "to": "A4",
+      "kind": "reads"
+    },
+    {
+      "from": "premise_operating_profile",
+      "to": "A4",
+      "kind": "reads"
+    },
+    {
+      "from": "infrastructure_scenario",
+      "to": "A5",
+      "kind": "reads"
+    },
+    {
+      "from": "technology",
+      "to": "A6",
+      "kind": "reads"
+    },
+    {
+      "from": "scenario_parameters",
+      "to": "A6",
+      "kind": "reads"
+    },
+    {
+      "from": "technology",
+      "to": "A7",
+      "kind": "reads"
+    },
+    {
+      "from": "commodity",
+      "to": "A8",
+      "kind": "reads"
+    },
+    {
+      "from": "technology",
+      "to": "A8",
+      "kind": "reads"
+    },
+    {
+      "from": "A8",
+      "to": "site_pathway",
+      "kind": "writes"
+    },
+    {
+      "from": "premise_record",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "premise_energy",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "premise_connection",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "activity_process_register",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "activity_process_energy_profile",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "commodity",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "technology",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "technology_input_output",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "infrastructure_scenario",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "scenario_parameters",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "site_pathway",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "premise_process_detail",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "premise_measured_emissions",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "premise_operating_profile",
+      "to": "A9",
+      "kind": "reads"
+    },
+    {
+      "from": "A1",
+      "to": "A2",
+      "kind": "flow"
+    },
+    {
+      "from": "A2",
+      "to": "A3",
+      "kind": "flow"
+    },
+    {
+      "from": "A3",
+      "to": "A4",
+      "kind": "flow"
+    },
+    {
+      "from": "A4",
+      "to": "A5",
+      "kind": "flow"
+    },
+    {
+      "from": "A5",
+      "to": "A6",
+      "kind": "flow"
+    },
+    {
+      "from": "A6",
+      "to": "A7",
+      "kind": "flow"
+    },
+    {
+      "from": "A7",
+      "to": "A8",
+      "kind": "flow"
+    },
+    {
+      "from": "A8",
+      "to": "A9",
+      "kind": "flow"
+    }
+  ]
+}
