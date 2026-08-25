@@ -181,10 +181,8 @@ one.
 | Operating schedule — `operating_pattern`, `operating_hours_per_year`, `operating_days_per_week`, `shutdown_weeks` | h/yr, d/wk, wk/yr | The independent check on utilisation (§3.12, A4). A site running 24/7 and one running a single shift can consume identical annual energy on very different plant, and only the schedule distinguishes them |
 | Load statistics — `peak_electricity`, `peak_gas`, `load_factor_electricity`, `load_factor_gas`, `within_shift_peak_factor` | MW, fraction, ratio | **Future use (§5.6).** The true site peak, which is what a connection capacity is about. Derived from half-hourly or daily metering where it exists; gas is the better predictor of the *post-electrification* peak |
 | `premise_weekly_profile` rows | fraction, MW | **Future use (§5.6).** A representative half-hourly week — 336 points per vector — plus the separately-recorded annual peak (§3.14). Gives observed diversity between processes rather than an assumed factor, and is the calibration point for any projected peak |
-| `import_capacity` | MW | **Future use (§5.6).** How much electrification the connection physically allows before reinforcement is needed |
-| `export_capacity` | MW | **Future use (§5.6).** Whether onsite generation can be exported, and how much |
-| `connection_voltage` | kV | **Future use (§5.6).** Sets which reinforcement cost curve applies |
-| `onsite_generation_capacity`, `onsite_generation_type` | MW, — | **Future use (§5.6).** Existing generation to be represented rather than double-counted |
+| `premise_connection` rows — one per MPAN/MPRN | MW, kV | **Future use (§5.6).** Each connection's import and export capacity, voltage, metering type and onsite generation (§3.1.3). A site with two supplies has two rows, and they are never summed |
+| `connection_id` on process detail | — | **Future use (§5.6).** Which connection serves which process — the fact that decides where electrified load lands |
 
 **On schedules versus load statistics.** They are not two grades of the same thing. A
 schedule gives *mean* demand during operating hours; a metered profile gives the *peak*.
@@ -194,7 +192,16 @@ peak — so a schedule is a floor to be adjusted upward, not a substitute for me
 adjustment factor be observed rather than assumed and then applied to every site that has
 only a schedule.
 
-**On the four network fields.** Nothing in the model reads them today. They are requested
+**On multiple connections.** Many industrial sites have more than one MPAN or MPRN — two
+electricity supplies serving different sections of the works is common. Capture them as
+separate `premise_connection` rows rather than one aggregate, because their capacities
+cannot be added: 25 MW on one supply and 10 MW on another is not 35 MW of usable
+headroom, and treating it as such would report electrification as feasible where the load
+physically cannot reach. If only a site total is available, supply it as a single
+connection and say so through `confidence` — one honest aggregate is better than an
+invented split, but it will not answer the reinforcement question.
+
+**On the network fields generally.** Nothing in the model reads them today. They are requested
 now because they are far cheaper to collect while the stock model is being built than to
 retrofit later, and because two planned extensions — reinforcement cost in the objective,
 and onsite generation with export — cannot be built at all without them. See §5.6, which
@@ -320,7 +327,12 @@ Great Britain — England, Wales, Scotland. Consequences the implementation must
 
 *Section last updated: 2026-08-25*
 
-Nine entities. Each is specified as a field table. Types are abstract (§1.3).
+Seventeen entities. Each is specified as a field table. Types are abstract (§1.3).
+
+The premise input contract is the first four — `premise_record` and its three long
+companions, `premise_energy`, `premise_throughput` and `premise_connection`. Everything
+from §3.2 onward is either reference data maintained by the modelling team, scenario
+input, or output.
 
 ### 3.1 `premise_record` — the premise itself
 
@@ -338,11 +350,6 @@ with rationale, in **§1.6**; these tables are normative for validation.
 | `nation` | enum{England, Wales, Scotland} | — | yes | — | NI rejected with reason `out_of_scope_nation` |
 | `floorspace` | real | m² | no | — | > 0 if present |
 | `process_set_id` | string | — | no | → `activity_process_register` | Selects a named non-default process set (§3.2). Absent ⇒ the activity's default set |
-| `import_capacity` | real | MW | no | — | > 0 if present. Agreed grid import capacity at the connection point |
-| `export_capacity` | real | MW | no | — | ≥ 0 if present. Agreed export capacity; 0 ⇒ export not permitted |
-| `connection_voltage` | real | kV | no | — | > 0 if present. Distinguishes LV/HV/EHV connections for reinforcement costing |
-| `onsite_generation_capacity` | real | MW | no | — | ≥ 0 if present |
-| `onsite_generation_type` | string | — | no | → `technology` | Required if `onsite_generation_capacity` > 0 |
 | `data_year` | integer | year | yes | — | Provenance |
 | `source` | string | — | yes | — | Provenance |
 
@@ -361,6 +368,7 @@ columns: a new carrier is a new row, not a schema change, and the `energy_other`
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
 | `commodity_id` | string | — | yes | PK part | → `commodity`. The carrier as metered |
+| `connection_id` | string | — | no | PK part → `premise_connection` | **Optional.** The metered connection this quantity came through (§3.1.3). Absent ⇒ the premise's default connection |
 | `vector` | enum{electricity, gas, oil, coal, biomass, other} | — | yes | — | The grouping used to join `activity_process_energy_profile` (§3.3). Must be consistent with the commodity's `commodity_category` |
 | `quantity` | real | PJ/yr | yes | — | ≥ 0 |
 | `data_status` | enum{measured, estimated, modelled, not_consumed} | — | yes | — | See the absence rule below |
@@ -384,8 +392,12 @@ decarbonisation options. So:
 The stock model should aim to state all five main vectors for every premise, whether by a
 positive quantity or an explicit zero. Absence is a last resort, not the default.
 
-**Rule (one row per carrier).** `(premise_id, commodity_id)` is unique. A site with two
-gas meters is one row; meter-level detail belongs upstream.
+**Rule (one row per carrier per connection).** `(premise_id, commodity_id, connection_id)`
+is unique. Two meters on the *same* connection are one row — meter-level detail below the
+connection belongs upstream. Two meters on *different* connections are two rows, because
+the connection is a modelled object (§3.1.3) and the difference is load-bearing.
+
+Sites with a single connection may omit `connection_id` entirely and are unaffected.
 
 #### 3.1.2 `premise_throughput` — physical output by commodity
 
@@ -408,6 +420,52 @@ precisely the activities where they dominate. The upstream stock model will be e
 to supply it. A premise whose activity carries a mass-denominated process must therefore
 have at least one `premise_throughput` row, and A1 rejects it otherwise
 (`missing_throughput`). Activities with no mass-denominated process need no rows at all.
+
+#### 3.1.3 `premise_connection` — metered connections to the networks
+
+**One row per MPAN or MPRN**, or more precisely per *physical connection*. Industrial
+sites frequently have more than one: two electricity connections serving different
+sections of the works, a separate supply for a later expansion, distinct gas offtakes for
+process and for space heating.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `connection_id` | string | — | yes | PK part | Stable within the premise |
+| `carrier` | enum{electricity, gas} | — | yes | — | The network this connects to |
+| `identifier` | string | — | no | — | MPAN core or MPRN. See the note on sensitivity below |
+| `is_default` | boolean | — | yes | — | Exactly one true per `(premise_id, carrier)`. Receives anything not explicitly assigned |
+| `import_capacity` | real | MW | no | — | > 0 if present. Agreed import capacity **at this connection** |
+| `export_capacity` | real | MW | no | — | ≥ 0 if present. 0 ⇒ export not permitted here |
+| `connection_voltage` | real | kV | no | — | > 0 if present. Electricity only; sets the reinforcement cost curve |
+| `metering_type` | enum{half_hourly, non_half_hourly, daily_metered, unmetered} | — | no | — | Determines what §3.14 can carry for this connection |
+| `onsite_generation_capacity` | real | MW | no | — | ≥ 0 if present. Generation behind *this* connection |
+| `onsite_generation_type` | string | — | no | → `technology` | Required if `onsite_generation_capacity` > 0 |
+| `provenance` | string | — | yes | — | Citation: DNO connection agreement, supplier record, site audit |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Rule — capacities are never summed across connections.** This is the whole point of the
+entity, and getting it wrong produces confidently wrong answers. A site with 25 MW on
+connection A and 10 MW on connection B does **not** have 35 MW of usable headroom: it has
+25 MW where A's processes are and 10 MW where B's are, and moving load between them means
+new cabling, not a spreadsheet addition. Headroom, reinforcement and the §5.6 constraint
+are therefore all evaluated **per connection**, never on a premise total.
+
+**Rule — a premise with no rows has one implied default connection per carrier**, of
+unknown capacity. Single-connection sites need no rows at all and nothing downstream
+changes for them.
+
+**Rule — gas connections do not determine electrical headroom.** A process currently on a
+gas MPRN, once electrified, draws from whichever *electricity* connection serves its part
+of the site — which is a fact about site layout, not about the gas meter. The mapping that
+resolves this is process-to-connection (§3.10), not meter-to-meter. Inferring the post-
+electrification connection from the gas offtake is wrong and will misplace load.
+
+**On `identifier` and sensitivity.** MPAN and MPRN identify a real supply point and are
+commercially sensitive: they join to consumption, tariff and customer data held elsewhere.
+Store them where they help reconcile against DNO or supplier records, but treat them as
+restricted, and **do not emit them in published outputs** — `connection_id` is sufficient
+to distinguish connections in results, and carries no external meaning.
 
 ### 3.2 `activity_process_register` — activity → processes
 
@@ -723,6 +781,7 @@ normal case and means "use the register".
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
 | `process_id` | string | — | yes | PK part | → `commodity.commodity_id` |
+| `connection_id` | string | — | no | → `premise_connection` | **Optional.** Which electricity connection serves this process (§3.1.3). Absent ⇒ the default. This is what decides where electrified load lands |
 | `known_capacity` | real | capacity units | no | — | > 0 if present. Units follow the process's denominator (D5): PJ/yr-equivalent for energy, Mt/yr for mass |
 | `technology_code` | string | — | no | → `technology` | The specific installed technology, where known |
 | `commissioned_year` | integer | year | no | — | Drives remaining life against `technology.lifetime` |
@@ -771,7 +830,8 @@ connection capacity is actually about (§5.6).
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
-| `premise_id` | string | — | yes | PK | → `premise_record` |
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `connection_id` | string | — | no | PK part → `premise_connection` | Peak and load-factor fields are **per connection** where a site has more than one. Absent ⇒ the default connection. Schedule fields are premise-wide and repeat |
 | `operating_pattern` | enum{continuous, three_shift, double_day, single_shift, seasonal_campaign} | — | no | — | Coarse classification; `continuous` ⇒ ~8,760 h/yr |
 | `operating_hours_per_year` | real | h/yr | no | — | ∈ (0, 8784]. Preferred over `operating_pattern` where known |
 | `operating_days_per_week` | real | d/wk | no | — | ∈ (0, 7] |
@@ -854,6 +914,7 @@ premise per vector, and per process only where sub-metering makes that real.
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `connection_id` | string | — | no | PK part → `premise_connection` | Half-hourly data arrives per MPAN, so a multi-connection site has one series per connection. Absent ⇒ the default |
 | `vector` | enum{electricity, gas} | — | yes | PK part | The metered vectors only |
 | `process_id` | string | — | no | PK part | Present only where sub-metered; absent ⇒ whole site |
 | `season` | enum{annual, winter, summer, shoulder} | — | yes | PK part | `annual` ⇒ a single representative week |
@@ -1317,9 +1378,9 @@ This is why negative cost entries are legitimate and must not be clamped to zero
 
 **Not implemented. Specified so the inputs collected now are the right ones.**
 
-`premise_record` carries `import_capacity`, `export_capacity`, `connection_voltage`,
-`onsite_generation_capacity` and `onsite_generation_type` (§3.1). Nothing in the current
-model reads them: they are collected because they are far easier to obtain while the
+`premise_connection` (§3.1.3) carries `import_capacity`, `export_capacity`,
+`connection_voltage`, `metering_type` and the onsite generation fields, one row per MPAN
+or MPRN. Nothing in the current model reads them: they are collected because they are far easier to obtain while the
 stock model is being built than to retrofit later, and because two extensions depend
 entirely on them.
 
@@ -1327,9 +1388,18 @@ entirely on them.
 electrify a site without limit. In reality a site's import capacity binds, and exceeding
 it requires a reinforcement that costs money and takes time. The constraint has the form
 
-$$P^{\text{peak}}_{t} \;\le\; \overline{P}^{\text{import}} + r_{t}$$
+$$P^{\text{peak}}_{c,t} \;\le\; \overline{P}^{\text{import}}_{c} + r_{c,t}
+\qquad \forall\, c \in \mathcal{C}$$
 
-where $r_t$ is reinforcement capacity purchased, entering the objective as a new term
+where $\mathcal{C}$ is the premise's set of electricity connections (§3.1.3) and
+$r_{c,t}$ is reinforcement capacity purchased **at that connection**. The constraint is
+written per connection deliberately: a site with two supplies has two limits, and summing
+them would grant headroom where the load cannot physically reach. Single-connection sites
+are the case $|\mathcal{C}| = 1$ and read exactly as before.
+
+Peak is accumulated per connection by routing each process through its
+`premise_process_detail.connection_id` (§3.10), defaulting where unassigned, and
+diversifying within each connection separately, entering the objective as a new term
 $Z^{\text{network}}_t = \sum_t \gamma(\overline{P}^{\text{import}}, r_t)$ with
 $\gamma$ a cost function of voltage level and increment.
 
@@ -1691,8 +1761,9 @@ Long in dimensions, wide in periods, as elsewhere.
 | Field | Type | Note |
 |---|---|---|
 | `premise_id` | string | |
+| `connection_id` | string | **The row's subject.** Every metric below is per connection (§3.1.3), never a premise total |
 | `cluster_id` | string | One of 9 |
-| `process_id` | string | **Optional.** Present on per-process peak contributions; absent on whole-premise rows |
+| `process_id` | string | **Optional.** Present on per-process peak contributions; absent on whole-connection rows |
 | `network_metric` | enum | See the table below |
 | `basis` | enum{measured, derived_from_profile, derived_from_schedule, activity_default} | How the value was arrived at — the §5.6 tiers. `measured` only where `premise_operating_profile` supplied it |
 | `is_enforced` | boolean | Whether the value constrained the solve, or was computed and reported only. See below |
@@ -1707,7 +1778,7 @@ Long in dimensions, wide in periods, as elsewhere.
 | `export_capacity` | Agreed export capacity; 0 where export is not permitted |
 | `peak_demand_electricity` | Modelled electrical peak in that period, from the §5.6 derivation |
 | `peak_demand_baseline` | The baseline-year peak, measured where available — the calibration anchor of §5.6 |
-| `headroom` | `import_capacity + reinforcement − peak_demand_electricity`. **Negative means the pathway exceeds the connection** |
+| `headroom` | `import_capacity + reinforcement − peak_demand_electricity`, **for that connection**. Negative means the pathway exceeds it |
 | `reinforcement_required` | Additional capacity the pathway implies, i.e. `max(0, −headroom)` before any reinforcement |
 | `reinforcement_purchased` | Reinforcement actually taken, once extension 1 makes this a decision variable. Equals `reinforcement_required` while the model only reports |
 | `onsite_generation` | Installed generation capacity |
@@ -1715,8 +1786,14 @@ Long in dimensions, wide in periods, as elsewhere.
 
 **Per-process rows are diagnostic.** Where `process_id` is present the row carries that
 process's own peak contribution *before* diversification (§5.6 step 8), which is what
-tells a reader which process drives a site's peak. They therefore **sum to more than** the
-whole-premise `peak_demand_electricity` row, and must not be added to reach a site total.
+tells a reader which process drives a connection's peak. They therefore **sum to more
+than** the whole-connection `peak_demand_electricity` row, and must not be added to reach
+a total.
+
+**There is deliberately no premise-level row.** A site with two connections has two
+`import_capacity` rows and two `headroom` rows, and no row summing them, because that sum
+is not a quantity that means anything (§3.1.3). A reader wanting "the site's headroom"
+must be made to ask *which connection*, which is the real question.
 
 **Money and energy stay in their own tables.** Reinforcement cost is a cost, so it belongs
 in §8.4 as a `cost_type`, not here. Exported *energy* in PJ belongs in §8.2; only exported
@@ -1754,7 +1831,7 @@ Every output set carries:
 | Count of premises with **incomplete carrier coverage** (§3.1.1) | Where a vector was never assessed, so absence is not zero |
 | Count of premises reporting `capacity_energy_inconsistent`, `utilisation_schedule_inconsistent`, `profile_energy_inconsistent` | Input disagreements surfaced by V12 and V14 |
 | Aggregate **measured-emissions divergence** and the count of premises calibrated (§7.6) | Required by V13 |
-| Count of premises whose pathway **exceeds their connection** — negative `headroom` in any period (§8.5) | While the constraint is unenforced these pathways are not deliverable as costed |
+| Count of **premise-connections** whose pathway exceeds capacity — negative `headroom` in any period (§8.5) | While the constraint is unenforced these pathways are not deliverable as costed. Counted per connection, since a site may breach one supply and not another |
 | Total `reinforcement_required` across the run, in MW | The network investment the pathway implies but has not priced |
 | Any validation test **deferred** rather than passed, with its reason (§11.5) | A deferred test must never read as a passed one |
 
@@ -1944,7 +2021,11 @@ carrier table is internally coherent.
 **Procedure.**
 
 ```
-1. ASSERT (premise_id, commodity_id) is unique across premise_energy.
+1. ASSERT (premise_id, commodity_id, connection_id) is unique across premise_energy.
+1a. ASSERT the sum over connections of a carrier's quantity equals that carrier's
+    premise total — splitting by connection must not change how much energy exists.
+1b. ASSERT every connection_id referenced resolves to a premise_connection row,
+    and that exactly one connection per (premise, carrier) has is_default = true.
 2. FOR EACH premise_energy row:
        ASSERT row.vector agrees with commodity(row.commodity_id).commodity_category
        ASSERT row.data_status = not_consumed IMPLIES row.quantity = 0
@@ -2314,17 +2395,18 @@ premise with negative headroom.
 **Procedure.**
 
 ```
-1. FOR EACH premise and period:
+1. FOR EACH premise, connection and period:
        ASSERT headroom = import_capacity + reinforcement_purchased
-                          - peak_demand_electricity
-2. ASSERT exported_power <= export_capacity.
+                          - peak_demand_electricity     -- per connection
+1a. ASSERT no row aggregates capacity or headroom across connections.
+2. ASSERT exported_power <= export_capacity, per connection.
 3. ASSERT the baseline period's peak_demand_electricity reconciles with
    peak_demand_baseline within the §5.6 calibration tolerance.
 4. Per-process rows: ASSERT their sum >= the whole-premise peak row, since
    they are pre-diversification contributions (§8.5).
 5. IF is_enforced = false AND headroom < 0:
        FLAG the premise as not deliverable as costed; count it in §8.6.
-6. IF is_enforced = true: ASSERT headroom >= 0 for every premise and period.
+6. IF is_enforced = true: ASSERT headroom >= 0 for every connection and period.
 ```
 
 **Pass criterion.** Steps 1–4 hold; step 5 produces a flag and a count; step 6 holds
