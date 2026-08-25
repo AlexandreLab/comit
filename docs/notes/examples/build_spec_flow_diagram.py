@@ -11,10 +11,8 @@ Sources in the spec:
                 plus entity names mentioned in the body (read edges)
 
 Emits, into docs/specs/diagrams/:
-  spec_flow.mmd          Mermaid source; renders on GitHub and in Artifacts
-  spec_flow.svg          dependency-free SVG; drag into Mural, or any tool
-  spec_flow_graph.json   nodes and edges, for any other renderer
-  mural_widgets.json     request bodies for the Mural API (shapes + connectors)
+  spec_flow.mmd   Mermaid source; renders on GitHub and in Artifacts
+  spec_flow.svg   dependency-free SVG; drop into Mural, or any tool that takes SVG
 
 No third-party packages. Standard library only.
 
@@ -23,7 +21,6 @@ Usage:  python3 docs/notes/examples/build_spec_flow_diagram.py
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
@@ -205,7 +202,7 @@ def to_mermaid(g: dict) -> str:
 
 
 # --------------------------------------------------------------------------- #
-# Layout, shared by the SVG and the Mural payload
+# Layout
 # --------------------------------------------------------------------------- #
 
 COLOURS = {
@@ -296,55 +293,6 @@ def to_svg(g: dict, pos: dict[str, dict]) -> str:
     return "\n".join(out)
 
 
-# --------------------------------------------------------------------------- #
-# Mural API payload
-# --------------------------------------------------------------------------- #
-
-def to_mural(g: dict, pos: dict[str, dict]) -> dict:
-    """Request bodies for POST /murals/{muralId}/widgets/shape and .../arrow.
-
-    Shape fields follow the public API reference: `shape`, `x`, `y` are
-    required; width, height, text and the style block are optional. Colours are
-    #RRGGBBAA. The endpoint accepts up to 1000 shapes per request.
-    """
-    shapes = []
-    for nid, p in pos.items():
-        fill, stroke = COLOURS[p["role"]]
-        shapes.append(
-            {
-                "shape": "rectangle" if p["role"] == "algorithm" else "rounded_rectangle",
-                "x": p["x"],
-                "y": p["y"],
-                "width": p["w"],
-                "height": p["h"],
-                "text": p["label"],
-                "title": nid,
-                "style": {
-                    "backgroundColor": f"{fill}FF",
-                    "borderColor": f"{stroke}FF",
-                    "borderWidth": 2,
-                    "fontColor": "#0F172AFF",
-                },
-            }
-        )
-    arrows = [
-        {
-            "from": e["from"],
-            "to": e["to"],
-            "kind": e["kind"],
-            "note": "resolve endpoints to widget ids returned by the shape call",
-        }
-        for e in g["edges"]
-    ]
-    return {
-        "endpoint": "POST /murals/{muralId}/widgets/shape",
-        "auth": "OAuth2, scope murals:write",
-        "limit": "1000 shapes per request",
-        "shapes": shapes,
-        "connectors": arrows,
-    }
-
-
 def main() -> None:
     text = read_spec()
     g = build_graph(text)
@@ -352,8 +300,6 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "spec_flow.mmd").write_text(to_mermaid(g), encoding="utf-8")
     (OUT / "spec_flow.svg").write_text(to_svg(g, pos), encoding="utf-8")
-    (OUT / "spec_flow_graph.json").write_text(json.dumps(g, indent=2), encoding="utf-8")
-    (OUT / "mural_widgets.json").write_text(json.dumps(to_mural(g, pos), indent=2), encoding="utf-8")
     entities = sum(1 for n in g["nodes"] if n["type"] == "entity")
     algos = sum(1 for n in g["nodes"] if n["type"] == "algorithm")
     print(f"{entities} entities, {algos} algorithms, {len(g['edges'])} edges")

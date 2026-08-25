@@ -27,26 +27,14 @@ is information, not a defect.
 
 | File | Use |
 |---|---|
-| `spec_flow.mmd` | Mermaid source. Renders natively on GitHub and in Claude Artifacts |
-| `spec_flow.svg` | Self-contained SVG. Drag straight onto a Mural canvas |
-| `spec_flow_graph.json` | Nodes and edges, for any other renderer |
-| `mural_widgets.json` | Request bodies for the Mural API — shapes with position, size, text and colour, plus the connector list |
+| `spec_flow.mmd` | Mermaid source. Renders natively on GitHub, and in any Markdown viewer that supports Mermaid |
+| `spec_flow.svg` | Self-contained SVG. Opens anywhere, and drops straight onto a Mural or Miro canvas |
 
-## Getting it into Mural
-
-**Drag-and-drop.** Mural accepts `svg` among its supported image formats, so
-`spec_flow.svg` can be dropped onto a canvas or added through the Import button. Fastest
-route, but the result is one flat image — not editable shapes.
-
-**Mural API.** `mural_widgets.json` is shaped for
-`POST /murals/{muralId}/widgets/shape`, which takes `shape`, `x` and `y` as required
-fields, with `width`, `height`, `text` and a style block optional, and accepts up to 1000
-shapes per request. Authentication is OAuth2 with the `murals:write` scope. Connectors are
-listed separately because arrows must reference the widget ids the shape call returns, so
-they can only be created on a second pass.
-
-The API is in beta, so check the current reference before relying on it:
-<https://developers.mural.co/public/reference/createshapewidget>
+Two outputs, deliberately. Mermaid is the one to read in the repository, since GitHub
+renders it inline in a pull request; the SVG is the one to take somewhere else, since it
+needs no toolchain at the far end. Mural accepts `svg` among its supported image formats,
+so it imports through the toolbar or by dropping the file on the canvas — as a flat image
+rather than editable shapes.
 
 ## Colour key
 
