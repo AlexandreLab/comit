@@ -1,0 +1,1110 @@
+carb3_activity,process_set_id,process_id,option_id,trl,applicability,notes,provenance,confidence
+Abattoir / Slaughter House,default,compressed_air,compressed_air_optimisation,,commercial,Standard measures,engineering judgement,medium
+Abattoir / Slaughter House,default,hot_water_sterilisation_cleaning,abattoir_byproduct_ad,,demonstration,Biogas from by-products fuels hot water boilers; ABP regs shape feasibility,[SD_SLAUGHTER_AD] AD of slaughterhouse by-products literature; AHDB guidance,medium
+Abattoir / Slaughter House,default,hot_water_sterilisation_cleaning,electrode_boiler,9,commercial,Electric hot water/steam where heat pump insufficient,engineering judgement,medium
+Abattoir / Slaughter House,default,hot_water_sterilisation_cleaning,heat_pump_below_100,9,commercial,82C steriliser and wash-down water within heat pump range,[SLAUGHTER_HP_PAPER] Slaughterhouse heat pumping opportunities study,high
+Abattoir / Slaughter House,default,hot_water_sterilisation_cleaning,heat_recovery_heat_pump,8-9,commercial,Couple refrigeration reject heat to hot water demand,[STAR_HP] Industrial heat pump/heat recovery systems,high
+Abattoir / Slaughter House,default,hot_water_sterilisation_cleaning,solar_thermal_process_heat,,commercial,Pre-heat wash-down water,engineering judgement,low
+Abattoir / Slaughter House,default,refrigeration_chilling,controls_vsds,,commercial,"VSDs, floating head pressure, defrost control",engineering judgement,medium
+Abattoir / Slaughter House,default,refrigeration_chilling,heat_recovery_heat_pump,8-9,commercial,Refrigeration reject heat upgraded to 60-82C wash-down/sterilisation water,[SLAUGHTER_HP_PAPER] Peer-reviewed slaughterhouse heat recovery/heat pump study,high
+Abattoir / Slaughter House,default,refrigeration_chilling,natural_refrigerant_refrigeration,,commercial,NH3/CO2 plant replacement for carcass chilling/blast freezing,[STAR_NATREF] Natural refrigerant plant in UK meat/cold chain,high
+Abattoir / Slaughter House,default,scalding_singeing,biomethane_fuel,8-9,commercial,Drop-in for singe burners,engineering judgement,medium
+Abattoir / Slaughter House,default,scalding_singeing,h2_kiln_furnace_burner,5-8,prospective,"H2 flame singeing technically plausible; unproven, supply-dependent",engineering judgement,low
+Abattoir / Slaughter House,default,scalding_singeing,heat_pump_below_100,9,commercial,Pig scald tanks ~60C suit heat pumps,[SLAUGHTER_HP_PAPER] Scald tank duty in slaughterhouse heat pump study,medium
+Abattoir / Slaughter House,default,scalding_singeing,waste_heat_recovery_process,,commercial,Scald tank heat recovery/insulation,engineering judgement,medium
+Abattoir / Slaughter House,default,site_services,battery_electric_nrmm,,commercial,Yard vehicles/forklifts,engineering judgement,medium
+Abattoir / Slaughter House,default,site_services,controls_vsds,,commercial,"BMS, lighting, ventilation",engineering judgement,medium
+Abattoir / Slaughter House,default,site_services,heat_pump_below_100,9,commercial,Amenity/space heat,engineering judgement,medium
+Abattoir / Slaughter House,default,site_services,onsite_solar_pv,,commercial,Roof PV offsets refrigeration load,engineering judgement,medium
+Abattoir / Slaughter House,default,slaughter_line_processing,controls_vsds,,commercial,Electric line drives; efficiency only,engineering judgement,medium
+Aggregate/Mineral Processing Plant / Depot,default,conveying,controls_vsds,,commercial,VSD drives and stop/start control,engineering judgement,medium
+Aggregate/Mineral Processing Plant / Depot,default,crushing,diesel_electric_hybrid_mobile_crushing,9,commercial,Bridge where grid supply not yet adequate,[REF_HUB4_2026] Hybrid plant commercial,high
+Aggregate/Mineral Processing Plant / Depot,default,crushing,electrified_static_processing_plant,9,commercial,Depots are fixed sites — strongest case for full static electric plant,[REF_HUB4_2026] Electric plant commercially available,high
+Aggregate/Mineral Processing Plant / Depot,default,crushing,plug_in_electric_mobile_crushing_screening,9,commercial,Plug-in mobile crushers run on depot grid supply,[REF_HUB4_2026] Plug-in electric crushers commercial,high
+Aggregate/Mineral Processing Plant / Depot,default,mobile_plant,battery_electric_nrmm,,commercial,Electric wheel loaders well suited to depot duty cycles with depot charging,[REF_IM_VOLVO26] Electric loaders/haulers in serial production,medium
+Aggregate/Mineral Processing Plant / Depot,default,mobile_plant,hvo_bio_oils_dropin,9,commercial,Drop-in for existing diesel loaders,[REF_MPA2020] MPA roadmap fuel switching,medium
+Aggregate/Mineral Processing Plant / Depot,default,mobile_plant,hydrogen_nrmm,,demonstration,H2 ICE loaders demonstrated in UK; refuelling logistics simpler at fixed depot,[REF_JCB23] JCB H2 machines in public testing,medium
+Aggregate/Mineral Processing Plant / Depot,default,screening,controls_vsds,,commercial,VSDs/idle management,engineering judgement,medium
+Aggregate/Mineral Processing Plant / Depot,default,screening,plug_in_electric_mobile_crushing_screening,9,commercial,Electric screens on depot supply,[REF_HUB4_2026] Electric screens commercial,high
+Aggregate/Mineral Processing Plant / Depot,default,site_services,compressed_air_optimisation,,commercial,Workshop compressed air systems,engineering judgement,medium
+Aggregate/Mineral Processing Plant / Depot,default,site_services,controls_vsds,,commercial,"Controls, lighting, motor management",engineering judgement,medium
+Aggregate/Mineral Processing Plant / Depot,default,site_services,onsite_solar_pv,,commercial,Roof/land PV offsets depot load and loader charging,engineering judgement,medium
+Aggregate/Mineral Processing Plant / Depot,default,washing_classification,controls_vsds,,commercial,VSDs on wash pumps and cyclone feeds,engineering judgement,medium
+Aircraft works,default,machine_drive,compressed_air_optimisation,,commercial,Large compressed air systems for tooling/riveting,[REF_CT_MANUF] Carbon Trust manufacturing guide,high
+Aircraft works,default,machine_drive,controls_vsds,,commercial,VSDs and motor management on machining/test plant,[REF_CT_MANUF] Carbon Trust manufacturing guide,high
+Aircraft works,default,other_process,controls_vsds,,commercial,Controls/drives on test and support plant,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Aircraft works,default,other_process,waste_heat_recovery_process,,commercial,Opportunistic heat recovery,engineering judgement,low
+Aircraft works,default,process_cooling,controls_vsds,,commercial,Chiller optimisation,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Aircraft works,default,process_cooling,heat_recovery_heat_pump,8-9,commercial,Reject heat to space/water heating,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+Aircraft works,default,process_heating,biomethane_fuel,8-9,commercial,Drop-in for gas-fired plant,engineering judgement,low
+Aircraft works,default,process_heating,electric_resistance_oven_furnace,8-9,commercial,Composite-cure and treatment ovens; autoclaves need engineering review,[REF_DESNZ_ELEC] Resistance heating TRL 9,medium
+Aircraft works,default,process_heating,htp_heat_pump_100_150,8-9,demonstration,Low-temp cure/drying duties,[REF_DESNZ_ELEC] HTHP TRL 7-9,medium
+Aircraft works,default,process_heating,induction_heating,9,commercial,Metal component heat treatment where conductive,[REF_DESNZ_ELEC] DESNZ/ERM electrification report,medium
+Aircraft works,default,process_heating,waste_heat_recovery_process,,commercial,Oven/autoclave heat recovery,[REF_CT_MANUF] Carbon Trust manufacturing guide,medium
+Aircraft works,default,site_services,controls_vsds,,commercial,BMS and ventilation controls,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Aircraft works,default,site_services,led_high_bay_lighting,,commercial,Hangar-height LED plus controls,[REF_CT_LIGHTING] Carbon Trust lighting guide,high
+Aircraft works,default,site_services,onsite_solar_pv,,commercial,Large roofs suit PV; airfield glare assessments may apply,engineering judgement,low
+Aircraft works,default,space_heating,air_to_air_hp_warm_air,9,commercial,Replaces gas warm-air heaters in production halls,[REF_UKBCH_ASHP] A2A covered under ASHP guidance,medium
+Aircraft works,default,space_heating,ashp_space_heating_industrial,9,commercial,ASHP for offices/production; hangar volumes challenging,[REF_UKBCH_ASHP] UK Business Climate Hub ASHP guidance,medium
+Aircraft works,default,space_heating,building_fabric_upgrade,,commercial,Hangar doors and roof insulation dominate,[REF_CT_FABRIC] Carbon Trust building fabric guide,high
+Aircraft works,default,space_heating,destratification_radiant_conversion,,commercial,Large stratification losses in hangars,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Aircraft works,default,space_heating,electric_radiant_space_heating,,commercial,IR suited to very tall hangar spaces with door losses,[REF_ECA_RADIANT] ETL radiant heating datasheet,medium
+Aircraft works,default,steam_hot_water,biomethane_fuel,8-9,commercial,Drop-in via certified grid gas,engineering judgement,low
+Aircraft works,default,steam_hot_water,electrode_boiler,9,commercial,Electric steam/hot water,[REF_DESNZ_ELEC] Electric boilers TRL 9,high
+Aircraft works,default,steam_hot_water,h2_boiler,7-9,prospective,Awaits H2 supply,engineering judgement,low
+Aircraft works,default,steam_hot_water,htp_heat_pump_100_150,8-9,demonstration,LP steam/hot water under ~150C,[REF_DESNZ_ELEC] HTHP TRL 7-9,medium
+Aircraft works,default,steam_hot_water,thermal_storage_power_to_heat,7-9,demonstration,Off-peak power-to-heat with storage,engineering judgement,low
+Aircraft works,default,surface_treatment,electric_infrared_drying,,commercial,IR drying/curing of primers and coatings,engineering judgement,low
+Aircraft works,default,surface_treatment,heat_pump_below_100,9,commercial,Anodising/pre-treatment baths under 100C,[REF_DESNZ_ELEC] Low-temp heat pump duties per DESNZ/ERM,medium
+Aircraft works,default,surface_treatment,uv_cure_coatings,,demonstration,Aerospace coating qualification is a major barrier,[REF_RADTECH] RadTech UV/EB curing overview,low
+Aircraft works,default,surface_treatment,waste_heat_recovery_process,,commercial,Booth/oven exhaust heat recovery,engineering judgement,low
+Aluminium Smelting Works,default,alumina_materials_handling,battery_electric_nrmm,,commercial,Electric loaders/forklifts,engineering judgement,low
+Aluminium Smelting Works,default,alumina_materials_handling,controls_vsds,,commercial,Conveying/air-slide blowers,engineering judgement,low
+Aluminium Smelting Works,default,alumina_materials_handling,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel plant,engineering judgement,low
+Aluminium Smelting Works,default,anode_production_baking,biomethane_fuel,8-9,commercial,Drop-in for gas-fired baking furnaces,engineering judgement,low
+Aluminium Smelting Works,default,anode_production_baking,h2_kiln_furnace_burner,5-8,prospective,H2 firing of anode baking furnaces; no demos identified,engineering judgement,low
+Aluminium Smelting Works,default,anode_production_baking,inert_anode_smelting,7,prospective,Inert anode adoption eliminates carbon anode production and baking entirely,[REF_ELYSIS] ELYSIS removes consumable carbon anodes,medium
+Aluminium Smelting Works,default,anode_production_baking,waste_heat_recovery_process,,commercial,Baking furnace flue heat recovery,engineering judgement,low
+Aluminium Smelting Works,default,cast_house,biomethane_fuel,8-9,commercial,Drop-in for gas furnaces,engineering judgement,low
+Aluminium Smelting Works,default,cast_house,electric_resistance_oven_furnace,8-9,commercial,Electric holding furnaces and launder heating,engineering judgement,low
+Aluminium Smelting Works,default,cast_house,h2_kiln_furnace_burner,5-8,prospective,H2 firing of gas casting/holding furnaces,engineering judgement,low
+Aluminium Smelting Works,default,cast_house,induction_heating,9,commercial,Induction melting/holding for remelt and alloying,engineering judgement,low
+Aluminium Smelting Works,default,electrolysis_potlines,carbothermic_aluminium,3,speculative,Abandoned Alcoa-Elkem route; would replace electrolysis entirely,[REF_CARBOTHERMIC] Review of alternative Al production methods,medium
+Aluminium Smelting Works,default,electrolysis_potlines,controls_vsds,,commercial,Advanced cell control cuts specific energy; potline already electric,engineering judgement,low
+Aluminium Smelting Works,default,electrolysis_potlines,inert_anode_smelting,7,demonstration,Eliminates anode CO2 and PFCs; commercial-size cell demonstrated 2025; retrofit path unproven,[REF_ELYSIS] Rio Tinto ELYSIS 450 kA cell start-up,high
+Aluminium Smelting Works,default,electrolysis_potlines,waste_heat_recovery_process,,prospective,Pot exhaust gas and shell heat recovery to site heat,engineering judgement,low
+Aluminium Smelting Works,default,electrolysis_potlines,wetted_drained_cathode,4-5,speculative,10-20% cell energy saving potential; pilot stage only,[REF_TIB2] TiB2 wettable cathode review,medium
+Aluminium Smelting Works,default,site_services,compressed_air_optimisation,,commercial,Site air systems,engineering judgement,low
+Aluminium Smelting Works,default,site_services,controls_vsds,,commercial,Site motor systems,engineering judgement,low
+Aluminium Smelting Works,default,site_services,heat_pump_below_100,9,commercial,Space heating/DHW,engineering judgement,low
+Aluminium Smelting Works,default,site_services,onsite_solar_pv,,commercial,Marginal vs potline demand; UK smelter already hydro-supplied,[REF_ALVANCE] Lochaber smelter powered by dedicated hydro,medium
+Artificial Fibre Works,default,chip_drying,electric_resistance_oven_furnace,8-9,commercial,Electric hot-air chip dryers/crystallisers replace gas or steam heated units,engineering judgement,medium
+Artificial Fibre Works,default,chip_drying,htp_heat_pump_150_200,6-7,prospective,PET drying air 160-180C at upper limit of HTHP range,[annex58_t1_2023] HTHP temperature capability,low
+Artificial Fibre Works,default,chip_drying,microwave_rf_drying,7-9,prospective,Dielectric drying of polymer chip unproven at production scale,engineering judgement,low
+Artificial Fibre Works,default,chip_drying,waste_heat_recovery_process,,commercial,Dryer exhaust and dehumidifier regeneration heat recovery,engineering judgement,medium
+Artificial Fibre Works,default,compressed_air,compressed_air_optimisation,,commercial,Air jets/interlacing are large users; leaks and pressure optimisation,engineering judgement,high
+Artificial Fibre Works,default,compressed_air,waste_heat_recovery_process,,commercial,Compressor heat recovery to hot water/space heat,engineering judgement,high
+Artificial Fibre Works,default,drawing_texturing,controls_vsds,,commercial,Drive and heater zone control,engineering judgement,medium
+Artificial Fibre Works,default,drawing_texturing,induction_heating,9,commercial,Induction-heated godet rolls are industry standard; replaces any residual contact steam/hot-oil heating,engineering judgement,medium
+Artificial Fibre Works,default,polymer_melt_extrusion,controls_vsds,,commercial,Extruder barrels/drives already electric; drive and zone-control optimisation,engineering judgement,medium
+Artificial Fibre Works,default,polymer_melt_extrusion,insulation_upgrade,,commercial,Barrel insulation jackets cut heater losses,engineering judgement,medium
+Artificial Fibre Works,default,site_services,biomethane_fuel,8-9,commercial,Drop-in for residual gas use,engineering judgement,medium
+Artificial Fibre Works,default,site_services,heat_pump_below_100,9,commercial,Space heating and hot water,engineering judgement,high
+Artificial Fibre Works,default,site_services,insulation_upgrade,,commercial,Heat distribution insulation,engineering judgement,medium
+Artificial Fibre Works,default,site_services,onsite_solar_pv,,commercial,Roof-mounted PV,engineering judgement,high
+Artificial Fibre Works,default,spinning_hvac,controls_vsds,,commercial,Fan VSDs and humidity setpoint optimisation,engineering judgement,medium
+Artificial Fibre Works,default,spinning_hvac,heat_pump_below_100,9,commercial,AHU heating coils from ASHP instead of gas/steam,engineering judgement,medium
+Artificial Fibre Works,default,spinning_hvac,heat_recovery_heat_pump,8-9,commercial,Recover hall exhaust heat to conditioned makeup air,engineering judgement,medium
+Artificial Fibre Works,default,spinning_quench_winding,controls_vsds,,commercial,Quench air fans and winder drives; electricity-only,engineering judgement,medium
+Artificial Fibre Works,default,spinning_quench_winding,waste_heat_recovery_process,,commercial,Quench exhaust heat to HVAC preheat,engineering judgement,low
+Asphalt Plant,default,aggregate_drying_heating,biomethane_fuel,8-9,commercial,Drop-in for gas-fired dryers,engineering judgement,medium
+Asphalt Plant,default,aggregate_drying_heating,electric_resistance_oven_furnace,8-9,prospective,Electric drum drying not demonstrated at asphalt-plant scale; no published project found,engineering judgement,low
+Asphalt Plant,default,aggregate_drying_heating,h2_kiln_furnace_burner,5-8,demonstration,"UK-first hydrogen-fuelled asphalt production trial (Heidelberg Materials, mid-Wales, 2026) on dryer burner",[R_H2ASPHALT] Heidelberg Materials UK announcement,high
+Asphalt Plant,default,aggregate_drying_heating,hvo_bio_oils_dropin,9,commercial,Substitute gas oil in oil-fired dryer burners,engineering judgement,medium
+Asphalt Plant,default,aggregate_drying_heating,increased_rap_content,9,commercial,"High RAP cuts embodied binder/aggregate carbon; virgin aggregate may need superheating, so plant fuel saving per tonne is limited",[R_RAP] UK producer RAP practice,high
+Asphalt Plant,default,aggregate_drying_heating,warm_mix_asphalt,9,commercial,Lower production temperature cuts dryer burner fuel; National Highways default,[R_WMA] Highways England WMA directive,high
+Asphalt Plant,default,bitumen_storage_heating,electric_resistance_oven_furnace,8-9,commercial,Electric immersion/hot-oil bitumen tank heating (150-190C) is standard equipment; displaces gas/oil heaters,engineering judgement,medium
+Asphalt Plant,default,bitumen_storage_heating,htp_heat_pump_150_200,6-7,prospective,150-200C heat pump could hold tank temperature; not demonstrated for this duty,engineering judgement,low
+Asphalt Plant,default,bitumen_storage_heating,insulation_upgrade,,commercial,Tank/pipework insulation reduces standing losses,engineering judgement,high
+Asphalt Plant,default,cold_feed_conveying,controls_vsds,,commercial,Conveyor/feeder VSDs; electricity-only,engineering judgement,medium
+Asphalt Plant,default,exhaust_baghouse,controls_vsds,,commercial,Exhaust fan VSD; electricity-only,engineering judgement,medium
+Asphalt Plant,default,loadout_storage,insulation_upgrade,,commercial,Insulated heated storage silos reduce reheat/holding energy,engineering judgement,medium
+Asphalt Plant,default,mobile_plant,battery_electric_nrmm,,demonstration,Electric loading shovels emerging,engineering judgement,medium
+Asphalt Plant,default,mobile_plant,hvo_bio_oils_dropin,9,commercial,Loading shovels drop-in fuel,engineering judgement,high
+Asphalt Plant,default,screening_mixing,controls_vsds,,commercial,Screen/mixer drive optimisation; electricity-only,engineering judgement,medium
+Asphalt Plant,default,screening_mixing,warm_mix_asphalt,9,commercial,Lower mixing temperature; additive/foaming systems at mixer,[R_WMA] Highways England WMA directive,high
+Asphalt Plant,default,site_services,heat_pump_below_100,9,commercial,Cabins/offices heating,engineering judgement,medium
+Asphalt Plant,default,site_services,onsite_solar_pv,,commercial,Site PV,engineering judgement,medium
+Beet Sugar Factory,default,beet_reception_preparation,battery_electric_nrmm,,commercial,Beet-yard loading shovels; campaign-intensive mobile plant,engineering judgement,medium
+Beet Sugar Factory,default,beet_reception_preparation,controls_vsds,,commercial,Beet washing/pump drives,engineering judgement,medium
+Beet Sugar Factory,default,beet_reception_preparation,hvo_bio_oils_dropin,9,commercial,Drop-in for existing diesel yard fleet,engineering judgement,medium
+Beet Sugar Factory,default,crystallisation_sugar_house,controls_vsds,,commercial,Centrifugal/pump drives,engineering judgement,medium
+Beet Sugar Factory,default,crystallisation_sugar_house,mvr,9,demonstration,Vapour recompression on vacuum pans; limited precedent,engineering judgement,low
+Beet Sugar Factory,default,crystallisation_sugar_house,waste_heat_recovery_process,,commercial,Pan vapour heat recovery to juice heating,engineering judgement,medium
+Beet Sugar Factory,default,evaporation,electrode_boiler,9,prospective,Electric steam displacing gas CHP; economics tied to campaign load and grid capacity,engineering judgement,low
+Beet Sugar Factory,default,evaporation,htp_heat_pump_100_150,8-9,prospective,HTHP recompression of low-grade vapours to first-effect steam,engineering judgement,low
+Beet Sugar Factory,default,evaporation,mvr,9,commercial,MVR/TVR on evaporator effects; interacts with site CHP steam balance,engineering judgement (MVR generic evidence),medium
+Beet Sugar Factory,default,evaporation,waste_heat_recovery_process,,commercial,Multi-effect optimisation and additional effects; British Sugar £16.5m evaporator investment,[BSUGAR_EVAP] British Sugar evaporation plant upgrade,high
+Beet Sugar Factory,default,extraction_diffusion,controls_vsds,,commercial,Diffuser and pump drives,engineering judgement,medium
+Beet Sugar Factory,default,extraction_diffusion,waste_heat_recovery_process,,commercial,Diffusion heated by vapour bleeds/condensates; heat integration upgrades,[BSUGAR_EVAP] British Sugar evaporation/heat integration investment,medium
+Beet Sugar Factory,default,lime_kiln,direct_separation_leilac,6,prospective,LEILAC-type calcination capture developed for lime/cement; not yet applied to sugar lime kilns,engineering judgement (cross-sector read-across),low
+Beet Sugar Factory,default,lime_kiln,electric_kiln_calcination,6,prospective,Electric calcination would still release process CO2 (needed for carbonatation); niche fit,engineering judgement,low
+Beet Sugar Factory,default,lime_kiln,post_combustion_amine_ccs,9-11,prospective,Capture on kiln gas surplus to carbonatation needs; biogenic-rich stream,engineering judgement,low
+Beet Sugar Factory,default,lime_kiln,waste_derived_fuels,,prospective,Biocoke/biochar substitution for kiln coke,engineering judgement,low
+Beet Sugar Factory,default,pulp_pressing_drying,biomethane_fuel,8-9,commercial,Drop-in for gas-fired pulp dryers; AD of pressed pulp is an alternative pulp use,engineering judgement,medium
+Beet Sugar Factory,default,pulp_pressing_drying,controls_vsds,,commercial,Pulp press drives; deeper pressing reduces thermal drying demand,engineering judgement,medium
+Beet Sugar Factory,default,pulp_pressing_drying,h2_kiln_furnace_burner,5-8,prospective,H2 firing of HT dryers; supply-dependent,engineering judgement,low
+Beet Sugar Factory,default,pulp_pressing_drying,superheated_steam_drying,,demonstration,UK-first £50m steam dryer under construction at Wissington; commercial internationally,[BSUGAR_WISSINGTON] British Sugar Wissington steam dryer project 2025,high
+Beet Sugar Factory,default,pulp_pressing_drying,waste_heat_recovery_process,,commercial,Low-temperature pulp drying using factory waste heat; enhanced pressing cuts drying load,[ENERDRY_SSD] Beet pulp drying energy-reduction literature,medium
+Beet Sugar Factory,default,site_services,controls_vsds,,commercial,Sitewide motors/utilities,engineering judgement,medium
+Beet Sugar Factory,default,site_services,heat_pump_below_100,9,commercial,Buildings/off-campaign heat,engineering judgement,medium
+Beet Sugar Factory,default,site_services,onsite_solar_pv,,commercial,Large land holdings,engineering judgement,medium
+Beet Sugar Factory,default,site_services,post_combustion_amine_ccs,9-11,prospective,Capture on site CHP/boiler flue; large seasonal biogenic CO2 stream,engineering judgement,low
+Brewery,default,brewhouse,biomethane_fuel,8-9,commercial,Incl. onsite AD of spent grain and brewery effluent,engineering judgement,medium
+Brewery,default,brewhouse,electrode_boiler,9,commercial,Electric steam raising for mash/kettle duties,engineering judgement,medium
+Brewery,default,brewhouse,h2_boiler,7-9,prospective,Awaits H2 supply; no UK brewery demos yet,engineering judgement,low
+Brewery,default,brewhouse,htp_heat_pump_100_150,8-9,demonstration,Wort boiling ~100-104C well matched to HTHP; UK brewery feasibility work under way,[SIETF_2022] Tennent's Caledonian SIETF award incl. heat pump feasibility,medium
+Brewery,default,brewhouse,mvr,9,commercial,MVR on wort kettle vapour; needs electrical capacity,[STEINECKER_ER] Supplier energy-recovery systems for wort boiling,high
+Brewery,default,brewhouse,wort_vapour_energy_recovery,,commercial,Vapour condenser + energy store standard on modern brewhouses; large steam saving,[CAMPDEN_WORT] Campden BRI brewing energy recovery guidance,high
+Brewery,default,cip_utilities,electrode_boiler,9,commercial,Electric hot water/steam for CIP where heat pump unsuitable,engineering judgement,medium
+Brewery,default,cip_utilities,heat_pump_below_100,9,commercial,"CIP sets typically 60-85C, ideal heat pump duty",[STAR_HP] Sub-100C heat pump applications,high
+Brewery,default,cip_utilities,heat_recovery_heat_pump,8-9,commercial,Upgrade wort cooling/refrigeration reject heat to CIP,engineering judgement,medium
+Brewery,default,cip_utilities,solar_thermal_process_heat,,commercial,Pre-heat CIP/liquor water <90C,engineering judgement,low
+Brewery,default,compressed_air,compressed_air_optimisation,,commercial,"Leaks, pressure, heat recovery; SIETF-funded VSD compressors at Tennent's",[SIETF_2022] Tennent's VSD air compressors and smart air injection,high
+Brewery,default,packaging,controls_vsds,,commercial,"Line drives, conveyors",engineering judgement,medium
+Brewery,default,packaging,fermentation_co2_recovery,,commercial,Recovered fermentation CO2 replaces bought-in CO2 for carbonation/packaging; scale-sensitive economics,[ATLASCOPCO_CO2] Commercial brewery CO2 recovery packages; HW craft-brewing valorisation study,high
+Brewery,default,packaging,heat_pump_below_100,9,commercial,Tunnel/flash pasteuriser hot water <85C,[STAR_HP] Industrial heat pumps for sub-100C food duties,medium
+Brewery,default,packaging,waste_heat_recovery_process,,commercial,"Pasteuriser regeneration, washer heat recovery",engineering judgement,medium
+Brewery,default,refrigeration,controls_vsds,,commercial,"VSDs, floating head pressure",engineering judgement,medium
+Brewery,default,refrigeration,heat_recovery_heat_pump,8-9,commercial,Reject heat to CIP/packaging hot water,[STAR_HP] Refrigeration heat recovery in food/drink,high
+Brewery,default,refrigeration,natural_refrigerant_refrigeration,,commercial,Ammonia standard in large breweries; efficiency upgrade on replacement,[STAR_NATREF] Natural refrigerant plant in UK beverage/cold chain,high
+Brewery,default,site_services,battery_electric_nrmm,,commercial,"Forklifts, keg yard plant",engineering judgement,medium
+Brewery,default,site_services,heat_pump_below_100,9,commercial,Space heating/DHW,engineering judgement,medium
+Brewery,default,site_services,insulation_upgrade,,commercial,Steam/hot water distribution,engineering judgement,medium
+Brewery,default,site_services,onsite_solar_pv,,commercial,Roof PV,engineering judgement,medium
+Brickworks / clay tile/pipe works,default,clay_extraction_mobile_plant,battery_electric_nrmm,,demonstration,Smaller loaders/excavators available; duty-cycle and charging limits,engineering judgement,medium
+Brickworks / clay tile/pipe works,default,clay_extraction_mobile_plant,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel plant,engineering judgement,high
+Brickworks / clay tile/pipe works,default,clay_preparation,controls_vsds,,commercial,Electric crushers/mills/mixers; drives optimisation only,engineering judgement,medium
+Brickworks / clay tile/pipe works,default,drying,electric_resistance_oven_furnace,8-9,prospective,"Electric dryer heating straightforward technically; loses free kiln waste heat, high opex",engineering judgement,medium
+Brickworks / clay tile/pipe works,default,drying,heat_pump_below_100,9,prospective,Brick dryers ~40-120C partially suited to heat pumps with humidity control; not demonstrated at scale UK,engineering judgement,medium
+Brickworks / clay tile/pipe works,default,drying,kiln_dryer_cascade_heat_recovery,9,commercial,Kiln cooling-zone air to dryers; standard but optimisable; conflicts with kiln electrification,[R_BEIS_CER2015] roadmap covers kiln-dryer heat recovery,high
+Brickworks / clay tile/pipe works,default,drying,microwave_rf_drying,7-9,prospective,Dielectric drying of clay ware; cracking risk management; kW-scale trials only,engineering judgement,low
+Brickworks / clay tile/pipe works,default,kiln_firing,biomethane_fuel,8-9,commercial,Drop-in for gas-fired tunnel kilns; supply/cost and certification constraints,[R_CUK_ROADMAP] Ceramics UK roadmap identifies bio-energy among breakthrough/fuel options,medium
+Brickworks / clay tile/pipe works,default,kiln_firing,electric_tunnel_kiln_firing,,demonstration,"World-first fully electric roof tile tunnel kiln under construction at Broomfleet UK; new-build, not retrofit",[R_WIENERBERGER] Wienerberger Broomfleet announcement,high
+Brickworks / clay tile/pipe works,default,kiln_firing,h2_kiln_furnace_burner,5-8,demonstration,Michelmersh HyBrick fired bricks with 100% H2; BCC trials confirm quality broadly comparable; H2 supply and NOx/moisture constraints,[R_HYBRICK] HyBrick project; BCC IFS feasibility report (R_BCC_H2),high
+Brickworks / clay tile/pipe works,default,kiln_firing,insulation_upgrade,,commercial,Kiln refractory/low-mass kiln cars reduce firing energy,[R_BEIS_CER2015] roadmap efficiency options,medium
+Brickworks / clay tile/pipe works,default,kiln_firing,microwave_assisted_ceramic_firing,,speculative,Hybrid MW-assist could cut firing energy; no industrial demo for heavy clay,[R_MW_IET] long-standing R&D only,low
+Brickworks / clay tile/pipe works,default,shaping_extrusion,controls_vsds,,commercial,Extruder/vacuum pump VSDs; electricity-only,engineering judgement,medium
+Brickworks / clay tile/pipe works,default,site_services,compressed_air_optimisation,,commercial,Compressed air for handling/setting machines,engineering judgement,low
+Brickworks / clay tile/pipe works,default,site_services,heat_pump_below_100,9,commercial,Space heating/hot water,engineering judgement,medium
+Brickworks / clay tile/pipe works,default,site_services,onsite_solar_pv,,commercial,Roof/land PV,engineering judgement,medium
+Cement Tile Works,default,batching_mixing,alkali_activated_binder,,prospective,Not demonstrated for pressed tiles; mix redesign needed,engineering judgement,low
+Cement Tile Works,default,batching_mixing,calcined_clay_lc3,,prospective,Subject to UK supply and colour acceptance,[R_LC3_REV] LC3 review,low
+Cement Tile Works,default,batching_mixing,clinker_substitution_scm,9,commercial,SCM substitution in tile mixes; colour/early strength constraints,[R_MPA_ROADMAP] roadmap low-carbon concrete lever,medium
+Cement Tile Works,default,coating_finishing,electric_infrared_drying,,commercial,IR drying/curing of tile coatings is established electrotechnology,engineering judgement,medium
+Cement Tile Works,default,curing_chambers,carbonation_curing_precast,,prospective,Unreinforced tiles plausible CO2-curing candidates; not demonstrated for this product,engineering judgement,low
+Cement Tile Works,default,curing_chambers,electrode_boiler,9,commercial,Electric hot water/steam for chamber heating,engineering judgement,medium
+Cement Tile Works,default,curing_chambers,heat_pump_below_100,9,commercial,Curing chambers ~30-60C ideal heat-pump duty,engineering judgement,high
+Cement Tile Works,default,curing_chambers,solar_thermal_process_heat,,prospective,Low-temp heat contribution,engineering judgement,low
+Cement Tile Works,default,extrusion_pressing,controls_vsds,,commercial,Press/extruder drives; electricity-only,engineering judgement,low
+Cement Tile Works,default,mobile_plant,battery_electric_nrmm,,demonstration,"Electric forklifts commercial, loaders emerging",engineering judgement,medium
+Cement Tile Works,default,mobile_plant,hvo_bio_oils_dropin,9,commercial,Forklifts/loaders,engineering judgement,high
+Cement Tile Works,default,site_services,onsite_solar_pv,,commercial,Roof PV,engineering judgement,medium
+Cement Works,default,cement_grinding,calcined_clay_lc3,,prospective,LC3 blending at grinding; requires new UK clay calcination capacity,[R_LC3_REV] LC3 reviews; no UK plant yet,medium
+Cement Works,default,cement_grinding,clinker_substitution_scm,9,commercial,Blend SCMs/limestone at finish grinding to cut clinker factor; UK GGBS/PFA supply constrained,[R_MPA_ROADMAP] roadmap lever: low-carbon multi-component cements,high
+Cement Works,default,cement_grinding,controls_vsds,,commercial,"High-efficiency separators, mill optimisation; electricity-only",engineering judgement,medium
+Cement Works,default,cement_grinding,recycled_cement_clinker_cec,,demonstration,Recycled cement from EAF route blended as clinker substitute; Cement 2 Zero trials,[R_C2Z] Cement 2 Zero industrial trial programme,medium
+Cement Works,default,clinker_cooling,controls_vsds,,commercial,Cooler fan VSDs,engineering judgement,medium
+Cement Works,default,clinker_cooling,waste_heat_recovery_process,,commercial,Cooler air recovery to preheater/raw-mill drying standard; WHR power possible,engineering judgement,high
+Cement Works,default,kiln_pyroprocessing,calcium_looping_ccs,5-7,prospective,"Natural sorbent synergy with cement; EU pilots, no UK project",[R_NPJ] npj review of UK cement decarbonisation covers capture routes,medium
+Cement Works,default,kiln_pyroprocessing,direct_separation_leilac,6,demonstration,LEILAC calciner captures process CO2 only; EU pilot/demo scale,[R_NPJ] npj review of UK cement decarbonisation covers direct separation,medium
+Cement Works,default,kiln_pyroprocessing,electric_kiln_calcination,6,prospective,Full electric clinker pyroprocessing unproven at commercial scale; process CO2 remains,[R_NPJ] electrification discussed in UK cement decarbonisation literature,low
+Cement Works,default,kiln_pyroprocessing,h2_kiln_furnace_burner,5-8,demonstration,Partial hydrogen in kiln main burner demonstrated; 100% H2 unproven; supply constraint,[R_MPA_RIBB] Ribblesdale trial included hydrogen in main burner,high
+Cement Works,default,kiln_pyroprocessing,kiln_net_zero_fuel_mix_h2_biomass,,demonstration,World-first net-zero fuel mix (H2/MBM/glycerine) trialled at Ribblesdale main burner,[R_MPA_RIBB] MPA/Heidelberg Ribblesdale trial 2021,high
+Cement Works,default,kiln_pyroprocessing,oxyfuel_ccs,5-7,demonstration,Oxyfuel cement demos in EU; needs kiln rebuild; no UK project,[R_NPJ] npj review of UK cement decarbonisation covers oxyfuel capture,medium
+Cement Works,default,kiln_pyroprocessing,post_combustion_amine_ccs,9-11,demonstration,"UK full-scale project at Padeswood (FID taken, construction starting) via HyNet","[R_PADESWOOD] Heidelberg Materials FID for Padeswood CCS, 2025",high
+Cement Works,default,kiln_pyroprocessing,rotodynamic_electric_heater,,prospective,Electrified precalciner heat; first industrial delivery overseas; very large grid demand,"[R_COOLBROOK] Coolbrook pilot >1000C, cement application targeted",medium
+Cement Works,default,kiln_pyroprocessing,waste_derived_fuels,,commercial,UK kilns already run high alternative-fuel shares; further substitution incremental,[R_MPA_ROADMAP] MPA roadmap counts fuel switching to wastes/biomass among key levers,high
+Cement Works,default,packing_dispatch,compressed_air_optimisation,,commercial,Packing lines use compressed air; electricity-only otherwise,engineering judgement,low
+Cement Works,default,quarry_mobile_plant,battery_electric_nrmm,,demonstration,Commercial for smaller units; large quarry trucks still demo; charging infrastructure,engineering judgement,medium
+Cement Works,default,quarry_mobile_plant,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel excavators/dumpers; cost premium; feedstock sustainability,engineering judgement,high
+Cement Works,default,quarry_mobile_plant,hydrogen_nrmm,,demonstration,H2 combustion/fuel-cell NRMM (e.g. JCB) at demo stage; refuelling constraint,engineering judgement,low
+Cement Works,default,quarrying_crushing,controls_vsds,,commercial,"VSDs/optimised control on crushers, screens and conveyors (largely electric duty already)",engineering judgement,medium
+Cement Works,default,raw_grinding_blending,controls_vsds,,commercial,"Mill/fan VSDs and grinding circuit optimisation; electricity-only process, no fuel switch",engineering judgement,medium
+Cement Works,default,site_services,controls_vsds,,commercial,"Site fans, pumps, lighting controls",engineering judgement,medium
+Cement Works,default,site_services,heat_pump_below_100,9,commercial,Space heating/hot water,engineering judgement,medium
+Cement Works,default,site_services,onsite_solar_pv,,commercial,Large land/roof availability at cement sites,engineering judgement,medium
+Chemical Works,default,distillation_separation,heat_recovery_heat_pump,8-9,commercial,Upgrade overhead/condenser waste heat,[annex58_t2_2024] Annex 58 integration concepts,medium
+Chemical Works,default,distillation_separation,htp_heat_pump_100_150,8-9,demonstration,Reboiler duty from condenser heat where lift suits,[annex58_t2_2024] Annex 58 distillation integration concepts,medium
+Chemical Works,default,distillation_separation,mvr,9,commercial,Established for evaporators and close-boiling separations,[joule_elec_2022] MVR for separations in electrification review,high
+Chemical Works,default,distillation_separation,rotating_packed_bed_intensification,,prospective,"Intensified separations; application-specific, pilot for distillation",[rpb_guide_2018] Industrial RPB application guide,low
+Chemical Works,default,distillation_separation,waste_heat_recovery_process,,commercial,Pinch/heat integration across column trains,[chem_roadmap_2015] Heat integration in roadmap options,high
+Chemical Works,default,drying,electric_resistance_oven_furnace,8-9,commercial,Electric ovens/dryers for powders and specialties,engineering judgement,medium
+Chemical Works,default,drying,heat_recovery_heat_pump,8-9,commercial,Dryer exhaust heat recovery,engineering judgement,medium
+Chemical Works,default,drying,htp_heat_pump_100_150,8-9,demonstration,Hot air/LP steam for dryers from waste heat,[annex58_t1_2023] HTHP technology status incl. drying,medium
+Chemical Works,default,drying,microwave_rf_drying,7-9,demonstration,Dielectric drying of high-value powders; product-specific qualification,engineering judgement,low
+Chemical Works,default,electrochemical_processes,controls_vsds,,commercial,Rectifier efficiency and cell-house optimisation; already electric,engineering judgement,low
+Chemical Works,default,electrochemical_processes,electrochemical_synthesis_routes,,speculative,New electrochemical routes displacing thermochemical steps; product-specific,[jacsau_echem_2022] Emerging electrochemical processes review,low
+Chemical Works,default,electrochemical_processes,waste_heat_recovery_process,,commercial,Cell cooling heat to site hot water,engineering judgement,low
+Chemical Works,default,process_machine_drives,controls_vsds,,commercial,Electricity-only duty; motors/VSDs where material,engineering judgement,medium
+Chemical Works,default,reaction_heating,biomethane_fuel,8-9,commercial,Drop-in for fired duties; supply constrained,[chem_roadmap_2015] Bioenergy options in UK chemicals roadmap,medium
+Chemical Works,default,reaction_heating,electric_resistance_oven_furnace,8-9,commercial,Direct electric heating of reactors/furnaces at moderate scale,[joule_elec_2022] Electrification barriers and opportunities,medium
+Chemical Works,default,reaction_heating,electric_steam_cracker,7,demonstration,Olefin cracker furnaces only; 6 MW demo furnaces operating at Ludwigshafen,[ecracker_2024] BASF/SABIC/Linde demo start-up,medium
+Chemical Works,default,reaction_heating,electrified_reforming_esmr,6,prospective,Syngas/methanol/ammonia sites only,[topsoe_esmr_2021] eSMR demonstration plant,medium
+Chemical Works,default,reaction_heating,electrode_boiler,9,commercial,Steam/hot-oil duties to ~350C; grid connection and power price exposure,[joule_elec_2022] Electrification of chemical industry heat review,high
+Chemical Works,default,reaction_heating,h2_boiler,7-9,demonstration,"Cluster hydrogen supply dependent (HyNet, East Coast)",engineering judgement,low
+Chemical Works,default,reaction_heating,htp_heat_pump_150_200,6-7,demonstration,MP steam for reaction duties from waste heat,[annex58_t1_2023] Annex 58 HTHP technology status,medium
+Chemical Works,default,refrigeration,controls_vsds,,commercial,"Compressor sequencing, floating head pressure",engineering judgement,medium
+Chemical Works,default,refrigeration,heat_recovery_heat_pump,8-9,commercial,Upgrade condenser reject heat to useful hot water/LP heat,engineering judgement,medium
+Chemical Works,default,refrigeration,waste_heat_recovery_process,,commercial,Desuperheaters on refrigeration plant,engineering judgement,medium
+Chemical Works,default,site_services,battery_electric_nrmm,,commercial,FLTs; ATEX-rated units where required,engineering judgement,medium
+Chemical Works,default,site_services,heat_pump_below_100,9,commercial,Space heating and hot water,engineering judgement,high
+Chemical Works,default,site_services,hvo_bio_oils_dropin,9,commercial,Drop-in for residual diesel plant,engineering judgement,medium
+Chemical Works,default,site_services,insulation_upgrade,,commercial,Steam and hot-oil distribution insulation,engineering judgement,medium
+Chemical Works,default,site_services,onsite_solar_pv,,commercial,Subject to land/roof and hazardous area constraints,engineering judgement,high
+Chemical Works,default,utilities_steam,biomass_boiler,9,commercial,Proven; fuel logistics and permitting,[chem_roadmap_2015] Biomass in roadmap pathways,high
+Chemical Works,default,utilities_steam,biomethane_fuel,8-9,commercial,Drop-in; supply constrained,engineering judgement,medium
+Chemical Works,default,utilities_steam,electrode_boiler,9,commercial,Direct substitute for gas steam boilers; hybrid operation for price risk,[joule_elec_2022] E-boilers in chemicals electrification review,high
+Chemical Works,default,utilities_steam,h2_boiler,7-9,demonstration,Cluster H2 supply dependent,engineering judgement,medium
+Chemical Works,default,utilities_steam,htp_heat_pump_150_200,6-7,demonstration,MP steam from site waste heat,[annex58_t1_2023] HTHP status to 200C,medium
+Chemical Works,default,utilities_steam,post_combustion_amine_ccs,9-11,commercial,Large point sources within CO2 transport reach of clusters,[chem_roadmap_2015] CCS central to chemicals roadmap pathways,high
+Chemical Works,default,utilities_steam,thermal_storage_power_to_heat,7-9,demonstration,Flexible power-to-steam with storage against price volatility,engineering judgement,medium
+Coking and Carbonising Plant,default,byproduct_plant,cog_hydrogen_recovery,9,commercial,PSA H2 separation from cleaned COG for fuel/feedstock,[REF_COG_H2] ACS COG hydrogen recovery review,medium
+Coking and Carbonising Plant,default,byproduct_plant,controls_vsds,,commercial,"Exhausters, pumps, cooling systems",engineering judgement,low
+Coking and Carbonising Plant,default,byproduct_plant,heat_recovery_heat_pump,8-9,prospective,Upgrade low-grade heat from gas cooling/ammonia stills,engineering judgement,low
+Coking and Carbonising Plant,default,coal_handling_preparation,battery_electric_nrmm,,commercial,Electric loaders for coal yard,engineering judgement,low
+Coking and Carbonising Plant,default,coal_handling_preparation,controls_vsds,,commercial,"Conveyors, crushers, screens",engineering judgement,low
+Coking and Carbonising Plant,default,coal_handling_preparation,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel yard plant,engineering judgement,low
+Coking and Carbonising Plant,default,coke_quenching_handling,coke_dry_quenching,9,commercial,CDQ with steam/power recovery replaces wet quenching; high capex for small UK plants,[REF_CDQ] CTCN CDQ description,high
+Coking and Carbonising Plant,default,oven_battery_carbonisation,biomethane_fuel,8-9,prospective,Supplement/substitute underfiring gas where COG diverted to H2 recovery,engineering judgement,low
+Coking and Carbonising Plant,default,oven_battery_carbonisation,insulation_upgrade,,commercial,Battery refractory/sealing maintenance reduces underfiring gas,engineering judgement,low
+Coking and Carbonising Plant,default,oven_battery_carbonisation,post_combustion_amine_ccs,9-11,demonstration,Capture on underfiring flue gas; studied in integrated-mill CCS schemes,[REF_IEAGHG] IEAGHG steel sector CCS studies include coke oven flue,medium
+Coking and Carbonising Plant,default,oven_battery_carbonisation,waste_heat_recovery_process,,commercial,Waste gas sensible heat recovery,engineering judgement,low
+Coking and Carbonising Plant,default,site_services,controls_vsds,,commercial,Site motor systems,engineering judgement,low
+Coking and Carbonising Plant,default,site_services,electrode_boiler,9,commercial,Steam duties,engineering judgement,low
+Coking and Carbonising Plant,default,site_services,heat_pump_below_100,9,commercial,Space heating/DHW,engineering judgement,low
+Coking and Carbonising Plant,default,site_services,onsite_solar_pv,,commercial,Roof/land PV,engineering judgement,low
+Concrete Block Works,default,aggregate_handling,controls_vsds,,commercial,Conveyor/bin drives; electricity-only,engineering judgement,low
+Concrete Block Works,default,batching_mixing,alkali_activated_binder,,demonstration,Cement-free block mixes possible; standards constraints,[R_AAM] AACM production review,low
+Concrete Block Works,default,batching_mixing,carbonated_manufactured_aggregate,9,commercial,O.C.O carbonated manufactured limestone aggregate used in UK building blocks,[R_OCO] O.C.O Technology; UKGBC listing (R_UKGBC),high
+Concrete Block Works,default,batching_mixing,clinker_substitution_scm,9,commercial,SCM substitution in block mixes,[R_MPA_ROADMAP] roadmap low-carbon concrete lever,high
+Concrete Block Works,default,batching_mixing,co2_mineralised_concrete,,commercial,CO2 injection offered for masonry/dry-cast mixes; early UK uptake,[R_CARBONCURE] vendor documentation,medium
+Concrete Block Works,default,block_machine_pressing,compressed_air_optimisation,,commercial,Air/hydraulic systems on block machines,engineering judgement,low
+Concrete Block Works,default,block_machine_pressing,controls_vsds,,commercial,Press/vibration drive optimisation; electricity-only,engineering judgement,medium
+Concrete Block Works,default,curing_kilns,biomethane_fuel,8-9,commercial,Drop-in for gas-fired curing heat,engineering judgement,low
+Concrete Block Works,default,curing_kilns,carbonation_curing_precast,,demonstration,"Unreinforced blocks are the best-fit product for CO2 curing; demos overseas, CO2 supply needed",[R_CO2CURE] published industrial CO2 curing demonstration,medium
+Concrete Block Works,default,curing_kilns,electrode_boiler,9,commercial,Electric steam/hot water for curing where used,engineering judgement,medium
+Concrete Block Works,default,curing_kilns,heat_pump_below_100,9,commercial,Low-temperature curing chambers (30-70C) well matched to heat pumps,engineering judgement,high
+Concrete Block Works,default,mobile_plant,battery_electric_nrmm,,demonstration,"Electric forklifts commercial, larger loaders demo",engineering judgement,medium
+Concrete Block Works,default,mobile_plant,hvo_bio_oils_dropin,9,commercial,Loaders/forklifts,engineering judgement,high
+Concrete Block Works,default,site_services,heat_pump_below_100,9,commercial,Space heating,engineering judgement,medium
+Concrete Block Works,default,site_services,onsite_solar_pv,,commercial,Roof/land PV,engineering judgement,medium
+Concrete Product Works,default,batching_mixing,alkali_activated_binder,,demonstration,AACM precast products exist in UK niche; standards constraints,[R_AAM] review of industrially available AACM production,medium
+Concrete Product Works,default,batching_mixing,calcined_clay_lc3,,prospective,Subject to UK LC3 supply,[R_LC3_REV] LC3 review,low
+Concrete Product Works,default,batching_mixing,clinker_substitution_scm,9,commercial,SCM substitution in precast mixes; early-strength needs can limit replacement levels,[R_MPA_ROADMAP] roadmap low-carbon concrete lever,high
+Concrete Product Works,default,batching_mixing,co2_mineralised_concrete,,commercial,CO2 injection also offered for precast mixes; small saving,[R_CARBONCURE] vendor documentation,medium
+Concrete Product Works,default,curing,biomethane_fuel,8-9,commercial,Drop-in for gas-fired curing boilers,engineering judgement,low
+Concrete Product Works,default,curing,carbonation_curing_precast,,demonstration,CO2 curing best for unreinforced products; industrial demos overseas; standards and CO2 supply constraints,[R_CO2CURE] published industrial demonstration of CO2 mineralisation curing,medium
+Concrete Product Works,default,curing,electrode_boiler,9,commercial,Electric steam/hot water for steam curing lines,engineering judgement,high
+Concrete Product Works,default,curing,heat_pump_below_100,9,commercial,Accelerated curing chambers typically <70C; strong heat-pump fit,engineering judgement,high
+Concrete Product Works,default,curing,solar_thermal_process_heat,,prospective,Low-temp curing heat contribution,engineering judgement,low
+Concrete Product Works,default,forming_casting_vibration,controls_vsds,,commercial,Vibrator/hydraulic drive optimisation; electricity-only,engineering judgement,low
+Concrete Product Works,default,mobile_plant_trucks,battery_electric_nrmm,,demonstration,Electric yard plant emerging,engineering judgement,medium
+Concrete Product Works,default,mobile_plant_trucks,hvo_bio_oils_dropin,9,commercial,Yard plant and trucks,engineering judgement,high
+Concrete Product Works,default,site_services,compressed_air_optimisation,,commercial,Air tools/mould systems,engineering judgement,low
+Concrete Product Works,default,site_services,heat_pump_below_100,9,commercial,Space heating,engineering judgement,medium
+Concrete Product Works,default,site_services,onsite_solar_pv,,commercial,Roof PV on casting sheds,engineering judgement,medium
+Concrete batching plant,default,aggregate_handling_conveying,controls_vsds,,commercial,Conveyor/bin drive optimisation; electricity-only,engineering judgement,medium
+Concrete batching plant,default,batching_mixing,alkali_activated_binder,,demonstration,Cemfree-type cement-free mixes used on UK infrastructure projects; standards and activator supply constraints,[R_CEMFREE] ICE Network Rail Cemfree case study,medium
+Concrete batching plant,default,batching_mixing,calcined_clay_lc3,,prospective,LC3-type cements usable at batching once UK supply exists,[R_LC3_REV] LC3 review; no UK production,low
+Concrete batching plant,default,batching_mixing,clinker_substitution_scm,9,commercial,GGBS/PFA/limestone cement replacement at the mixer; supply of SCMs tightening,[R_MPA_ROADMAP] roadmap low-carbon concrete lever,high
+Concrete batching plant,default,batching_mixing,co2_mineralised_concrete,,commercial,"CO2 injection retrofit at batching; commercial overseas, early UK uptake; small per-m3 saving",[R_CARBONCURE] vendor technical documentation; hundreds of plants,medium
+Concrete batching plant,default,dust_extraction,controls_vsds,,commercial,Filter fan VSDs; electricity-only,engineering judgement,low
+Concrete batching plant,default,mobile_plant_trucks,battery_electric_nrmm,,demonstration,Electric mixer trucks and loaders entering UK fleets; payload/charging constraints,engineering judgement,medium
+Concrete batching plant,default,mobile_plant_trucks,hvo_bio_oils_dropin,9,commercial,Loading shovels and mixer truck fleets,engineering judgement,high
+Concrete batching plant,default,site_services,onsite_solar_pv,,commercial,Site PV,engineering judgement,medium
+Concrete batching plant,default,water_aggregate_heating,biomethane_fuel,8-9,commercial,Drop-in where gas boilers retained,engineering judgement,low
+Concrete batching plant,default,water_aggregate_heating,electrode_boiler,9,commercial,Electric water/steam heating replaces gas/oil boilers for water and aggregate thaw,engineering judgement,high
+Concrete batching plant,default,water_aggregate_heating,heat_pump_below_100,9,commercial,Winter batch water heating <80C is an ideal heat-pump duty,engineering judgement,high
+Concrete batching plant,default,water_aggregate_heating,solar_thermal_process_heat,,prospective,Preheat batch water; seasonal mismatch (demand peaks in winter),engineering judgement,low
+Creamery,default,cip_hot_water,electrode_boiler,9,commercial,Electric hot water/steam backup,engineering judgement,medium
+Creamery,default,cip_hot_water,heat_pump_below_100,9,commercial,CIP 60-85C ideal heat pump duty,[STAR_HP] Industrial heat pumps for hot water,high
+Creamery,default,cip_hot_water,heat_recovery_heat_pump,8-9,commercial,Upgrade refrigeration/evaporator condensate heat to CIP,[STAR_HP] Heat recovery heat pump systems,medium
+Creamery,default,cip_hot_water,solar_thermal_process_heat,,commercial,Pre-heat CIP make-up water,engineering judgement,low
+Creamery,default,compressed_air,compressed_air_optimisation,,commercial,Standard measures,engineering judgement,medium
+Creamery,default,evaporation_drying,dairy_membrane_preconcentration,,commercial,RO/NF pre-concentration cuts evaporator duty; fouling/CIP load,[RO_DAIRY] RO applications in dairy processing review,high
+Creamery,default,evaporation_drying,electric_resistance_oven_furnace,8-9,prospective,Electric air heaters for spray dryers; simple but very large connection,engineering judgement,low
+Creamery,default,evaporation_drying,htp_heat_pump_100_150,8-9,demonstration,Heat pump preheat of dryer inlet air/evaporator steam; top-up heat still needed for 180-200C inlet,engineering judgement,medium
+Creamery,default,evaporation_drying,mvr,9,commercial,MVR standard on modern milk/whey evaporators,[RO_DAIRY] Dairy concentration literature; MVR evaporators industry standard,high
+Creamery,default,evaporation_drying,waste_heat_recovery_process,,commercial,Spray dryer exhaust heat recovery to inlet air/water,engineering judgement,medium
+Creamery,default,evaporation_drying,zeolite_adsorption_drying,,speculative,Adsorption-assisted low-temperature drying of powders; pilot-stage only,[ZEOLITE_WUR] WUR multistage zeolite drying research,low
+Creamery,default,heat_treatment_pasteurisation,electrode_boiler,9,commercial,Electric steam for HTST/UHT sets,engineering judgement,medium
+Creamery,default,heat_treatment_pasteurisation,heat_pump_below_100,9,commercial,Pasteurisation 72-85C with regenerative HX; strong heat pump fit,[STAR_HP] Sub-100C industrial heat pump duties in food/dairy,high
+Creamery,default,heat_treatment_pasteurisation,htp_heat_pump_100_150,8-9,demonstration,UHT/sterilisation ~120-140C; HTHP emerging,engineering judgement,medium
+Creamery,default,heat_treatment_pasteurisation,ohmic_heating_food,,prospective,Direct ohmic heating of milk products; limited commercial precedent in dairy,[OHMIC_REVIEW] Ohmic heating review incl. liquid food pasteurisation,low
+Creamery,default,heat_treatment_pasteurisation,waste_heat_recovery_process,,commercial,"Regeneration sections, condensate return",engineering judgement,high
+Creamery,default,processing_machinery_pumping,controls_vsds,,commercial,Pump/separator VSDs; efficiency only,engineering judgement,medium
+Creamery,default,refrigeration,controls_vsds,,commercial,VSDs and head-pressure control,engineering judgement,medium
+Creamery,default,refrigeration,heat_recovery_heat_pump,8-9,commercial,Reject heat to pasteuriser/CIP water,[STAR_HP] Dairy refrigeration heat recovery,high
+Creamery,default,refrigeration,natural_refrigerant_refrigeration,,commercial,NH3/CO2 chilled water and cold store plant,[STAR_NATREF] Natural refrigerant conversions,high
+Creamery,default,site_services,battery_electric_nrmm,,commercial,Forklifts/tanker yard plant,engineering judgement,medium
+Creamery,default,site_services,biomethane_fuel,8-9,commercial,AD of whey permeate/effluent sludges for site gas,engineering judgement,medium
+Creamery,default,site_services,heat_pump_below_100,9,commercial,Buildings/DHW,engineering judgement,medium
+Creamery,default,site_services,onsite_solar_pv,,commercial,Roof PV,engineering judgement,medium
+Distillery,default,compressed_air,compressed_air_optimisation,,commercial,Standard measures,engineering judgement,medium
+Distillery,default,cooling_systems,controls_vsds,,commercial,Cooling tower/pump VSDs,engineering judgement,medium
+Distillery,default,cooling_systems,heat_recovery_heat_pump,8-9,demonstration,Upgrade condenser cooling water heat to mashing/still duties; core of InchDairnie and ThermoDrive concepts,[INCHDAIRNIE_HP] InchDairnie heat pump on condenser heat,medium
+Distillery,default,cooling_systems,waste_heat_recovery_process,,commercial,Condenser hot water recovery to hot liquor; long-established,[BRIGGS_DAVIES] Distillery heat recovery practice,high
+Distillery,default,coproduct_evaporation,distillery_coproduct_ad,,commercial,"Process change: divert pot ale to AD, avoiding evaporation load (foregoes syrup feed value)",[GOVSCOT_BYPROD] Scottish Government report on distillery by-products feed vs bioenergy use,medium
+Distillery,default,coproduct_evaporation,mvr,9,commercial,MVR standard option on pot ale syrup evaporators,[VERCO_MVR] Verco analysis of MVR in distilleries incl. evaporation,high
+Distillery,default,coproduct_evaporation,still_tvr_thermocompression,,commercial,TVR on multi-effect evaporators; established,[BRIGGS_DAVIES] Distillery energy paper on evaporator vapour recompression,medium
+Distillery,default,distillation,biomass_boiler,9,commercial,"Established in sector (e.g. Jura biomass boiler, SIETF-funded); fuel logistics on islands",[SIETF_2022] Whyte & Mackay Jura biomass steam boiler grant; SWA report rates biomass established,high
+Distillery,default,distillation,distillery_coproduct_ad,,commercial,Biogas from pot ale/draff fuels distillery boiler; deployed in sector,[AD_NINE_DIST] AD potential assessed at nine operational distilleries; SWA rates AD mature,high
+Distillery,default,distillation,electrode_boiler,9,commercial,Electric steam to indirect-heated stills; grid capacity at rural sites is the binding constraint,[SWA_NETZERO] Electrification pathway in SWA/Ricardo net-zero report,high
+Distillery,default,distillation,h2_boiler,7-9,demonstration,"HyLaddie (Bruichladdich) funded H2 boiler demo; Cromarty offtake concept, but Scottish H2 supply projects delayed",[HYLADDIE_P1] BEIS Green Distilleries HyLaddie Phase 1 report; Cromarty green hydrogen project,high
+Distillery,default,distillation,htp_heat_pump_100_150,8-9,demonstration,HTHP raising LP steam/hot water for stills; SWA rates industrial HTHP least mature but UK installs starting,[SIETF_2022] Diageo Glendullan high-temperature heat pump installation grant; InchDairnie study,medium
+Distillery,default,distillation,mvr,9,demonstration,"MVR on wash stills (~90% distillation energy saving claimed, COP>10); GlenAllachie launching 2025, precedent at Auchroisk 1986",[BRIGGS_THERMODRIVE] Briggs ThermoDrive MVR at GlenAllachie; Verco MVR distillery analysis; SIETF MVR feasibility grant,high
+Distillery,default,distillation,still_tvr_thermocompression,,demonstration,Steam-jet recompression on pot still steam supply; lower saving/lower capex than MVR,[BRIGGS_DAVIES] Vapour recompression on stills in distillery energy paper,medium
+Distillery,default,distillation,thermal_storage_power_to_heat,7-9,prospective,Off-peak power-to-heat with heat battery for still steam; Green Distilleries feasibility (Sunamp),[SUNAMP_GD] Sunamp Green Distilleries Phase 1 feasibility report,medium
+Distillery,default,milling_mashing,controls_vsds,,commercial,Mill and mash house drives,engineering judgement,medium
+Distillery,default,milling_mashing,heat_pump_below_100,9,commercial,Hot liquor ~70-85C from heat pump on cooling circuits,[INCHDAIRNIE_HP] InchDairnie heat pump integration study/deployment,medium
+Distillery,default,milling_mashing,waste_heat_recovery_process,,commercial,Condenser/cooling heat to mash and hot liquor tanks; standard practice,[BRIGGS_DAVIES] Distillery energy paper on heat recovery to mashing liquor,high
+Distillery,default,process_pumps_motors,controls_vsds,,commercial,VSDs on pumps/agitators,engineering judgement,medium
+Distillery,default,site_services,battery_electric_nrmm,,commercial,Cask-handling forklifts,engineering judgement,medium
+Distillery,default,site_services,fermentation_co2_recovery,,demonstration,"CO2 from washbacks; no dedicated fermentation process in set — distillery deployments emerging (Whyte & Mackay, Ardgowan)",[WM_CCS] Carbon Capture Scotland biogenic CO2 capture at Whyte & Mackay distillery,medium
+Distillery,default,site_services,heat_pump_below_100,9,commercial,Offices/visitor centre heat,engineering judgement,medium
+Distillery,default,site_services,hvo_bio_oils_dropin,9,commercial,Drop-in for existing diesel yard plant,engineering judgement,medium
+Distillery,default,site_services,onsite_solar_pv,,commercial,Warehouse roofs,engineering judgement,medium
+Distillery,grain_distillery,continuous_distillation,electrode_boiler,9,commercial,Electric steam supply to columns,[SWA_NETZERO] Electrification pathway,medium
+Distillery,grain_distillery,continuous_distillation,mvr,9,demonstration,MVR well suited to continuous column heat integration,[VERCO_MVR] Verco MVR distillery analysis (up to ~90% energy reduction),medium
+Distillery,grain_distillery,continuous_distillation,still_tvr_thermocompression,,commercial,Thermocompression on continuous (Coffey/patent) still steam; established practice,[BRIGGS_DAVIES] Vapour recompression in distillery energy paper,medium
+Distillery,grain_distillery,continuous_distillation,waste_heat_recovery_process,,commercial,Column overhead/condensate heat integration,[BRIGGS_DAVIES] Distillery heat recovery practice,high
+Distillery,grain_distillery,cooking_conversion,biomass_boiler,9,commercial,Large biomass steam plant proven at distillery scale,[SWA_NETZERO] Biomass rated established in sector pathway,high
+Distillery,grain_distillery,cooking_conversion,distillery_coproduct_ad,,commercial,Spent wash AD to biogas for site steam (Cameronbridge-type bioenergy plant),[AD_NINE_DIST] AD of distillery co-products at operational sites,high
+Distillery,grain_distillery,cooking_conversion,electrode_boiler,9,commercial,Electric steam for cookers; very large loads need major grid connection,[SWA_NETZERO] Electrification pathway in SWA/Ricardo report,medium
+Distillery,grain_distillery,cooking_conversion,h2_boiler,7-9,prospective,Depends on regional H2 supply (Grangemouth/Fife clusters),[CROMARTY_H2] Green hydrogen offtake concepts for Scottish distilleries,low
+Distillery,grain_distillery,cooking_conversion,htp_heat_pump_100_150,8-9,demonstration,Cooker steam at lower pressures; HTHP emerging,"[SWA_NETZERO] SWA report notes industrial HTHP least mature, no sector demonstrator yet",medium
+Distillery,grain_distillery,cooking_conversion,waste_heat_recovery_process,,commercial,Flash steam and blowdown recovery from pressure cooking,[BRIGGS_DAVIES] Distillery energy/heat recovery practice,medium
+Distillery,grain_distillery,coproduct_evaporation_drying,biomethane_fuel,8-9,commercial,Drop-in for gas-fired grains dryers,engineering judgement,medium
+Distillery,grain_distillery,coproduct_evaporation_drying,distillery_coproduct_ad,,commercial,"Divert spent wash/draff to AD, reducing evaporation/drying load (feed-market trade-off)",[GOVSCOT_BYPROD] By-products feed vs bioenergy analysis for Scotland,medium
+Distillery,grain_distillery,coproduct_evaporation_drying,h2_kiln_furnace_burner,5-8,prospective,Direct H2 firing of rotary/ring dryers; supply-dependent,engineering judgement,low
+Distillery,grain_distillery,coproduct_evaporation_drying,mvr,9,commercial,MVR on dark grains evaporators,[VERCO_MVR] MVR for distillery evaporation,high
+Distillery,grain_distillery,coproduct_evaporation_drying,still_tvr_thermocompression,,commercial,TVR on multi-effect evaporators,[BRIGGS_DAVIES] Evaporator thermocompression practice,medium
+Distillery,grain_distillery,coproduct_evaporation_drying,superheated_steam_drying,,prospective,Steam drying of distillers grains analogous to beet pulp dryers; not yet demonstrated for UK dark grains,[ENERDRY_SSD] Industrial superheated steam drying of wet fibrous co-products,low
+Distillery,grain_distillery,grain_intake_milling,controls_vsds,,commercial,Electric intake/milling; efficiency only,engineering judgement,medium
+Distillery,grain_distillery,site_services,battery_electric_nrmm,,commercial,Yard and warehouse plant,engineering judgement,medium
+Distillery,grain_distillery,site_services,fermentation_co2_recovery,,demonstration,Large single-site fermentation CO2 streams attractive for capture/utilisation,[WM_CCS] Distillery biogenic CO2 capture partnership,medium
+Distillery,grain_distillery,site_services,heat_pump_below_100,9,commercial,Buildings/DHW,engineering judgement,medium
+Distillery,grain_distillery,site_services,onsite_solar_pv,,commercial,Roof/land PV,engineering judgement,medium
+Effluent Minewater Treatment Plant,default,aeration_treatment,controls_vsds,,commercial,VSD blowers or passive cascade aeration; already electric,engineering judgement,medium
+Effluent Minewater Treatment Plant,default,minewater_pumping,controls_vsds,,commercial,VSDs on borehole/transfer pumps; already electric,engineering judgement,medium
+Effluent Minewater Treatment Plant,default,minewater_pumping,minewater_heat_pump_recovery,9,commercial,Heat recovery from treatment flow (Dawdon scheme supplies Seaham heat network); ochre fouling management needed,[REF_GOVUK_DAWDON] Coal Authority Dawdon treatment scheme heat case study,high
+Effluent Minewater Treatment Plant,default,site_services,controls_vsds,,commercial,"Controls, dosing pumps, lighting",engineering judgement,medium
+Effluent Minewater Treatment Plant,default,site_services,onsite_solar_pv,,commercial,PV at remote treatment sites offsets continuous load,engineering judgement,medium
+Exhaust and tyre centre,default,site_services,controls_vsds,,commercial,Simple controls and shutdown,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+Exhaust and tyre centre,default,site_services,ev_fleet_charging_infrastructure,,commercial,Customer/fleet chargepoints,[REF_EST_FLEET] EST business EV charging guidance,high
+Exhaust and tyre centre,default,site_services,led_high_bay_lighting,,commercial,Bay LED plus controls,[REF_CT_LIGHTING] Carbon Trust lighting guide,high
+Exhaust and tyre centre,default,site_services,onsite_solar_pv,,commercial,Roof PV where owned premises,engineering judgement,low
+Exhaust and tyre centre,default,space_heating,air_to_air_hp_warm_air,9,commercial,Fast-response heating for open-door bays,[REF_UKBCH_ASHP] A2A covered under ASHP guidance,medium
+Exhaust and tyre centre,default,space_heating,ashp_space_heating_industrial,9,commercial,ASHP for reception/office areas and bays,[REF_UKBCH_ASHP] UK Business Climate Hub ASHP guidance,medium
+Exhaust and tyre centre,default,space_heating,building_fabric_upgrade,,commercial,Fast-action doors and air-tightness,[REF_CT_FABRIC] Carbon Trust building fabric guide,high
+Exhaust and tyre centre,default,space_heating,electric_radiant_space_heating,,commercial,Spot IR over work positions; robust to air changes,[REF_ECA_RADIANT] ETL radiant heating datasheet,medium
+Exhaust and tyre centre,default,water_heating,heat_pump_below_100,9,commercial,HP water heater for small DHW loads,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+Exhaust and tyre centre,default,water_heating,solar_thermal_process_heat,,commercial,Solar pre-heat; seasonal,engineering judgement,low
+Exhaust and tyre centre,default,workshop_equipment,compressed_air_optimisation,,commercial,Air tools/tyre inflation; leak management,[REF_CT_MANUF] Carbon Trust guidance on compressed air,medium
+Exhaust and tyre centre,default,workshop_equipment,controls_vsds,,commercial,Timers/interlocks on compressors and extraction,engineering judgement,low
+Exhaust and tyre centre,default,workshop_equipment,inverter_welding_equipment,,commercial,Exhaust fabrication welding,[REF_LINCOLN_INVERTER] Manufacturer efficiency literature,medium
+Factory,default,machine_drive,compressed_air_optimisation,,commercial,"Leaks, pressure set-point, VSD compressors",[REF_CT_MANUF] Carbon Trust manufacturing guide,high
+Factory,default,machine_drive,controls_vsds,,commercial,"VSDs on fans/pumps/compressors, high-efficiency motors",[REF_CT_MANUF] Carbon Trust manufacturing guide,high
+Factory,default,other_process,controls_vsds,,commercial,Controls/drives on miscellaneous plant,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Factory,default,other_process,waste_heat_recovery_process,,commercial,Opportunistic heat recovery,engineering judgement,low
+Factory,default,process_cooling,controls_vsds,,commercial,"Chiller optimisation, floating head pressure",[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Factory,default,process_cooling,heat_recovery_heat_pump,8-9,commercial,Chiller reject heat to space/water heating,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+Factory,default,process_heating,biomethane_fuel,8-9,commercial,Drop-in for existing gas equipment,engineering judgement,low
+Factory,default,process_heating,electric_resistance_oven_furnace,8-9,commercial,Electric ovens/furnaces standard at light-industrial scale,[REF_DESNZ_ELEC] Resistance heating TRL 9 per DESNZ/ERM,high
+Factory,default,process_heating,h2_kiln_furnace_burner,5-8,prospective,Burner conversion contingent on H2 network availability,engineering judgement,low
+Factory,default,process_heating,htp_heat_pump_100_150,8-9,demonstration,Low-temp process heat/drying to ~150C,[REF_DESNZ_ELEC] HTHP TRL 7-9 per DESNZ/ERM,medium
+Factory,default,process_heating,induction_heating,9,commercial,Only for conductive metal loads,[REF_DESNZ_ELEC] DESNZ/ERM electrification report,medium
+Factory,default,process_heating,waste_heat_recovery_process,,commercial,Exhaust recuperation on ovens/dryers,[REF_CT_MANUF] Carbon Trust manufacturing guide,medium
+Factory,default,site_services,controls_vsds,,commercial,"BMS, ventilation VSDs, shutdown regimes",[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Factory,default,site_services,led_high_bay_lighting,,commercial,High-bay LED plus controls,[REF_CT_LIGHTING] Carbon Trust lighting guide,high
+Factory,default,site_services,onsite_solar_pv,,commercial,Roof-mounted PV; structural and connection limits,engineering judgement,low
+Factory,default,space_heating,air_to_air_hp_warm_air,9,commercial,Replaces gas warm-air unit heaters,[REF_UKBCH_ASHP] A2A covered under ASHP guidance,medium
+Factory,default,space_heating,ashp_space_heating_industrial,9,commercial,Air-to-water ASHP with AHU/fan convector emitters,[REF_UKBCH_ASHP] UK Business Climate Hub ASHP guidance,high
+Factory,default,space_heating,building_fabric_upgrade,,commercial,Fabric first to shrink heating plant,[REF_CT_FABRIC] Carbon Trust building fabric guide,high
+Factory,default,space_heating,destratification_radiant_conversion,,commercial,Destrat fans plus zoned radiant in tall halls,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Factory,default,space_heating,electric_radiant_space_heating,,commercial,Zone IR for high-bay production areas,[REF_ECA_RADIANT] ETL radiant heating datasheet,medium
+Factory,default,steam_hot_water,biomass_boiler,9,commercial,"Fuel logistics, storage and air-quality permitting",engineering judgement,low
+Factory,default,steam_hot_water,biomethane_fuel,8-9,commercial,Drop-in via certified grid gas,engineering judgement,low
+Factory,default,steam_hot_water,electrode_boiler,9,commercial,Like-for-like steam/hot water; grid capacity and tariff exposure,[REF_DESNZ_ELEC] Electric boilers TRL 9 per DESNZ/ERM,high
+Factory,default,steam_hot_water,h2_boiler,7-9,prospective,Awaits H2 supply; boiler conversion demonstrated elsewhere,engineering judgement,low
+Factory,default,steam_hot_water,htp_heat_pump_100_150,8-9,demonstration,LP steam/hot water where loads under ~150C,[REF_DESNZ_ELEC] HTHP TRL 7-9 per DESNZ/ERM,medium
+Factory,default,steam_hot_water,thermal_storage_power_to_heat,7-9,demonstration,Off-peak charging to reduce electric heat cost,engineering judgement,low
+Flour Mill,default,compressed_air,compressed_air_optimisation,,commercial,Standard measures,engineering judgement,medium
+Flour Mill,default,grinding_roller_mills,controls_vsds,,commercial,"Roller mill motor efficiency, load management; dominant site load, electric already",engineering judgement,medium
+Flour Mill,default,pneumatic_conveying_aspiration,controls_vsds,,commercial,Fan/blower VSDs and conveying pressure optimisation,engineering judgement,medium
+Flour Mill,default,site_services,battery_electric_nrmm,,commercial,Forklifts/yard plant,engineering judgement,medium
+Flour Mill,default,site_services,heat_pump_below_100,9,commercial,Space heating/DHW replacing small gas boilers,engineering judgement,medium
+Flour Mill,default,site_services,onsite_solar_pv,,commercial,Offsets all-electric process load,engineering judgement,medium
+Flour Mill,default,wheat_cleaning_conditioning,controls_vsds,,commercial,Cleaning plant drives,engineering judgement,medium
+Flour Mill,default,wheat_cleaning_conditioning,heat_pump_below_100,9,commercial,Warm water for wheat tempering (small heat duty),engineering judgement,low
+Food Processing Centre,default,boiler_steam_hot_water,biomass_boiler,9,commercial,Proven in food sector; fuel logistics and air quality permits,[MUNTONS_BIOMASS] Biomass energy centre at Muntons food/malt site,high
+Food Processing Centre,default,boiler_steam_hot_water,biomethane_fuel,8-9,commercial,Drop-in for gas boilers incl. onsite AD of food waste/effluent,[FD_ACTION_PLAN] AD/biogas flagged in sector action plan,high
+Food Processing Centre,default,boiler_steam_hot_water,electrode_boiler,9,commercial,Direct replacement of gas steam boilers; grid connection and electricity price are the constraints,[FD_ACTION_PLAN] Electrification of heat identified in food & drink decarbonisation action plan,high
+Food Processing Centre,default,boiler_steam_hot_water,h2_boiler,7-9,prospective,Awaits hydrogen supply; most food sites far from planned H2 clusters,[H2_SETBACKS] Scottish green hydrogen supply projects delayed,medium
+Food Processing Centre,default,boiler_steam_hot_water,heat_pump_below_100,9,commercial,"Serves hot water/washdown share of boiler load, often paired with refrigeration heat recovery",[STAR_HP] Industrial heat pump/heat recovery applications in UK food plants,high
+Food Processing Centre,default,boiler_steam_hot_water,htp_heat_pump_100_150,8-9,demonstration,LP steam duties; UK food-sector installs emerging,[SIETF_2022] SIETF-funded high-temperature heat pump projects in Scottish food & drink,medium
+Food Processing Centre,default,compressed_air,compressed_air_optimisation,,commercial,"Leak reduction, pressure optimisation, compressor heat recovery",engineering judgement,medium
+Food Processing Centre,default,direct_heating,biomethane_fuel,8-9,commercial,Drop-in for direct-fired ovens/dryers,engineering judgement,medium
+Food Processing Centre,default,direct_heating,electric_resistance_oven_furnace,8-9,commercial,Electric ovens/fryers available; capacity upgrade often needed,[FD_ACTION_PLAN] Oven electrification in sector roadmap options,medium
+Food Processing Centre,default,direct_heating,h2_kiln_furnace_burner,5-8,prospective,Burner conversion feasible but food-contact combustion products need validation; no H2 supply yet,engineering judgement,low
+Food Processing Centre,default,direct_heating,microwave_rf_drying,7-9,demonstration,"Dielectric heating for drying/tempering niches, often hybrid with conventional ovens",engineering judgement,low
+Food Processing Centre,default,direct_heating,ohmic_heating_food,,demonstration,"Pumpable product lines (sauces, ready meals) only",[OHMIC_REVIEW] Commercial ohmic applications reviewed for liquid/particulate foods,medium
+Food Processing Centre,default,machinery_motors,controls_vsds,,commercial,Motor/VSD upgrades; already-electric duty so efficiency only,engineering judgement,medium
+Food Processing Centre,default,refrigeration,controls_vsds,,commercial,"Floating head pressure, VSD compressors/fans",engineering judgement,medium
+Food Processing Centre,default,refrigeration,heat_recovery_heat_pump,8-9,commercial,Upgrade condenser reject heat to washdown/process hot water,[STAR_HP] Refrigeration heat recovery heat pumps in UK food plants,high
+Food Processing Centre,default,refrigeration,natural_refrigerant_refrigeration,,commercial,NH3/CO2 replacement at end of plant life; F-gas driven,[STAR_NATREF] UK natural refrigerant conversions in food cold chain,high
+Food Processing Centre,default,site_services,battery_electric_nrmm,,commercial,Forklifts/yard vehicles,engineering judgement,medium
+Food Processing Centre,default,site_services,heat_pump_below_100,9,commercial,Space heating and DHW,engineering judgement,medium
+Food Processing Centre,default,site_services,insulation_upgrade,,commercial,Steam/condensate and building fabric,engineering judgement,medium
+Food Processing Centre,default,site_services,onsite_solar_pv,,commercial,Large roof/land typical of food parks,engineering judgement,medium
+Foundry,default,charge_handling,battery_electric_nrmm,,commercial,Electric forklifts/loaders for charge make-up,engineering judgement,low
+Foundry,default,charge_handling,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel yard plant,engineering judgement,low
+Foundry,default,core_making,compressed_air_optimisation,,commercial,Core shooting/blowing air demand,engineering judgement,low
+Foundry,default,core_making,electric_resistance_oven_furnace,8-9,commercial,Electric core drying/curing ovens,engineering judgement,low
+Foundry,default,fettling_finishing,compressed_air_optimisation,,commercial,Air tools and blast equipment,engineering judgement,low
+Foundry,default,fettling_finishing,controls_vsds,,commercial,Grinding/shotblast motor systems,engineering judgement,low
+Foundry,default,fume_extraction,controls_vsds,,commercial,VSDs and demand control on extraction fans,engineering judgement,low
+Foundry,default,fume_extraction,heat_recovery_heat_pump,8-9,prospective,Recover low-grade heat from extracted air for space heating,engineering judgement,low
+Foundry,default,heat_treatment,biomethane_fuel,8-9,commercial,Drop-in for gas HT furnaces,engineering judgement,low
+Foundry,default,heat_treatment,electric_resistance_oven_furnace,8-9,commercial,Electric heat treatment furnaces widely available at foundry scale,[REF_CMF] CMF roadmap covers electrification of process heat,medium
+Foundry,default,heat_treatment,h2_kiln_furnace_burner,5-8,demonstration,H2 firing of gas HT furnaces; atmosphere/water vapour effects to verify,engineering judgement,low
+Foundry,default,heat_treatment,induction_heating,9,commercial,Induction surface hardening for suitable parts,engineering judgement,low
+Foundry,default,heat_treatment,waste_heat_recovery_process,,commercial,Recuperators on HT furnace flues,engineering judgement,low
+Foundry,default,melting_holding,biocarbon_fuel_substitution,5-7,demonstration,Biocoke substitution in retained cupolas; char strength/reactivity constraints,[REF_BIOCHAR_REV] Biochar-for-coke review including cupola/foundry coke,medium
+Foundry,default,melting_holding,biomethane_fuel,8-9,commercial,Drop-in for gas-fired crucible/reverberatory furnaces,engineering judgement,low
+Foundry,default,melting_holding,cupola_to_induction,9,commercial,Coke cupola replacement with induction melting; grid connection often the binding constraint,[REF_FP_CUPOLA] Documented commercial conversion; CMF roadmap identifies electrified melting for UK,high
+Foundry,default,melting_holding,electric_resistance_oven_furnace,8-9,commercial,Resistance crucible/holding furnaces for non-ferrous,engineering judgement,low
+Foundry,default,melting_holding,h2_kiln_furnace_burner,5-8,prospective,H2 firing of gas melting/holding furnaces; no UK foundry demos yet,engineering judgement,low
+Foundry,default,melting_holding,induction_heating,9,commercial,"Coreless/channel induction melting and holding for iron, steel and non-ferrous",[REF_CMF] CMF Net Zero roadmap: electrification of melting,high
+Foundry,default,mould_making,electric_infrared_drying,,commercial,IR drying of mould coatings/washes,engineering judgement,low
+Foundry,default,mould_making,microwave_rf_drying,7-9,demonstration,Dielectric drying of moulds/cores; niche,engineering judgement,low
+Foundry,default,pouring_casting,biomethane_fuel,8-9,commercial,Drop-in for gas ladle heaters,engineering judgement,low
+Foundry,default,pouring_casting,electric_resistance_oven_furnace,8-9,demonstration,Electric ladle preheating replacing gas torches,engineering judgement,low
+Foundry,default,pouring_casting,h2_kiln_furnace_burner,5-8,prospective,H2 ladle preheat burners,engineering judgement,low
+Foundry,default,shakeout_sand_reclamation,electric_resistance_oven_furnace,8-9,demonstration,Electric thermal sand reclamation replacing gas-fired units,engineering judgement,low
+Foundry,default,shakeout_sand_reclamation,waste_heat_recovery_process,,prospective,Casting/sand sensible heat recovery,engineering judgement,low
+Foundry,default,site_services,compressed_air_optimisation,,commercial,Central compressors,engineering judgement,low
+Foundry,default,site_services,controls_vsds,,commercial,Site motor systems,engineering judgement,low
+Foundry,default,site_services,heat_pump_below_100,9,commercial,Space heating/DHW,engineering judgement,low
+Foundry,default,site_services,onsite_solar_pv,,commercial,Roof PV,engineering judgement,low
+Industrial Minerals NEC,default,kiln_calcination,biomethane_fuel,8-9,commercial,Drop-in for gas-fired lime kilns; volume/cost constraints,engineering judgement,medium
+Industrial Minerals NEC,default,kiln_calcination,calcium_looping_ccs,5-7,prospective,"Sorbent is the product feedstock; strong conceptual fit, no lime-sector demo identified",engineering judgement,low
+Industrial Minerals NEC,default,kiln_calcination,direct_separation_leilac,6,prospective,Direct separation calciner developer targets lime as well as cement; no lime deployment yet,engineering judgement,medium
+Industrial Minerals NEC,default,kiln_calcination,electric_kiln_calcination,6,prospective,Electric calcination of limestone at ~900-1200C plausible but undemonstrated at scale; process CO2 remains,engineering judgement,low
+Industrial Minerals NEC,default,kiln_calcination,h2_kiln_furnace_burner,5-8,demonstration,World-first net-zero H2/biomass lime kiln trial at Tarmac Tunstead; BEIS Phase 3 report on H2 for high-calcium lime,[R_TARMAC_H2LIME] Tarmac Tunstead trial; BEIS lime H2 report (R_BEIS_LIME),high
+Industrial Minerals NEC,default,kiln_calcination,lime_oxyfuel_flash_calcination,,demonstration,"Origen oxyfuel flash calcination with inherent capture; demo kiln commissioning, ZerCaL250 proposed (Humber)",[R_ORIGEN] Origen kiln commissioning news,medium
+Industrial Minerals NEC,default,kiln_calcination,post_combustion_amine_ccs,9-11,demonstration,Peak Cluster developing capture and CO2 pipeline for Derbyshire/Staffordshire cement and lime plants,[R_PEAK] Peak Cluster project pages; DCO process underway,high
+Industrial Minerals NEC,default,kiln_calcination,waste_derived_fuels,,prospective,Product purity limits fuel-contact options for high-calcium lime; kiln-type dependent,engineering judgement,low
+Industrial Minerals NEC,default,lime_grinding_milling,controls_vsds,,commercial,Electricity-only milling; drives optimisation,engineering judgement,medium
+Industrial Minerals NEC,default,packing_dispatch,compressed_air_optimisation,,commercial,Bagging lines compressed air; otherwise electricity-only,engineering judgement,low
+Industrial Minerals NEC,default,quarrying_crushing_screening,battery_electric_nrmm,,demonstration,Electric loaders/excavators for quarry duties,engineering judgement,medium
+Industrial Minerals NEC,default,quarrying_crushing_screening,controls_vsds,,commercial,Electric crushing/screening drives optimisation,engineering judgement,medium
+Industrial Minerals NEC,default,quarrying_crushing_screening,hvo_bio_oils_dropin,9,commercial,Quarry mobile fleet diesel substitution (no separate mobile process listed),engineering judgement,high
+Industrial Minerals NEC,default,site_services,heat_pump_below_100,9,commercial,Space heating/hot water,engineering judgement,medium
+Industrial Minerals NEC,default,site_services,onsite_solar_pv,,commercial,Quarry land PV,engineering judgement,medium
+Industrial NEC,default,machine_drive,compressed_air_optimisation,,commercial,"Leaks, pressure, VSD compressors",[REF_CT_MANUF] Carbon Trust manufacturing guide,high
+Industrial NEC,default,machine_drive,controls_vsds,,commercial,VSDs and motor management,[REF_CT_MANUF] Carbon Trust manufacturing guide,high
+Industrial NEC,default,other_process,controls_vsds,,commercial,Controls/drives on miscellaneous plant,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Industrial NEC,default,other_process,waste_heat_recovery_process,,commercial,Opportunistic heat recovery,engineering judgement,low
+Industrial NEC,default,process_cooling,controls_vsds,,commercial,Chiller optimisation,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Industrial NEC,default,process_cooling,heat_recovery_heat_pump,8-9,commercial,Reject heat to heating duties,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+Industrial NEC,default,process_heating,biomethane_fuel,8-9,commercial,Drop-in for gas plant,engineering judgement,low
+Industrial NEC,default,process_heating,electric_resistance_oven_furnace,8-9,commercial,Electric ovens/furnaces for generic duties,[REF_DESNZ_ELEC] Resistance heating TRL 9,high
+Industrial NEC,default,process_heating,h2_kiln_furnace_burner,5-8,prospective,Depends on H2 availability,engineering judgement,low
+Industrial NEC,default,process_heating,htp_heat_pump_100_150,8-9,demonstration,Low-temp process heat/drying,[REF_DESNZ_ELEC] HTHP TRL 7-9,medium
+Industrial NEC,default,process_heating,induction_heating,9,commercial,Conductive metal loads only,[REF_DESNZ_ELEC] DESNZ/ERM electrification report,medium
+Industrial NEC,default,process_heating,waste_heat_recovery_process,,commercial,Exhaust recuperation,[REF_CT_MANUF] Carbon Trust manufacturing guide,medium
+Industrial NEC,default,site_services,controls_vsds,,commercial,BMS and ventilation controls,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Industrial NEC,default,site_services,led_high_bay_lighting,,commercial,High-bay LED plus controls,[REF_CT_LIGHTING] Carbon Trust lighting guide,high
+Industrial NEC,default,site_services,onsite_solar_pv,,commercial,Roof PV subject to structure/connection,engineering judgement,low
+Industrial NEC,default,space_heating,air_to_air_hp_warm_air,9,commercial,Replaces gas warm-air heaters,[REF_UKBCH_ASHP] A2A covered under ASHP guidance,medium
+Industrial NEC,default,space_heating,ashp_space_heating_industrial,9,commercial,Air-to-water ASHP,[REF_UKBCH_ASHP] UK Business Climate Hub ASHP guidance,high
+Industrial NEC,default,space_heating,building_fabric_upgrade,,commercial,Fabric first before plant replacement,[REF_CT_FABRIC] Carbon Trust building fabric guide,high
+Industrial NEC,default,space_heating,destratification_radiant_conversion,,commercial,Destrat plus zoned radiant in tall spaces,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Industrial NEC,default,space_heating,electric_radiant_space_heating,,commercial,Zone IR for high-bay areas,[REF_ECA_RADIANT] ETL radiant heating datasheet,medium
+Industrial NEC,default,steam_hot_water,biomass_boiler,9,commercial,Fuel logistics and permitting constraints,engineering judgement,low
+Industrial NEC,default,steam_hot_water,biomethane_fuel,8-9,commercial,Drop-in via certified grid gas,engineering judgement,low
+Industrial NEC,default,steam_hot_water,electrode_boiler,9,commercial,Electric steam/hot water,[REF_DESNZ_ELEC] Electric boilers TRL 9,high
+Industrial NEC,default,steam_hot_water,h2_boiler,7-9,prospective,Awaits H2 supply,engineering judgement,low
+Industrial NEC,default,steam_hot_water,htp_heat_pump_100_150,8-9,demonstration,LP steam/hot water under ~150C,[REF_DESNZ_ELEC] HTHP TRL 7-9,medium
+Industrial NEC,default,steam_hot_water,thermal_storage_power_to_heat,7-9,demonstration,Off-peak power-to-heat with storage,engineering judgement,low
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,bf_biochar_injection,6-7,demonstration,Bio-PCI up to ~40-50% substitution in large BFs; biomass supply constraint,[REF_BIOPCI] Bio-PCI techno-economic study,medium
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,bf_h2_injection,5-6,demonstration,Partial PCI replacement; ~20% CO2 ceiling; coke still required,[REF_TKH2] thyssenkrupp BF9 tuyere trials,high
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,h2_dri_eaf,7,demonstration,Route replacement: H2-DRI shaft + EAF instead of BF-BOF at relining decision point,[REF_HYBRIT] HYBRIT pilot and demo programme,high
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,hisarna_smelting_reduction,5-6,prospective,Replacement for BF+sinter+coke ovens at rebuild; pilot-proven only,[REF_HISARNA] GEM HIsarna status summary,medium
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,iron_ore_electrowinning,5-6,speculative,Low-temp electrowinning as long-term ore-based route; pilot scale,[REF_SIDERWIN] CORDIS SIDERWIN results,medium
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,molten_oxide_electrolysis,4-5,speculative,Long-term electrolytic replacement for ore-based ironmaking,[REF_BOSTON] Thunder Said Energy MOE assessment,medium
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,post_combustion_amine_ccs,9-11,demonstration,Amine capture on BF gas/hot stove flue; ~50-60% site capture in IEAGHG schemes,[REF_IEAGHG] IEAGHG integrated steel mill CCS study,high
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,tgr_bf_ccs,5-6,prospective,Piloted at LKAB EBF; needs major rebuild plus CO2 T&S; no industrial demo,[REF_ULCOS] ULCOS TGR-BF final report,medium
+Iron and/or Steel Works,bf_bof,bof_steelmaking,post_combustion_amine_ccs,9-11,prospective,Intermittent dilute off-gas makes direct BOF capture harder; usually via central stack schemes,[REF_IEAGHG] IEAGHG steel CCS techno-economics,medium
+Iron and/or Steel Works,bf_bof,bof_steelmaking,steel_offgas_ccu_ethanol,7-8,demonstration,Gas fermentation of BOF/BF off-gas to ethanol (Steelanol-type),[REF_STEELANOL] ArcelorMittal Ghent Steelanol flagship,medium
+Iron and/or Steel Works,bf_bof,bof_steelmaking,waste_heat_recovery_process,,commercial,BOF gas recovery and evaporative cooling steam recovery,engineering judgement,low
+Iron and/or Steel Works,bf_bof,coke_ovens,cog_hydrogen_recovery,9,commercial,PSA H2 recovery from COG; displaced underfiring gas must be substituted,[REF_COG_H2] ACS review of COG hydrogen recovery,medium
+Iron and/or Steel Works,bf_bof,coke_ovens,coke_dry_quenching,9,commercial,"CDQ with power recovery; high capex, suits large batteries",[REF_CDQ] CTCN CDQ technology description,high
+Iron and/or Steel Works,bf_bof,coke_ovens,post_combustion_amine_ccs,9-11,demonstration,Capture on underfiring flue gas; part of integrated-mill CCS schemes,[REF_IEAGHG] IEAGHG integrated steel mill CCS techno-economics,medium
+Iron and/or Steel Works,bf_bof,coke_ovens,waste_heat_recovery_process,,commercial,"Waste gas heat recovery, battery insulation",engineering judgement,low
+Iron and/or Steel Works,bf_bof,continuous_casting,controls_vsds,,commercial,Pump/fan drives,engineering judgement,low
+Iron and/or Steel Works,bf_bof,continuous_casting,waste_heat_recovery_process,,prospective,Hot charging/slab heat recovery,engineering judgement,low
+Iron and/or Steel Works,bf_bof,hot_rolling,controls_vsds,,commercial,Mill drive and descaling pump optimisation,engineering judgement,low
+Iron and/or Steel Works,bf_bof,hot_rolling,waste_heat_recovery_process,,prospective,Cooling water heat recovery,engineering judgement,low
+Iron and/or Steel Works,bf_bof,reheat_furnaces,biomethane_fuel,8-9,commercial,Drop-in where COG/NG fired,engineering judgement,low
+Iron and/or Steel Works,bf_bof,reheat_furnaces,h2_kiln_furnace_burner,5-8,demonstration,100% H2 reheat firing demonstrated (Ovako/Linde),[REF_OVAKO] Ovako/Linde hydrogen reheat trial,high
+Iron and/or Steel Works,bf_bof,reheat_furnaces,h2_ready_equipment,,commercial,H2-ready burners at rebuild,engineering judgement,low
+Iron and/or Steel Works,bf_bof,reheat_furnaces,induction_heating,9,commercial,Induction reheating for long products,engineering judgement,low
+Iron and/or Steel Works,bf_bof,reheat_furnaces,waste_heat_recovery_process,,commercial,"Regenerative burners, hot charging",engineering judgement,low
+Iron and/or Steel Works,bf_bof,secondary_metallurgy,biomethane_fuel,8-9,commercial,Drop-in for gas ladle preheaters,engineering judgement,low
+Iron and/or Steel Works,bf_bof,secondary_metallurgy,electric_resistance_oven_furnace,8-9,demonstration,Electric ladle preheating,engineering judgement,low
+Iron and/or Steel Works,bf_bof,secondary_metallurgy,h2_kiln_furnace_burner,5-8,prospective,H2 ladle preheat burners,engineering judgement,low
+Iron and/or Steel Works,bf_bof,sinter_plant,biocarbon_fuel_substitution,5-7,demonstration,Biochar partially replacing coke breeze in sinter mix,[REF_BIOCHAR_REV] Review covers biochar in iron ore sintering,medium
+Iron and/or Steel Works,bf_bof,sinter_plant,controls_vsds,,commercial,Large fan loads; VSDs and leak control,engineering judgement,low
+Iron and/or Steel Works,bf_bof,sinter_plant,waste_heat_recovery_process,,commercial,Sinter cooler waste heat recovery to steam/preheat,engineering judgement,low
+Iron and/or Steel Works,bf_bof,site_services,compressed_air_optimisation,,commercial,Site compressed air systems,engineering judgement,low
+Iron and/or Steel Works,bf_bof,site_services,controls_vsds,,commercial,Site-wide motor systems,engineering judgement,low
+Iron and/or Steel Works,bf_bof,site_services,electrode_boiler,9,commercial,Steam duties as COG availability falls,engineering judgement,low
+Iron and/or Steel Works,bf_bof,site_services,heat_pump_below_100,9,commercial,Space heating/DHW,engineering judgement,low
+Iron and/or Steel Works,bf_bof,site_services,onsite_solar_pv,,commercial,Marginal share of site demand,engineering judgement,low
+Iron and/or Steel Works,eaf,continuous_casting,controls_vsds,,commercial,"Pump/fan drives, spray water optimisation",engineering judgement,low
+Iron and/or Steel Works,eaf,continuous_casting,waste_heat_recovery_process,,prospective,Slab/billet sensible heat recovery; hot charging to reheat furnace preferred route,engineering judgement,low
+Iron and/or Steel Works,eaf,eaf_melting,biocarbon_fuel_substitution,5-7,demonstration,Biochar replacing anthracite charge/injection carbon for slag foaming,[REF_BIOCHAR_REV] Fuel (2023) review covers EAF carbon substitution trials,medium
+Iron and/or Steel Works,eaf,eaf_melting,eaf_scrap_preheating,9,commercial,Consteel/shaft preheating cuts EAF electricity 50-100 kWh/t; retrofit layout constraints,[REF_CONSTEEL] IspatGuru Consteel process review,high
+Iron and/or Steel Works,eaf,eaf_melting,h2_dri_eaf,7,demonstration,Charging H2-DRI/HBI to EAF enables low-residual flat products; needs DRI supply chain,[REF_HYBRIT] HYBRIT pilot H2-DRI melted in EAF,high
+Iron and/or Steel Works,eaf,eaf_melting,hbi_dri_charging_eaf,9,commercial,Merchant HBI blending is established EAF practice for quality control,[REF_MIDREX] Midrex on ore-based metallics in EAF steelmaking,high
+Iron and/or Steel Works,eaf,eaf_melting,waste_heat_recovery_process,,commercial,EAF off-gas heat to steam/scrap preheat where preheater not fitted,engineering judgement,low
+Iron and/or Steel Works,eaf,fume_extraction_auxiliaries,controls_vsds,,commercial,VSDs on baghouse/extraction fans; large auxiliary load,engineering judgement,low
+Iron and/or Steel Works,eaf,fume_extraction_auxiliaries,heat_recovery_heat_pump,8-9,prospective,Upgrade low-grade fume/cooling-water heat for site heating,engineering judgement,low
+Iron and/or Steel Works,eaf,hot_rolling_mill,controls_vsds,,commercial,"Drive optimisation, idle management on mill stands and descaling pumps",engineering judgement,low
+Iron and/or Steel Works,eaf,hot_rolling_mill,waste_heat_recovery_process,,prospective,Cooling water/laminar spray heat recovery,engineering judgement,low
+Iron and/or Steel Works,eaf,reheat_furnaces,biomethane_fuel,8-9,commercial,Drop-in for NG-fired furnaces; supply limited,engineering judgement,low
+Iron and/or Steel Works,eaf,reheat_furnaces,h2_kiln_furnace_burner,5-8,demonstration,100% H2 firing of steel reheat furnace demonstrated by Ovako/Linde with no quality impact,"[REF_OVAKO] Ovako/Linde world-first hydrogen reheat trial, Hofors 2020",high
+Iron and/or Steel Works,eaf,reheat_furnaces,h2_ready_equipment,,commercial,Specify H2-ready burners at rebuild pending H2 supply,engineering judgement,low
+Iron and/or Steel Works,eaf,reheat_furnaces,induction_heating,9,commercial,Induction billet/bar reheating commercial for long products; very high grid demand for slab mills,engineering judgement,low
+Iron and/or Steel Works,eaf,reheat_furnaces,waste_heat_recovery_process,,commercial,"Regenerative/recuperative burners, hot charging",engineering judgement,low
+Iron and/or Steel Works,eaf,scrap_handling_preparation,battery_electric_nrmm,,commercial,Electric material handlers/loaders available for scrap yard duty,engineering judgement,low
+Iron and/or Steel Works,eaf,scrap_handling_preparation,hvo_bio_oils_dropin,9,commercial,"Drop-in for diesel cranes, grabs and shears",engineering judgement,low
+Iron and/or Steel Works,eaf,scrap_handling_preparation,hydrogen_nrmm,,prospective,H2 heavy mobile plant not yet commercially mature,engineering judgement,low
+Iron and/or Steel Works,eaf,scrap_handling_preparation,plasma_electric_cutting,9,commercial,Electric plasma for oversize scrap sizing; oxy-fuel still needed for very thick sections,[REF_ESAB] Capability envelope vs oxy-fuel from ESAB comparison,medium
+Iron and/or Steel Works,eaf,secondary_metallurgy,biomethane_fuel,8-9,commercial,Drop-in for gas-fired ladle preheaters; supply/cost limited,engineering judgement,low
+Iron and/or Steel Works,eaf,secondary_metallurgy,electric_resistance_oven_furnace,8-9,demonstration,Electric ladle/tundish preheating replacing gas burners,engineering judgement,low
+Iron and/or Steel Works,eaf,secondary_metallurgy,h2_kiln_furnace_burner,5-8,prospective,H2 ladle preheat burners; needs site H2 supply,engineering judgement,low
+Iron and/or Steel Works,eaf,site_services,compressed_air_optimisation,,commercial,"Leak reduction, pressure optimisation",engineering judgement,low
+Iron and/or Steel Works,eaf,site_services,controls_vsds,,commercial,Site-wide motor systems,engineering judgement,low
+Iron and/or Steel Works,eaf,site_services,electrode_boiler,9,commercial,Steam/hot water duties,engineering judgement,low
+Iron and/or Steel Works,eaf,site_services,heat_pump_below_100,9,commercial,Space heating/DHW,engineering judgement,low
+Iron and/or Steel Works,eaf,site_services,onsite_solar_pv,,commercial,Roof/land PV; small share of EAF site demand,engineering judgement,low
+Laboratory,default,hvac_ventilation,controls_vsds,,commercial,"Fan VSDs, static pressure reset, night setback",[smartlabs_toolkit] Smart Labs optimisation guidance,high
+Laboratory,default,hvac_ventilation,fume_cupboard_vav_sash_management,9,commercial,Largest single lever where cupboard density high; containment testing required,[smartlabs_toolkit] Smart Labs ventilation assessment,high
+Laboratory,default,hvac_ventilation,heat_pump_below_100,9,commercial,ASHP serving AHU heating coils in place of gas boilers,engineering judgement,medium
+Laboratory,default,hvac_ventilation,lab_air_change_reduction_dcv,9,commercial,Risk-based ACH reduction with air quality sensing,[wbdg_ach_2022] WBDG lab ACH reduction resource,high
+Laboratory,default,hvac_ventilation,lab_exhaust_heat_recovery,9,commercial,Run-around coils suit contaminated exhaust,[nrel_labs21_erv] Labs21 energy recovery best practice,high
+Laboratory,default,lab_equipment,controls_vsds,,commercial,"Equipment timers, eco modes, shared-equipment policies",engineering judgement,low
+Laboratory,default,lab_equipment,ult_freezer_optimisation,9,commercial,"-70C setpoints, consolidation, efficient replacement",[cdc_ult_case] CDC ULT case study,high
+Laboratory,default,lighting,lab_led_lighting_controls,9,commercial,LED plus occupancy/daylight controls,[emory_lighting_case] Smart Labs occupancy sensor case study,high
+Laboratory,default,space_water_heating,electrode_boiler,9,commercial,Small electric boilers where heat pumps impractical,engineering judgement,medium
+Laboratory,default,space_water_heating,heat_pump_below_100,9,commercial,Space heating and DHW via ASHP,engineering judgement,high
+Laboratory,default,space_water_heating,insulation_upgrade,,commercial,Fabric and distribution insulation,engineering judgement,medium
+Laboratory,default,space_water_heating,solar_thermal_process_heat,,commercial,DHW pre-heat,engineering judgement,medium
+"Large industrial (> 20,000 m2) NEC",default,machine_drive,compressed_air_optimisation,,commercial,"Leaks, pressure, VSD compressors",[REF_CT_MANUF] Carbon Trust manufacturing guide,high
+"Large industrial (> 20,000 m2) NEC",default,machine_drive,controls_vsds,,commercial,VSDs and motor management,[REF_CT_MANUF] Carbon Trust manufacturing guide,high
+"Large industrial (> 20,000 m2) NEC",default,other_process,controls_vsds,,commercial,Controls/drives on miscellaneous plant,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+"Large industrial (> 20,000 m2) NEC",default,other_process,waste_heat_recovery_process,,commercial,Opportunistic heat recovery,engineering judgement,low
+"Large industrial (> 20,000 m2) NEC",default,process_cooling,controls_vsds,,commercial,Chiller optimisation,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+"Large industrial (> 20,000 m2) NEC",default,process_cooling,heat_recovery_heat_pump,8-9,commercial,Reject heat to heating duties,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+"Large industrial (> 20,000 m2) NEC",default,process_heating,biomethane_fuel,8-9,commercial,Drop-in for gas plant,engineering judgement,low
+"Large industrial (> 20,000 m2) NEC",default,process_heating,electric_resistance_oven_furnace,8-9,commercial,Electric ovens/furnaces for generic duties,[REF_DESNZ_ELEC] Resistance heating TRL 9,high
+"Large industrial (> 20,000 m2) NEC",default,process_heating,h2_kiln_furnace_burner,5-8,prospective,Depends on H2 availability,engineering judgement,low
+"Large industrial (> 20,000 m2) NEC",default,process_heating,htp_heat_pump_100_150,8-9,demonstration,Low-temp process heat/drying,[REF_DESNZ_ELEC] HTHP TRL 7-9,medium
+"Large industrial (> 20,000 m2) NEC",default,process_heating,induction_heating,9,commercial,Conductive metal loads only,[REF_DESNZ_ELEC] DESNZ/ERM electrification report,medium
+"Large industrial (> 20,000 m2) NEC",default,process_heating,waste_heat_recovery_process,,commercial,Exhaust recuperation,[REF_CT_MANUF] Carbon Trust manufacturing guide,medium
+"Large industrial (> 20,000 m2) NEC",default,site_services,controls_vsds,,commercial,BMS and ventilation controls,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+"Large industrial (> 20,000 m2) NEC",default,site_services,led_high_bay_lighting,,commercial,High-bay LED plus controls,[REF_CT_LIGHTING] Carbon Trust lighting guide,high
+"Large industrial (> 20,000 m2) NEC",default,site_services,onsite_solar_pv,,commercial,Very large roofs favour PV economics,engineering judgement,low
+"Large industrial (> 20,000 m2) NEC",default,space_heating,air_to_air_hp_warm_air,9,commercial,Replaces distributed gas warm-air heaters,[REF_UKBCH_ASHP] A2A covered under ASHP guidance,medium
+"Large industrial (> 20,000 m2) NEC",default,space_heating,ashp_space_heating_industrial,9,commercial,Multiple ASHP units serving zoned AHUs,[REF_UKBCH_ASHP] UK Business Climate Hub ASHP guidance,high
+"Large industrial (> 20,000 m2) NEC",default,space_heating,building_fabric_upgrade,,commercial,Roof insulation dominates at this scale,[REF_CT_FABRIC] Carbon Trust building fabric guide,high
+"Large industrial (> 20,000 m2) NEC",default,space_heating,destratification_radiant_conversion,,commercial,"Big stratification losses at >20,000 m2 scale",[REF_CT_HVAC] Carbon Trust HVAC guide,high
+"Large industrial (> 20,000 m2) NEC",default,space_heating,electric_radiant_space_heating,,commercial,"Zone IR for high-bay, low-occupancy areas",[REF_ECA_RADIANT] ETL radiant heating datasheet,medium
+"Large industrial (> 20,000 m2) NEC",default,steam_hot_water,biomass_boiler,9,commercial,Space for fuel storage usually available at large sites,engineering judgement,low
+"Large industrial (> 20,000 m2) NEC",default,steam_hot_water,biomethane_fuel,8-9,commercial,Drop-in via certified grid gas,engineering judgement,low
+"Large industrial (> 20,000 m2) NEC",default,steam_hot_water,electrode_boiler,9,commercial,Electric steam/hot water; large sites may need connection upgrade,[REF_DESNZ_ELEC] Electric boilers TRL 9,high
+"Large industrial (> 20,000 m2) NEC",default,steam_hot_water,h2_boiler,7-9,prospective,Awaits H2 supply,engineering judgement,low
+"Large industrial (> 20,000 m2) NEC",default,steam_hot_water,htp_heat_pump_100_150,8-9,demonstration,LP steam/hot water under ~150C,[REF_DESNZ_ELEC] HTHP TRL 7-9,medium
+"Large industrial (> 20,000 m2) NEC",default,steam_hot_water,thermal_storage_power_to_heat,7-9,demonstration,Off-peak power-to-heat with storage,engineering judgement,low
+Maltings - Non Trad,default,germination_vessels,controls_vsds,,commercial,GV fans and turners; fan power dominates,[UKMALT_ENERGY] MAGB energy use guidance,medium
+Maltings - Non Trad,default,grain_handling_dressing,controls_vsds,,commercial,Drives; efficiency only,engineering judgement,medium
+Maltings - Non Trad,default,kiln_fans,controls_vsds,,commercial,Fan VSDs/airflow optimisation,[UKMALT_ENERGY] MAGB energy measures,high
+Maltings - Non Trad,default,kilning_heat,biomass_boiler,9,commercial,Biomass heat to kilns (Muntons),[MUNTONS_BIOMASS] Muntons biomass energy centre,high
+Maltings - Non Trad,default,kilning_heat,biomethane_fuel,8-9,commercial,Drop-in for gas-fired kiln burners,engineering judgement,medium
+Maltings - Non Trad,default,kilning_heat,electrode_boiler,9,prospective,Electric heat to kiln coils; connection capacity,engineering judgement,low
+Maltings - Non Trad,default,kilning_heat,h2_kiln_furnace_burner,5-8,prospective,Supply-dependent; product-contact combustion needs validation,engineering judgement,low
+Maltings - Non Trad,default,kilning_heat,malting_kiln_heat_pump,,demonstration,Best fit in pneumatic maltings with recirculation; Boortmalt full-scale project in planning,[BOORTMALT_HP] Boortmalt Bury St Edmunds heat-pump kilning,medium
+Maltings - Non Trad,default,kilning_heat,waste_heat_recovery_process,,commercial,Kiln exhaust heat recovery standard,[UKMALT_ENERGY] MAGB kiln heat recovery,high
+Maltings - Non Trad,default,refrigeration_attemperation,controls_vsds,,commercial,Chiller staging/VSDs,engineering judgement,medium
+Maltings - Non Trad,default,refrigeration_attemperation,heat_recovery_heat_pump,8-9,demonstration,Chiller reject heat upgraded to steep water/kiln preheat,engineering judgement,low
+Maltings - Non Trad,default,refrigeration_attemperation,natural_refrigerant_refrigeration,,commercial,NH3/CO2 chillers for germination attemperation,[STAR_NATREF] Natural refrigerant conversions in food/drink,medium
+Maltings - Non Trad,default,site_services,battery_electric_nrmm,,commercial,Yard plant,engineering judgement,medium
+Maltings - Non Trad,default,site_services,heat_pump_below_100,9,commercial,Buildings/DHW,engineering judgement,medium
+Maltings - Non Trad,default,site_services,onsite_solar_pv,,commercial,Roof PV,engineering judgement,medium
+Maltings - Non Trad,default,steeping,controls_vsds,,commercial,Aeration/pump VSDs,engineering judgement,medium
+Maltings - Trad,default,floor_germination_turning,controls_vsds,,commercial,Ventilation fan controls; manual turning largely unmechanised,engineering judgement,low
+Maltings - Trad,default,grain_handling_dressing,controls_vsds,,commercial,"Conveyor/elevator drives; electric duty, efficiency only",engineering judgement,medium
+Maltings - Trad,default,kiln_fans,controls_vsds,,commercial,Fan VSDs and airflow control; major electricity saving,[UKMALT_ENERGY] MAGB energy efficiency measures,high
+Maltings - Trad,default,kilning_heat,biomass_boiler,9,commercial,Biomass energy centres supplying kiln heat (Muntons ~100 GWh/yr),[MUNTONS_BIOMASS] Muntons low-carbon energy centre for malting heat,high
+Maltings - Trad,default,kilning_heat,biomethane_fuel,8-9,commercial,Drop-in for direct gas-fired kiln air heaters (combustion products contact malt — quality check),engineering judgement,medium
+Maltings - Trad,default,kilning_heat,electrode_boiler,9,prospective,Electric hot-water/steam to kiln coils; large connection needed,engineering judgement,low
+Maltings - Trad,default,kilning_heat,h2_kiln_furnace_burner,5-8,prospective,Direct H2-fired kiln air raises NOx/flavour questions; indirect firing likelier; no supply yet,engineering judgement,low
+Maltings - Trad,default,kilning_heat,malting_kiln_heat_pump,,demonstration,Exhaust-recovery heat pumps suit low/mid kilning temps; curing phase may need top-up; flavour validation for traditional malts,"[BOORTMALT_HP] Boortmalt heat-pump kilning project (planning, 2024)",medium
+Maltings - Trad,default,kilning_heat,waste_heat_recovery_process,,commercial,Kiln air-to-air heat recovery is standard industry practice,[UKMALT_ENERGY] MAGB energy use page on kiln heat recovery,high
+Maltings - Trad,default,site_services,battery_electric_nrmm,,commercial,Loading shovels/forklifts,engineering judgement,medium
+Maltings - Trad,default,site_services,heat_pump_below_100,9,commercial,Buildings/DHW,engineering judgement,medium
+Maltings - Trad,default,site_services,insulation_upgrade,,commercial,Heat distribution and kiln fabric,engineering judgement,medium
+Maltings - Trad,default,site_services,onsite_solar_pv,,commercial,Large flat roofs,engineering judgement,medium
+Maltings - Trad,default,steeping,controls_vsds,,commercial,Aeration/pump VSDs; steeping is low-heat,engineering judgement,medium
+Mill,default,milling_grinding,compressed_air_optimisation,,commercial,Pneumatic conveying and air systems optimisation,[REF_CT_MANUF] Carbon Trust manufacturing guide,medium
+Mill,default,milling_grinding,controls_vsds,,commercial,VSDs and load management on mill drives,[REF_CT_MANUF] Carbon Trust manufacturing guide,high
+Mill,default,other_process,controls_vsds,,commercial,Controls/drives on miscellaneous plant,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Mill,default,other_process,waste_heat_recovery_process,,commercial,Opportunistic heat recovery,engineering judgement,low
+Mill,default,process_cooling,controls_vsds,,commercial,Chiller/pump optimisation,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Mill,default,process_cooling,heat_recovery_heat_pump,8-9,commercial,Reject heat to space/process water heating,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+Mill,default,process_heating_drying,biomethane_fuel,8-9,commercial,Drop-in for gas-fired dryers,engineering judgement,low
+Mill,default,process_heating_drying,electric_resistance_oven_furnace,8-9,commercial,Electric air-heater batteries for dryers,[REF_DESNZ_ELEC] Resistance heating TRL 9,medium
+Mill,default,process_heating_drying,heat_recovery_heat_pump,8-9,commercial,Upgrade humid dryer exhaust heat,[REF_DESNZ_ELEC] Heat pump drying duties covered by DESNZ/ERM,medium
+Mill,default,process_heating_drying,htp_heat_pump_100_150,8-9,demonstration,"Drying air to ~150C, best with exhaust heat recovery",[REF_DESNZ_ELEC] HTHP TRL 7-9 per DESNZ/ERM,medium
+Mill,default,process_heating_drying,microwave_rf_drying,7-9,demonstration,Volumetric dielectric drying; product-specific development,"[REF_DESNZ_ELEC] Microwave ovens TRL 8-9, CRI 1-2 per DESNZ/ERM",medium
+Mill,default,site_services,controls_vsds,,commercial,BMS and ventilation controls,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Mill,default,site_services,led_high_bay_lighting,,commercial,High-bay LED plus controls,[REF_CT_LIGHTING] Carbon Trust lighting guide,high
+Mill,default,site_services,onsite_solar_pv,,commercial,Roof PV subject to structure/connection,engineering judgement,low
+Mill,default,space_heating,air_to_air_hp_warm_air,9,commercial,Replaces gas warm-air heaters,[REF_UKBCH_ASHP] A2A covered under ASHP guidance,medium
+Mill,default,space_heating,ashp_space_heating_industrial,9,commercial,Air-to-water ASHP,[REF_UKBCH_ASHP] UK Business Climate Hub ASHP guidance,high
+Mill,default,space_heating,building_fabric_upgrade,,commercial,Fabric first; older mill buildings often poor,[REF_CT_FABRIC] Carbon Trust building fabric guide,high
+Mill,default,space_heating,destratification_radiant_conversion,,commercial,Destrat plus zoned radiant in tall spaces,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Mill,default,steam_hot_water,biomass_boiler,9,commercial,Established for mills with biomass residues on site,engineering judgement,low
+Mill,default,steam_hot_water,biomethane_fuel,8-9,commercial,Drop-in via certified grid gas,engineering judgement,low
+Mill,default,steam_hot_water,electrode_boiler,9,commercial,Electric steam/hot water; connection capacity,[REF_DESNZ_ELEC] Electric boilers TRL 9,high
+Mill,default,steam_hot_water,h2_boiler,7-9,prospective,Awaits H2 supply,engineering judgement,low
+Mill,default,steam_hot_water,htp_heat_pump_100_150,8-9,demonstration,LP steam/hot water under ~150C,[REF_DESNZ_ELEC] HTHP TRL 7-9,medium
+Mill,default,steam_hot_water,thermal_storage_power_to_heat,7-9,demonstration,Off-peak power-to-heat with storage,engineering judgement,low
+Mineral Production - Brine,default,brine_purification,controls_vsds,,commercial,VSDs on dosing/settling/transfer duties,engineering judgement,low
+Mineral Production - Brine,default,brine_well_pumping,controls_vsds,,commercial,VSDs on solution-mining/brine transfer pumps; already electric,engineering judgement,medium
+Mineral Production - Brine,default,centrifuging,controls_vsds,,commercial,VSDs on centrifuges; already electric,engineering judgement,medium
+Mineral Production - Brine,default,drying_grading,electric_resistance_oven_furnace,8-9,prospective,Electric salt dryers replacing gas-fired fluid bed dryers,engineering judgement,low
+Mineral Production - Brine,default,drying_grading,h2_kiln_furnace_burner,5-8,prospective,H2 firing of dryers if supply emerges (HyNet region),engineering judgement,low
+Mineral Production - Brine,default,drying_grading,htp_heat_pump_100_150,8-9,prospective,Heat pump drying air supply for 100-150C dryer duty,engineering judgement,low
+Mineral Production - Brine,default,drying_grading,waste_heat_recovery_process,,commercial,Dryer exhaust heat recovery to preheat air/feed,engineering judgement,medium
+Mineral Production - Brine,default,site_services,compressed_air_optimisation,,commercial,Compressed air for instrumentation/conveying,engineering judgement,medium
+Mineral Production - Brine,default,site_services,controls_vsds,,commercial,Controls and motor management,engineering judgement,medium
+Mineral Production - Brine,default,site_services,onsite_solar_pv,,commercial,PV offsets electrical load incl. MVR,engineering judgement,medium
+Mineral Production - Brine,default,vacuum_evaporation,electrode_boiler,9,commercial,Electric steam raising for evaporator effects; grid capacity and price exposure,[REF_PBL21] E-boilers assessed as salt-sector option,medium
+Mineral Production - Brine,default,vacuum_evaporation,h2_boiler,7-9,prospective,Fuel switch for evaporator steam boilers if H2 network reaches Cheshire salt sites,[REF_PBL21] Hydrogen assessed as salt-sector option,low
+Mineral Production - Brine,default,vacuum_evaporation,htp_heat_pump_100_150,8-9,demonstration,HT heat pumps upgrading condenser heat to first-effect steam,[REF_PBL21] Heat pump routes discussed for salt evaporation,medium
+Mineral Production - Brine,default,vacuum_evaporation,mvr,9,commercial,MVR is the reference decarbonisation route for salt evaporation; large electrical demand,[REF_PBL21] PBL Dutch salt industry decarbonisation options analyses MVR for vacuum evaporation,high
+Mineral Production - Brine,default,vacuum_evaporation,waste_heat_recovery_process,,commercial,Multi-effect optimisation and condensate/vapour heat recovery,[REF_PBL21] Efficiency measures in salt sector study,medium
+Mineral Production - Coal,default,coal_preparation,controls_vsds,,commercial,Wash plant already electric; VSDs on pumps/screens,engineering judgement,medium
+Mineral Production - Coal,default,crushing,controls_vsds,,commercial,Where already electric,engineering judgement,medium
+Mineral Production - Coal,default,crushing,plug_in_electric_mobile_crushing_screening,9,commercial,Electric mobile/static crushing on site supply,[REF_HUB4_2026] Electric crushing plant commercial,medium
+Mineral Production - Coal,default,digging_loading,battery_electric_nrmm,,demonstration,Battery excavators/loaders at smaller machine classes,[REF_IM_VOLVO26] Electric CE machines in production,low
+Mineral Production - Coal,default,digging_loading,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel excavators,engineering judgement,medium
+Mineral Production - Coal,default,digging_loading,tethered_electric_excavator,9,commercial,Cable-electric excavators/shovels long established in surface mining,[REF_HEAVYQUIP21] OEM electric excavators for mining,medium
+Mineral Production - Coal,default,drilling,battery_electric_nrmm,,prospective,Electric blasthole rigs emerging,engineering judgement,low
+Mineral Production - Coal,default,drilling,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel drill rigs,engineering judgement,medium
+Mineral Production - Coal,default,haulage_mobile_plant,battery_electric_nrmm,,demonstration,Large battery haul trucks in OEM trials (240t class); quarry-scale electric haulers in production,[REF_MININGMAG_CAT] Rio Tinto/BHP/Cat 240t battery truck trial,medium
+Mineral Production - Coal,default,haulage_mobile_plant,hvo_bio_oils_dropin,9,commercial,Drop-in for remaining diesel fleets (largely legacy/restoration operations),engineering judgement,medium
+Mineral Production - Coal,default,haulage_mobile_plant,hydrogen_fuel_cell_haul_truck,6-7,speculative,Ultra-class FCEV prototype only,[REF_ANGLO22] nuGen demonstration,low
+Mineral Production - Coal,default,haulage_mobile_plant,trolley_assist_haul_trucks,9,prospective,Proven at large surface mines overseas; UK surface coal essentially ceased,[REF_IM_WABTEC24] Trolley assist review,low
+Mineral Production - Coal,default,materials_handling_conveyors,controls_vsds,,commercial,VSD conveyor drives; already electric,engineering judgement,medium
+Mineral Production - Coal,default,ventilation,controls_vsds,,commercial,"VSD main/booster fans, ventilation-on-demand",engineering judgement,medium
+Mineral Production - Coal,default,ventilation,vam_thermal_oxidation,8,speculative,Proven overseas; no operating UK deep coal mines to apply it to,[REF_CSIRO_VAM] CSIRO VAM abatement programme,low
+Mineral Production - Gas,default,gas_compression,controls_vsds,,commercial,"Compressor sequencing, recycle-valve minimisation, VSDs on electric units",engineering judgement,low
+Mineral Production - Gas,default,gas_compression,gas_compression_electric_drive,9,demonstration,Replace gas-turbine/engine drives with electric VSD motors; UK programme active but few conversions complete,[REF_NSTA24] NSTA electrification workshop and draft OGA Plan,medium
+Mineral Production - Gas,default,gas_compression,waste_heat_recovery_process,,commercial,WHRU on turbine/engine exhaust to serve regeneration and site heat,engineering judgement,medium
+Mineral Production - Gas,default,power_generation,gas_compression_electric_drive,9,prospective,Grid connection to displace onsite gas-fired generation (same electrification programme),[REF_NSTA24] NSTA: power generation was 79% of production emissions; electrification is the lever,medium
+Mineral Production - Gas,default,power_generation,h2_ready_equipment,,prospective,Specify H2-ready turbines/engines at replacement,engineering judgement,low
+Mineral Production - Gas,default,power_generation,onsite_solar_pv,,commercial,PV offsets part of terminal auxiliary load,engineering judgement,medium
+Mineral Production - Gas,default,power_generation,post_combustion_amine_ccs,9-11,prospective,Only plausible for large terminals near CCS clusters,engineering judgement,low
+Mineral Production - Gas,default,process_heating_regeneration,biomethane_fuel,8-9,prospective,Drop-in for fired heaters; certificates or local supply,engineering judgement,low
+Mineral Production - Gas,default,process_heating_regeneration,electrode_boiler,9,prospective,Electric steam/hot oil for regeneration where grid allows,engineering judgement,low
+Mineral Production - Gas,default,process_heating_regeneration,h2_boiler,7-9,prospective,Fuel switch for fired heaters if H2 available at terminal,engineering judgement,low
+Mineral Production - Gas,default,process_heating_regeneration,htp_heat_pump_100_150,8-9,prospective,Amine regen (~120-140C) within emerging HT heat pump range,engineering judgement,low
+Mineral Production - Gas,default,process_heating_regeneration,waste_heat_recovery_process,,commercial,Glycol/amine regeneration commonly served by WHR from turbines,engineering judgement,medium
+Mineral Production - Gas,default,site_services,controls_vsds,,commercial,"Controls, HVAC, lighting",engineering judgement,medium
+Mineral Production - Gas,default,site_services,onsite_solar_pv,,commercial,PV on terminal land,engineering judgement,medium
+Mineral Production - Inert,default,crushing,diesel_electric_hybrid_mobile_crushing,9,commercial,Hybrid e-drive suits temporary inert/recycling sites without grid,[REF_HUB4_2026] Hybrid plant commercial,high
+Mineral Production - Inert,default,crushing,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel crusher engines/gensets,[REF_HUB4_2026] HVO genset operation noted for e-drive plant,medium
+Mineral Production - Inert,default,crushing,plug_in_electric_mobile_crushing_screening,9,commercial,Plug-in electric mobile crushers where site power available; genset/HVO fallback,[REF_HUB4_2026] Electric mobile crushers commercial,high
+Mineral Production - Inert,default,internal_haulage,battery_electric_nrmm,,demonstration,Electric ADTs entering production; short internal hauls suit battery duty,[REF_IM_VOLVO26] Electric articulated haulers serial production,medium
+Mineral Production - Inert,default,internal_haulage,hvo_bio_oils_dropin,9,commercial,Drop-in for ADTs/dumpers,[REF_MPA2020] MPA roadmap fuel switching,medium
+Mineral Production - Inert,default,materials_handling_loaders,battery_electric_nrmm,,demonstration,Electric loaders available; charging at inert/restoration sites often off-grid,[REF_IM_VOLVO26] Electric loaders/haulers in serial production,medium
+Mineral Production - Inert,default,materials_handling_loaders,hvo_bio_oils_dropin,9,commercial,Immediate drop-in for loaders,[REF_MPA2020] MPA roadmap fuel switching,medium
+Mineral Production - Inert,default,materials_handling_loaders,hydrogen_nrmm,,demonstration,H2 ICE loaders/backhoes demonstrated in UK,[REF_JCB23] JCB H2 machines,medium
+Mineral Production - Inert,default,mobile_crushing_screening,diesel_electric_hybrid_mobile_crushing,9,commercial,Bridge option where no grid; ~25% fuel saving,[REF_HUB4_2026] Hybrid plant commercial,high
+Mineral Production - Inert,default,mobile_crushing_screening,hvo_bio_oils_dropin,9,commercial,Drop-in fuel for existing fleet,[REF_MPA2020] MPA roadmap fuel switching,medium
+Mineral Production - Inert,default,mobile_crushing_screening,plug_in_electric_mobile_crushing_screening,9,commercial,Direct like-for-like electric replacement of diesel mobile trains,[REF_HUB4_2026] Article addresses exactly this duty,high
+Mineral Production - Inert,default,screening,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel screen engines,engineering judgement,low
+Mineral Production - Inert,default,screening,plug_in_electric_mobile_crushing_screening,9,commercial,Electric mobile screens,[REF_HUB4_2026] Electric screens commercial,high
+Mineral Production - Inert,default,site_services,controls_vsds,,commercial,"Controls, lighting, pumps",engineering judgement,medium
+Mineral Production - Inert,default,site_services,onsite_solar_pv,,commercial,PV on offices/restored areas,engineering judgement,medium
+Mineral Production - Oil,default,artificial_lift,controls_vsds,,commercial,Beam pumps/ESPs largely electric already; VSDs and pump-off control cut load,engineering judgement,medium
+Mineral Production - Oil,default,processing_separation_export,electrode_boiler,9,prospective,Electric steam/hot water for crude heating where grid capacity allows,engineering judgement,low
+Mineral Production - Oil,default,processing_separation_export,heat_pump_below_100,9,prospective,Crude/wash-water heating duties below 100C at onshore gathering stations,engineering judgement,low
+Mineral Production - Oil,default,processing_separation_export,waste_heat_recovery_process,,commercial,Recover heat from engines/compressors to process heating,engineering judgement,low
+Mineral Production - Oil,default,site_services,controls_vsds,,commercial,"Controls, lighting, motor management",engineering judgement,medium
+Mineral Production - Oil,default,site_services,hvo_bio_oils_dropin,9,commercial,Drop-in for site gensets and mobile plant,engineering judgement,medium
+Mineral Production - Oil,default,site_services,onsite_solar_pv,,commercial,PV on wellsite land,engineering judgement,medium
+Mineral Production - Oil,default,water_injection,controls_vsds,,commercial,VSDs on injection pumps; pressure optimisation,engineering judgement,medium
+Mineral Production - Other Mineral Category,default,conveying,controls_vsds,,commercial,VSD conveyor drives,engineering judgement,medium
+Mineral Production - Other Mineral Category,default,crushing,controls_vsds,,commercial,Where already electric,engineering judgement,medium
+Mineral Production - Other Mineral Category,default,crushing,diesel_electric_hybrid_mobile_crushing,9,commercial,Bridge option,[REF_HUB4_2026] Hybrid plant commercial,high
+Mineral Production - Other Mineral Category,default,crushing,electrified_static_processing_plant,9,commercial,Static electric plant where site life justifies,[REF_HUB4_2026] Electric plant commercial,high
+Mineral Production - Other Mineral Category,default,crushing,plug_in_electric_mobile_crushing_screening,9,commercial,Plug-in electric mobile crushers,[REF_HUB4_2026] Commercial range,high
+Mineral Production - Other Mineral Category,default,dewatering_pumping,controls_vsds,,commercial,VSDs and pump scheduling,engineering judgement,medium
+Mineral Production - Other Mineral Category,default,drilling,battery_electric_nrmm,,demonstration,Electric blasthole rigs emerging,engineering judgement,low
+Mineral Production - Other Mineral Category,default,drilling,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel drill rigs,[REF_MPA2020] MPA roadmap fuel switching,medium
+Mineral Production - Other Mineral Category,default,drilling,hydrogen_nrmm,,prospective,No drill-rig products yet,[REF_JCB23] UK H2 NRMM engines demonstrated,low
+Mineral Production - Other Mineral Category,default,extraction_loading,battery_electric_nrmm,,demonstration,Electric excavators/loaders in serial production,[REF_IM_VOLVO26] Volvo CE electric machines,medium
+Mineral Production - Other Mineral Category,default,extraction_loading,hvo_bio_oils_dropin,9,commercial,Immediate drop-in,[REF_MPA2020] MPA roadmap fuel switching,medium
+Mineral Production - Other Mineral Category,default,extraction_loading,hydrogen_nrmm,,demonstration,UK H2 ICE machines in testing,[REF_JCB23] JCB H2 machines,medium
+Mineral Production - Other Mineral Category,default,extraction_loading,tethered_electric_excavator,9,commercial,Suits static faces; cable management,[REF_HEAVYQUIP21] OEM electric excavators for quarrying,medium
+Mineral Production - Other Mineral Category,default,haulage,battery_electric_nrmm,,demonstration,Electric ADTs entering production; duty-cycle limits,[REF_IM_VOLVO26] Electric haulers serial production,medium
+Mineral Production - Other Mineral Category,default,haulage,hvo_bio_oils_dropin,9,commercial,Drop-in for haul fleet,[REF_MPA2020] MPA roadmap fuel switching,medium
+Mineral Production - Other Mineral Category,default,haulage,hydrogen_fuel_cell_haul_truck,6-7,speculative,Overseas prototype only,[REF_ANGLO22] nuGen demonstration,low
+Mineral Production - Other Mineral Category,default,haulage,hydrogen_nrmm,,prospective,Dependent on OEM products and refuelling,[REF_JCB23] UK H2 NRMM engines,low
+Mineral Production - Other Mineral Category,default,haulage,ipcc_in_pit_crushing_conveying,9,commercial,Conveyor haulage for long-life high-tonnage sites,[REF_WORLEY] IPCC as decarbonisation measure,medium
+Mineral Production - Other Mineral Category,default,haulage,trolley_assist_haul_trucks,9,prospective,Only plausible for the largest UK operations,[REF_IM_WABTEC24] Trolley assist review,low
+Mineral Production - Other Mineral Category,default,screening,controls_vsds,,commercial,VSDs/idle management,engineering judgement,medium
+Mineral Production - Other Mineral Category,default,screening,plug_in_electric_mobile_crushing_screening,9,commercial,Electric screens,[REF_HUB4_2026] Commercial range,high
+Mineral Production - Other Mineral Category,default,site_services,compressed_air_optimisation,,commercial,Workshop/instrument air,engineering judgement,medium
+Mineral Production - Other Mineral Category,default,site_services,controls_vsds,,commercial,"Controls, lighting",engineering judgement,medium
+Mineral Production - Other Mineral Category,default,site_services,onsite_solar_pv,,commercial,PV on site land,engineering judgement,medium
+Mineral Production - Other Mineral Category,default,site_services,quarry_floating_solar_storage,9,demonstration,Floating PV plus storage where lagoons exist,[REF_EANDT26] Cheshire quarry floating solar,medium
+Mineral Production - Putrescible,default,aeration_odour_control,controls_vsds,,commercial,VSD blowers/fans and demand-based aeration control — dominant electric load at IVC/composting,engineering judgement,medium
+Mineral Production - Putrescible,default,digestate_processing,controls_vsds,,commercial,VSDs on separators/centrifuges,engineering judgement,medium
+Mineral Production - Putrescible,default,digestate_processing,digestate_drying_chp_waste_heat,9,commercial,CHP-heat dryers/evaporators (50-70C) commercially operating in UK,[REF_ADBA_HEAT] Barkip CHP-heat digestate evaporation case study,high
+Mineral Production - Putrescible,default,digestate_processing,heat_recovery_heat_pump,8-9,prospective,Upgrade low-grade digestate/effluent heat for drying duty,engineering judgement,low
+Mineral Production - Putrescible,default,digestate_processing,mvr,9,demonstration,Vapour recompression on digestate evaporation where CHP heat unavailable,engineering judgement,low
+Mineral Production - Putrescible,default,digester_mixing_pumping,controls_vsds,,commercial,VSDs and intermittent mixing regimes cut a major parasitic electric load,engineering judgement,medium
+Mineral Production - Putrescible,default,mobile_plant,battery_electric_nrmm,,demonstration,Electric loaders/telehandlers suit fixed-site duty with onsite charging (potentially from own CHP/biogas power),[REF_IM_VOLVO26] Electric loaders in serial production,medium
+Mineral Production - Putrescible,default,mobile_plant,hvo_bio_oils_dropin,9,commercial,Drop-in for loaders/telehandlers,engineering judgement,medium
+Mineral Production - Putrescible,default,mobile_plant,hydrogen_nrmm,,demonstration,H2 ICE machines demonstrated in UK; refuelling barrier,[REF_JCB23] JCB H2 machines,low
+Mineral Production - Putrescible,default,pasteurisation_digester_heating,ad_chp_heat_integration,9,commercial,Standard: CHP jacket/exhaust heat covers 40C digester and 70C pasteurisation loads,[REF_ADBA_HEAT] ADBA guidance on biogas CHP heat use,high
+Mineral Production - Putrescible,default,pasteurisation_digester_heating,ad_heat_pump_digester_heating,,demonstration,Heat pumps on digestate/effluent heat frees biogas for upgrading; assessed in literature,[REF_BITE22] Peer-reviewed AD + heat pump assessment,medium
+Mineral Production - Putrescible,default,pasteurisation_digester_heating,biogas_upgrading_grid_injection,9,commercial,Site-level strategy: upgrade biogas and re-provide parasitic heat; mutually exclusive with CHP heat integration,[REF_ADBA_HEAT] ADBA material on biogas use routes,medium
+Mineral Production - Putrescible,default,pasteurisation_digester_heating,biomethane_fuel,8-9,commercial,Biogas boiler for digester/pasteuriser heat where no CHP,[REF_ADBA_HEAT] ADBA biogas heat use,medium
+Mineral Production - Putrescible,default,pasteurisation_digester_heating,heat_pump_below_100,9,commercial,"Duty is 40-70C, well within commercial heat pump range; source selection is site-specific",[REF_BITE22] Same integration literature; hardware commercial,medium
+Mineral Production - Putrescible,default,reception_depackaging_shredding,controls_vsds,,commercial,"Fixed electric shredders/depackagers: VSDs, load management",engineering judgement,medium
+Mineral Production - Putrescible,default,reception_depackaging_shredding,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel mobile shredders and loading shovels,engineering judgement,low
+Mineral Production - Putrescible,default,screening_refining,controls_vsds,,commercial,VSDs on fixed screening lines,engineering judgement,medium
+Mineral Production - Putrescible,default,screening_refining,plug_in_electric_mobile_crushing_screening,9,commercial,Electric trommels/screens run from site supply,[REF_HUB4_2026] Electric mobile screening plant commercial,medium
+Mineral Production - Putrescible,default,site_services,biomethane_fuel,8-9,commercial,Own biogas/biomethane for site heating and buildings,[REF_ADBA_HEAT] ADBA biogas heat use,medium
+Mineral Production - Putrescible,default,site_services,controls_vsds,,commercial,Controls and motor management,engineering judgement,medium
+Mineral Production - Putrescible,default,site_services,onsite_solar_pv,,commercial,PV complements CHP export,engineering judgement,medium
+Mineral Production - Putrescible,default,windrow_turning,battery_electric_nrmm,,prospective,No established battery windrow turner products located,engineering judgement,low
+Mineral Production - Putrescible,default,windrow_turning,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel windrow turners,engineering judgement,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,conveying,controls_vsds,,commercial,"VSD conveyor drives, load-sensing stop/start; conveyors already electric",engineering judgement,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,crushing,controls_vsds,,commercial,"Where already electric: soft starts, choke feeding, VSDs on ancillaries",engineering judgement,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,crushing,diesel_electric_hybrid_mobile_crushing,9,commercial,"Bridge option, ~25% fuel saving; pairs with later grid connection",[REF_HUB4_2026] Hybrid e-drive plant commercially available,high
+"Mineral Production - Rock, Sand, Clay etc.",default,crushing,electrified_static_processing_plant,9,commercial,Replace diesel mobile crushing with grid-fed static plant where site life justifies,[REF_HUB4_2026] Electric crushing plant commercially available,high
+"Mineral Production - Rock, Sand, Clay etc.",default,crushing,plug_in_electric_mobile_crushing_screening,9,commercial,Plug-in electric mobile crushers where mobility still needed; site supply required,[REF_HUB4_2026] Commercial plug-in electric crusher range,high
+"Mineral Production - Rock, Sand, Clay etc.",default,dewatering_pumping,controls_vsds,,commercial,VSDs and level-based pump scheduling (off-peak pumping possible),engineering judgement,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,drilling,battery_electric_nrmm,,demonstration,Battery/cable-electric blasthole drill rigs emerging from OEMs; limited UK availability,engineering judgement,low
+"Mineral Production - Rock, Sand, Clay etc.",default,drilling,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel drill rigs; no equipment change,[REF_MPA2020] MPA roadmap identifies fuel switching for quarry machinery,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,drilling,hydrogen_nrmm,,prospective,Depends on H2 supply to site; no drill-rig products yet,"[REF_JCB23] UK H2 combustion NRMM engines demonstrated, not yet for drill rigs",low
+"Mineral Production - Rock, Sand, Clay etc.",default,extraction_loading,battery_electric_nrmm,,demonstration,Electric excavators/loaders in serial production at quarry scale; charging infrastructure needed,[REF_IM_VOLVO26] Volvo CE serial production of electric haulers/loaders for quarry duty,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,extraction_loading,hvo_bio_oils_dropin,9,commercial,Immediate drop-in for excavators/loaders; cost premium and feedstock sustainability caveats,[REF_MPA2020] MPA roadmap fuel switching for quarry machinery,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,extraction_loading,hydrogen_nrmm,,demonstration,UK-built H2 ICE loaders/backhoes in public testing; needs onsite refuelling,[REF_JCB23] JCB hydrogen combustion machines demonstrated in UK,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,extraction_loading,tethered_electric_excavator,9,commercial,Suits benched faces with slow advance; trailing cable management,[REF_HEAVYQUIP21] OEM electric excavators marketed for quarry extraction,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,haulage,battery_electric_nrmm,,demonstration,Electric articulated haulers entering serial production; duty-cycle and charging constraints on long/steep hauls,[REF_IM_VOLVO26] World-first serial production of electric articulated haulers (2026),medium
+"Mineral Production - Rock, Sand, Clay etc.",default,haulage,hvo_bio_oils_dropin,9,commercial,Drop-in for dump trucks and ADTs,[REF_MPA2020] MPA roadmap fuel switching,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,haulage,hydrogen_fuel_cell_haul_truck,6-7,speculative,Single overseas prototype at ultra-class scale; no UK pathway yet,[REF_ANGLO22] nuGen prototype demonstration,low
+"Mineral Production - Rock, Sand, Clay etc.",default,haulage,hydrogen_nrmm,,prospective,H2 ICE trucks/ADTs possible if OEM products and site refuelling emerge,[REF_JCB23] UK H2 NRMM engine demonstrated,low
+"Mineral Production - Rock, Sand, Clay etc.",default,haulage,ipcc_in_pit_crushing_conveying,9,commercial,Displace truck haulage with electric conveying; suits long-life high-tonnage sites; high capex,[REF_WORLEY] IPCC assessed as decarbonisation measure vs trucks,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,haulage,trolley_assist_haul_trucks,9,prospective,Proven overseas at large mines; UK quarry truck fleets and pit depths generally too small,[REF_IM_WABTEC24] Trolley assist for mine haulage decarbonisation,low
+"Mineral Production - Rock, Sand, Clay etc.",default,screening,controls_vsds,,commercial,VSDs and idle management on electric screens,engineering judgement,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,screening,plug_in_electric_mobile_crushing_screening,9,commercial,Electric/hybrid mobile screens commercially available,[REF_HUB4_2026] Electric screening plant in OEM range,high
+"Mineral Production - Rock, Sand, Clay etc.",default,site_services,compressed_air_optimisation,,commercial,Leak reduction and right-sizing where workshops/plant use compressed air,engineering judgement,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,site_services,controls_vsds,,commercial,"Metering, controls, lighting, motor management",engineering judgement,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,site_services,onsite_solar_pv,,commercial,PV on buildings/restored land offsets site electricity,[REF_MPA2020] Roadmap assumes decarbonised/renewable electricity supply,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,site_services,quarry_floating_solar_storage,9,demonstration,Floating PV on silt lagoons plus storage; UK quarry example operational,[REF_EANDT26] 400kW floating solar at Cheshire quarry,medium
+"Mineral Production - Rock, Sand, Clay etc.",default,washing_classification,controls_vsds,,commercial,VSDs on wash-plant pumps; largest electricity loads on many sand and gravel sites,engineering judgement,medium
+Motor Vehicle Works,default,compressed_air,compressed_air_optimisation,,commercial,"Leak programmes, pressure reduction, demand-side fixes",[REF_ESTAR_VEHICLE] ENERGY STAR guide compressed air chapter,high
+Motor Vehicle Works,default,compressed_air,controls_vsds,,commercial,VSD trim compressor and sequencing,[REF_ESTAR_VEHICLE] ENERGY STAR guide compressed air chapter,medium
+Motor Vehicle Works,default,compressed_air,waste_heat_recovery_process,,commercial,Compressor heat recovery to space/water heating,[REF_ESTAR_VEHICLE] ENERGY STAR guide covers compressor heat recovery,medium
+Motor Vehicle Works,default,materials_handling,battery_electric_nrmm,,commercial,Electric forklifts/tugs standard; charging infrastructure needed,engineering judgement,low
+Motor Vehicle Works,default,materials_handling,controls_vsds,,commercial,Conveyor VSDs and idle shutdown,[REF_CT_MANUF] Generic drives guidance,medium
+Motor Vehicle Works,default,materials_handling,hvo_bio_oils_dropin,9,commercial,Drop-in for residual diesel plant,engineering judgement,low
+Motor Vehicle Works,default,materials_handling,hydrogen_nrmm,,demonstration,Fuel-cell forklifts deployed overseas; UK fuelling scarce,engineering judgement,low
+Motor Vehicle Works,default,metal_forming,controls_vsds,,commercial,Servo presses/VSD hydraulic packs; press shop already electric,engineering judgement,low
+Motor Vehicle Works,default,metal_forming,induction_heating,9,prospective,Only where hot forming/annealing on site,[REF_DESNZ_ELEC] DESNZ/ERM electrification report,low
+Motor Vehicle Works,default,paint_shop,eb_cure_coatings,,demonstration,Low-energy EB shown for interior plastic parts only,[REF_UVEB_EB] UV+EB Technology automotive EB article,medium
+Motor Vehicle Works,default,paint_shop,electric_infrared_drying,,commercial,IR boost zones in cure ovens and repair spots,engineering judgement,low
+Motor Vehicle Works,default,paint_shop,electric_resistance_oven_furnace,8-9,demonstration,Fully electric bake ovens emerging in new paint shops,[REF_DESNZ_ELEC] Resistance heating TRL 9; limited automotive deployment,medium
+Motor Vehicle Works,default,paint_shop,low_bake_paint_chemistry,,demonstration,Lower oven set-points; OEM requalification required,[REF_DOE_COATINGS] US DOE advanced automotive coatings workshop,medium
+Motor Vehicle Works,default,paint_shop,paint_shop_heat_recovery,,commercial,"Oven exhaust heat recovery, booth air recirculation, heat wheels",[REF_ESTAR_VEHICLE] ENERGY STAR vehicle assembly guide paint-shop measures,high
+Motor Vehicle Works,default,paint_shop,uv_cure_coatings,,demonstration,Commercial for plastics/refinish; body coats at development stage,[REF_RADTECH] RadTech UV/EB curing overview,medium
+Motor Vehicle Works,default,site_services,controls_vsds,,commercial,"BMS, ventilation VSDs, non-production shutdown",[REF_ESTAR_VEHICLE] ENERGY STAR guide HVAC/motors chapters,high
+Motor Vehicle Works,default,site_services,ev_fleet_charging_infrastructure,,commercial,Depot charging for logistics/yard and finished-vehicle fleets,[REF_EST_FLEET] EST business EV charging guidance,high
+Motor Vehicle Works,default,site_services,led_high_bay_lighting,,commercial,Plant-wide LED; lighting is a named ENERGY STAR measure,[REF_ESTAR_VEHICLE] ENERGY STAR guide lighting chapter,high
+Motor Vehicle Works,default,site_services,onsite_solar_pv,,commercial,Large roof/land areas suit PV,engineering judgement,low
+Motor Vehicle Works,default,space_heating,air_to_air_hp_warm_air,9,commercial,Replaces gas warm-air heaters in halls,[REF_UKBCH_ASHP] A2A covered under ASHP guidance,medium
+Motor Vehicle Works,default,space_heating,ashp_space_heating_industrial,9,commercial,ASHP serving AHUs in assembly halls,[REF_UKBCH_ASHP] UK Business Climate Hub ASHP guidance,medium
+Motor Vehicle Works,default,space_heating,building_fabric_upgrade,,commercial,Roof insulation and door management,[REF_CT_FABRIC] Carbon Trust building fabric guide,high
+Motor Vehicle Works,default,space_heating,destratification_radiant_conversion,,commercial,Destrat plus zoned radiant in high-bay halls,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Motor Vehicle Works,default,steam_hot_water,biomethane_fuel,8-9,commercial,Drop-in via certified grid gas,engineering judgement,low
+Motor Vehicle Works,default,steam_hot_water,electrode_boiler,9,commercial,Electric steam/hot water for paint shop and services,[REF_DESNZ_ELEC] Electric boilers TRL 9,high
+Motor Vehicle Works,default,steam_hot_water,h2_boiler,7-9,prospective,Awaits H2 supply,engineering judgement,low
+Motor Vehicle Works,default,steam_hot_water,htp_heat_pump_100_150,8-9,demonstration,Booth conditioning and LP hot water duties,[REF_DESNZ_ELEC] HTHP TRL 7-9,medium
+Motor Vehicle Works,default,steam_hot_water,thermal_storage_power_to_heat,7-9,demonstration,Off-peak power-to-heat with storage,engineering judgement,low
+Motor Vehicle Works,default,welding,inverter_welding_equipment,,commercial,Inverter MIG/spot power sources cut idle and conversion losses,[REF_LINCOLN_INVERTER] Manufacturer efficiency literature; welding measures also in ENERGY STAR guide,medium
+Newspaper print works,default,mailroom_finishing,battery_electric_nrmm,,commercial,Forklifts and reel handling,engineering judgement,medium
+Newspaper print works,default,mailroom_finishing,controls_vsds,,commercial,Conveyor/stacker drives; modest loads,engineering judgement,low
+Newspaper print works,default,prepress_platemaking,controls_vsds,,commercial,Small loads; scheduling and standby control only,engineering judgement,low
+Newspaper print works,default,prepress_platemaking,processless_ctp_plates,9,commercial,"Eliminates plate processor energy, water and chemistry",[kodak_processfree] Vendor sustainability documentation,high
+Newspaper print works,default,press_auxiliaries,compressed_air_optimisation,,commercial,"Leak management, pressure reduction, VSD compressors",engineering judgement,high
+Newspaper print works,default,press_auxiliaries,controls_vsds,,commercial,"Chilled water, pumps and ventilation VSDs",engineering judgement,medium
+Newspaper print works,default,press_auxiliaries,led_uv_curing,9,commercial,Only where heatset/UV drying fitted; coldset newsprint has no dryer,[baldwin_leduv] Heatset-to-LED-UV conversions in web printing,low
+Newspaper print works,default,press_auxiliaries,waste_heat_recovery_process,,commercial,Compressor and press-hall heat to space heating,engineering judgement,medium
+Newspaper print works,default,press_drives,controls_vsds,,commercial,Drives already electric; high-efficiency motors and drive control only material option,engineering judgement,medium
+Newspaper print works,default,site_services,heat_pump_below_100,9,commercial,Press hall and office heating,engineering judgement,high
+Newspaper print works,default,site_services,insulation_upgrade,,commercial,Building fabric,engineering judgement,medium
+Newspaper print works,default,site_services,onsite_solar_pv,,commercial,Large shed roofs,engineering judgement,high
+"Oil refinery, gas processing etc",default,alkylation,controls_vsds,,commercial,Refrigeration compressor drives; already electric,engineering judgement,low
+"Oil refinery, gas processing etc",default,alkylation,waste_heat_recovery_process,,commercial,Low-temperature unit; modest heat integration scope,engineering judgement,low
+"Oil refinery, gas processing etc",default,catalytic_reforming,h2_kiln_furnace_burner,5-8,demonstration,Interheater conversion to H2 firing,[concawe_19_8] Fuel switching in Concawe options,medium
+"Oil refinery, gas processing etc",default,catalytic_reforming,refinery_process_heater_electrification,,prospective,High-duty radiant heaters; no demonstration,[heater_elec_dt] Process heater electrification article,low
+"Oil refinery, gas processing etc",default,catalytic_reforming,waste_heat_recovery_process,,commercial,Heat integration around reactor train,[oil_roadmap_2015] Roadmap efficiency options,medium
+"Oil refinery, gas processing etc",default,crude_vacuum_distillation,h2_kiln_furnace_burner,5-8,demonstration,Fired heater conversion to H2; hydrogen-ready furnace commissioned at Stanlow,[eet_furnace_2025] EET Stanlow hydrogen-ready furnace,high
+"Oil refinery, gas processing etc",default,crude_vacuum_distillation,post_combustion_amine_ccs,9-11,demonstration,Dispersed heater stacks make capture costly; cluster CO2 access needed,[concawe_19_8] Concawe CO2 reduction technologies in EU refining,medium
+"Oil refinery, gas processing etc",default,crude_vacuum_distillation,refinery_process_heater_electrification,,prospective,Very large duty; grid and turnaround constraints,[heater_elec_dt] Process heater electrification article,low
+"Oil refinery, gas processing etc",default,crude_vacuum_distillation,waste_heat_recovery_process,,commercial,Preheat train revamps and fouling management,[oil_roadmap_2015] UK oil refining roadmap efficiency options,high
+"Oil refinery, gas processing etc",default,fcc,oxyfuel_ccs,5-7,demonstration,Oxy-firing of FCC regenerator demonstrated at large pilot (Petrobras),[fcc_ccs_frontiers_2020] Oxy-FCC pilot in review,medium
+"Oil refinery, gas processing etc",default,fcc,post_combustion_amine_ccs,9-11,demonstration,FCC regenerator flue gas capture piloted; single large stack aids capture,[fcc_ccs_frontiers_2020] Review of CO2 capture for FCC units,medium
+"Oil refinery, gas processing etc",default,fcc,waste_heat_recovery_process,,commercial,Flue gas expanders and waste heat boilers established,[oil_roadmap_2015] Roadmap efficiency options,medium
+"Oil refinery, gas processing etc",default,hydrocracking,electrolytic_hydrogen_refinery_integration,8,demonstration,Large H2 consumer; green H2 substitution,[refhyne_2021] REFHYNE demonstration,medium
+"Oil refinery, gas processing etc",default,hydrocracking,h2_kiln_furnace_burner,5-8,demonstration,Feed heater H2 conversion,[eet_furnace_2025] Stanlow fuel switching,medium
+"Oil refinery, gas processing etc",default,hydrocracking,refinery_process_heater_electrification,,prospective,No demonstration at this duty,[heater_elec_dt] Process heater electrification article,low
+"Oil refinery, gas processing etc",default,hydrocracking,waste_heat_recovery_process,,commercial,Reactor effluent heat integration,engineering judgement,medium
+"Oil refinery, gas processing etc",default,hydrogen_production,biomethane_fuel,8-9,commercial,Biomethane as SMR feed/fuel lowers net CO2; certificate accounting,engineering judgement,low
+"Oil refinery, gas processing etc",default,hydrogen_production,electrified_reforming_esmr,6,prospective,Electric reformer could replace fired SMR; demo scale only,[topsoe_esmr_2021] eSMR demonstration plant,low
+"Oil refinery, gas processing etc",default,hydrogen_production,electrolytic_hydrogen_refinery_integration,8,demonstration,Electrolytic H2 partially displacing SMR output,[refhyne_2021] REFHYNE demonstration,medium
+"Oil refinery, gas processing etc",default,hydrogen_production,post_combustion_amine_ccs,9-11,commercial,SMR CO2 capture commercially proven; UK blue H2 (EET HPP1) planned at Stanlow,[eet_hpp1_2024] Government-backed HPP1 blue hydrogen plant (HyNet),high
+"Oil refinery, gas processing etc",default,hydrotreating,bio_feedstock_co_processing,9,commercial,UCO co-processing commercial at Humber,[p66_renewables] Phillips 66 Humber renewable fuels,high
+"Oil refinery, gas processing etc",default,hydrotreating,electrolytic_hydrogen_refinery_integration,8,demonstration,Green H2 feed for hydrotreating demonstrated at Rheinland (REFHYNE),[refhyne_2021] Refinery-integrated PEM electrolyser,high
+"Oil refinery, gas processing etc",default,hydrotreating,h2_kiln_furnace_burner,5-8,demonstration,Feed heater H2 firing as part of site fuel switch,[eet_furnace_2025] Stanlow fuel switching programme,medium
+"Oil refinery, gas processing etc",default,hydrotreating,refinery_process_heater_electrification,,prospective,Smaller heater duties may electrify first,[heater_elec_dt] Process heater electrification article,low
+"Oil refinery, gas processing etc",default,other_units,h2_kiln_furnace_burner,5-8,demonstration,Progressive conversion of remaining fired heaters to H2,[eet_furnace_2025] Stanlow site-wide H2 ambition,medium
+"Oil refinery, gas processing etc",default,other_units,refinery_process_heater_electrification,,prospective,Smaller/lower-duty heaters are likeliest early candidates,[heater_elec_dt] Process heater electrification article,low
+"Oil refinery, gas processing etc",default,other_units,waste_heat_recovery_process,,commercial,Site-wide heat integration,[oil_roadmap_2015] Roadmap efficiency options,medium
+"Oil refinery, gas processing etc",default,site_services,battery_electric_nrmm,,commercial,Site vehicles/FLTs; ATEX constraints in process areas,engineering judgement,medium
+"Oil refinery, gas processing etc",default,site_services,heat_pump_below_100,9,commercial,Buildings and amenity heat,engineering judgement,medium
+"Oil refinery, gas processing etc",default,site_services,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel mobile plant,engineering judgement,medium
+"Oil refinery, gas processing etc",default,site_services,onsite_solar_pv,,commercial,Land available on buffer areas; small share of demand,engineering judgement,high
+"Oil refinery, gas processing etc",default,utilities_steam,electrode_boiler,9,commercial,Electric steam raising; displaces fuel gas so needs fuel-gas balance rework,[concawe_19_8] Electrification options in Concawe report,medium
+"Oil refinery, gas processing etc",default,utilities_steam,h2_boiler,7-9,demonstration,Boiler conversion to low-carbon H2 with cluster supply,[eet_hpp1_2024] HPP1 blue hydrogen for Stanlow fuel switch,medium
+"Oil refinery, gas processing etc",default,utilities_steam,htp_heat_pump_150_200,6-7,prospective,MP steam from low-grade refinery heat; large lift,[annex58_t1_2023] HTHP capability to 200C,low
+"Oil refinery, gas processing etc",default,utilities_steam,post_combustion_amine_ccs,9-11,commercial,Capture on boilers/CHP where cluster CO2 transport available,[concawe_19_8] CCS options in Concawe report,medium
+"Oil refinery, gas processing etc",default,utilities_steam,refinery_low_carbon_hydrogen_fuel_switch,,demonstration,Site-wide fuel switch to blue H2 (HyNet); timing depends on H2 network,[eet_hpp1_2024] Government backing of HPP1,medium
+Paper Mill,default,effluent_water_services,controls_vsds,,commercial,Aeration blower and pump VSDs,engineering judgement,medium
+Paper Mill,default,effluent_water_services,heat_recovery_heat_pump,8-9,commercial,25-35C effluent is a good heat pump source for process warm water,engineering judgement,medium
+Paper Mill,default,effluent_water_services,waste_heat_recovery_process,,commercial,Direct heat exchange from warm effluent to incoming water,engineering judgement,medium
+Paper Mill,default,paper_machine_drying,biomass_boiler,9,commercial,Proven for mill steam; fuel logistics and air quality permitting,[paper_roadmap_2015] Biomass listed in roadmap pathways,high
+Paper Mill,default,paper_machine_drying,electric_infrared_drying,,commercial,Electric IR established for moisture profiling and coating drying; partial duty only,engineering judgement,medium
+Paper Mill,default,paper_machine_drying,electric_tissue_drying_hood,8-9,demonstration,Tissue machines only; first fully electric machine operating at Fortissue,[toscotec_electric_2025] Toscotec/Fortissue electric tissue machine,medium
+Paper Mill,default,paper_machine_drying,electrode_boiler,9,commercial,"Cylinder steam typically <10 bar, within electrode boiler duty; grid capacity and price exposure",[paper_roadmap_2015] Electrification of steam raising in roadmap option set,high
+Paper Mill,default,paper_machine_drying,h2_boiler,7-9,demonstration,First UK paper mill hydrogen boiler trial announced for 2024,[uk_paper_h2_2024] UK paper mill H2 trial report,medium
+Paper Mill,default,paper_machine_drying,h2_kiln_furnace_burner,5-8,demonstration,Gas-fired yankee/impingement hood conversion to green H2 demonstrated by Essity Mainz-Kostheim,[essity_h2_2023] Essity tissue production on renewable hydrogen,high
+Paper Mill,default,paper_machine_drying,heat_recovery_heat_pump,8-9,commercial,Hood exhaust heat recovery standard; heat pump upgrade of 50-60C exhaust emerging,[annex58_t2_2024] Annex 58 paper sector cases,high
+Paper Mill,default,paper_machine_drying,htp_heat_pump_100_150,8-9,demonstration,LP cylinder steam from hood exhaust heat; integration concepts published,[annex58_t2_2024] Annex 58 integration concepts incl. paper drying,medium
+Paper Mill,default,paper_machine_drying,impingement_tad_drying_conversion,9,commercial,Established in tissue; decarbonises only when hood heat is fuel-switched,[paper_roadmap_2015] Advanced drying in roadmap,low
+Paper Mill,default,paper_machine_drying,mvr,9,demonstration,Recompress hood exhaust vapour/flash steam back to dryer steam,[annex58_t2_2024] Vapour recompression concepts for paper drying,medium
+Paper Mill,default,paper_machine_drying,superheated_steam_drying_paper,4,speculative,Pilot-scale only for paper webs; radical dryer redesign,[ssd_review_2015] SSD review status for paper,low
+Paper Mill,default,paper_machine_wet_end,controls_vsds,,commercial,Vacuum system and drive optimisation; electricity-only duty,engineering judgement,medium
+Paper Mill,default,paper_machine_wet_end,shoe_press_advanced_dewatering,9,commercial,Each ~1% gain in press solids cuts roughly 4% drying steam,[ippta_shoe_2012] Shoe press applications review,high
+Paper Mill,default,paper_machine_wet_end,waste_heat_recovery_process,,commercial,Vacuum pump exhaust heat recovery to process water/air,engineering judgement,medium
+Paper Mill,default,site_services,battery_electric_nrmm,,commercial,Clamp trucks and forklifts,engineering judgement,medium
+Paper Mill,default,site_services,biomethane_fuel,8-9,commercial,Drop-in for residual gas use; supply cost and competition,[paper_roadmap_2015] Bioenergy option class in roadmap,medium
+Paper Mill,default,site_services,heat_pump_below_100,9,commercial,Space heating and hot water duties,engineering judgement,high
+Paper Mill,default,site_services,hvo_bio_oils_dropin,9,commercial,Drop-in for remaining diesel plant,engineering judgement,medium
+Paper Mill,default,site_services,insulation_upgrade,,commercial,Steam distribution and condensate system insulation,engineering judgement,medium
+Paper Mill,default,site_services,onsite_solar_pv,,commercial,Large roof/land areas at mills,engineering judgement,high
+Paper Mill,default,stock_preparation,controls_vsds,,commercial,"Refiners, pumps and agitators dominate; VSDs and refining optimisation established",[paper_roadmap_2015] Roadmap efficiency option class,medium
+Paper Mill,default,stock_preparation,heat_pump_below_100,9,commercial,Warm water for pulping/dilution well within heat pump range,engineering judgement,medium
+Paper Mill,default,stock_preparation,waste_heat_recovery_process,,commercial,Recover whitewater/vacuum exhaust heat to warm process water,engineering judgement,medium
+Post Office Sorting Centre,default,materials_handling,battery_electric_nrmm,,commercial,Electric forklifts/tugs standard for indoor handling,engineering judgement,low
+Post Office Sorting Centre,default,materials_handling,controls_vsds,,commercial,Conveyor VSDs and idle shutdown,[REF_ABB_REGEN] Drives efficiency in conveying,medium
+Post Office Sorting Centre,default,materials_handling,hvo_bio_oils_dropin,9,commercial,Drop-in for residual diesel yard plant,engineering judgement,low
+Post Office Sorting Centre,default,materials_handling,hydrogen_nrmm,,demonstration,Fuel-cell forklifts proven overseas; UK fuelling scarce,engineering judgement,low
+Post Office Sorting Centre,default,site_services,controls_vsds,,commercial,"BMS, ventilation controls, night setback",[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Post Office Sorting Centre,default,site_services,ev_fleet_charging_infrastructure,,commercial,Depot charging for delivery van fleet; grid capacity key,[REF_EST_FLEET] EST depot charging guidance,high
+Post Office Sorting Centre,default,site_services,led_high_bay_lighting,,commercial,Sortation hall high-bay LED plus controls,[REF_CT_LIGHTING] Carbon Trust lighting guide,high
+Post Office Sorting Centre,default,site_services,onsite_solar_pv,,commercial,Large shed roofs suit PV,engineering judgement,low
+Post Office Sorting Centre,default,sortation_machinery,controls_vsds,,commercial,Cascade start/stop and sleep modes on sorter/conveyor lines,engineering judgement,low
+Post Office Sorting Centre,default,sortation_machinery,sortation_regen_drives,,commercial,Regenerative VSDs and high-efficiency motors on sorters,[REF_ABB_REGEN] ABB regenerative drives for material handling,medium
+Post Office Sorting Centre,default,space_heating,air_to_air_hp_warm_air,9,commercial,Replaces gas warm-air heaters in halls with dock-door losses,[REF_UKBCH_ASHP] A2A covered under ASHP guidance,medium
+Post Office Sorting Centre,default,space_heating,ashp_space_heating_industrial,9,commercial,ASHP for offices and hall AHUs,[REF_UKBCH_ASHP] UK Business Climate Hub ASHP guidance,high
+Post Office Sorting Centre,default,space_heating,building_fabric_upgrade,,commercial,Dock door seals/curtains and roof insulation,[REF_CT_FABRIC] Carbon Trust building fabric guide,high
+Post Office Sorting Centre,default,space_heating,destratification_radiant_conversion,,commercial,Destrat in tall sortation halls,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Post Office Sorting Centre,default,space_heating,electric_radiant_space_heating,,commercial,Spot IR at loading docks and work stations,[REF_ECA_RADIANT] ETL radiant heating datasheet,medium
+Post Office Sorting Centre,default,water_heating,heat_pump_below_100,9,commercial,HP water heaters for staff DHW,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+Post Office Sorting Centre,default,water_heating,solar_thermal_process_heat,,commercial,Solar pre-heat; seasonal,engineering judgement,low
+Pottery,default,biscuit_firing,biomethane_fuel,8-9,commercial,Drop-in for gas kilns; supply/cost,[R_CUK_ROADMAP] roadmap bio-energy option,medium
+Pottery,default,biscuit_firing,electric_resistance_oven_furnace,8-9,commercial,Electric intermittent/batch kilns established at small-medium scale; continuous high-throughput harder; electricity cost,[R_TUC] UK ceramics electrification case study,medium
+Pottery,default,biscuit_firing,fast_firing_low_thermal_mass_kilns,9,commercial,Fast-fire kilns and low-mass furniture commercial for tableware,[R_BEIS_CER2015] roadmap kiln efficiency options,medium
+Pottery,default,biscuit_firing,h2_kiln_furnace_burner,5-8,demonstration,"BCC trials fired whitewares with 100% H2, quality broadly within spec; Churchill China batch-kiln demo planned; no reduction firing effects",[R_BCC_H2] BCC Hydrogen for Ceramics IFS feasibility report,high
+Pottery,default,drying,electric_infrared_drying,,prospective,IR for surface/mould drying of ware; product-specific,engineering judgement,low
+Pottery,default,drying,heat_pump_below_100,9,prospective,Ware dryers <100C are a good heat-pump duty; humidity control needed; limited demonstrated ceramics use,engineering judgement,medium
+Pottery,default,drying,kiln_dryer_cascade_heat_recovery,9,commercial,Recover kiln/cooling heat to dryers where layout allows,[R_BEIS_CER2015] roadmap heat recovery options,medium
+Pottery,default,drying,microwave_rf_drying,7-9,prospective,Dielectric drying of thick ware; cracking control; niche,engineering judgement,low
+Pottery,default,glazing_decoration,compressed_air_optimisation,,commercial,Spray glazing air demand,engineering judgement,low
+Pottery,default,glazing_decoration,electric_infrared_drying,,prospective,IR glaze drying; small load,engineering judgement,low
+Pottery,default,glost_decoration_firing,biomethane_fuel,8-9,commercial,Drop-in for gas kilns,[R_CUK_ROADMAP] roadmap bio-energy option,medium
+Pottery,default,glost_decoration_firing,electric_resistance_oven_furnace,8-9,commercial,Decorating/glost kilns often already electric at lower temperatures,[R_TUC] UK ceramics electrification case study,medium
+Pottery,default,glost_decoration_firing,h2_kiln_furnace_burner,5-8,demonstration,Glazed ware fired successfully on 100% H2 in BCC trials; some colour variation observed,[R_BCC_H2] BCC feasibility report glaze results,high
+Pottery,default,raw_material_preparation,controls_vsds,,commercial,"Mills, blungers, pumps largely electric; drives optimisation",engineering judgement,medium
+Pottery,default,raw_material_preparation,dry_body_preparation_ceramics,,speculative,Dry granulation could displace slip/spray-drying energy where used; quality risk for tableware,[R_DRYROUTE] dry vs wet route study is for tiles; transfer to pottery is judgement,low
+Pottery,default,site_services,heat_pump_below_100,9,commercial,Space heating/hot water,engineering judgement,medium
+Pottery,default,site_services,onsite_solar_pv,,commercial,Roof PV,engineering judgement,medium
+Provender Mill,default,compressed_air,compressed_air_optimisation,,commercial,Standard measures,engineering judgement,medium
+Provender Mill,default,grinding,controls_vsds,,commercial,Hammer mill drives; electric duty,engineering judgement,medium
+Provender Mill,default,material_handling,controls_vsds,,commercial,Conveyor/elevator drives; efficiency only,engineering judgement,medium
+Provender Mill,default,pelleting_press,controls_vsds,,commercial,Press motor efficiency/die optimisation,engineering judgement,medium
+Provender Mill,default,site_services,battery_electric_nrmm,,commercial,Loading shovels/forklifts,engineering judgement,medium
+Provender Mill,default,site_services,heat_pump_below_100,9,commercial,Space heat/DHW,engineering judgement,medium
+Provender Mill,default,site_services,onsite_solar_pv,,commercial,Roof PV,engineering judgement,medium
+Provender Mill,default,steam_conditioning,biomethane_fuel,8-9,commercial,Drop-in for gas steam boiler,engineering judgement,medium
+Provender Mill,default,steam_conditioning,electrode_boiler,9,commercial,Small electric steam raising for conditioners; simplest fossil-gas exit,engineering judgement,medium
+Provender Mill,default,steam_conditioning,h2_boiler,7-9,prospective,Supply-dependent,engineering judgement,low
+Provender Mill,default,steam_conditioning,htp_heat_pump_100_150,8-9,demonstration,LP conditioning steam in HTHP range,engineering judgement,low
+Pumping Mines,default,dewatering_pumping,controls_vsds,,commercial,VSDs and level-band pump scheduling dominate the abatement opportunity for this all-electric duty,engineering judgement,medium
+Pumping Mines,default,dewatering_pumping,minewater_heat_pump_recovery,9,commercial,Heat offtake from pumped minewater where local heat demand exists; displaces offtaker gas rather than site fuel,[REF_GOVUK_GATESHEAD] Operational UK minewater heat network,high
+Pumping Mines,default,site_services,controls_vsds,,commercial,Controls and lighting,engineering judgement,medium
+Pumping Mines,default,site_services,onsite_solar_pv,,commercial,PV to offset continuous pumping load,engineering judgement,medium
+Pumping Mines,default,ventilation,controls_vsds,,commercial,"VSD fans, demand-based ventilation",engineering judgement,medium
+Scrap Metal/Breakers Yard,default,material_handling,battery_electric_nrmm,,commercial,Electric material handlers/grab cranes available for yard duty,engineering judgement,low
+Scrap Metal/Breakers Yard,default,material_handling,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel handlers,engineering judgement,low
+Scrap Metal/Breakers Yard,default,material_handling,hydrogen_nrmm,,prospective,H2 heavy plant immature,engineering judgement,low
+Scrap Metal/Breakers Yard,default,shearing_baling,battery_electric_nrmm,,prospective,Electric mobile shears emerging; static shears already grid-electric,engineering judgement,low
+Scrap Metal/Breakers Yard,default,shearing_baling,controls_vsds,,commercial,Hydraulic power pack optimisation on static shears,engineering judgement,low
+Scrap Metal/Breakers Yard,default,shearing_baling,hvo_bio_oils_dropin,9,commercial,Mobile diesel-hydraulic shears/balers,engineering judgement,low
+Scrap Metal/Breakers Yard,default,shredding_separation,controls_vsds,,commercial,Shredders/separators already electric; drive and idle optimisation only,engineering judgement,low
+Scrap Metal/Breakers Yard,default,site_services,controls_vsds,,commercial,Site motor systems,engineering judgement,low
+Scrap Metal/Breakers Yard,default,site_services,heat_pump_below_100,9,commercial,Office/welfare heating,engineering judgement,low
+Scrap Metal/Breakers Yard,default,site_services,onsite_solar_pv,,commercial,Yard buildings and canopy PV,engineering judgement,low
+Scrap Metal/Breakers Yard,default,torch_cutting,plasma_electric_cutting,9,commercial,Plasma replaces propane/oxy-fuel up to thickness limit; very thick sections and remote field cutting remain oxy-fuel,[REF_ESAB] ESAB oxy-fuel vs plasma comparison,medium
+"Shipbuilding/ repair, boatyard",default,cranes_material_handling,battery_electric_nrmm,,commercial,Electric mobile cranes/telehandlers,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,cranes_material_handling,controls_vsds,,commercial,Dock cranes already electric; regenerative drives,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,cranes_material_handling,hvo_bio_oils_dropin,9,commercial,Drop-in for remaining diesel cranes,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,dry_dock_services,battery_electric_nrmm,,commercial,Electric pumps/gensets/welfare units in dock,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,dry_dock_services,hvo_bio_oils_dropin,9,commercial,Drop-in for diesel dock plant,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,dry_dock_services,shore_power_cold_ironing,9,commercial,Shore supply to docked vessels displaces auxiliary diesel generation; grid capacity is the constraint,[REF_COLDIRON] Energy Institute cold ironing review; UK ports context,high
+"Shipbuilding/ repair, boatyard",default,machining_outfitting,controls_vsds,,commercial,Machine tools already electric; drive and idle optimisation,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,painting_coating,biomethane_fuel,8-9,commercial,Drop-in for gas-fired hall heaters,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,painting_coating,electric_infrared_drying,,demonstration,IR curing of coatings in halls; large hull areas limit application,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,painting_coating,heat_pump_below_100,9,commercial,Paint hall heating/dehumidification,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,site_services,controls_vsds,,commercial,Site motor systems,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,site_services,electrode_boiler,9,commercial,Steam/hot water where required,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,site_services,heat_pump_below_100,9,commercial,Workshop/office heating,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,site_services,onsite_solar_pv,,commercial,Large shed roofs suit PV,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,steel_prep_cutting,controls_vsds,,commercial,Cutting table extraction and drives,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,steel_prep_cutting,plasma_electric_cutting,9,commercial,"CNC plasma (and laser) standard for plate prep, replacing oxy-fuel for most thicknesses",[REF_ESAB] ESAB oxy-fuel vs plasma comparison,medium
+"Shipbuilding/ repair, boatyard",default,surface_prep_blasting,battery_electric_nrmm,,commercial,Electric compressors/access platforms replacing diesel units,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,surface_prep_blasting,compressed_air_optimisation,,commercial,Blasting is dominated by compressed air demand,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,welding_fabrication,compressed_air_optimisation,,commercial,Air tools and gouging air,engineering judgement,low
+"Shipbuilding/ repair, boatyard",default,welding_fabrication,controls_vsds,,commercial,Welding is already electric; inverter power sources and fume fan VSDs,engineering judgement,low
+Tannery,default,compressed_air,compressed_air_optimisation,,commercial,Spray guns and machinery air; leak and pressure management,[unido_benchmarking_2012] Benchmarking covers compressed air use,medium
+Tannery,default,compressed_air,waste_heat_recovery_process,,commercial,Compressor heat recovery,engineering judgement,medium
+Tannery,default,effluent_treatment,controls_vsds,,commercial,Aeration blower and pump VSDs,engineering judgement,medium
+Tannery,default,effluent_treatment,heat_recovery_heat_pump,8-9,commercial,Warm effluent heat recovered/upgraded for float heating,[tannery_ww_2026] Tannery wastewater energy recovery study,medium
+Tannery,default,effluent_treatment,waste_heat_recovery_process,,commercial,Direct effluent-to-freshwater heat exchange,[tannery_ww_2026] Tannery wastewater energy recovery study,medium
+Tannery,default,finishing,controls_vsds,,commercial,Spray booth ventilation VSDs,engineering judgement,low
+Tannery,default,finishing,electric_infrared_drying,,demonstration,IR in spray-line drying tunnels,engineering judgement,low
+Tannery,default,finishing,heat_pump_below_100,9,commercial,Low-temperature tunnel drying heat,engineering judgement,low
+Tannery,default,leather_drying,electric_infrared_drying,,demonstration,Electric IR for surface drying stages,engineering judgement,low
+Tannery,default,leather_drying,heat_pump_below_100,9,commercial,"Leather dries at 40-70C, well suited to heat pump dryers",[tannery_energy_2023] Drying identified as major tannery energy use,medium
+Tannery,default,leather_drying,heat_recovery_heat_pump,8-9,commercial,Dryer exhaust heat recovery,engineering judgement,low
+Tannery,default,leather_drying,microwave_rf_drying,7-9,prospective,RF/dielectric drying of leather trialled but not established,engineering judgement,low
+Tannery,default,process_drums_machinery,controls_vsds,,commercial,Drum drives already electric; VSDs and scheduling,[unido_benchmarking_2012] Benchmarking of tannery electricity uses,medium
+Tannery,default,process_float_heating,electrode_boiler,9,commercial,Small electric boilers for residual steam/hot water,engineering judgement,medium
+Tannery,default,process_float_heating,heat_pump_below_100,9,commercial,Float water 35-60C is an ideal heat pump duty,[tannery_energy_2023] Tannery energy assessment identifies hot water as main thermal load,medium
+Tannery,default,process_float_heating,heat_recovery_heat_pump,8-9,commercial,Warm effluent as source for float heating,[tannery_ww_2026] Energy and resource recovery from tannery wastewater,medium
+Tannery,default,process_float_heating,low_temperature_tanning_chemistry,,prospective,Reduced float temperatures/volumes cut hot water demand; quality requalification needed,[unido_framework_2019] UNIDO sustainable leather manufacture framework,low
+Tannery,default,process_float_heating,solar_thermal_process_heat,,commercial,Low-temperature hot water well matched to solar thermal,[unido_benchmarking_2012] UNIDO tannery benchmarking covers energy for hot water,medium
+Tannery,default,site_services,heat_pump_below_100,9,commercial,Space heating and hot water,engineering judgement,high
+Tannery,default,site_services,hvo_bio_oils_dropin,9,commercial,Drop-in for site diesel plant,engineering judgement,medium
+Tannery,default,site_services,insulation_upgrade,,commercial,Hot water and steam distribution insulation,engineering judgement,medium
+Tannery,default,site_services,onsite_solar_pv,,commercial,Roof PV,engineering judgement,high
+Vehicle repair workshop / garage,default,site_services,controls_vsds,,commercial,Simple controls and shutdown regimes,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+Vehicle repair workshop / garage,default,site_services,ev_fleet_charging_infrastructure,,commercial,Courtesy/customer and own-fleet charging; enables EV servicing offer,[REF_EST_FLEET] EST business EV charging guidance,high
+Vehicle repair workshop / garage,default,site_services,led_high_bay_lighting,,commercial,Workshop bay LED plus controls,[REF_CT_LIGHTING] Carbon Trust lighting guide,high
+Vehicle repair workshop / garage,default,site_services,onsite_solar_pv,,commercial,Roof PV where owned premises,engineering judgement,low
+Vehicle repair workshop / garage,default,space_heating,air_to_air_hp_warm_air,9,commercial,Suits bays with frequent door opening; fast response,[REF_UKBCH_ASHP] A2A covered under ASHP guidance,medium
+Vehicle repair workshop / garage,default,space_heating,ashp_space_heating_industrial,9,commercial,Air-to-water ASHP for offices/reception plus workshop,[REF_UKBCH_ASHP] UK Business Climate Hub ASHP guidance,high
+Vehicle repair workshop / garage,default,space_heating,building_fabric_upgrade,,commercial,Doors/air-tightness dominate losses,[REF_CT_FABRIC] Carbon Trust building fabric guide,high
+Vehicle repair workshop / garage,default,space_heating,destratification_radiant_conversion,,commercial,Destrat and zoned radiant in taller workshops,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+Vehicle repair workshop / garage,default,space_heating,electric_radiant_space_heating,,commercial,Spot IR over bays copes with door-opening losses,[REF_ECA_RADIANT] ETL radiant heating datasheet,medium
+Vehicle repair workshop / garage,default,water_heating,heat_pump_below_100,9,commercial,HP water heater for washdown/valeting,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+Vehicle repair workshop / garage,default,water_heating,solar_thermal_process_heat,,commercial,Solar pre-heat; seasonal,engineering judgement,low
+Vehicle repair workshop / garage,default,workshop_equipment,compressed_air_optimisation,,commercial,Air tools/lifts; leaks and pressure management,[REF_CT_MANUF] Carbon Trust guidance on compressed air,medium
+Vehicle repair workshop / garage,default,workshop_equipment,controls_vsds,,commercial,Timers/interlocks on extraction and compressors,engineering judgement,low
+Vehicle repair workshop / garage,default,workshop_equipment,inverter_welding_equipment,,commercial,MIG/spot welders in body repair,[REF_LINCOLN_INVERTER] Manufacturer efficiency literature,medium
+Wafer Fabrication,default,bulk_gases_cda,compressed_air_optimisation,,commercial,CDA leak/pressure optimisation; large continuous load,engineering judgement,high
+Wafer Fabrication,default,bulk_gases_cda,controls_vsds,,commercial,N2 plant and compressor sequencing,engineering judgement,medium
+Wafer Fabrication,default,bulk_gases_cda,waste_heat_recovery_process,,commercial,Compressor heat recovery,engineering judgement,medium
+Wafer Fabrication,default,chilled_water_plant,controls_vsds,,commercial,"Chiller sequencing, condenser water reset, free cooling",engineering judgement,high
+Wafer Fabrication,default,chilled_water_plant,heat_recovery_heat_pump,8-9,commercial,Heat-recovery chillers supplying site hot water,[intel_heat_recovery] Intel heat-recovery chiller use,medium
+Wafer Fabrication,default,cleanroom_hvac,controls_vsds,,commercial,"Recirculation fan/AHU optimisation, filter pressure management",engineering judgement,high
+Wafer Fabrication,default,cleanroom_hvac,fab_low_grade_heat_recovery,9,commercial,"Makeup air heating from process cooling water/heat-recovery chillers, offsetting gas boilers",[intel_heat_recovery] Intel fab heat recovery deployment,medium
+Wafer Fabrication,default,cleanroom_hvac,heat_pump_below_100,9,commercial,Replace gas-fired reheat/humidification heat with heat pumps,engineering judgement,medium
+Wafer Fabrication,default,cleanroom_hvac,heat_recovery_heat_pump,8-9,commercial,Upgrade 30-40C fab waste heat for HVAC duties,[intel_heat_recovery] Heat-recovery chillers at fabs,medium
+Wafer Fabrication,default,exhaust_abatement,controls_vsds,,commercial,Scrubber and exhaust fan VSDs,engineering judgement,medium
+Wafer Fabrication,default,exhaust_abatement,low_gwp_process_gas_substitution,3,speculative,Reduces abatement duty at source; lab stage,[acs_lowgwp_2025] Low-GWP gas research,low
+Wafer Fabrication,default,exhaust_abatement,pfc_point_of_use_abatement,9,commercial,POU abatement standard for new tools; electric plasma variants avoid abatement fuel gas,[wsc_pfc_2012] WSC PFC best practice guidance,high
+Wafer Fabrication,default,process_tools,controls_vsds,,commercial,"Tool idle-mode/energy management (SEMI S23-type measures); limited retrofit scope, OEM-controlled",engineering judgement,low
+Wafer Fabrication,default,process_tools,low_gwp_process_gas_substitution,3,speculative,Lab-stage etch gas alternatives; per-recipe requalification,[acs_lowgwp_2025] Low-GWP CF4 replacement etch study,low
+Wafer Fabrication,default,site_services,electrode_boiler,9,commercial,Replace residual site gas boilers,engineering judgement,medium
+Wafer Fabrication,default,site_services,heat_pump_below_100,9,commercial,Office/amenity heating and hot water,engineering judgement,medium
+Wafer Fabrication,default,site_services,onsite_solar_pv,,commercial,Roof/car park PV; small share of fab demand,engineering judgement,high
+Wafer Fabrication,default,ultrapure_water,controls_vsds,,commercial,Pump VSDs and RO train optimisation,engineering judgement,medium
+Wafer Fabrication,default,ultrapure_water,heat_pump_below_100,9,commercial,Hot UPW/DI heating via heat pump instead of gas/electric resistance,engineering judgement,low
+Wafer Fabrication,default,ultrapure_water,waste_heat_recovery_process,,commercial,Recover heat from reject/drain streams,engineering judgement,low
+Works,default,machine_drive,compressed_air_optimisation,,commercial,"Leaks, pressure, VSD compressors",[REF_CT_MANUF] Carbon Trust manufacturing guide,high
+Works,default,machine_drive,controls_vsds,,commercial,VSDs and motor management,[REF_CT_MANUF] Carbon Trust manufacturing guide,high
+Works,default,other_process,controls_vsds,,commercial,Controls/drives on miscellaneous plant,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Works,default,other_process,waste_heat_recovery_process,,commercial,Opportunistic heat recovery,engineering judgement,low
+Works,default,process_cooling,controls_vsds,,commercial,Chiller and pump optimisation,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Works,default,process_cooling,heat_recovery_heat_pump,8-9,commercial,Reject heat to space/water heating,[REF_CT_HVAC] Carbon Trust HVAC guide,medium
+Works,default,process_heating,biomethane_fuel,8-9,commercial,Drop-in for gas-fired plant,engineering judgement,low
+Works,default,process_heating,electric_resistance_oven_furnace,8-9,commercial,Electric ovens/furnaces at works scale,[REF_DESNZ_ELEC] Resistance heating TRL 9,high
+Works,default,process_heating,h2_kiln_furnace_burner,5-8,prospective,Depends on H2 availability,engineering judgement,low
+Works,default,process_heating,htp_heat_pump_100_150,8-9,demonstration,Low-temp duties only,[REF_DESNZ_ELEC] HTHP TRL 7-9,medium
+Works,default,process_heating,induction_heating,9,commercial,Metal heat treatment/forging duties,[REF_DESNZ_ELEC] DESNZ/ERM electrification report,medium
+Works,default,process_heating,waste_heat_recovery_process,,commercial,Furnace/oven exhaust recuperation,[REF_CT_MANUF] Carbon Trust manufacturing guide,medium
+Works,default,site_services,controls_vsds,,commercial,BMS and ventilation controls,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Works,default,site_services,led_high_bay_lighting,,commercial,High-bay LED plus controls,[REF_CT_LIGHTING] Carbon Trust lighting guide,high
+Works,default,site_services,onsite_solar_pv,,commercial,Roof PV subject to structure/connection,engineering judgement,low
+Works,default,space_heating,air_to_air_hp_warm_air,9,commercial,Replaces gas warm-air unit heaters,[REF_UKBCH_ASHP] A2A covered under ASHP guidance,medium
+Works,default,space_heating,ashp_space_heating_industrial,9,commercial,Air-to-water ASHP with suitable emitters,[REF_UKBCH_ASHP] UK Business Climate Hub ASHP guidance,high
+Works,default,space_heating,building_fabric_upgrade,,commercial,Fabric first before plant replacement,[REF_CT_FABRIC] Carbon Trust building fabric guide,high
+Works,default,space_heating,destratification_radiant_conversion,,commercial,Destrat plus zoned radiant in tall halls,[REF_CT_HVAC] Carbon Trust HVAC guide,high
+Works,default,space_heating,electric_radiant_space_heating,,commercial,Zone IR for high-bay areas,[REF_ECA_RADIANT] ETL radiant heating datasheet,medium
+Works,default,steam_hot_water,biomass_boiler,9,commercial,Fuel logistics and permitting constraints,engineering judgement,low
+Works,default,steam_hot_water,biomethane_fuel,8-9,commercial,Drop-in via certified grid gas,engineering judgement,low
+Works,default,steam_hot_water,electrode_boiler,9,commercial,Like-for-like electric steam/hot water,[REF_DESNZ_ELEC] Electric boilers TRL 9,high
+Works,default,steam_hot_water,h2_boiler,7-9,prospective,Awaits H2 supply,engineering judgement,low
+Works,default,steam_hot_water,htp_heat_pump_100_150,8-9,demonstration,LP steam/hot water under ~150C,[REF_DESNZ_ELEC] HTHP TRL 7-9,medium
+Works,default,steam_hot_water,thermal_storage_power_to_heat,7-9,demonstration,Off-peak power-to-heat with storage,engineering judgement,low
+Works,default,surface_treatment,electric_infrared_drying,,commercial,IR boost/cure replacing gas convection zones,engineering judgement,low
+Works,default,surface_treatment,electric_powder_coating_oven,9,commercial,Electric cure ovens for powder lines,[REF_RELIANT_OVENS] Supplier gas vs electric oven comparison,medium
+Works,default,surface_treatment,heat_pump_below_100,9,commercial,Heated pre-treatment/plating baths under 100C,[REF_DESNZ_ELEC] Low-temp heat pump duties per DESNZ/ERM,medium
+Works,default,surface_treatment,uv_cure_coatings,,commercial,UV-curable wet coatings for parts; line-of-sight limits,[REF_RADTECH] RadTech UV/EB curing overview,medium
+Works,default,surface_treatment,waste_heat_recovery_process,,commercial,Oven exhaust and bath heat recovery,engineering judgement,low
+Workshop,default,machining_metalworking,compressed_air_optimisation,,commercial,Air tools common in metalworking; leaks and pressure set-point,[REF_CT_MANUF] Carbon Trust manufacturing guide covers compressed air,high
+Workshop,default,machining_metalworking,controls_vsds,,commercial,"VSDs, motor management and idle shutdown on machine tools and extraction",[REF_CT_MANUF] Carbon Trust manufacturing guide covers motor/drive measures,high
+Workshop,default,machining_metalworking,inverter_welding_equipment,,commercial,Fabrication welding sets replaced with inverter units,[REF_LINCOLN_INVERTER] Manufacturer efficiency literature,medium
+Workshop,default,other_process,controls_vsds,,commercial,Controls and drives on miscellaneous process plant,[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Workshop,default,other_process,waste_heat_recovery_process,,commercial,Opportunistic heat recovery where thermal loads exist,engineering judgement,low
+Workshop,default,process_cooling,controls_vsds,,commercial,"Chiller set-point optimisation, VSD pumps/fans",[REF_CT_MANUF] Generic manufacturing efficiency guidance,medium
+Workshop,default,process_cooling,heat_recovery_heat_pump,8-9,commercial,Recover chiller reject heat to space/water heating,[REF_CT_HVAC] Carbon Trust HVAC guide covers heat recovery,medium
+Workshop,default,process_heating,biomethane_fuel,8-9,commercial,Drop-in for existing gas-fired equipment,engineering judgement,low
+Workshop,default,process_heating,electric_resistance_oven_furnace,8-9,commercial,Small electric ovens/furnaces standard products at workshop scale,[REF_DESNZ_ELEC] DESNZ/ERM rates resistance heating TRL 9,high
+Workshop,default,process_heating,htp_heat_pump_100_150,8-9,demonstration,Low-temperature process heat only,[REF_DESNZ_ELEC] HTHP TRL 7-9 per DESNZ/ERM,medium
+Workshop,default,process_heating,induction_heating,9,commercial,"Where load is conductive metal (brazing, hardening, billet heating)",[REF_DESNZ_ELEC] DESNZ/ERM covers induction as established,medium
+Workshop,default,process_heating,waste_heat_recovery_process,,commercial,Oven/furnace exhaust recuperation,[REF_CT_MANUF] Carbon Trust manufacturing guide covers heat recovery,medium
+Workshop,default,site_services,controls_vsds,,commercial,"BMS, ventilation VSDs, out-of-hours shutdown",[REF_CT_HVAC] Carbon Trust HVAC guide covers controls,high
+Workshop,default,site_services,led_high_bay_lighting,,commercial,High-bay LED plus occupancy controls,[REF_CT_LIGHTING] Carbon Trust lighting guide,high
+Workshop,default,site_services,onsite_solar_pv,,commercial,Shed roofs generally suit PV; structural and export limits,engineering judgement,low
+Workshop,default,space_heating,air_to_air_hp_warm_air,9,commercial,Direct swap for gas warm-air unit heaters; no wet system needed,[REF_UKBCH_ASHP] A2A covered under ASHP guidance,medium
+Workshop,default,space_heating,ashp_space_heating_industrial,9,commercial,Air-to-water ASHP with AHU coils/fan convectors sized for fabric loss,[REF_UKBCH_ASHP] UK Business Climate Hub ASHP guidance,high
+Workshop,default,space_heating,building_fabric_upgrade,,commercial,Insulation/air-tightness reduces demand and enables heat pump sizing,[REF_CT_FABRIC] Carbon Trust building fabric guide,high
+Workshop,default,space_heating,destratification_radiant_conversion,,commercial,Destrat fans plus zoned radiant cut demand in tall spaces,[REF_CT_HVAC] Carbon Trust HVAC guide covers destratification,high
+Workshop,default,space_heating,electric_radiant_space_heating,,commercial,"Spot/zone IR for high-bay, intermittently occupied areas",[REF_ECA_RADIANT] ETL radiant heating datasheet for high-bay buildings,medium
+Workshop,default,water_heating,heat_pump_below_100,9,commercial,HP water heaters for DHW/washdown,[REF_CT_HVAC] Carbon Trust HVAC guide covers heat pump water heating,medium
+Workshop,default,water_heating,solar_thermal_process_heat,,commercial,Roof solar thermal pre-heat; seasonal output,engineering judgement,low
