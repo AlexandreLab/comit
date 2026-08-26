@@ -10,9 +10,10 @@ references are to the implementation specification. **All values are illustrativ
 are internally consistent — every total reconciles, and the arithmetic in each step
 follows from the step before — but none is a citation.
 
-The premise is deliberately one that has **site intelligence** (D10 tier 1), so that the
-machinery is visible. §11 re-runs the same premise with that intelligence withheld, to
-isolate what it buys.
+The premise is deliberately one that has **site intelligence** (D10 tier 1) and a known
+**plant vintage** (D11 tier 1), so that the machinery is visible. §11 re-runs the same
+premise with that intelligence withheld, to isolate what it buys — and for vintage the
+answer is not a sharper number but a different pathway.
 
 ---
 
@@ -27,9 +28,17 @@ process_set_id               dry_kiln_preheater        -- the activity default
 nation                       England
 latitude / longitude         53.35 / -1.75
 floorspace                   —                          (not supplied)
+construction_year            1957
+last_refurbishment_year      2011                       (collected, not read)
 data_year                    2024
 source                       CaRB3 stock model v3.1
 ```
+
+The works dates from 1957, which under D11 bounds plant age at 68 years — longer than any
+technology lifetime on site, so the bound is slack and buys nothing here (§5.3.1 tier 2).
+That is the expected outcome for heavy industry and is shown deliberately — implementation
+§5.3.1 works the tier-2 formula through a young premise, where it binds hard and settles
+the question on its own.
 
 ### 1.2 `premise_connection` (§3.1.3)
 
@@ -78,18 +87,19 @@ Required, because `Cement Works` carries a mass-denominated process (D5).
 
 From the site's environmental permit:
 
-| `process_id` | `known_capacity` | `technology_code` | `commissioned_year` | `confidence` |
-|---|---|---|---|---|
-| `quarry_crushing` | — | — | — | medium |
-| `raw_milling` | — | — | — | medium |
-| `kiln_pyroprocessing` | 0.95 Mt/yr | `kiln_dry_preheater_coal` | 2004 | high |
-| `clinker_cooling` | — | — | — | medium |
-| `cement_milling` | — | — | — | medium |
-| `packing_dispatch` | — | — | — | medium |
+| `process_id` | `known_capacity` | `technology_code` | `confidence` |
+|---|---|---|---|
+| `quarry_crushing` | — | — | medium |
+| `raw_milling` | — | — | medium |
+| `kiln_pyroprocessing` | 0.95 Mt/yr | `kiln_dry_preheater_coal` | high |
+| `clinker_cooling` | — | — | medium |
+| `cement_milling` | — | — | medium |
+| `packing_dispatch` | — | — | medium |
 
 Six rows, so this is the site's **complete** process list (§3.10 completeness rule). Only
 the kiln carries a capacity and a named technology; the rest are listed to establish that
-they exist and nothing more.
+they exist and nothing more. When the plant was installed is not here — it lives in §1.9,
+for the reason given in §3.10.
 
 ### 1.6 `premise_measured_emissions` (§3.11)
 
@@ -126,6 +136,30 @@ confidence                   high
 | `cement_milling` | throughput_following | 0.90 | 1.25 | false |
 | `packing_dispatch` | intermittent | 0.35 | 3.00 | false |
 
+### 1.9 `premise_process_vintage` (§3.15) — D11 tier 1
+
+From the same environmental permit, which records the kiln line's commissioning:
+
+| `process_id` | `cohort_id` | `technology_code` | `commissioned_year` | `capacity_share` | `confidence` |
+|---|---|---|---|---|---|
+| `kiln_pyroprocessing` | `1` | `kiln_dry_preheater_coal` | 2004 | 1.00 | high |
+
+One row, because this works runs a single kiln line. The shares sum to 1.00, as §3.15
+requires.
+
+**No rows for the other five processes**, and that is not an omission — unlike §1.5, this
+table asserts nothing about completeness. The mills and the packing plant fall through to
+tier 2, which on a 1957 works is slack, and therefore to tier 3. So this premise resolves
+its kiln at `process_known` and everything else at `uniform_default`, in the same solve.
+That mixture is the normal case, not an edge case.
+
+**What a second line would look like.** A works whose second kiln was added in 2016 would
+carry two rows for `kiln_pyroprocessing` — cohort `1` at 2004 with share 0.60 and cohort
+`2` at 2016 with share 0.40 — and §5.3.1 would age the two independently, the older line
+retiring in 2043 and the newer in 2055. Recording that site as a single 2011 average kiln,
+which is what the old `commissioned_year` column forced, would have retired all of it at
+once in 2050: too late for the old line and too early for the new one.
+
 ---
 
 ## 2. A1 — ingest and validate
@@ -136,6 +170,9 @@ confidence                   high
 - No negative quantities; every row's `vector` agrees with its commodity's category.
 - Carrier coverage recorded: **five of six vectors stated, biomass unassessed.**
 - A `premise_throughput` row exists, as the activity requires (else `missing_throughput`).
+- `commissioned_year` 2004 ≤ `data_year` 2024, so the vintage row is accepted; shares sum
+  to 1.00 (else `vintage_in_future` or `vintage_shares_unbalanced`, §3.15).
+- `construction_year` 1957 ≤ `data_year`; `last_refurbishment_year` 2011 lies between them.
 - Nearest of the 9 GB clusters assigned.
 
 **Accepted.**
@@ -174,7 +211,7 @@ Example A), with waste-derived fuel assigned wholly to the kiln:
 Column totals reconcile with §1.2 exactly — **V3 passes**. No optional process is absent,
 so the R2 renormalisation is the identity here (§3.3.3).
 
-## 5. A4 — back-solve capacity and utilisation
+## 5. A4 — back-solve capacity, utilisation and vintage
 
 The kiln's thermal input is 2.0370 + 0.3007 + 1.5500 = **3.8877 PJ/yr**. With
 `technology_code = kiln_dry_preheater_coal` supplied, there is no choice among candidate
@@ -201,6 +238,50 @@ site back-solving to 0.89 is credible; the same site back-solving to 0.2 would h
 signalled an error in the capacity, the coefficients or the energy, and none of the other
 inputs could have told us which.
 
+**Vintage (D11, §5.3.1).** Scenario `central` runs 2025 to 2050 in five-year periods, so
+$t_0$ = 2025, with `stranding_factor` λ = 1.0. The kiln's lifetime is `L` = 40 years and
+its capex `κ` = £260m per Mt/yr of capacity.
+
+The tiers resolve per technology, not per premise:
+
+| Process | Tier | Age window at 2025 | Why |
+|---|---|---|---|
+| `kiln_pyroprocessing` | `process_known` | point mass at 21 years | §1.9 gives the cohort year, 2004 |
+| The other five | `uniform_default` | [0, 40] | No cohort row; the 1957 bound is slack |
+
+For the kiln, the final operating year is 2004 + 40 − 1 = **2043**:
+
+| | 2025 | 2030 | 2035 | 2040 | 2045 | 2050 |
+|---|---|---|---|---|---|---|
+| Elapsed years τ | 0 | 5 | 10 | 15 | 20 | 25 |
+| Survival θ | 1.00 | 1.00 | 1.00 | 1.00 | 0 | 0 |
+| Standing capacity (Mt/yr) | 0.950 | 0.950 | 0.950 | 0.950 | 0 | 0 |
+| Mean remaining life R̄ (yr) | 19 | 14 | 9 | 4 | 0 | 0 |
+| Stranding rate (£m per Mt/yr) | 123.5 | 91.0 | 58.5 | 26.0 | 0 | 0 |
+| Write-off if scrapped whole (£m) | 117.3 | 86.5 | **55.6** | 24.7 | 0 | 0 |
+
+A point mass has no spread, so R̄ is exact here rather than a pool average, and the
+stranding rate is simply κ × R̄ / L — at 2035, £260m × 9 / 40 = £58.5m per Mt/yr.
+
+**The same kiln under tier 3**, had §1.9 been absent, for contrast:
+
+| | 2025 | 2030 | 2035 | 2040 | 2045 | 2050 |
+|---|---|---|---|---|---|---|
+| Survival θ | 1.000 | 0.875 | 0.750 | 0.625 | 0.500 | 0.375 |
+| Standing capacity (Mt/yr) | 0.950 | 0.831 | 0.713 | 0.594 | 0.475 | 0.356 |
+| Mean remaining life R̄ (yr) | 20.0 | 17.5 | 15.0 | 12.5 | 10.0 | 7.5 |
+| Stranding rate (£m per Mt/yr) | 130.0 | 113.8 | 97.5 | 81.3 | 65.0 | 48.8 |
+
+The two survival paths could hardly be less alike, and one number decides which the site
+gets. Meeting the back-solved 0.8452 Mt/yr of output at an availability factor of 0.90
+needs **0.939 Mt/yr** of standing capacity. Under tier 1 the kiln clears that until it
+dies in 2043. Under tier 3 it falls to 0.831 Mt/yr by **2030** — a shortfall of 0.108
+Mt/yr, five years before CO₂ transport arrives, forcing a piecemeal unabated rebuild that
+the site would then be carrying when CCS becomes available in 2035.
+
+Both are defensible readings of a fleet of kilns. Only one is a reading of *this* kiln,
+and the difference between them is a single line on a permit.
+
 ## 6. A5 — apply the infrastructure scenario
 
 From the premise's cluster, under scenario `central`:
@@ -222,6 +303,37 @@ the fuel emissions and the calcination process emissions. That second component 
 decisive one: it cannot be touched by fuel switching at all, so for a cement works the
 process-emission term is what makes or breaks the CCS case.
 
+**What D11 adds to that trade.** The kiln has 19 years of life left at $t_0$, and until
+2043 the model may keep it, convert it or scrap it. Scrapping it charges the write-off
+from §5. Take the gas-kiln option — a switch that looks attractive whenever gas plus
+carbon undercuts coal plus carbon — at a rebuild cost of £300m per Mt/yr, so £285m for
+this site:
+
+| Switch the kiln away from coal in | 2025 | 2030 | 2035 | 2040 | 2045 |
+|---|---|---|---|---|---|
+| Write-off charged (£m) | 117.3 | 86.5 | 55.6 | 24.7 | 0 |
+| As a share of the £285m rebuild | 41% | 30% | 20% | 9% | 0% |
+
+**The charge does not forbid the switch — it prices delay**, and that is the behaviour
+this design was after. Each period of waiting removes a constant £30.9m of write-off
+(κ × 0.95 Mt × 5 ⁄ 40, which is just the kiln depreciating), so a switch that is
+marginally uneconomic in 2030 becomes comfortably economic by 2040, and by 2045 the kiln
+has died on its own and the switch is free. A carbon price high enough to clear £86.5m
+still buys the kiln out in 2030 — nothing here is prohibited, only priced.
+
+**Retrofit pays none of it.** The CCS option available from 2035 is a retrofit: it bolts a
+capture train onto the existing kiln rather than replacing it, so the plant is not
+scrapped, `Stranded value` is zero, and §5.5's retrofit rule keeps the capture train on
+the kiln's own 2043 end-of-life rather than giving it a fresh one. That last part cuts
+both ways — the retrofit's capex is annuitised over the 9 years the host has left rather
+than its own 25 (§5.4), which roughly doubles its annual charge and is the honest cost of
+retrofitting late onto old plant.
+
+So the model's 2035 choice is between a cheap retrofit on a kiln that dies in 2043 and an
+expensive rebuild that lives past the horizon, with £55.6m of write-off attached to the
+second. Before D11 that £55.6m was zero and the 2043 death did not exist, so the two
+options differed only in capex and fuel cost.
+
 ## 8. A8 — assemble output
 
 Rows per process × technology × period across `Outputs`, `Energy`, `Emissions` and
@@ -231,6 +343,15 @@ Rows per process × technology × period across `Outputs`, `Energy`, `Emissions`
 - the **lower** of the technology's and the energy profile's confidence
 - the carrier-coverage flag from A1 — incomplete, biomass unassessed
 - the utilisation derived in A4
+- `vintage_evidence_tier` — `process_known` on the kiln rows, `uniform_default` on the
+  other five processes, since the tiers resolve per technology (§5)
+- `commissioned_year = 2004` on the kiln rows and **blank** on the rest. The other five
+  do have a working age assumption, but writing its midpoint here would make an inferred
+  date indistinguishable from a permit date (§8.1)
+- `remaining_life_years` — 19, 14, 9, 4, 0, 0 across the six periods for the kiln,
+  anchored on 2025 and not on the 2024 `data_year`
+- a `Stranded value` cost row, zero in every period unless the solve scraps the kiln
+  early
 
 ## 9. §7.6 — reconcile against measured emissions
 
@@ -293,6 +414,9 @@ second example, but the same one re-run to isolate what the optional inputs cont
 | A2 | Process set from the permit; `site_known` | Activity default set; `activity_default` |
 | A4 | Capacity **known** 0.950 Mt; utilisation derived 0.890 | Capacity **inferred** 0.939 Mt at assumed availability 0.90; utilisation not independently known |
 | A4 checks | Three cross-checks, all passing | One — implied output vs declared throughput |
+| A4 vintage | Kiln aged from its 2004 permit date; `process_known`; stands whole until 2043 | Uniform default; `uniform_default`; 12.5% of the kiln already gone by 2030 |
+| Replacement timing | Free to wait for CCS in 2035; nothing forced | A 0.108 Mt/yr shortfall from **2030**, forcing an unabated rebuild five years before CCS exists |
+| Early switching | Write-off exact: £55.6m at 2035, falling £30.9m a period | Write-off is a pool average, £97.5m per Mt/yr at 2035, and overstates the cost of scrapping the oldest capacity (§5.3.1) |
 | §7.6 | Divergence measured at 1.5%; measured split adopted | No reconciliation possible; computed split stands unexamined |
 | §5.6 | λ observed at 1.17; reinforcement gap quantified | λ assumed from an activity default; peak uncertain |
 | Output confidence | Governed by profile confidence | Governed by the weakest of several defaults |
@@ -301,6 +425,14 @@ The two capacity figures differ by only 1.2%, which is reassuring rather than
 disappointing — it says the back-solve is sound for sites where nothing better exists.
 What tier 1 changes is not primarily the number but **how much of the answer is
 checkable**: four independent cross-checks become one.
+
+**Vintage is the exception, and it is a large one.** Everywhere else in this table the
+optional inputs sharpen a number the model would have got roughly right anyway. Here they
+change the answer outright: with the permit date the site waits and retrofits, and without
+it the site is rebuilding from 2030. Capacity was 1.2% apart; the pathways are not
+comparable at all. That asymmetry is worth knowing when deciding what site intelligence is
+worth collecting — one line recording when the kiln was commissioned buys more than
+everything else in §1.5 put together.
 
 ## 12. What this example demonstrates
 
@@ -315,3 +447,11 @@ checkable**: four independent cross-checks become one.
 4. **Peak and energy are different questions** (§10). This site's annual energy says
    electrification is straightforward; its connection capacity says it is a
    reinforcement project five times larger than the existing supply.
+5. **Plant age changes the pathway, not just the cost** (§5, §7, §11). The same kiln, the
+   same technologies and the same prices give a 2030 unabated rebuild under the default
+   vintage assumption and a 2035 CCS retrofit under the permit's commissioning date. No
+   other optional input in this example moves the answer that far.
+6. **The write-off prices delay rather than forbidding change** (§7). It falls by a
+   constant £30.9m every period as the kiln depreciates, so a switch the model rejects in
+   2030 it accepts in 2040 — and a carbon price high enough still buys the kiln out early.
+   That is the difference between representing inertia and hard-coding it.

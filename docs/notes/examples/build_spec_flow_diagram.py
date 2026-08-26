@@ -49,6 +49,7 @@ INPUT_ENTITIES = {
     "premise_throughput",
     "premise_connection",
     "premise_process_detail",
+    "premise_process_vintage",
     "premise_measured_emissions",
     "premise_operating_profile",
     "premise_weekly_profile",
