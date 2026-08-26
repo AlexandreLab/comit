@@ -9,7 +9,7 @@
 
 ## 1. Scope, inputs, conventions, and how to read this
 
-*Section last updated: 2026-08-25*
+*Section last updated: 2026-08-26*
 
 ### 1.1 What this document is
 
@@ -99,7 +99,7 @@ all results.
 
 ### 1.5 Design decisions assumed
 
-This document implements decisions D1–D10 recorded in the vision document. The three
+This document implements decisions D1–D11 recorded in the vision document. The four
 with the widest reach:
 
 - **D2 — per-site independent solves.** Each premise is a separate optimisation. No
@@ -111,6 +111,10 @@ with the widest reach:
 - **D10 — tiered site intelligence.** Where a premise's actual processes, capacities or
   reported emissions are known, they replace the activity default outright. Tiers are
   exclusive, and every output row records the tier it came from.
+- **D11 — existing plant has an age.** Incumbent capacity carries a vintage, retires when
+  it reaches the end of its life, and charges the residual value of what is scrapped
+  before then. Vintage follows the same tiered-evidence pattern as D10, and its lowest
+  tier reproduces the behaviour of COMIT today (§5.3.1).
 
 ### 1.6 What the building stock model must supply
 
@@ -176,7 +180,10 @@ one.
 | Additional `premise_energy` rows | PJ/yr | Carriers outside the five main vectors — LPG, waste-derived fuel, purchased heat. No schema change needed; each is simply another row |
 | Additional `premise_throughput` rows | Mt/yr | Multi-product sites — a paper mill making several grades, a chemical site with several outputs — each stated separately rather than collapsed into one tonnage |
 | `process_set_id` | — | Selects a known process route instead of the activity default — e.g. a kraft versus recycled-fibre paper mill (§3.2). One field, and it replaces an activity-wide average with the right route for that site |
-| `premise_process_detail` rows | — | The site's actual process list, and where known its installed technology, capacity and commissioning year (§3.10). Highest tier of process evidence; A4 then infers utilisation rather than guessing capacity |
+| `premise_process_detail` rows | — | The site's actual process list, and where known its installed technology and capacity (§3.10). Highest tier of process evidence; A4 then infers utilisation rather than guessing capacity |
+| `premise_process_vintage` rows | year, fraction | **D11.** When the plant serving a process was commissioned, by cohort (§3.15). Highest tier of vintage evidence: it decides when the plant must be replaced anyway, and what scrapping it early costs (§5.3.1) |
+| `construction_year` — or `construction_year_band` | year | **D11.** When the premise itself was built. Plant cannot predate the site, so this is an *upper bound* on plant age and the second vintage tier. It is the cheap one: the stock model already holds building age for most premises, and no process-level survey is needed |
+| `last_refurbishment_year` | year | **Future use.** Evidence that a site was re-equipped, which would tighten the §3.15 bound. Collected now, read by nothing today — see the note below on why the bound uses construction year alone |
 | `premise_measured_emissions` rows | kt CO₂e/yr | Reported emissions from UK ETS, permits or NAEI (§3.11). Reconciles the computed baseline, corrects the combustion/process split, and optionally calibrates process intensity (§7.6) |
 | Operating schedule — `operating_pattern`, `operating_hours_per_year`, `operating_days_per_week`, `shutdown_weeks` | h/yr, d/wk, wk/yr | The independent check on utilisation (§3.12, A4). A site running 24/7 and one running a single shift can consume identical annual energy on very different plant, and only the schedule distinguishes them |
 | Load statistics — `peak_electricity`, `peak_gas`, `load_factor_electricity`, `load_factor_gas`, `within_shift_peak_factor` | MW, fraction, ratio | **Future use (§5.6).** The true site peak, which is what a connection capacity is about. Derived from half-hourly or daily metering where it exists; gas is the better predictor of the *post-electrification* peak |
@@ -200,6 +207,24 @@ headroom, and treating it as such would report electrification as feasible where
 physically cannot reach. If only a site total is available, supply it as a single
 connection and say so through `confidence` — one honest aggregate is better than an
 invented split, but it will not answer the reinforcement question.
+
+**On premise age as a bound, not an estimate.** A works built in 1957 does not run 1957
+plant; it has been re-equipped, probably more than once. So `construction_year` is not an
+estimate of plant age and must never be used as one. What it *is* — reliably — is a
+bound: plant cannot be older than the building that houses it. That is enough to be
+useful, because the bound bites exactly where it matters. On a premise built three years
+ago, nothing on site can be more than three years old, and the model should not be
+retiring or replacing any of it. On a premise built in 1957 the bound is slack, tells us
+nothing, and §3.15 falls through to the default tier — which is the honest answer.
+
+**Why the bound does not use `last_refurbishment_year`.** A refurbishment is evidence that
+*something* was re-equipped, not that everything was: a site can re-roof a building, or
+replace a packing line, and keep its kiln. Using the refurbishment year as the bound would
+tighten it beyond what the evidence supports and make plant look systematically younger
+than it is — an error in the direction that suppresses replacement, which is the direction
+this model is least able to detect. The field is collected because it is cheap to collect
+now and a future tier could use it alongside process-level evidence, on the same
+collect-now-read-later basis as the network fields below.
 
 **On the network fields generally.** Nothing in the model reads them today. They are requested
 now because they are far cheaper to collect while the stock model is being built than to
@@ -255,6 +280,15 @@ imputation is not permitted — a missing input must remain visible in the rejec
 | `negative_energy` | Any vector is negative |
 | `missing_throughput` | Mass-denominated activity with no `premise_throughput` row |
 | `vector_commodity_mismatch` | A `premise_energy` row whose `vector` contradicts its commodity's category |
+| `vintage_in_future` | A `premise_process_vintage` row whose `commissioned_year` is later than `data_year` |
+| `vintage_shares_unbalanced` | The `capacity_share` values for a `(premise, process)` do not sum to 1 |
+
+**The last two reject rows, not the premise.** Every other reason above removes the
+premise from the run. A bad vintage row removes only itself, and that process falls
+through to the next tier of §5.3.1 — a premise that is fully modellable apart from one
+questionable date should be modelled, with an assumed age and an honest
+`vintage_evidence_tier`, rather than dropped. The reason is still logged, and a batch full
+of them is still a contract problem.
 
 **Batch-level gate.** If the rejection rate exceeds a configured threshold, the whole
 batch fails rather than proceeding on a filtered subset — a high rejection rate signals
@@ -264,7 +298,7 @@ a contract mismatch, not a data-cleaning opportunity.
 
 ## 2. System overview
 
-*Section last updated: 2026-08-25*
+*Section last updated: 2026-08-26*
 
 ### 2.1 Components
 
@@ -273,7 +307,7 @@ a contract mismatch, not a data-cleaning opportunity.
 | S1 | **Ingestion and validation** | Accept premise records, validate, reject with reasons |
 | S2 | **Process expansion** | Premise → its set of processes, resolving the three evidence tiers of D10 (§A2) |
 | S3 | **Energy allocation** | Split the premise's metered energy across its processes |
-| S4 | **Baseline capacity solve** | Back-solve implied existing capacity per process — or, where capacity is known, back-solve utilisation instead (§A4) |
+| S4 | **Baseline capacity and vintage solve** | Back-solve implied existing capacity per process — or, where capacity is known, back-solve utilisation instead — and resolve how old that capacity is, through the three vintage tiers of D11 (§A4, §5.3.1) |
 | S5 | **Scenario application** | Attach fuel prices, carbon price, infrastructure availability |
 | S6 | **Problem builder** | Construct the per-premise optimisation (§5) |
 | S7 | **Solver driver** | Solve, extract, handle infeasibility |
@@ -293,6 +327,8 @@ premise_record ──S1──► validated premise
                         ├─S2─► process set              (activity_process_register)
                         ├─S3─► energy per process       (activity_process_energy_profile)
                         ├─S4─► implied existing capacity (technology, technology_input_output)
+                        │       + plant vintage and survival
+                        │              (premise_process_vintage, premise_record.construction_year)
                         └─S5─► prices, availability     (scenario_parameters, infrastructure_scenario)
                                     │
                                     ▼
@@ -325,7 +361,7 @@ Great Britain — England, Wales, Scotland. Consequences the implementation must
 
 ## 3. Data model
 
-*Section last updated: 2026-08-25*
+*Section last updated: 2026-08-26*
 
 Seventeen entities. Each is specified as a field table. Types are abstract (§1.3).
 
@@ -350,8 +386,18 @@ with rationale, in **§1.6**; these tables are normative for validation.
 | `nation` | enum{England, Wales, Scotland} | — | yes | — | NI rejected with reason `out_of_scope_nation` |
 | `floorspace` | real | m² | no | — | > 0 if present |
 | `process_set_id` | string | — | no | → `activity_process_register` | Selects a named non-default process set (§3.2). Absent ⇒ the activity's default set |
+| `construction_year` | integer | year | no | — | **D11.** ≤ `data_year` if present. When the premise was built. Bounds plant age from above (§3.15, §5.3.1) |
+| `construction_year_band` | string | — | no | — | **D11.** Where only a band is held, e.g. `1945-1964`. Used only if `construction_year` is absent, and read as its **earliest** year |
+| `last_refurbishment_year` | integer | year | no | — | **Future use.** ≥ `construction_year`, ≤ `data_year` if present. Collected, not read (§1.6.4) |
 | `data_year` | integer | year | yes | — | Provenance |
 | `source` | string | — | yes | — | Provenance |
+
+**On the age band (D11).** CaRB3-style stock data usually holds building age as a band
+rather than a year, so both forms are accepted and the year wins where both are present.
+A band is read as its **earliest** year, which is the conservative reading: it admits the
+widest range of plant ages and therefore stays closest to the default tier. Reading it as
+the midpoint or the latest year would make plant look younger than the evidence supports,
+and §1.6.4 explains why erring in that direction is the more dangerous mistake.
 
 Energy and throughput are **not** columns here. Both are one-to-many — a premise consumes
 several carriers and may make several products — so both are long tables keyed on
@@ -765,6 +811,8 @@ radius get `available = false` for hydrogen and CO₂ transport.
 | `carbon_price_untraded` | real per period | £/t | yes | — |
 | `fuel_price` | real per commodity per period | £m/PJ | yes | — |
 | `fuel_emission_factor` | real per commodity per period | kt/PJ | yes | — |
+| `stranding_factor` | real | fraction | yes | **D11.** λ ∈ [0, 1]. Share of an incumbent asset's residual value charged when it is retired early (§5.4). Default **1.0**; **0 disables the charge and reproduces pre-D11 behaviour** |
+| `vintage_default` | enum{uniform_life, no_ageing} | — | yes | **D11.** The tier-3 assumption where no vintage evidence exists (§5.3.1). Default `uniform_life`, which reproduces COMIT's linear decay. `no_ageing` holds incumbent capacity at full survival and exists only as a diagnostic contrast |
 
 ### 3.9 `site_pathway` — output
 
@@ -784,7 +832,6 @@ normal case and means "use the register".
 | `connection_id` | string | — | no | → `premise_connection` | **Optional.** Which electricity connection serves this process (§3.1.3). Absent ⇒ the default. This is what decides where electrified load lands |
 | `known_capacity` | real | capacity units | no | — | > 0 if present. Units follow the process's denominator (D5): PJ/yr-equivalent for energy, Mt/yr for mass |
 | `technology_code` | string | — | no | → `technology` | The specific installed technology, where known |
-| `commissioned_year` | integer | year | no | — | Drives remaining life against `technology.lifetime` |
 | `provenance` | string | — | yes | — | Citation: permit number, audit reference, disclosure |
 | `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
 
@@ -797,6 +844,12 @@ only fragmentary knowledge exists, use a named `process_set_id` instead.
 existing plant for that process and A4 does not choose between candidates. Where
 `known_capacity` is given, it is used directly and A4 back-solves *utilisation* instead
 of capacity (§A4).
+
+**On vintage (D11).** When the plant was commissioned lives in `premise_process_vintage`
+(§3.15), not here. It was moved out because this table is keyed premise × process and can
+hold exactly one year, while a real works commonly runs two units of the same process
+installed decades apart — a 1998 kiln line and a 2016 one. One year per process cannot
+say that, and averaging the two is the thing D11 exists to stop.
 
 ### 3.11 `premise_measured_emissions` — reported emissions, where they exist
 
@@ -939,9 +992,57 @@ attributed to the right process when the mix changes.
 
 ---
 
+### 3.15 `premise_process_vintage` — when the plant was installed (D11)
+
+**Optional per-premise intelligence, and the highest tier of vintage evidence.** Where
+the commissioning date of the plant serving a process is known — from a permit, a
+BAT/BREF review, an asset register, a site visit or an operator disclosure — it is stated
+here. Zero rows for a premise is the normal case and means "fall through to
+`premise_record.construction_year`, and then to the default" (§5.3.1).
+
+One row per **cohort**: a distinct tranche of capacity commissioned in the same year. A
+works with one kiln has one row; a works whose second line was added eighteen years after
+the first has two.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `process_id` | string | — | yes | PK part | → `commodity.commodity_id` |
+| `cohort_id` | string | — | yes | PK part | Stable within the premise-process. `1`, `2`, … is sufficient |
+| `technology_code` | string | — | no | → `technology` | The technology this cohort is. Absent ⇒ whatever A4 resolves for the process |
+| `commissioned_year` | integer | year | yes | — | ≤ `premise_record.data_year`. Rejected with reason `vintage_in_future` otherwise |
+| `capacity_share` | real | fraction | yes | — | ∈ (0, 1]. Share of the process's existing capacity in this cohort |
+| `provenance` | string | — | yes | — | Citation: permit number, asset register, disclosure |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Rule (shares sum).** For each `(premise_id, process_id)` the `capacity_share` values
+must sum to 1 within 1e-6, or the premise's vintage rows are rejected with reason
+`vintage_shares_unbalanced` and that process falls back to the next tier. Partial vintage
+knowledge is expressed as a cohort with the year you do know plus a residual cohort with
+your best estimate — not as shares that do not close, which would silently shrink the
+site's capacity.
+
+**Rule (units are shares, not capacities).** The absolute capacity of the process is A4's
+business and may be back-solved rather than known. Stating vintage as a share keeps the
+two independent, so a site can supply ages without supplying capacities and vice versa.
+
+**Rule (refurbishment is not recommissioning).** A cohort's year is when the plant was
+*installed*, not when it was last overhauled. A 1998 kiln relined in 2019 is a 1998
+cohort. Life extension through major refurbishment is real and is a known gap, noted in
+§5.3.1 — recording an overhaul as a new commissioning date is the wrong way to represent
+it, because it also resets the residual value the asset is carrying and makes early
+replacement look more expensive than it is.
+
+**Why a separate entity from §3.10.** `premise_process_detail` is keyed premise × process
+and asserts a *complete* process list; this table is keyed one level finer and asserts
+nothing about completeness. A premise may have vintage rows for its kiln and none for its
+mills, and the mills simply fall to the next tier. Forcing the two into one table would
+have made vintage all-or-nothing for a site, which is the opposite of how the evidence
+actually arrives.
+
 ## 4. Algorithms
 
-*Section last updated: 2026-08-25*
+*Section last updated: 2026-08-26*
 
 Each is stated with inputs, outputs, preconditions, postconditions and failure modes.
 
@@ -1048,7 +1149,7 @@ assumption, built and evidenced per §3.3.1–§3.3.5. Results must carry the pr
 `confidence` through to output, and its error is systematic across every premise of an
 activity rather than random (§3.3.5).
 
-### A4 — Back-solve implied existing capacity
+### A4 — Back-solve implied existing capacity and vintage
 
 Inverts the relationship COMIT uses to compute a technology's output from its capacity
 (described in [notes/04 §Step 3](../notes/04_site_energy_estimation.md)):
@@ -1061,8 +1162,11 @@ fuel_use      = annual_output × |io_coefficient(technology, fuel_commodity)|
 Therefore:
 
 ```
-INPUT:  process_energy[q, v], technology set, technology_input_output
-OUTPUT: existing_capacity[technology]
+INPUT:  process_energy[q, v], technology set, technology_input_output,
+        premise_process_vintage, premise_record, scenario_parameters
+OUTPUT: existing_capacity[technology], age_window[technology],
+        survival[technology, period], mean_remaining_life[technology, period],
+        vintage_evidence_tier[technology]
 PRE:    every process has at least one technology whose fuel_category matches an
         observed vector
 
@@ -1093,10 +1197,57 @@ PRE:    every process has at least one technology whose fuel_category matches an
                                               × availability_factor(k))
 21.                utilisation[k] := availability_factor(k)
 
+-- vintage resolution (D11, §5.3.1). Runs per technology once capacity is known.
+
+22. FOR EACH technology k WITH existing_capacity[k] > 0:
+23.     L := lifetime(k); y0 := year_of(t0)
+24.     IF premise_process_vintage HAS rows for k's process:
+25.         cohorts := those rows, each (commissioned_year g, capacity_share s)
+                        filtered to k where technology_code is stated
+26.         age_window[k] := { point mass at (y0 - g), weight s } per cohort
+27.         vintage_evidence_tier[k] := process_known
+28.     ELSE IF premise_record.construction_year IS PRESENT
+             OR premise_record.construction_year_band IS PRESENT:
+29.         yc := construction_year, ELSE earliest year of the band
+30.         age_window[k] := [0, min(y0 - yc, L)]
+31.         vintage_evidence_tier[k] := premise_bounded
+32.     ELSE IF scenario_parameters.vintage_default = uniform_life:
+33.         age_window[k] := [0, L]
+34.         vintage_evidence_tier[k] := uniform_default
+35.     ELSE:                                   -- vintage_default = no_ageing
+36.         age_window[k] := [0, 0] WITH survival held at 1 throughout
+37.         vintage_evidence_tier[k] := uniform_default
+38.     IF any cohort age exceeds L:
+39.         REPORT "plant_overage" (premise, k); clamp its final operating year
+                  to max(g + L - 1, y0) so that survival[k, t0] = 1
+40.     FOR EACH period t:
+41.         survival[k, t]            := theta as defined in §5.3.1
+42.         mean_remaining_life[k, t] := R-bar as defined in §5.3.1
+43.     ASSERT survival[k, t0] = 1 AND survival is non-increasing in t
+
 POST:   recomputing fuel use from existing_capacity and utilisation reproduces
         process_energy within 1e-6  -- this is acceptance criterion V2, §10
+POST:   every technology with existing capacity carries a vintage evidence tier,
+        a survival path starting at 1, and a mean remaining life -- V17, §10
 FAILS IF: any io coefficient is zero, or a process/vector pair has no technology
 ```
+
+**Why vintage resolution belongs in A4 and not in its own algorithm.** It attaches to
+exactly the granularity A4 produces — a technology with existing capacity at this premise
+— and it needs nothing A4 does not already have in hand. Splitting it out would mean
+passing the whole back-solve result to a second step for the sake of a tidier heading.
+
+**Step 25 and the technology filter.** A vintage row may name a `technology_code` or may
+not. Where it does, the cohort applies to that technology only. Where it does not, the
+cohort applies to whatever technology A4 resolved for that process — which is the common
+case, because a permit usually records when a kiln was commissioned without describing it
+in the model's technology vocabulary.
+
+**Step 28 and the fall-through.** The tiers are tried in order and the first one that has
+evidence wins, per technology rather than per premise. A works may resolve its kiln at
+tier 1 from a permit and its mills at tier 2 from the building's age, and the two tiers
+sit side by side in the same solve. Every output row records which was used (§8.1), so an
+aggregate can always be split by how much of it rested on a real date.
 
 **On known capacity (step 14).** Metered energy and stated capacity are two different
 measurements of the same site and will not generally agree. The resolution is not to
@@ -1142,16 +1293,19 @@ POST:   every carrier has a defined availability and tariff for every period
 
 ```
 INPUT:  process_set, process demands, existing_capacity, availability, tariffs,
-        scenario_parameters
+        survival, mean_remaining_life, scenario_parameters
 OUTPUT: an optimisation problem instance (§5)
 
 1. Build the period set T from start_year, end_year, timestep
 2. Build the technology set K = union over processes of serving technologies
 3. Filter K: remove technologies whose fuel is unavailable in ALL periods (A5)
 4. Declare variables n[k,t], a[k,t], u[k,t] for all k in K, t in T   (§5.2)
-5. Build the objective as the sum of the cost terms in §5.4
-6. Add constraints C1..C9 as specified in §5.5 and §6.1
-7. RETURN the problem instance
+5. Declare e[k,t], r[k,t] for k in K0 = { k : existing_capacity[k] > 0 } only
+6. Attach theta[k,t] and R-bar[k,t] from A4 as parameters, not variables (§5.3.1)
+7. Build the objective as the sum of the cost terms in §5.4, including the
+   stranded-value term
+8. Add constraints C1..C9 as specified in §5.5 and §6.1
+9. RETURN the problem instance
 
 POST:   the problem has a feasible solution if demand can be met by at least one
         available technology per process in every period
@@ -1164,14 +1318,15 @@ INPUT:  problem instance
 OUTPUT: solution OR infeasibility diagnosis
 
 1. Solve
-2. IF status = OPTIMAL: extract n, a, u; RETURN solution
+2. IF status = OPTIMAL: extract n, a, u, e, r; RETURN solution
 3. IF status = INFEASIBLE:
 4.     Diagnose by relaxing constraint groups in this order, reporting the first
        relaxation that restores feasibility:
        (a) technology stability (C6)
        (b) known changes (C7)
-       (c) infrastructure availability (C9)
-       (d) demand satisfaction (C1)
+       (c) forced ageing (C4b)
+       (d) infrastructure availability (C9)
+       (e) demand satisfaction (C1)
 5.     RETURN diagnosis, do not silently substitute a relaxed solution
 6. IF status = UNBOUNDED: FAIL -- indicates a cost-sign error, not a data problem
 
@@ -1180,6 +1335,16 @@ POST:   an infeasible premise is reported with the constraint group responsible
 
 **Rule.** Infeasible premises are reported, never dropped. A run's summary must state
 how many premises failed and why.
+
+**Why forced ageing sits third (D11).** C4b is the one constraint that can make a
+previously-feasible premise infeasible purely because plant reached the end of its life:
+the incumbent capacity goes, and if no replacement technology is available in that period
+— because its fuel has not arrived yet (C9), or because C6 will not let activity move fast
+enough — demand cannot be met. That is a real finding and not a bug; it says the site runs
+out of plant before it runs out of options. It is placed above C9 in the ladder because a
+diagnosis of *"the kiln died in 2035 and nothing could replace it"* is more informative
+than *"hydrogen was unavailable"*, and below C6 and C7 because those are softer
+assumptions and should be ruled out first.
 
 ### A8 — Assemble output tables
 
@@ -1192,10 +1357,17 @@ OUTPUT: site_pathway rows (§8)
 3.     Compute energy by commodity: u[k,t] × |io(k, c)| for each consumed c
 4.     Compute emissions by source using §7
 5.     Compute costs by type using §5.4, un-discounted to per-period values
-       and rebased to base_price_year
+       and rebased to base_price_year, including Stranded value from r[k,t]
 6. Attach provenance: technology confidence (D6), profile confidence (§3.3)
+7. FOR EACH technology k in K0:
+8.     Emit vintage_evidence_tier[k] from A4 on every row for k
+9.     Emit commissioned_year where the tier is process_known, blank otherwise
+10.    Emit remaining_life_years[k, t] := mean_remaining_life[k, t], anchored
+          on year_of(t0) and NOT on premise_record.data_year
 
 POST:   every emitted row carries a confidence marker
+POST:   every row for an incumbent technology carries its vintage tier and
+        remaining life
 ```
 
 ### A9 — Aggregate to GB and compare
@@ -1226,7 +1398,7 @@ only a scenario-parameter sweep and a convergence test.
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-08-25*
+*Section last updated: 2026-08-26*
 
 This section is the authoritative definition. Everything else serves it.
 
@@ -1238,6 +1410,7 @@ This section is the authoritative definition. Everything else serves it.
 | $Q$ | Processes at this premise (from A2) |
 | $K$ | Technologies available, $K = \bigcup_{q \in Q} K_q$ |
 | $K_q$ | Technologies serving process $q$ |
+| $K^0$ | **Incumbent** technologies — those with existing capacity, $K^0 = \{k : E^0_k > 0\}$ (D11) |
 | $C$ | Commodities |
 | $C^{\text{fuel}}$ | Fuel commodities, $C^{\text{fuel}} \subset C$ |
 | $C^{\text{proc}}$ | Process-emission commodities, $C^{\text{proc}} \subset C$ |
@@ -1251,6 +1424,13 @@ All continuous and non-negative.
 | $n_{k,t}$ | New capacity of technology $k$ built in period $t$ | capacity units of $k$ |
 | $a_{k,t}$ | Capacity of $k$ available (installed) in $t$ | capacity units of $k$ |
 | $u_{k,t}$ | Activity of $k$ in $t$ | output units of $k$'s process |
+| $e_{k,t}$ | Surviving **incumbent** capacity of $k$ in $t$ — the part of $E^0_k$ still standing | capacity units of $k$ |
+| $r_{k,t}$ | Incumbent capacity of $k$ retired **early** in $t$ | capacity units of $k$ |
+
+**Scope of $e$ and $r$ (D11).** Declared only for $k \in K^0$. A technology with no
+existing capacity has nothing to age and nothing to strand, and declaring the variables
+anyway would inflate the problem by the full width of the technology set for no gain —
+which matters at the scale §9 assumes.
 
 **Note.** COMIT introduces binary variables when a minimum hydrogen plant size is set,
 making the problem a MILP. Under this design, hydrogen supply is exogenous (D7), so the
@@ -1270,6 +1450,11 @@ be preserved — any proposal to add binaries must be weighed against §9.
 | $\gamma_k$ | `technology.capacity_to_activity_factor` | Capacity → output conversion |
 | $\rho_k$ | `technology.emissions_released` | Fraction not captured |
 | $E^0_k$ | A4 | Implied existing capacity |
+| $[a^-_k, a^+_k]$ | A4 | Age window of incumbent capacity at $t_0$, in years (§5.3.1) |
+| $\theta_{k,t}$ | §5.3.1 | Fraction of $E^0_k$ still standing in $t$ on age alone |
+| $\bar R_{k,t}$ | §5.3.1 | Mean remaining life of the surviving incumbent pool in $t$, years |
+| $\lambda$ | `scenario_parameters.stranding_factor` | Share of residual value charged on early retirement |
+| $y_t,\ \tau_t$ | Period $t$ | Calendar year of $t$; elapsed years $\tau_t = y_t - y_{t_0}$ |
 | $p_{c,t}$ | `scenario_parameters.fuel_price` | Fuel price |
 | $f_{c,t}$ | `scenario_parameters.fuel_emission_factor` | Emission factor, kt/PJ |
 | $\pi_t$ | `scenario_parameters.carbon_price_*` | Carbon price (traded or untraded) |
@@ -1277,11 +1462,99 @@ be preserved — any proposal to add binaries must be weighed against §9.
 | $r$ | `scenario_parameters.discount_rate` | Discount rate |
 | $i$ | `scenario_parameters.interest_rate` | Interest rate |
 
+#### 5.3.1 Plant vintage and the survival function (D11)
+
+$\theta$ and $\bar R$ are **parameters, not variables** — computed in A4 before the problem
+is built. This is what keeps D11 free: the model gains an age without gaining a single
+binary, and §9's tractability argument is untouched.
+
+**The age window.** Every incumbent technology arrives at $t_0$ with its capacity spread
+over some window of installation ages $[a^-_k, a^+_k]$, in years. Three tiers of evidence
+set that window, and they are tried in order:
+
+| Tier | Evidence | Window at $t_0$ |
+|---|---|---|
+| 1 — `process_known` | A `premise_process_vintage` cohort (§3.15) with commissioning year $g$ | $a^- = a^+ = y_{t_0} - g$ — a point mass |
+| 2 — `premise_bounded` | `premise_record.construction_year` $y_c$ (§3.1), giving premise age $A = y_{t_0} - y_c$ | $a^- = 0,\ a^+ = \min(A, L_k)$ |
+| 3 — `uniform_default` | None | $a^- = 0,\ a^+ = L_k$ |
+
+A premise with several cohorts for one process is several point masses, weighted by
+`capacity_share`; $\theta$ and $\bar R$ below are then the share-weighted sum and the
+share-weighted mean.
+
+**Survival, tiers 2 and 3.** A unit installed at age $a$ is still standing after $\tau$
+elapsed years iff $a + \tau < L_k$. With the window $[a^-_k, a^+_k]$ of width
+$w_k = a^+_k - a^-_k > 0$, and writing
+$b_{k,t} = \mathrm{clamp}(L_k - \tau_t,\ a^-_k,\ a^+_k)$:
+
+$$\theta_{k,t} = \frac{b_{k,t} - a^-_k}{w_k} \qquad\qquad \bar R_{k,t} = \max\!\left(0,\ (L_k - \tau_t) - \tfrac{1}{2}\big(a^-_k + b_{k,t}\big)\right)$$
+
+Both tiers set $a^-_k = 0$ and $a^+_k \le L_k$, so $\theta_{k,t_0} = 1$ always and no plant
+can arrive already past its life on this path.
+
+**Survival, tier 1.** A cohort is a point mass and is stated directly on its final
+operating year $\Omega_k$:
+
+$$\Omega_k = \max\big(g_k + L_k - 1,\ y_{t_0}\big) \qquad \theta_{k,t} = \mathbb{1}\big[\,y_t \le \Omega_k\,\big] \qquad \bar R_{k,t} = \max\big(0,\ g_k + L_k - y_t\big)$$
+
+**Note that $\Omega$ is clamped and $\bar R$ is not**, and the asymmetry is deliberate.
+Survival is a statement about a plant somebody has observed running, so it cannot be zero
+in the base period whatever the arithmetic says. Residual value is a statement about a
+loan, and on plant already past its nominal life that loan finished years ago. An asset
+commissioned in 1990 with a 25-year life, still turning in 2025, therefore survives the
+base period and then goes — and can be scrapped at no charge, because there is nothing
+left to write off.
+
+Across all three tiers $\theta$ is non-increasing in $t$, equals 1 at $t_0$, and reaches 0
+once the whole window has aged out. $\bar R$ is the mean remaining life *of what is still
+standing*, which is what the stranding charge in §5.4 needs. For a multi-cohort process,
+apply the tier-1 formulae per cohort and combine: $\theta$ is the `capacity_share`-weighted
+sum, $\bar R$ the weighted mean over surviving cohorts.
+
+**What each tier does, in one line each.**
+
+- **Tier 3 gives back COMIT exactly.** With $a^- = 0,\ a^+ = L$, the formula collapses to
+  $\theta = 1 - \tau/L$ — a straight line from full capacity to zero over one lifetime, which
+  is precisely what `R/fct_constraints_capacity_transfer.R:252` computes today (§6.1 says
+  why that file and not the similarly-named one). That line has always been the
+  survival curve of a fleet uniformly spread across every age from new to end-of-life;
+  D11 does not replace it, it names it and makes it the fallback.
+- **Tier 2 is tier 3 truncated by the premise's age**, and it earns its keep on young
+  sites. A premise built three years ago, running plant with a 20-year life: $a^+ = 3$, so
+  $\theta = \min(1, (20-\tau)/3)$ — full survival for 17 years, then a three-year ramp to
+  zero. Nothing on that site retires before 2042, which is the answer an engineer would
+  have given without a model. On a 1957 works the same formula returns $\min(68, 40) = 40$,
+  the bound is slack, and tier 2 degrades gracefully into tier 3.
+- **Tier 1 is a step.** A kiln commissioned in 2004 with a 40-year life stands, whole,
+  until 2043 and is gone in 2044.
+
+**The known approximation.** Under tiers 2 and 3 the incumbent pool is a *distribution* of
+ages, but $e_{k,t}$ is a single aggregate variable, so the model charges the pool's **mean**
+remaining life to whatever it retires. A real operator scraps the oldest unit first, which
+would be cheaper. Charging the mean therefore overstates the cost of scrapping old
+capacity and understates it for young, with the two errors partly cancelling in aggregate.
+Fixing it properly means cohort-indexed variables and a multiple of the problem size for a
+second-order correction; the approximation is accepted deliberately and disappears
+wherever tier-1 evidence exists, since a point mass has no spread to average over.
+
+**The other known gap: life extension.** Major refurbishment genuinely extends plant life,
+and nothing here models it — $L_k$ is fixed, and §3.15 forbids recording an overhaul as a
+new commissioning year. The consequence is that heavily-refurbished plant retires earlier
+in the model than it will in reality. Representing it properly needs a life-extension
+option with its own capex competing against replacement, which is a technology-set change
+rather than a vintage change, and is not attempted here.
+
+**Plant already past its life.** Tier 1 can hand back an asset older than $L_k$, and the
+$\Omega$ clamp above is what keeps such a premise feasible on arrival rather than
+infeasible. Report it as `plant_overage` (advisory, §10 V17) rather than repairing the
+input: an over-age asset is usually a lifetime that is too short for the equipment class
+rather than a wrong date, and silently moving the date would hide that.
+
 ### 5.4 Objective
 
 Minimise total present-value cost over the horizon:
 
-$$\min \; Z = \sum_{t \in T} \delta_t \Big( Z^{\text{capex}}_t + Z^{\text{opex}}_t + Z^{\text{fuel}}_t + Z^{\text{carbon}}_t + Z^{\text{infra}}_t \Big)$$
+$$\min \; Z = \sum_{t \in T} \delta_t \Big( Z^{\text{capex}}_t + Z^{\text{opex}}_t + Z^{\text{fuel}}_t + Z^{\text{carbon}}_t + Z^{\text{infra}}_t + Z^{\text{strand}}_t \Big)$$
 
 where $\delta_t$ is the present-value factor for period $t$, aggregated over the
 timestep — matching the treatment described in
@@ -1294,6 +1567,18 @@ $$Z^{\text{capex}}_t = \sum_{k \in K} \sum_{s \le t} n_{k,s} \, \kappa_k \, \mat
 
 where $\mathrm{PMT}(1, i, L)$ is the level annuity payment on unit principal at rate $i$
 over $L$ periods.
+
+**Effective lifetime for a retrofit (D11).** A retrofit dies with the plant it is bolted
+to (C4 retrofit rule), so it is annuitised over
+
+$$L^{\text{eff}}_{k'} = \min\big(L_{k'},\ \bar R_{k,s}\big) \qquad k' \in \mathcal{R}_k$$
+
+— its own lifetime, or the host's remaining life at the build year $s$, whichever is
+shorter. Financing a 25-year carbon-capture train over 25 years on a kiln with nine years
+left would understate its annual cost by roughly a factor of two and make late retrofits
+look far cheaper than they are; no lender would write that loan, and the model should not
+either. This is the one place where D11 changes a technology's *cost* rather than its
+capacity, and it applies only to retrofits.
 
 **Fixed opex.**
 
@@ -1323,6 +1608,38 @@ $(1-\rho_k)$, since $\rho_k$ is the fraction **not** captured.
 This is the single largest structural simplification versus COMIT, and the direct
 consequence of D7.
 
+**Stranded value (D11).** Retiring incumbent capacity before the end of its life charges
+the residual value of what is scrapped:
+
+$$Z^{\text{strand}}_t = \sum_{k \in K^0} r_{k,t} \, \kappa_k \, \lambda \, \frac{\bar R_{k,t}}{L_k}$$
+
+with $\bar R_{k,t}$ the mean remaining life of the surviving incumbent pool (§5.3.1) and
+$\lambda$ = `stranding_factor`. The coefficient is a constant per $(k, t)$, so this is a
+linear term and the problem stays a pure LP. **At $\lambda = 0$ the term vanishes and the
+model reproduces its pre-D11 behaviour**, which is what makes the change auditable.
+
+**Why this is not a sunk-cost fallacy.** The objection writes itself: the money is spent,
+so a rational operator should ignore it. But look at what the capex term above actually
+does. A new build pays $\mathrm{PMT}$ instalments for every period from $s$ to
+$s + L_k - 1$ **whether or not the plant is still running** — the loan does not care that
+the asset was abandoned. Incumbent capacity, by contrast, appears in no capex term at all,
+so it is free to abandon the moment something cheaper to run comes along. That asymmetry
+is the defect. A three-year-old furnace and a nineteen-year-old one are, to the objective
+as it stands, identical: both cost nothing to scrap. $Z^{\text{strand}}$ restores the
+symmetry by charging incumbent plant the same unpaid balance a new build would owe, and
+$\bar R_{k,t} / L_k$ is exactly the unamortised fraction.
+
+**On the basis and its two arguable choices.** The charge is straight-line in remaining
+life, and $\kappa_k$ is today's capex — a **replacement-cost** basis, not what the site
+historically paid, which nobody knows. An alternative basis is the present value of the
+remaining $\mathrm{PMT}$ instalments, which is more faithful to the financing story and
+slightly larger at typical interest rates; it is also a constant coefficient and could be
+swapped in without touching the structure. Straight-line is the default because it is the
+convention a reader will expect from a residual value and because the difference is well
+inside the uncertainty on $\kappa_k$ itself. $\lambda < 1$ represents value recovered on the
+way out — resale, salvage, redeployment of the building or the connection — and is the
+knob to reach for if replacement looks too sticky.
+
 ### 5.5 Constraints
 
 **C1 — Demand satisfaction.** Each process's demand is met in each period:
@@ -1333,13 +1650,62 @@ $$\sum_{k \in K_q} u_{k,t} = D_{q,t} \qquad \forall q \in Q,\; t \in T$$
 
 $$u_{k,t} \le a_{k,t} \, \gamma_k \, \alpha_k \qquad \forall k,\, t$$
 
-**C3 — Capacity transfer between periods.**
+**C3 — Capacity transfer between periods.** Available capacity is what survives of the
+incumbent plant plus every new build still inside its own life:
 
-$$a_{k,t} = a_{k,t-1} + n_{k,t} - \text{(retirements reaching end of life)} \qquad \forall k,\, t > t_0$$
+$$a_{k,t} = e_{k,t} + \sum_{s \le t} n_{k,s} \, \mathbb{1}[\,s \le t \le s + L_k - 1\,] \qquad \forall k,\, t$$
 
-**C4 — Existing capacity in the first period.**
+with $e_{k,t} \equiv 0$ for $k \notin K^0$. This states explicitly what the recursive form
+left to the phrase *"retirements reaching end of life"*: new capacity leaves the fleet
+$L_k$ periods after it is built, and incumbent capacity is governed by C4.
 
-$$a_{k,t_0} = E^0_k \qquad \forall k$$
+**C4 — Incumbent capacity: ageing and early retirement (D11).** Four parts.
+
+$$\text{(a)}\quad e_{k,t_0} = E^0_k \qquad \forall k \in K^0$$
+
+$$\text{(b)}\quad e_{k,t} \le \theta_{k,t} \, E^0_k \qquad \forall k \in K^0,\, t$$
+
+$$\text{(c)}\quad e_{k,t} \le e_{k,t-1} \qquad \forall k \in K^0,\, t > t_0$$
+
+$$\text{(d)}\quad r_{k,t} \ge \big(\theta_{k,t} E^0_k - e_{k,t}\big) - \big(\theta_{k,t-1} E^0_k - e_{k,t-1}\big) \qquad \forall k \in K^0,\, t > t_0$$
+
+(a) anchors the base year — the plant is observed running, so it exists. (b) is ageing:
+capacity that has reached the end of its life is gone whether the model wants it or not,
+and this is the half of D11 that can *force* a replacement. (c) forbids resurrection. (d)
+is the half that *discourages* one.
+
+**Read (d) carefully — it is the trap in this constraint.** The bracketed quantity
+$\theta_{k,t} E^0_k - e_{k,t}$ is the capacity retired *early*: the gap between what age
+alone would have left standing and what the model chose to keep. $r_{k,t}$ picks up the
+**increment** to that gap, so only the deliberate part of a retirement is charged.
+Charging $e_{k,t-1} - e_{k,t}$ instead — the obvious formulation, and the wrong one —
+would bill the premise for plant that simply died of old age, and would do so hardest at
+exactly the oldest and least modernised sites. V17 step 5 exists to catch this.
+
+Because $\lambda \ge 0$ makes early retirement costly, (d) binds as an equality at the
+optimum wherever the gap grows, and $r_{k,t} = 0$ where it does not — no binaries needed
+to keep it from paying out on a shrinking gap.
+
+**Retrofit is not retirement, and this is load-bearing.** Where `technology.retrofit_to`
+names $k$, the retrofit $k'$ is the same physical plant with equipment added — a CCS train
+on the existing kiln, not a new kiln. Charging its installation as an early retirement of
+$k$ would be wrong twice over: the asset was not scrapped, and the charge would fall
+hardest on the cheapest decarbonisation option available to the sites that need it most.
+So write $\mathcal{R}_k$ for the technologies retrofitting $k$, and let
+
+$$\hat e_{k,t} = e_{k,t} + \sum_{k' \in \mathcal{R}_k} a_{k',t}$$
+
+be the incumbent capacity **still in service in any form**. Parts (b), (c) and (d) are
+then stated on $\hat e_{k,t}$ rather than on $e_{k,t}$. Two consequences follow, and both
+match COMIT: retrofitting incurs no stranding charge, and retrofitted capacity inherits
+the base technology's remaining life rather than starting a fresh one — which is exactly
+what the `int` multiplier at `R/fct_constraints_capacity_transfer.R:262-263` does today by
+decaying retrofit capacity at the base technology's residual rate.
+
+The corollary is worth stating because it is a genuine result rather than an artefact: for
+a mid-life asset, the stranding charge tips the choice from *rebuild* towards *retrofit*.
+That is the behaviour industry actually exhibits, and before D11 the model had no way to
+express it.
 
 **C5 — No building in the start year.**
 
@@ -1370,7 +1736,9 @@ $$\sum_{k} u_{k,t}\,|\iota_{k,c}| \le \text{caps}[c, t] \qquad \forall c \in \{\
 **Retrofit differencing.** Where `technology.retrofit_to` is set, the technology's costs
 are charged **net of** the base technology it replaces, matching COMIT's treatment
 (notes [09](../notes/09_objective_function.md), [14](../notes/14_emissions_source_split.md)).
-This is why negative cost entries are legitimate and must not be clamped to zero.
+This is why negative cost entries are legitimate and must not be clamped to zero. Under
+D11 the same relationship also governs vintage: a retrofit inherits its base's age and
+remaining life, and does not strand it — see the retrofit rule under C4 above.
 
 ---
 
@@ -1522,7 +1890,7 @@ evidence rather than assumed.
 
 ## 6. Constraint disposition
 
-*Section last updated: 2026-08-25*
+*Section last updated: 2026-08-26*
 
 COMIT has 17 constraint families. Under D2 they divide three ways.
 
@@ -1536,12 +1904,29 @@ stages of §2.1 — the two were both numbered `C` until the stages were renamed
 | `production` | C1 | Demand now exogenous, not apportioned |
 | `availability` | C2 | Unchanged |
 | `capacities` | C2, C3 | Unchanged |
-| `existing_capacity` | C4 | Sourced from A4, not from sector share |
-| `capacity_transfer` | C3 | Unchanged |
+| `existing_capacity` | C4 | Sourced from A4, not from sector share. **Rewritten by D11** — see below |
+| `capacity_transfer` | C3 | Restated in explicit vintage form rather than recursively; same meaning |
 | `known_changes` | C7 | Unchanged |
 | `tech_stability` | C6 | Unchanged |
 | `no_building_in_start_year` | C5 | Unchanged |
 | `intermediate_commodities` | C8 | Unchanged |
+
+**On `existing_capacity` and `capacity_transfer` after D11.** These two are the only
+places where the disposition above is more than a relabelling. COMIT computes residual
+existing capacity as `max(0, E - (E/lifetime) x (year - start_year))`
+(`R/fct_constraints_existing_capacity.R:47`, and again at
+`R/fct_constraints_capacity_transfer.R:252`) — a straight-line decay to zero over one
+technology lifetime. §5.3.1 shows that line is the tier-3 case of the survival function,
+so a premise with no vintage evidence behaves exactly as it does today. What is genuinely
+new is the tier-1 and tier-2 paths, and the early-retirement variable $r$ with its cost:
+COMIT has no representation of scrapping plant before its time, because it has no notion
+of what time the plant is at.
+
+Note also that COMIT's `existing_capacity` family carries the comment *"this constraint is
+in development and is not currently used"* and is switchable from the input workbook; the
+same decay is applied unconditionally inside `capacity_transfer`, which is where it
+actually bites. An implementer comparing against COMIT should read the second file, not
+the first.
 
 ### 6.2 Become exogenous scenario inputs (D7)
 
@@ -1683,7 +2068,7 @@ not have taken from the same vintage.
 
 ## 8. Output schema
 
-*Section last updated: 2026-08-25*
+*Section last updated: 2026-08-26*
 
 Reuse the structure documented in [notes/12](../notes/12_output_data_schema.md), extended
 with a **process** dimension. Convention: long in dimensions, wide in periods; the period
@@ -1708,13 +2093,24 @@ hardcoded**.
 | `utilisation` | real | **New.** Derived in A4. Equals the availability factor where capacity was back-solved, and the energy-implied value where capacity was known (§A4) |
 | `carrier_coverage` | enum{complete, incomplete} | **New.** Whether all five main vectors were stated for this premise, whether positive or an explicit `not_consumed` zero (§3.1.1) |
 | `emissions_calibration_multiplier` | real | **New.** Present only where §7.6 intensity calibration was enabled. Required by V13 |
+| `vintage_evidence_tier` | enum{process_known, premise_bounded, uniform_default} | **New (D11).** Which tier A4 used to age this technology's incumbent capacity (§5.3.1). Blank for a technology with no existing capacity. Required by V17 |
+| `commissioned_year` | integer | **New (D11).** The cohort year, present only at tier `process_known`. Blank at the other tiers rather than filled with the tier's assumption, so an assumed age can never be mistaken for a known one |
+| `remaining_life_years` | real | **New (D11).** Mean remaining life of the surviving incumbent pool in this period (§5.3.1), anchored on the first model period and **not** on `data_year`. Required by V17 |
 | `confidence` | enum | Lowest of technology and profile confidence |
 | `⟨period⟩` | real | Activity in that period |
 
-**Rule.** The five fields marked new are not decoration. Three validation tests assert
-their presence — V11 on the evidence tier, V12 on utilisation, V13 on the calibration
-multiplier — because each is the only way a reader can tell how much of a result rests on
-evidence rather than on a default.
+**Rule.** The eight fields marked new are not decoration. Four validation tests assert
+their presence — V11 on the process evidence tier, V12 on utilisation, V13 on the
+calibration multiplier, V17 on the vintage tier and remaining life — because each is the
+only way a reader can tell how much of a result rests on evidence rather than on a
+default.
+
+**On `commissioned_year` being blank at tiers 2 and 3.** Tiers 2 and 3 do have a working
+age assumption, and it would be easy to write its midpoint into this column. Do not: a
+column that sometimes holds a surveyed date and sometimes holds a derived one is a column
+nobody can aggregate safely, and the derived value is already fully described by
+`vintage_evidence_tier` plus `remaining_life_years`. Blank means *"nobody told us"*, which
+is the fact a reader needs.
 
 ### 8.2 `Energy`
 
@@ -1734,8 +2130,15 @@ Values in kt; negative permitted for the `Negative` category.
 ### 8.4 `Costs`
 
 As `Outputs`, plus `cost_type` ∈ {`Capex`, `Capex_lump`, `Opex`, `Fuel cost`,
-`Carbon cost`, `Infrastructure tariff`, `Network reinforcement`, `Export revenue`}.
-Values in £m per period, un-discounted and rebased to `base_price_year`.
+`Carbon cost`, `Infrastructure tariff`, `Stranded value`, `Network reinforcement`,
+`Export revenue`}. Values in £m per period, un-discounted and rebased to
+`base_price_year`.
+
+**`Stranded value` is a write-off, not a purchase (D11).** It is the residual value of
+incumbent plant scrapped before the end of its life (§5.4), booked in the period the
+capacity leaves. It buys nothing and appears alongside the `Capex` of whatever replaced
+it, so the two must not be netted. A run with `stranding_factor = 0` emits the column with
+zeros throughout rather than omitting it, so that two runs stay column-comparable.
 
 **`Capex` and `Capex_lump` are two views of the same money** — annuitised stream and
 build-year spike. Never sum them.
@@ -1844,7 +2247,7 @@ detected and not surfaced here is a defect, not a silent success.
 
 ## 9. Performance and parallelisation
 
-*Section last updated: 2026-08-21*
+*Section last updated: 2026-08-26*
 
 ### 9.1 The scaling argument
 
@@ -1856,6 +2259,15 @@ per-premise size, so:
 - **Problem size per premise is constant** — bounded by the technologies serving its
   activity's processes.
 - **No shared state** between premise solves.
+
+**D11 does not change this, provided $e$ and $r$ are declared over $K^0$ only** (§5.2).
+Incumbent technologies are a small subset of the technology set — a premise runs one kiln,
+not all four kinds — so the two new variable families add of the order of a few per cent
+to the per-premise variable count, not a third. Declaring them over the whole of $K$
+instead would add two variables per technology per period for technologies that have no
+existing capacity to age, which is both wasteful and meaningless. $\theta$ and $\bar R$ are
+parameters computed in A4 and cost nothing at solve time, and the problem remains a pure
+LP (§5.3.1), so §9.3's solver argument is unaffected.
 
 ### 9.2 Scale gates
 
@@ -1904,11 +2316,11 @@ Two cautions carried from COMIT:
 
 ## 10. Validation and test plan
 
-*Section last updated: 2026-08-25*
+*Section last updated: 2026-08-26*
 
 ### 10.1 How to read this section
 
-Fifteen tests. Each is specified with the same six fields, so that a test can be
+Seventeen tests. Each is specified with the same six fields, so that a test can be
 implemented from this section alone:
 
 | Field | Meaning |
@@ -2418,24 +2830,100 @@ which process drives the peak. Step 5 is the one that matters before extension 1
 its failure mode is a premise quietly reported as a completed least-cost pathway when the
 reinforcement it implies was never priced.
 
+#### V17 — Plant vintage and retirement coherence
+
+**Checks.** That plant age is resolved from the best evidence available, that ageing and
+the stranding charge are internally coherent, and that a premise with no vintage evidence
+behaves exactly as it did before D11.
+
+**Scope.** Premise (steps 1–4, 7) and Release (steps 5, 6, 8). **Blocking.** Partly —
+steps 3, 5, 6 and 8 are blocking; steps 1, 2, 4 and 7 are advisory reports.
+
+**Procedure.**
+
+```
+1. FOR a premise with premise_process_vintage rows:
+       ASSERT capacity_share sums to 1 within 1e-6 per (premise, process)
+       ASSERT every commissioned_year <= premise_record.data_year
+       IF any cohort age exceeds the technology lifetime:
+           REPORT plant_overage. DO NOT reject, adjust or discard the row.
+2. ASSERT vintage_evidence_tier on every output row for an incumbent technology
+   matches the input actually present: process_known only where a vintage row
+   was supplied, premise_bounded only where a construction year or band was.
+3. FOR EACH incumbent technology k:
+       ASSERT theta[k, t0] = 1
+       ASSERT theta is non-increasing in t and lies in [0, 1] throughout
+       ASSERT R-bar[k, t] >= 0 and is non-increasing in t
+4. Single-scrap test. Take a solved premise. Force one unit of incumbent
+   capacity of technology k to retire in period t, one period earlier than
+   theta alone would have removed it, and re-solve with everything else held.
+       ASSERT the objective rises by exactly
+              discount(t) x capex(k) x stranding_factor x R-bar[k,t] / lifetime(k)
+       Repeat with stranding_factor = 0 and ASSERT the rise is zero.
+5. Natural-death test. Construct a premise whose incumbent capacity leaves only
+   through theta -- no early retirement anywhere in the solution.
+       ASSERT total Stranded value across all periods = 0.
+6. Regression test. Run a premise with no vintage evidence at all, under
+   vintage_default = uniform_life and stranding_factor = 0.
+       ASSERT the incumbent survival path equals COMIT's
+              max(0, E - (E / lifetime) x (year - start_year))
+       at every period.
+7. ASSERT remaining_life_years on output is anchored on year_of(t0), by
+   re-running the same premise with data_year changed and nothing else, and
+   confirming remaining_life_years is unmoved.
+8. Retrofit test. Solve a premise whose least-cost path retrofits its incumbent
+   technology rather than replacing it.
+       ASSERT Stranded value for the base technology = 0 in every period
+       ASSERT the retrofit capacity retires on the BASE technology's survival
+              path, not on a fresh lifetime starting at the retrofit year
+```
+
+**Pass criterion.** Steps 3, 5, 6 and 8 hold exactly, to **1e-9**. Step 4 holds within
+**1e-6**. Steps 1, 2 and 7 hold exactly. A `plant_overage` report is a pass, not a
+failure.
+
+**On failure.** Two of these steps are guarding specific, likely implementation errors and
+are worth reading as such.
+
+**Step 5 is the important one.** It fails when the implementation charges
+$e_{k,t-1} - e_{k,t}$ rather than the increment to the early-retirement gap (§5.5 C4d) —
+that is, when it bills the premise for plant that died of old age. The symptom is
+insidious: costs inflate most at the oldest and least modernised sites, which are exactly
+the sites where a high cost looks plausible and will not be questioned.
+
+**Step 6 fails when the default tier is not the COMIT-equivalent one.** If it does, no
+result from this model can be compared against any pre-D11 run or against COMIT itself,
+because the difference will be a mixture of the change under test and an unintended change
+in the baseline. Fix this before interpreting a single D11 result.
+
+**Step 8 guards the option that matters most.** A retrofit billed as a scrapping makes
+CCS and similar bolt-on abatement look far more expensive than it is, at precisely the
+cement, lime and steel premises where it is the only real lever. A failure here suppresses
+abatement rather than inflating it, so it will not show up as an implausible cost — it
+shows up as a site that quietly never decarbonises.
+
+Step 4 failing while 3 and 5 pass points at the coefficient rather than the structure —
+usually $\bar R$ taken at $t-1$ instead of $t$, or divided by remaining life instead of
+full life.
+
 ### 10.4 What runs when
 
 | Stage | Tests |
 |---|---|
 | Reference data load | V3 (uniqueness, vector agreement), V4, V11 (structure), V14 (internal coherence), V15 (steps 1–5) |
-| Per premise | V2, V3 (conservation), V6, V11 (tier resolution), V12, V13 (comparison), V14 (A4 cross-check) |
+| Per premise | V2, V3 (conservation), V6, V11 (tier resolution), V12, V13 (comparison), V14 (A4 cross-check), V17 (steps 1–4, 7) |
 | Per batch | V8, V9, V13 (aggregate), V16 |
-| Per release | V1, V5, V7, V10, V15 (step 6) |
+| Per release | V1, V5, V7, V10, V15 (step 6), V17 (steps 5, 6, 8) |
 
-**Every test gates a phase.** §11 assigns each of the fifteen to the phase that builds
+**Every test gates a phase.** §11 assigns each of the seventeen to the phase that builds
 what it guards, and a test stays in force once introduced:
 
 | Phase | Tests first gating here |
 |---|---|
-| 1 — Architecture | V1, V2, V3, V4, V6, V7 (G1–G2), V10, V11; V12 and V14 conditionally (§11.5) |
+| 1 — Architecture | V1, V2, V3, V4, V6, V7 (G1–G2), V10, V11, V17; V12 and V14 conditionally (§11.5) |
 | 2 — Scenarios and aggregation | V8, V9, V13, V16; V12 and V14 if deferred |
 | 3 — Process taxonomy | V5, V15; V4 re-run across the new processes |
-| 4 — Full coverage | V7 (G3), and all of V1–V16 re-run on the full stock |
+| 4 — Full coverage | V7 (G3), and all of V1–V17 re-run on the full stock |
 
 A test whose inputs do not exist in its phase is **deferred with the reason recorded**,
 never marked passed — see §11.5.
@@ -2459,7 +2947,7 @@ provisioned before the phase that depends on it (§11):
 
 ## 11. Phasing with acceptance criteria
 
-*Section last updated: 2026-08-25*
+*Section last updated: 2026-08-26*
 
 Every test in §10 gates exactly one phase. A test first appears at the phase that builds
 the thing it guards, and **remains in force from then on** — a Phase 1 exit criterion is
@@ -2483,11 +2971,19 @@ needs are absent, §11.5 says what to do rather than leaving it silently unmet.
 | **V6** | Non-negativity is asserted where it holds and **not** where it does not |
 | **V10** | Results are reproducible and no state leaks between premise solves |
 | **V11** | Process sets are well formed and A2's tiering resolves in order |
+| **V17** | Plant ages, retires and strands coherently — and a premise with no vintage evidence reproduces the pre-D11 baseline exactly |
 | **V7** | G1 and G2 pass; G3 attempted and its result recorded |
 | **V12**, **V14** | Conditional — see §11.5 |
 
 *Deliberately shallow on process depth. If the architecture does not hold, this is where
 it should fail.*
+
+**Why V17 belongs in Phase 1.** D11 changes the shape of the LP — two new variable
+families and a rewritten C3/C4 — so it is part of the architecture V1 is trying to
+validate, not a later refinement. Its regression leg (step 6) is also what keeps V1
+meaningful: without it, a divergence from coupled-off COMIT could be the decomposition or
+could be the ageing rule, and there would be no way to tell which. Phase 1 premises need
+no vintage data for this: tier 3 is the default and steps 5 and 6 run on it.
 
 **Why V10 belongs here rather than later.** It is the test that detects state leaking
 between premise solves, and that is a defect in the core loop D2 depends on. Finding it
@@ -2549,7 +3045,7 @@ table that is about to change.
 | Test | What it establishes here |
 |---|---|
 | **V7** | G3 passes at full stock scale, or the archetype fallback is triggered (§9.2) |
-| **All of V1–V16** | Re-run on the full stock; nothing regressed as coverage widened |
+| **All of V1–V17** | Re-run on the full stock; nothing regressed as coverage widened |
 
 Plus: a complete GB run is produced with its confidence profile.
 
@@ -2559,6 +3055,13 @@ Plus: a complete GB run is produced with its confidence profile.
 on optional site intelligence — `premise_process_detail`, `premise_operating_profile`. If
 no premise in the Phase 1 activity set carries those inputs, the tests are vacuous rather
 than passing, and recording them as passed would be false.
+
+**V17 is deliberately not on that list.** Its blocking legs — natural death (step 5), the
+COMIT regression (step 6) and the retrofit rule (step 8) — run on the tier-3 default and
+on retrofit technologies COMIT already carries, so V17 can be exercised in Phase 1 with no
+vintage data at all. Only step 1 needs optional inputs, and it is advisory. This is a
+property worth preserving if the test is ever revised: a test that gates the architecture
+must not depend on data that may not arrive until Phase 3.
 
 **The rule.** A test whose inputs are absent is **deferred, with the reason recorded**,
 never marked passed. Deferral is permitted once, to the next phase. If the inputs are
@@ -2573,7 +3076,7 @@ scale gates, where structural validity is enough and realism is not required.
 
 ## 12. Reference map
 
-*Section last updated: 2026-08-25*
+*Section last updated: 2026-08-26*
 
 Where each specified behaviour currently lives in COMIT. Cited so an implementer in
 either language can verify against a working model.
@@ -2585,6 +3088,9 @@ either language can verify against a working model.
 | §5.4 | Capex annuitisation, PMT, truncation at horizon | `R/fct_finance.R`; `R/fct_create_cost_tables.R` |
 | §5.4 | Rebasing to base price year via deflators | `R/fct_finance.R:130` (`base_year_adjustment`) |
 | §5.5 | Constraint families | `R/fct_constraints_*.R` (17 files) |
+| §5.3.1, §6.1 | Straight-line decay of existing capacity — the tier-3 survival curve | `R/fct_constraints_capacity_transfer.R:252`; also `R/fct_constraints_existing_capacity.R:47`, which is switchable and marked *"not currently used"* |
+| §5.5 C3 | Capacity transfer, and the lifetime window on new build | `R/fct_constraints_capacity_transfer.R:244-245` |
+| §5.4 | Retrofit capacity decaying with the base technology's residual | `R/fct_constraints_capacity_transfer.R:262-263` |
 | §5.5 | Retrofit cost differencing | [notes/09](../notes/09_objective_function.md) |
 | §7.1 | Process vs fuel CO₂ split | `R/fct_emissions.R:255-290` |
 | §7.2 | Non-CO₂; capture fixed at zero | `R/fct_emissions.R:308-330`, esp. `:327-328` |
@@ -2612,12 +3118,14 @@ commodity list (§7.4), the biomass category string (§7.3), non-CO₂ capture f
 
 ## 13. Worked example
 
-*Section last updated: 2026-08-24*
+*Section last updated: 2026-08-26*
 
 Moved to a companion document so this specification stays a reference rather than a
 narrative: **[2026-08-19-carb3-site-decarbonisation-worked-example.md](2026-08-19-carb3-site-decarbonisation-worked-example.md)**.
 
 It carries one cement premise end to end through A1–A9, exercising every input entity —
 long-format energy including a waste-derived fuel row, known process detail and capacity,
-measured emissions, operating schedule and load shapes — and re-runs the same premise
-with the optional intelligence withheld to isolate what it buys.
+plant vintage, measured emissions, operating schedule and load shapes — and re-runs the
+same premise with the optional intelligence withheld to isolate what it buys. The vintage
+walkthrough is worth reading alongside §5.3.1: it works the same kiln through all three
+tiers and shows the stranding charge deciding between retrofit and rebuild.

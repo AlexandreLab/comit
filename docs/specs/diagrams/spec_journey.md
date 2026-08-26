@@ -14,7 +14,7 @@ sequenceDiagram
     participant A1 as A1 Ingest and validate premise records
     participant A2 as A2 Expand premise to its process set
     participant A3 as A3 Allocate premise energy across processes
-    participant A4 as A4 Back-solve implied existing capacity
+    participant A4 as A4 Back-solve implied existing capacity and vintage
     participant A5 as A5 Apply the infrastructure scenario
     participant A6 as A6 Build the per-premise optimisation problem
     participant A7 as A7 Solve and extract
@@ -39,11 +39,14 @@ sequenceDiagram
     A3->>A4: hand off
     deactivate A3
     activate A4
+    Stock->>A4: premise_record
     Ref->>A4: commodity
     Ref->>A4: technology
     Ref->>A4: technology_input_output
+    Scen->>A4: scenario_parameters
     Stock->>A4: premise_process_detail
     Stock->>A4: premise_operating_profile
+    Stock->>A4: premise_process_vintage
     A4->>A5: hand off
     deactivate A4
     activate A5
@@ -60,6 +63,7 @@ sequenceDiagram
     A7->>A8: hand off
     deactivate A7
     activate A8
+    Stock->>A8: premise_record
     Ref->>A8: commodity
     Ref->>A8: technology
     A8-->>Out: site_pathway
@@ -80,5 +84,6 @@ sequenceDiagram
     Stock->>A9: premise_process_detail
     Stock->>A9: premise_measured_emissions
     Stock->>A9: premise_operating_profile
+    Stock->>A9: premise_process_vintage
     deactivate A9
 ```

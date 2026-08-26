@@ -129,7 +129,7 @@ compete for a national total — so they **decouple**, and each becomes a small,
 independent optimisation. Scaling becomes a matter of running more of them, not of
 solving a bigger problem.
 
-## 6. The ten decisions
+## 6. The eleven decisions
 
 | # | Decision | What it buys | What it costs |
 |---|---|---|---|
@@ -143,6 +143,7 @@ solving a bigger problem.
 | **D8** | Great Britain scope | Keeps Grangemouth and Peterhead; matches expected stock coverage | Excludes Northern Ireland — 56 sites and the Londonderry cluster |
 | **D9** | Supersedes the site-heterogeneity PRD | One direction, no conflicting roadmaps | Retires work already specced against the model that runs today |
 | **D10** | Tiered site intelligence — known site detail replaces activity defaults | Real sites modelled as themselves wherever evidence exists; the model improves as intelligence accumulates, without redesign | Mixed-evidence results; every output must carry its evidence tier or the quality is invisible |
+| **D11** | Existing plant has an age — it retires when its life ends, and early replacement pays the residual value | Replacement timing becomes an economic result instead of an artefact; near-new plant stops being scrapped for free | A vintage assumption for every premise with no age data, and one more parameter (λ) to defend |
 
 ### On D5 — why two denominators
 
@@ -193,6 +194,50 @@ silently mixes surveyed sites with defaulted ones and reads as uniformly reliabl
 This also means the model gets better as intelligence accumulates, with no structural
 change — new site knowledge is new rows, not a new design.
 
+### On D11 — the asymmetry that made plant free to scrap
+
+The model as specified before this decision had no notion of how old anything was. A
+three-year-old furnace and a nineteen-year-old one were the same object: both could be
+abandoned at no cost the moment something cheaper to run appeared. That is not a
+calibration problem, it is a structural one, and it comes from a single asymmetry in the
+objective.
+
+**New capacity pays for its whole life.** Capex is financed as a level annuity over the
+technology's lifetime, and those instalments are charged every period from the build year
+to the end of life *whether or not the plant is still running*. **Incumbent capacity pays
+nothing**, because it was built before the model starts and appears in no capex term at
+all. So the model faced a real cost to build and no cost to scrap, and behaved
+accordingly: it replaced plant whenever the fuel-and-carbon saving cleared the annuitised
+capex of the replacement, with no reference to whether the incumbent was new.
+
+Real operators do not do this, and the reason is not sentiment. The loan on a
+three-year-old furnace does not disappear when the furnace does. D11 charges incumbent
+plant the same unpaid balance a new build would owe — its residual value, straight-line in
+remaining life — so that scrapping something new is expensive and scrapping something worn
+out is nearly free. It is the same financing treatment COMIT already applies to new build,
+applied consistently to plant that happens to predate the model's start year.
+
+**Age comes from evidence, in three tiers, exactly as in D10.** Where the commissioning
+year of a process is known, it is used. Where it is not but the premise's construction year
+is, that bounds plant age from above — plant cannot predate the building — which is cheap,
+already held in stock data, and decisive on young sites. Where neither exists, capacity is
+assumed uniformly spread across every age from new to end-of-life.
+
+**That third tier is what COMIT already does**, and this is the part worth pausing on.
+COMIT decays existing capacity linearly to zero over one technology lifetime. That straight
+line has always been the survival curve of a uniformly-aged fleet — it was a vintage
+assumption all along, simply never named as one. D11 names it, makes it the fallback, and
+lets better evidence displace it. A premise with no age data therefore behaves exactly as
+it does today, and setting λ to zero turns the economic half off entirely, so the whole
+decision can be switched out and the difference measured.
+
+**What it costs.** Most premises will sit in tier 3 for a long time, so most of the stock
+is still ageing on an assumption — and it is now an assumption doing visible work on
+replacement timing rather than sitting quietly inside a constraint. λ is a genuine
+judgement, not a measurement. And life extension through major refurbishment is not
+modelled at all, which makes heavily-refurbished plant retire earlier here than it will in
+reality.
+
 ### On D7 — the deliberate simplification
 
 For cement, steel and chemicals sites, CCS and hydrogen are *the* decarbonisation
@@ -215,7 +260,7 @@ exactly the coupling D2 removes, so it is not the default.
 
 ## 7. What is lost, stated plainly
 
-Anyone reading results from this model needs to know these five things:
+Anyone reading results from this model needs to know these six things:
 
 1. **No infrastructure co-optimisation.** Where H₂ and CO₂ pipelines get built is an
    input, not an output.
@@ -263,7 +308,7 @@ existing technology structure from
 
 | Phase | Content | What it proves |
 |---|---|---|
-| **1** | Input contract; per-site solve using **existing** COMIT technologies, 2–3 activities | Decoupling works; the per-site problem solves; parallelism scales |
+| **1** | Input contract; per-site solve using **existing** COMIT technologies, 2–3 activities; plant ageing and the stranding charge (D11) | Decoupling works; the per-site problem solves; parallelism scales; replacement timing is economic rather than accidental |
 | **2** | Infrastructure scenarios; GB aggregation and comparison against ECUK/GHGI | Aggregates are credible without coupling |
 | **3** | Process taxonomy for the highest-energy activities — Cement, Iron & steel, Chemicals, Food & drink, Paper | Unit-operation modelling is tractable and the data obtainable |
 | **4** | Remaining activities; full-stock run | Coverage |
@@ -282,4 +327,6 @@ the data work than after.
 | **Tier-3 proxy cost estimates** | A meaningful share of technologies will have proxy costs with no calibration anchor | Mandatory `provenance` and `confidence` fields; results filterable by confidence; proxies concentrated in low-energy activities |
 | **Sensitivity to the infrastructure scenario (D7)** | Cement/steel/chemicals pathways may swing entirely on the assumption | Always run at least two bounding scenarios; never publish a single-scenario result for clustered sites |
 | **Stock model quality (D4)** | Everything downstream inherits its errors, and this design has no independent check | Validation gate on ingestion; GB aggregate comparison against ECUK/GHGI as an outside check |
+| **Plant vintage is assumed for most premises (D11)** | Replacement timing now depends on an age the model has usually guessed, and the guess drives both when plant must be replaced and what replacing it early costs | The default tier reproduces COMIT's existing assumption, so nothing regresses; `stranding_factor = 0` disables the economic half for an A/B; every output row carries its vintage tier, so results can be split by how much rested on a real commissioning date |
+| **No life extension through refurbishment (D11)** | Major overhauls genuinely extend plant life; the model has no way to represent one, so refurbished plant retires earlier here than in reality — biasing towards *more* replacement, not less | Recorded as a known gap in implementation §5.3.1; representing it needs a life-extension option competing against replacement in the technology set, which is a data build rather than a model change |
 | **Scale may still not reach "every premise"** | Linear scaling is necessary but not sufficient — memory and orchestration also bind | Explicit scale gates at 10k / 100k / 1M premises in Phase 1, before the data build |

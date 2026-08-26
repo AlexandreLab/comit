@@ -2,7 +2,7 @@
 
 Generated from [the implementation specification](../2026-08-19-carb3-site-decarbonisation-implementation.md) by `docs/notes/examples/build_spec_flow_diagram.py`. Do not edit by hand — regenerate.
 
-The 15 entities of §3 with their fields and foreign keys. `+` marks a required field, `-` an optional one; `PK` marks a primary-key part and `FK` a foreign key. Arrows read many-to-one.
+The 16 entities of §3 with their fields and foreign keys. `+` marks a required field, `-` an optional one; `PK` marks a primary-key part and `FK` a foreign key. Arrows read many-to-one.
 
 ```mermaid
 classDiagram
@@ -14,6 +14,9 @@ classDiagram
         +enum nation
         -real floorspace
         -string process_set_id FK
+        -integer construction_year
+        -string construction_year_band
+        -integer last_refurbishment_year
         +integer data_year
         +string source
     }
@@ -121,7 +124,6 @@ classDiagram
         -string connection_id FK
         -real known_capacity
         -string technology_code FK
-        -integer commissioned_year
         +string provenance
         +enum confidence
     }
@@ -174,6 +176,16 @@ classDiagram
         +string provenance
         +enum confidence
     }
+    class premise_process_vintage {
+        +string premise_id PK
+        +string process_id PK
+        +string cohort_id PK
+        -string technology_code FK
+        +integer commissioned_year
+        +real capacity_share
+        +string provenance
+        +enum confidence
+    }
     premise_record "*" --> "1" activity_process_register : carb3_activity
     premise_record "*" --> "1" activity_process_register : process_set_id
     premise_energy "*" --> "1" premise_record : premise_id
@@ -199,4 +211,6 @@ classDiagram
     process_load_shape "*" --> "1" commodity : process_id
     premise_weekly_profile "*" --> "1" premise_record : premise_id
     premise_weekly_profile "*" --> "1" premise_connection : connection_id
+    premise_process_vintage "*" --> "1" premise_record : premise_id
+    premise_process_vintage "*" --> "1" technology : technology_code
 ```
