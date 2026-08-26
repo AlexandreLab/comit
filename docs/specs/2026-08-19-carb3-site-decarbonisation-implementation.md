@@ -827,7 +827,7 @@ radius get `available = false` for hydrogen and CO₂ transport.
 | `fuel_price` | real per commodity per period | £m/PJ | yes | — |
 | `fuel_emission_factor` | real per commodity per period | kt/PJ | yes | — |
 | `stranding_factor` | real | fraction | yes | **D11.** ξ ∈ [0, 1]. Share of an incumbent asset's residual value charged when it is retired early (§5.4). Default **1.0**. Setting it to 0 removes the charge but does **not** on its own reproduce pre-D11 behaviour — see the COMIT-equivalent configuration in §5.4 |
-| `stability_factor` | real | fraction | yes | **σ in C6.** ≥ 0. Was never declared as an input before; C6 has always required it |
+| `stability_factor` | real | fraction | yes | **σ in C6.** ≥ 0. Measured against deliverable output, not previous activity (§5.5 C6). Was never declared as an input before, though C6 has always required it |
 | `vintage_default` | enum{uniform_life, no_ageing} | — | yes | **D11.** The tier-3 assumption where no vintage evidence exists (§5.3.1). Default `uniform_life`, which reproduces COMIT's linear decay. `no_ageing` holds incumbent capacity at full survival and exists only as a diagnostic contrast |
 
 ### 3.9 `site_pathway` — output
@@ -1354,6 +1354,13 @@ POST:   an infeasible premise is reported with the constraint group responsible
 **Rule.** Infeasible premises are reported, never dropped. A run's summary must state
 how many premises failed and why.
 
+**C6 should no longer be the answer for a premise that simply ran out of plant.** Before
+its 2026-08-27 reformulation, C6's decline leg could not follow a forced retirement down,
+so an ageing failure surfaced as a stability failure one rung higher in this ladder and
+sent the reader after the wrong constraint. C6's capacity allowance removes that
+collision; if relaxing C6 still restores feasibility on a premise whose plant is retiring,
+treat it as evidence the allowance was not implemented, not as a stability problem.
+
 **Why forced ageing sits third (D11).** C4b is the one constraint that can make a
 previously-feasible premise infeasible purely because plant reached the end of its life:
 the incumbent capacity goes, and if no replacement technology is available in that period
@@ -1500,7 +1507,7 @@ be preserved — any proposal to add binaries must be weighed against §9.
 | $f_{c,t}$ | `scenario_parameters.fuel_emission_factor` | Emission factor, kt/PJ |
 | $\pi_t$ | `scenario_parameters.carbon_price_*` | Carbon price (traded or untraded) |
 | $\tau_{c,t}$ | `infrastructure_scenario.unit_tariff` | Infrastructure tariff (D7) |
-| $\sigma$ | `scenario_parameters.stability_factor` | Maximum fractional swing in activity between periods (C6) |
+| $\sigma$ | `scenario_parameters.stability_factor` | Maximum swing in activity between periods, as a fraction of deliverable output (C6) |
 | $r$ | `scenario_parameters.discount_rate` | Discount rate |
 | $i$ | `scenario_parameters.interest_rate` | Interest rate |
 
@@ -1879,9 +1886,57 @@ express it.
 $$n_{k,t_0} = 0 \qquad \forall k$$
 
 **C6 — Technology stability.** Activity may not swing more than a configured fraction
-$\sigma$ between consecutive periods:
+$\sigma$ between consecutive periods, measured against the output the technology's
+*available capacity* could deliver, and with an allowance for capacity that has just
+arrived or just left. Writing $\bar u_{k,t} = a_{k,t}\,\gamma_k\,\alpha_k$ for that
+deliverable output — the right-hand side of C2 — the two legs are:
 
-$$|u_{k,t} - u_{k,t-1}| \le \sigma \, u_{k,t-1} \qquad \forall k,\, t > t_0$$
+$$\text{growth:}\quad u_{k,t} - u_{k,t-1} \;\le\; \sigma \, \bar u_{k,t-1} \;+\; \big(\bar u_{k,t} - \bar u_{k,t-1}\big) \qquad \forall k,\, t > t_0$$
+
+$$\text{decline:}\quad u_{k,t-1} - u_{k,t} \;\le\; \sigma \, \bar u_{k,t-1} \;+\; \big(\bar u_{k,t-1} - \bar u_{k,t}\big) \qquad \forall k,\, t > t_0$$
+
+Both legs are linear in the decision variables, so the problem stays an LP.
+
+**Why this is not the obvious form $|u_{k,t} - u_{k,t-1}| \le \sigma u_{k,t-1}$.** That
+version, which this specification carried until 2026-08-27, provably admits no technology
+change at all. C5 sets $n_{k,t_0} = 0$ for every technology; C3 then gives
+$a_{k,t_0} = 0$ for any $k \notin K^0$; C2 forces $u_{k,t_0} = 0$; and a bound of
+$\sigma \times 0$ pins the next period to zero as well. By induction no technology outside
+$K^0$ can ever operate, and once C4(b) ages the incumbent out, C1 cannot be met and every
+premise is infeasible. Multiplying a fraction by a base that starts at zero is a
+zero-forever trap, and it is invisible until a solver reports an infeasibility nobody can
+explain.
+
+**Both legs carry the capacity allowance, and the decline leg needs it because of D11.**
+It is tempting to give the allowance only to growth — entry is the problem, after all. But
+when C4(b) retires plant, $\bar u$ falls to zero and activity *must* follow, by more than
+$\sigma$ permits. A decline leg without the allowance would make forced retirement
+infeasible, which is precisely the collision A7's relaxation ladder lists as *forced
+ageing (C4b)*. With the allowance, full retirement gives a slack of
+$(1 + \sigma)\bar u_{k,t-1}$, which always exceeds $u_{k,t-1}$, so the constraint can never
+block a retirement the model did not choose.
+
+**What each leg does, in the three cases that matter.** Capacity flat: both reduce to
+$\sigma \bar u$, damping swings on installed plant, which is the constraint's whole point
+and the one thing D11's economics does not price — switching between two technologies
+already standing on the site costs no stranded value. Capacity newly built: the growth
+allowance is the whole increment, so a new plant may run at full output in its first
+period rather than creeping up over $1/\sigma$ periods. Capacity retired: the decline
+allowance is the whole decrement, so activity may follow it down.
+
+$\sigma$ is now measured against deliverable output rather than previous activity, so a
+value calibrated for the old form does not carry over unchanged.
+
+**One residual, stated rather than hidden.** The allowance is signed, so it loosens the leg
+it points at and tightens the other. A technology whose capacity *grows* therefore cannot
+also cut its own activity by more than $\sigma$ in the same period. Making the allowance
+one-sided needs $\max(0, \cdot)$ on a decision variable, which costs either a binary — and
+§5.2 is explicit that the pure-LP property is worth defending — or an unbounded slack the
+solver would exploit to make C6 vacuous. The case is left in because building capacity in
+order to run it less is not a path a cost-minimising model takes: capacity costs capex, and
+the only route to negative net capex is retrofit differencing, where C4's $\hat e$ rules
+already govern the capacity. If a future scenario makes it binding, that is the point to
+spend a binary on it.
 
 **C7 — Known changes.** Where a premise has an announced commitment, the corresponding
 $u_{k,t}$ or $a_{k,t}$ is fixed or bounded.
@@ -2074,7 +2129,7 @@ stages of §2.1 — the two were both numbered `C` until the stages were renamed
 | `existing_capacity` | C4 | Sourced from A4, not from sector share. **Rewritten by D11** — see below |
 | `capacity_transfer` | C3 | **Changed.** Restated in explicit vintage form; the incumbent residual becomes a decision variable where COMIT pins it with an equality, and the retrofit decay moves to C4 |
 | `known_changes` | C7 | Unchanged |
-| `tech_stability` | C6 | **Not equivalent.** COMIT's is a floor on use of newly built capacity over a `stability_length` window, for a named subset of technologies, and its source file records it as *"currently in development and is not in use"* (`R/fct_constraints_tech_stability.R:1`). C6 is a symmetric ramp limit on all technologies. There is no legacy behaviour to preserve here |
+| `tech_stability` | C6 | **Not equivalent.** COMIT's is a floor on use of newly built capacity over a `stability_length` window, for a named subset of technologies, and its source file records it as *"currently in development and is not in use"* (`R/fct_constraints_tech_stability.R:1`). C6 is a two-legged ramp limit on all technologies, reformulated 2026-08-27 against deliverable output. There is no legacy behaviour to preserve here, which is what made the reformulation free |
 | `no_building_in_start_year` | C5 | Unchanged |
 | `intermediate_commodities` | C8 | Unchanged |
 
