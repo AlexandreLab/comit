@@ -1429,7 +1429,8 @@ This section is the authoritative definition. Everything else serves it.
 
 | Symbol | Meaning |
 |---|---|
-| $T$ | Model periods, $t \in \{t_0, t_0 + \Delta, \ldots, t_N\}$ |
+| $T$ | Model periods, indexed $t \in \{0, 1, \ldots, N\}$, with $t_0 = 0$ the first. **$t$ is an index, not a year** — see below |
+| $\Delta$ | `scenario_parameters.timestep`, in years |
 | $Q$ | Processes at this premise (from A2) |
 | $K$ | Technologies available, $K = \bigcup_{q \in Q} K_q$ |
 | $K_q$ | Technologies serving process $q$ |
@@ -1438,6 +1439,22 @@ This section is the authoritative definition. Everything else serves it.
 | $C^{\text{fuel}}$ | Fuel commodities, $C^{\text{fuel}} \subset C$ |
 | $C^{\text{proc}}$ | Process-emission commodities, $C^{\text{proc}} \subset C$ |
 | $C^{\text{int}}$ | Intermediate commodities, $\{c \in C : \texttt{commodity\_kind} = \texttt{intermediate}\}$ (§3.4). Used by C8 |
+
+**On $t$ — read this before implementing any constraint.** $t$ is a **period index**, not
+a calendar year. The calendar year of period $t$ is $y_t = y_{t_0} + \Delta t$, and $t-1$
+always means *the previous period*, never *the previous year*. Both readings were present
+in earlier drafts of this section and they diverge as soon as $\Delta > 1$, which is the
+normal case — §9.3 notes COMIT runs 5-year timesteps.
+
+The consequence is that **any lifetime used as an index offset must be converted to
+periods first**:
+
+$$\ell_{k,s} = \left\lceil L^{\text{ann}}_{k,s} / \Delta \right\rceil$$
+
+$\ell$ is what appears in the payment and survival windows of $Z^{\text{capex}}$ and C3;
+$L$ itself stays in years and is used only where the surrounding arithmetic is also in
+years, as in §5.3.1, which works entirely in calendar years through $y_t$. A 25-year life
+on a 5-year timestep is 5 periods; reading it as 25 periods is a 125-year asset.
 
 ### 5.2 Decision variables
 
@@ -1604,19 +1621,35 @@ rather than a wrong date, and silently moving the date would hide that.
 
 Minimise total present-value cost over the horizon:
 
-$$\min \; Z = \sum_{t \in T} \delta_t \Big( Z^{\text{capex}}_t + Z^{\text{opex}}_t + Z^{\text{fuel}}_t + Z^{\text{carbon}}_t + Z^{\text{infra}}_t + Z^{\text{strand}}_t \Big)$$
+$$\min \; Z = \sum_{t \in T} \Big[\; \delta_t \big( Z^{\text{capex}}_t + Z^{\text{opex}}_t + Z^{\text{fuel}}_t + Z^{\text{carbon}}_t + Z^{\text{infra}}_t \big) \;+\; d_t \, Z^{\text{strand}}_t \;\Big]$$
 
-where $\delta_t$ is the present-value factor for period $t$, aggregated over the
-timestep — matching the treatment described in
-[notes/09](../notes/09_objective_function.md).
+where $\delta_t$ is the present-value factor for period $t$ **aggregated over the
+timestep** — matching the treatment described in
+[notes/09](../notes/09_objective_function.md) — and $d_t$ is the **single-year**
+present-value factor at the start of period $t$.
+
+**Two discount factors, because the terms are two different kinds of quantity.** The five
+inside $\delta_t$ are annual flows: fixed opex is £m/yr, fuel and carbon are consumed
+year by year, and the capex annuity is a per-year instalment. Aggregating over a $\Delta$-year
+timestep is right for all of them. Stranded value is not a flow — it is a one-off write-off
+booked in the period the capacity leaves (§8.4). Multiplying it by the aggregated factor
+would charge the same write-off once for every year in the timestep, so at $\Delta = 5$ a
+£55m write-off enters the objective as roughly £275m and early replacement looks five times
+more forbidding than it is. V17 step 4 asserts the single-year factor.
 
 **Capex — annuitised.** Capital is financed and repaid in level instalments over the
 technology lifetime, truncated at the horizon:
 
-$$Z^{\text{capex}}_t = \sum_{k \in K} \sum_{s \le t} n_{k,s} \, \kappa_k \, \mathrm{PMT}(1, i, L^{\text{ann}}_{k,s}) \cdot \mathbb{1}[\,s \le t \le s + L^{\text{ann}}_{k,s} - 1\,]$$
+$$Z^{\text{capex}}_t = \sum_{k \in K} \sum_{s \le t} n_{k,s} \, \kappa_k \, \mathrm{PMT}(1, i, L^{\text{ann}}_{k,s}) \cdot \mathbb{1}[\,s \le t \le s + \ell_{k,s} - 1\,]$$
 
 where $\mathrm{PMT}(1, i, L)$ is the level annuity payment on unit principal at rate $i$
-over $L$ periods.
+over $L$ **years**, and $\ell_{k,s}$ is that same lifetime expressed in **periods** (§5.1).
+
+**Only the window converts; the instalment does not.** $Z^{\text{capex}}_t$ is an annual
+figure, like $Z^{\text{opex}}_t$, and $\delta_t$ is what spreads it across the $\Delta$
+years of the period. Scaling the instalment by $\Delta$ as well would charge the timestep
+twice. The indicator is the one place the mismatch bites, because it compares a lifetime
+against a period *index*.
 
 **Effective lifetime, and why it is one symbol used in two places (D11).** A retrofit dies
 with the plant it is bolted to (C4 retrofit rule), so define
@@ -1660,9 +1693,24 @@ $$Z^{\text{fuel}}_t = \sum_{k \in K} \sum_{c \in C^{\text{fuel}}} u_{k,t} \, |\i
 
 **Carbon.**
 
-$$Z^{\text{carbon}}_t = \pi_t \cdot \mathrm{Em}_t$$
+$$Z^{\text{carbon}}_t = 10^{-3} \, \pi_t \cdot \mathrm{Em}_t$$
 
 with $\mathrm{Em}_t$ the period's chargeable emissions from §7.
+
+**The $10^{-3}$ is a unit conversion, not a fudge, and it must not be dropped.** Carbon
+price is quoted in **£/t** (§3.8) because that is how UK ETS and DESNZ appraisal values are
+published, and changing that would make the input contract hostile for no gain. Emissions
+are in **kt** (§3.8, §8.3). Every other term in this objective is in **£m** — `capex`
+(§3.5), `fixed_opex` (§3.5), `fuel_price` (§3.8) and `unit_tariff` (§3.7) are all declared
+that way. £/t × kt gives £ thousands, so the product must be scaled by $10^{-3}$ to reach
+£m. Written without it, a £100/t price on 50 kt evaluates to 5,000 rather than the correct
+£5m, and carbon outweighs fuel and capex by three orders of magnitude — a model that
+electrifies everything at any cost, for a reason no output table would reveal.
+
+Carbon is the only term needing this, precisely because it is the only one whose price is
+declared in £/t rather than £m. An implementation may instead hold the price in £m/kt and
+drop the factor; if it does, say so at the input boundary, because the number a reader
+recognises as a carbon price will then be a thousandth of the published figure.
 
 **Infrastructure (D7).** COMIT carries four separate infrastructure PV terms
 (`PV_CO2_national_transport`, `PV_CO2_pipe_cluster_to_site`, `PV_H2_pipe_national`,
@@ -1712,7 +1760,7 @@ one.
 **Why this is not a sunk-cost fallacy.** The objection writes itself: the money is spent,
 so a rational operator should ignore it. But look at what the capex term above actually
 does. A new build pays $\mathrm{PMT}$ instalments for every period from $s$ to
-$s + L_k - 1$ **whether or not the plant is still running** — the loan does not care that
+$s + \ell_{k,s} - 1$ **whether or not the plant is still running** — the loan does not care that
 the asset was abandoned. Incumbent capacity, by contrast, appears in no capex term at all,
 so it is free to abandon the moment something cheaper to run comes along. That asymmetry
 is the defect. A three-year-old furnace and a nineteen-year-old one are, to the objective
@@ -1744,12 +1792,12 @@ $$u_{k,t} \le a_{k,t} \, \gamma_k \, \alpha_k \qquad \forall k,\, t$$
 **C3 — Capacity transfer between periods.** Available capacity is what survives of the
 incumbent plant plus every new build still inside its own life:
 
-$$a_{k,t} = e_{k,t} + \sum_{s \le t} n_{k,s} \, \mathbb{1}[\,s \le t \le s + L^{\text{ann}}_{k,s} - 1\,] \qquad \forall k,\, t$$
+$$a_{k,t} = e_{k,t} + \sum_{s \le t} n_{k,s} \, \mathbb{1}[\,s \le t \le s + \ell_{k,s} - 1\,] \qquad \forall k,\, t$$
 
 with $e_{k,t} \equiv 0$ for $k \notin K^0$, and $L^{\text{ann}}_{k,s}$ as defined in §5.4 —
 the technology's own lifetime, except for a retrofit, which expires with its host. This
 states explicitly what the recursive form left to the phrase *"retirements reaching end of
-life"*: new capacity leaves the fleet $L^{\text{ann}}$ periods after it is built, and
+life"*: new capacity leaves the fleet $\ell$ periods after it is built, and
 incumbent capacity is governed by C4.
 
 **The retrofit case is the reason this window is not simply $L_k$.** Give a retrofit its
@@ -2540,7 +2588,15 @@ stock model supplied — i.e. that the back-solve is self-consistent.
 4. Compare against the premise_energy quantities for the same vectors.
 ```
 
-**Pass criterion.** Reproduces the supplied per-vector energy within **1%**.
+**Pass criterion.** Reproduces the supplied per-vector energy within **1e-6**.
+
+**Why 1e-6 and not a percentage.** Step 2 is the exact algebraic inverse of what A4 did:
+A4 set `existing_capacity` and `utilisation` by inverting
+`output x capacity_to_activity_factor x utilisation`, and this test runs that same
+expression forwards. Nothing is estimated in between, so the round trip is exact to
+machine precision and any percentage tolerance would mask a real defect rather than absorb
+a modelling approximation. A4's own POST and V12 step 1 both already state 1e-6; this
+criterion previously said 1% and was the outlier.
 
 **On failure.** The chain from energy to capacity has lost information. Check in this
 order: a zero or wrong-signed `io_coefficient`; an `availability_factor` of zero;
@@ -2998,7 +3054,9 @@ steps 3, 5, 6 and 8 are blocking; steps 1, 2, 4 and 7 are advisory reports.
    capacity of technology k to retire in period t, one period earlier than
    theta alone would have removed it, and re-solve with everything else held.
        ASSERT the objective rises by exactly
-              discount(t) x capex(k) x stranding_factor x R-bar[k,t] / lifetime(k)
+              d[t] x capex(k) x stranding_factor x R-bar[k,t] / lifetime(k)
+              where d[t] is the SINGLE-YEAR present-value factor of §5.4,
+              not the timestep-aggregated delta[t]
        Repeat with stranding_factor = 0 and ASSERT the rise is zero.
 5. Natural-death test. Construct a premise whose incumbent capacity leaves only
    through natural ageing -- no early retirement anywhere in the solution.
