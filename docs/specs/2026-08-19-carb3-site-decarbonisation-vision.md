@@ -171,8 +171,10 @@ activity default throws away the best information available.
 So process detail is **tiered**, most specific first:
 
 1. **Known site** — the site's actual process list, and where known its installed
-   technology, capacity, commissioning year, operating schedule and measured load
-   statistics.
+   technology, capacity, operating schedule and measured load statistics. *When* that
+   plant was commissioned is deliberately not here: vintage has its own parallel ladder
+   under D11, resolved per technology rather than per premise, so a site can be D10 tier 1
+   and D11 tier 3 at the same time.
 2. **Named route** — the site is known to run one of several recognised routes for its
    activity, so that route's process set is used.
 3. **Activity default** — no site-specific intelligence; the default set applies.
@@ -227,9 +229,11 @@ assumed uniformly spread across every age from new to end-of-life.
 COMIT decays existing capacity linearly to zero over one technology lifetime. That straight
 line has always been the survival curve of a uniformly-aged fleet — it was a vintage
 assumption all along, simply never named as one. D11 names it, makes it the fallback, and
-lets better evidence displace it. A premise with no age data therefore behaves exactly as
-it does today, and setting λ to zero turns the economic half off entirely, so the whole
-decision can be switched out and the difference measured.
+lets better evidence displace it. A premise with no age data therefore **ages** exactly as
+it does today. Switching the decision out entirely takes more than that — the charge set to
+zero, the default tier in force, and early retirement disallowed — because giving plant the
+ability to retire at all is itself a change. The implementation spec states the three
+conditions together as the COMIT-equivalent configuration, and one validation test runs it.
 
 **What it costs.** Most premises will sit in tier 3 for a long time, so most of the stock
 is still ageing on an assumption — and it is now an assumption doing visible work on
@@ -327,6 +331,6 @@ the data work than after.
 | **Tier-3 proxy cost estimates** | A meaningful share of technologies will have proxy costs with no calibration anchor | Mandatory `provenance` and `confidence` fields; results filterable by confidence; proxies concentrated in low-energy activities |
 | **Sensitivity to the infrastructure scenario (D7)** | Cement/steel/chemicals pathways may swing entirely on the assumption | Always run at least two bounding scenarios; never publish a single-scenario result for clustered sites |
 | **Stock model quality (D4)** | Everything downstream inherits its errors, and this design has no independent check | Validation gate on ingestion; GB aggregate comparison against ECUK/GHGI as an outside check |
-| **Plant vintage is assumed for most premises (D11)** | Replacement timing now depends on an age the model has usually guessed, and the guess drives both when plant must be replaced and what replacing it early costs | The default tier reproduces COMIT's existing assumption, so nothing regresses; `stranding_factor = 0` disables the economic half for an A/B; every output row carries its vintage tier, so results can be split by how much rested on a real commissioning date |
+| **Plant vintage is assumed for most premises (D11)** | Replacement timing now depends on an age the model has usually guessed, and the guess drives both when plant must be replaced and what replacing it early costs | The default tier reproduces COMIT's existing survival curve, so the ageing assumption does not regress; `stranding_factor = 0` disables the economic half for an A/B (full pre-D11 equivalence needs the three conditions in implementation §5.4); every output row carries its vintage tier, so results can be split by how much rested on a real commissioning date |
 | **No life extension through refurbishment (D11)** | Major overhauls genuinely extend plant life; the model has no way to represent one, so refurbished plant retires earlier here than in reality — biasing towards *more* replacement, not less | Recorded as a known gap in implementation §5.3.1; representing it needs a life-extension option competing against replacement in the technology set, which is a data build rather than a model change |
 | **Scale may still not reach "every premise"** | Linear scaling is necessary but not sufficient — memory and orchestration also bind | Explicit scale gates at 10k / 100k / 1M premises in Phase 1, before the data build |

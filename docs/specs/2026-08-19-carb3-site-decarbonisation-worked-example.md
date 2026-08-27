@@ -24,7 +24,7 @@ answer is not a sharper number but a different pathway.
 ```
 premise_id                   P-000123
 carb3_activity               Cement Works
-process_set_id               dry_kiln_preheater        -- the activity default
+process_set_id               —                          (absent ⇒ the activity default)
 nation                       England
 latitude / longitude         53.35 / -1.75
 floorspace                   —                          (not supplied)
@@ -73,7 +73,7 @@ not:
    known.
 3. **Biomass is absent, meaning nobody assessed it** — which is *not* the same claim.
    Carrier coverage for this premise is therefore recorded as incomplete and reported in
-   §8.5 (§3.1.1, absence rule).
+   §8.6 (§3.1.1, absence rule).
 
 ### 1.4 `premise_throughput` (§3.1.2)
 
@@ -149,8 +149,11 @@ requires.
 
 **No rows for the other five processes**, and that is not an omission — unlike §1.5, this
 table asserts nothing about completeness. The mills and the packing plant fall through to
-tier 2, which on a 1957 works is slack, and therefore to tier 3. So this premise resolves
-its kiln at `process_known` and everything else at `uniform_default`, in the same solve.
+tier 2 and are aged from the works' 1957 construction year. On a site that old the bound is
+slack, so the window it produces is identical to tier 3's — but the tier recorded is
+`premise_bounded`, not `uniform_default`, because the label says which evidence was
+consulted, not whether it bit. So this premise resolves its kiln at `process_known` and
+everything else at `premise_bounded`, in the same solve.
 That mixture is the normal case, not an edge case.
 
 **What a second line would look like.** A works whose second kiln was added in 2016 would
@@ -168,7 +171,9 @@ once in 2050: too late for the old line and too early for the new one.
 - `carb3_activity` is one of the 55 Factory-class activities (D1).
 - Energy sums to 4.38 PJ/yr > 0.
 - No negative quantities; every row's `vector` agrees with its commodity's category.
-- Carrier coverage recorded: **five of six vectors stated, biomass unassessed.**
+- Carrier coverage recorded: **four of the five main vectors stated, biomass
+  unassessed** — plus a waste-derived-fuel row on the `other` vector, which sits outside
+  the five-vector coverage metric (§3.1.1, A1 step 10c).
 - A `premise_throughput` row exists, as the activity requires (else `missing_throughput`).
 - `commissioned_year` 2004 ≤ `data_year` 2024, so the vintage row is accepted; shares sum
   to 1.00 (else `vintage_in_future` or `vintage_shares_unbalanced`, §3.15).
@@ -239,7 +244,7 @@ signalled an error in the capacity, the coefficients or the energy, and none of 
 inputs could have told us which.
 
 **Vintage (D11, §5.3.1).** Scenario `central` runs 2025 to 2050 in five-year periods, so
-$t_0$ = 2025, with `stranding_factor` λ = 1.0. The kiln's lifetime is `L` = 40 years and
+$t_0$ = 2025, with `stranding_factor` ξ = 1.0 (λ is the peak factor of §10, not this). The kiln's lifetime is `L` = 40 years and
 its capex `κ` = £260m per Mt/yr of capacity.
 
 The tiers resolve per technology, not per premise:
@@ -247,7 +252,7 @@ The tiers resolve per technology, not per premise:
 | Process | Tier | Age window at 2025 | Why |
 |---|---|---|---|
 | `kiln_pyroprocessing` | `process_known` | point mass at 21 years | §1.9 gives the cohort year, 2004 |
-| The other five | `uniform_default` | [0, 40] | No cohort row; the 1957 bound is slack |
+| The other five | `premise_bounded` | [0, 40] | No cohort row, so the 1957 construction year is used; the bound is slack, so the window matches tier 3's — but the label records that the evidence was consulted |
 
 For the kiln, the final operating year is 2004 + 40 − 1 = **2043**:
 
@@ -343,7 +348,7 @@ Rows per process × technology × period across `Outputs`, `Energy`, `Emissions`
 - the **lower** of the technology's and the energy profile's confidence
 - the carrier-coverage flag from A1 — incomplete, biomass unassessed
 - the utilisation derived in A4
-- `vintage_evidence_tier` — `process_known` on the kiln rows, `uniform_default` on the
+- `vintage_evidence_tier` — `process_known` on the kiln rows, `premise_bounded` on the
   other five processes, since the tiers resolve per technology (§5)
 - `commissioned_year = 2004` on the kiln rows and **blank** on the rest. The other five
   do have a working age assumption, but writing its midpoint here would make an inferred
@@ -414,7 +419,7 @@ second example, but the same one re-run to isolate what the optional inputs cont
 | A2 | Process set from the permit; `site_known` | Activity default set; `activity_default` |
 | A4 | Capacity **known** 0.950 Mt; utilisation derived 0.890 | Capacity **inferred** 0.939 Mt at assumed availability 0.90; utilisation not independently known |
 | A4 checks | Three cross-checks, all passing | One — implied output vs declared throughput |
-| A4 vintage | Kiln aged from its 2004 permit date; `process_known`; stands whole until 2043 | Uniform default; `uniform_default`; 12.5% of the kiln already gone by 2030 |
+| A4 vintage | Kiln aged from its 2004 permit date; `process_known`; stands whole until 2043 | Aged from the 1957 construction year; `premise_bounded`, but the bound is slack so the window is tier 3's; 12.5% of the kiln already gone by 2030 |
 | Replacement timing | Free to wait for CCS in 2035; nothing forced | A 0.108 Mt/yr shortfall from **2030**, forcing an unabated rebuild five years before CCS exists |
 | Early switching | Write-off exact: £55.6m at 2035, falling £30.9m a period | Write-off is a pool average, £97.5m per Mt/yr at 2035, and overstates the cost of scrapping the oldest capacity (§5.3.1) |
 | §7.6 | Divergence measured at 1.5%; measured split adopted | No reconciliation possible; computed split stands unexamined |
@@ -424,7 +429,7 @@ second example, but the same one re-run to isolate what the optional inputs cont
 The two capacity figures differ by only 1.2%, which is reassuring rather than
 disappointing — it says the back-solve is sound for sites where nothing better exists.
 What tier 1 changes is not primarily the number but **how much of the answer is
-checkable**: four independent cross-checks become one.
+checkable**: three independent cross-checks become one.
 
 **Vintage is the exception, and it is a large one.** Everywhere else in this table the
 optional inputs sharpen a number the model would have got roughly right anyway. Here they
