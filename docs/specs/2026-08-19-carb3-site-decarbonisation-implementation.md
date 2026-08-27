@@ -376,6 +376,13 @@ Great Britain — England, Wales, Scotland. Consequences the implementation must
 
 *Section last updated: 2026-08-26*
 
+**Also published standalone** as
+[interfaces/input-data-model.md](interfaces/input-data-model.md), for people who supply
+data to the model and have no reason to hold the rest of this specification. That file is
+**generated from this section** — edit here, then run
+`python3 docs/notes/examples/build_interface_docs.py`. A field table maintained in two
+places is a field table that will disagree with itself.
+
 Eighteen entities. Each is specified as a field table. Types are abstract (§1.3).
 
 The premise input contract is the first four — `premise_record` and its three long
@@ -2294,6 +2301,11 @@ not have taken from the same vintage.
 ## 8. Output schema
 
 *Section last updated: 2026-08-26*
+
+**Also published standalone** as
+[interfaces/output-data-schema.md](interfaces/output-data-schema.md), for people who
+consume results. Generated from this section on the same terms as §3 — edit here and
+re-run the builder.
 
 Reuse the structure documented in [notes/12](../notes/12_output_data_schema.md), extended
 with a **process** dimension. Convention: long in dimensions, wide in periods; the period
