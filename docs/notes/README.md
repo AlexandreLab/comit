@@ -40,6 +40,22 @@ Design documents live in [`../specs/`](../specs/).
 | [2026-08-19-carb3-site-decarbonisation-worked-example.md](../specs/2026-08-19-carb3-site-decarbonisation-worked-example.md) | **Worked example.** One cement premise carried end to end through A1–A9 with every input entity populated, plus the same premise re-run without site intelligence to show what the optional inputs contribute |
 | [2026-08-05-site-heterogeneity-prd.md](../specs/2026-08-05-site-heterogeneity-prd.md) | ⚠️ **Superseded** by the three above. Site-level baselines, plans and pathways (F0–F6) specced against the current coupled model |
 
+### v2 migration plan — proposed re-architecture, under review
+
+Five independently reviewable documents planning a move from COMIT's *(sector × process ×
+fuel)* technology table to a carrier network fed by generic units, so that onsite
+generation, storage, CHP and graded heat become representable. **Nothing here is built
+yet, and the implementation spec above stays authoritative and frozen as the COMIT-parity
+baseline.**
+
+| Doc | Topic |
+|-----|-------|
+| [2026-08-28-carb3-site-energy-system-overview.md](../specs/2026-08-28-carb3-site-energy-system-overview.md) | **Start here.** Why the current structure blocks onsite generation, storage and waste-heat recovery; the seven decisions taken; the review findings and the defects they surfaced in existing documents |
+| [2026-08-28-carb3-site-energy-system-architecture.md](../specs/2026-08-28-carb3-site-energy-system-architecture.md) | **The design.** Three layers with a carrier balance between them, the graded-heat cascade, the hybrid unit spine, the two-tier temporal structure that lets storage have a value without breaking §9, and the eight existing assets it reuses |
+| [2026-08-28-carb3-site-energy-system-spec-changes.md](../specs/2026-08-28-carb3-site-energy-system-spec-changes.md) | **What changes in the spec text.** Entity and constraint changes as before/after tables, four new validation tests plus one new parity test, a test-coverage diagram, a failure-mode table with two critical gaps, and the nine things that break in the worked example |
+| [2026-08-28-carb3-site-energy-system-data-migration.md](../specs/2026-08-28-carb3-site-energy-system-data-migration.md) | **The data work.** Nineteen items in five ordered groups covering the 397-row technology collapse, the `technology_category` split, the missing decarbonisation-option join, and the inputs the model does not yet have |
+| [2026-08-28-carb3-site-energy-system-delivery.md](../specs/2026-08-28-carb3-site-energy-system-delivery.md) | **Sequencing.** Files to create and modify, twelve tasks with effort estimates, six parallelisation lanes, an explicit not-in-scope list, and the verification commands |
+
 ## Conventions
 - Units (from the workbook `Contents` sheet): energy/capacity in **PJ** (GW for CHP),
   emissions in **kt/Mt CO₂e**, cost in **£m**, distance in **km**, prices based to **2021**.

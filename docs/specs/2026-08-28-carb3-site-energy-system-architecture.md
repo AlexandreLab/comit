@@ -1,0 +1,142 @@
+# CaRB3 Site Energy System — Architecture
+
+**Status:** Draft v1 for review
+**Date:** 2026-08-28
+**Scope:** Great Britain · CaRB3 **Factory class** only (55 activities)
+**Part of:** the v2 migration plan. The design itself, and what it reuses.
+
+**This plan is five documents.** Read the overview first; the other four are independent.
+
+| Doc | For | |
+|---|---|---|
+| [Overview and decisions](2026-08-28-carb3-site-energy-system-overview.md) | everyone — start here |  |
+| [Architecture](2026-08-28-carb3-site-energy-system-architecture.md) | modellers | **you are here** |
+| [Spec changes and tests](2026-08-28-carb3-site-energy-system-spec-changes.md) | whoever writes the v2 spec |  |
+| [Data migration](2026-08-28-carb3-site-energy-system-data-migration.md) | whoever owns the data tables |  |
+| [Delivery](2026-08-28-carb3-site-energy-system-delivery.md) | whoever schedules the work |  |
+
+> **This plans work; it does not specify it.** The v2 specification itself
+> (`2026-08-28-carb3-site-energy-system-implementation.md`) does not exist yet — writing it is task T4.
+
+---
+
+## The architecture
+
+### Three layers, one balance
+
+```
+  ┌─────────────────────────────────────────────────────────────────┐
+  │ LAYER 1 — DUTIES              what the site must produce        │
+  │   process_duty[q,t]  →  demand for a CARRIER at a GRADE         │
+  │   "0.85 Mt clinker"            "3.9 PJ/yr of heat@>1000C"       │
+  └───────────────────────────┬─────────────────────────────────────┘
+                              │  C1  duty satisfaction
+  ┌───────────────────────────┴─────────────────────────────────────┐
+  │ LAYER 2 — UNITS               what converts between carriers    │
+  │   ~35 units: boiler, heat_pump, CHP, kiln, PV, battery,         │
+  │   electrolyser, AD, thermal_store, CCS_train, motor, dryer      │
+  │   each: input carriers (−) → output carriers (+), capex, life   │
+  └───────────────────────────┬─────────────────────────────────────┘
+                              │  C8  CARRIER BALANCE  (the core change)
+                              │      Σ_k u[k,t]·ι[k,c] + m[c,t] − x[c,t] = 0
+  ┌───────────────────────────┴─────────────────────────────────────┐
+  │ LAYER 3 — CONNECTIONS         what crosses the site boundary    │
+  │   premise_connection (§3.1.3, collected but never read)         │
+  │   import m[c,t] @ tariff · export x[c,t] @ export price         │
+  │   bounded by import_capacity / export_capacity per connection   │
+  └─────────────────────────────────────────────────────────────────┘
+```
+
+**C8 generalised from intermediates to every carrier is the single change that makes the
+rest work.** Today `C8` balances only `c ∈ C^int`; electricity is a priced fuel with
+unconstrained supply. Once every carrier balances, PV / CHP / electrolysers / AD are
+ordinary units and need no special class. Note 09's grid-rate fudge disappears: CHP
+becomes gas in, heat and electricity out.
+
+### Graded heat and the cascade
+
+Heat becomes `heat@band` with a one-way cascade — high grade may serve a low-grade duty,
+never the reverse. This is an ordering in the balance, still LP.
+
+```
+  heat@>1000C  ──┐  kiln, glass furnace                (chemistry duties)
+       │         │
+  heat@400-1000C ┤  HT furnace                          cascade flows
+       │         │  ══════════════════════════════════▶ DOWNWARD ONLY
+  heat@150-400C  ┤  steam boiler, HT heat pump
+       │         │
+  heat@60-150C   ┤  boiler, heat pump, WASTE HEAT ◀──── kiln reject heat
+       │         │                                      enters here
+  heat@<60C      ┘  heat pump, space heat
+```
+
+Two things fall out for free: **waste heat recovery becomes representable** (a kiln's
+reject heat is a low-grade supply, which is exactly the source a heat pump needs), and
+**the heat pump COP stops being a constant** — it is declared against the lift, so the
+current situation where `IFDSTMHP01` (steam) carries the same `33.333` coefficient as
+`IFDLTHELCHP01` (low-temperature hot water) cannot recur.
+
+### Unit spine — hybrid (Issue 2)
+
+The 94 process codes are sector-prefixed. Stripping the 3-character prefix leaves 24 duty
+families. The split follows D5's existing two-denominator line:
+
+| Class | Keying | Examples | Denominator |
+|---|---|---|---|
+| **Energy services** | Family-keyed generic units | `LTH`, `HTH`, `STM`, `DRY`, `MOT`, `SPC`, `OTH`, `REF` | PJ |
+| **Chemistry** | Node-keyed per-process units | `CLK`, `HVC`, `PIR`, `LST`, `SNT`, `HRS`, `MRG`, `OIL` | Mt |
+
+Sector specificity moves out of the unit identity and into `unit_eligibility`.
+
+### Two-tier temporal structure (D2)
+
+```
+  TIER A — OFFLINE, high time resolution, run once per archetype
+  ┌──────────────────────────────────────────────────────────────┐
+  │  ~200-400 archetypes = activity × load shape × schedule × size│
+  │  typical-day or hourly dispatch over a grid of design points  │
+  │      │                                                        │
+  │      ├── ψ(design_ratio)  PV self-consumption fraction        │
+  │      ├── β(design_ratio)  storage firm-capacity contribution  │
+  │      ├── χ                CHP heat-utilisation fraction        │
+  │      └── λ, peak-to-mean  (already specified in §5.6)          │
+  │  piecewise-linearised over 3-5 segments  ───────────┐         │
+  └─────────────────────────────────────────────────────┼─────────┘
+                                                        ▼
+  TIER B — PER-PREMISE INVESTMENT LP, annual, 5-year steps
+  ┌──────────────────────────────────────────────────────────────┐
+  │  consumes ψ, β, χ as PARAMETERS → stays a pure LP (§5.2)      │
+  │  D2 decomposition intact · §9 tractability argument intact    │
+  └──────────────────────────────────────────────────────────────┘
+```
+
+The investment decision needs a *correct annualised cost*, not hourly resolution. That
+cost depends on hourly behaviour only through a handful of aggregate numbers. Computing
+them a few hundred times instead of 300k times is the whole leverage.
+
+### Lumpiness — an architectural rule, not a per-technology hack
+
+Real units come in sizes, and `R/fct_constraints_hydrogen.R:650` plus
+`R/fct_decision_variables.R:597` show what happens otherwise: a binary per technology per
+site, which is the MILP D7 removed. Rule for v2:
+
+> Minimum viable scale is handled by **eligibility screening upstream** (a site below the
+> threshold never gets the unit in its candidate set, decided in A2) and by **reporting
+> downstream** (§6.3's "reported comparison, not constraint" pattern). Never by a binary
+> inside the per-premise LP.
+
+---
+
+## What already exists (reuse, do not rebuild)
+
+| Asset | Path | How v2 uses it |
+|---|---|---|
+| `technology_input_output` sign convention | spec §3.6 (789–804) | Becomes `unit_input_output` **near-unchanged**. Consumed negative, produced positive is exactly what the carrier balance needs. §7's formulae depend on it and keep working. |
+| `premise_connection` | spec §3.1.3 (492–537) | Already carries `import_capacity`, `export_capacity`, `connection_voltage`, `onsite_generation_*`. Collected specifically for this; **nothing reads it today**. v2 reads it. |
+| §5.6 peak-derivation pseudocode | spec 2060–2085 | The 14-step method, `process_load_shape` (§3.13), `premise_operating_profile` (§3.12), `premise_weekly_profile` (§3.14) are the Tier A inputs. Do not invent a parallel mechanism. |
+| D10 three-tier evidence pattern | vision §6, spec §3.3.2 | Reused verbatim for grades, areas, COPs and ψ/β provenance. |
+| D11 vintage and stranding | spec §5.3.1, C4 | Generalises to units unchanged. η and R̄ stay parameters; the K⁰ scoping that keeps §9.1 honest still applies. |
+| `Z^infra` tariff collapse | spec §5.4 (1729–1741) | The import-tariff term for every carrier, not just H₂/CO₂. |
+| `build_interface_docs.py` relinker | `docs/notes/examples/` | Parameterised, not forked (Issue 3). |
+| `build_spec_flow_diagram.py` | `docs/notes/examples/` | Regenerates all three diagram artefacts from the spec. Diagram work is *regenerate*, not redraw. |
+| Decarb options library | `decarbonisation_options_library.csv` | 134 options with provenance and TRL. Its own README's suggested next step is this migration. |
