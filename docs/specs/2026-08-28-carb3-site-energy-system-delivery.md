@@ -31,7 +31,6 @@
 | `docs/notes/examples/validate_carb3_data.py` | Stdlib-only validator (Issue 4) |
 | `docs/notes/examples/spec_docs.config.json` | Section anchors, own-prefix, label ranges (Issue 3) |
 | `Makefile` | `make docs-check` / `make data-check` |
-| `TODOS.md` | The process + decarb-option migration list (below) |
 
 ### Modify
 
@@ -118,6 +117,19 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Surfaced by: PD1 — v1 stays as the parity baseline and readers must know which doc is which
   - Files: v1 spec header, `docs/notes/README.md`
   - Verify: index lists both with the distinction stated
+- [ ] **T13 (P1, human: ~1 day / CC: ~30min)** — spec — Write v2 §4 (algorithms), resolving A4's carrier-mix rule and A7's ladder rungs
+  - Surfaced by: Review issue 2 — `spec-changes.md` called A4's under-determination "the deepest change" and left it unfixed; issue 6 — the ladder rung was flagged and unowned
+  - Files: v2 spec §4, §8.1 (`mix_evidence_tier`), §10 (V23)
+  - Verify: V1b has a determinate v2 baseline to compare against, which it does not today
+  - **Blocks T5** — V1b cannot be defined against an under-determined A4
+- [ ] **T14 (P1, human: ~1 day / CC: ~30min)** — spec — Write v2 §7 (emissions attribution under carriers)
+  - Surfaced by: Review issue 1 — §7 was never addressed; the only claim was an unverified "§7's formulae keep working"
+  - Files: v2 spec §7, §10 (V22)
+  - Verify: V22's three legs pass on a `gas → boiler → heat → dryer` chain including a recovered-heat leg
+- [ ] **T15 (P2, human: ~2h / CC: ~10min)** — spec — Add the G4 Tier A scale gate and the V20 (e) concavity leg
+  - Surfaced by: Review issues 7 and 8 — the archetype build has no cost gate, and the interpolation-safety argument is unchecked
+  - Files: v2 spec §9.2, §10 (V20)
+  - Verify: G4 has a stated wall-clock budget; V20 (e) runs at load scope
 
 ---
 

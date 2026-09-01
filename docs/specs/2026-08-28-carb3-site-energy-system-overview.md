@@ -121,5 +121,25 @@ pure LP.
 - Worked example A3 shares (coal 0.97 to the kiln) disagree with
   `../notes/data/activity_process_energy_profile.csv` (1.0).
 
+### Second engineering review, 2026-09-01
+
+Run against the merged documents. Eight findings, four of them P1, all folded in. Three
+were gaps where the plan changed something and then said nothing about the consequence.
+
+| # | Finding | Confidence | Resolution |
+|---|---|---|---|
+| 1 | **§7 emissions accounting never addressed.** The only claim was "§7's formulae keep working" — the formulae do, the *attribution* does not | 10/10 | New §7 change section + V22 (T14) |
+| 2 | **§4 algorithms never addressed**, and A4's break was named "the deepest change" then left unfixed. V1b cannot run against an under-determined A4 | 10/10 | New §4 table with the carrier-mix tier rule + V23 (T13) |
+| 3 | **Waste heat had no data item.** Claimed as a headline justification; grades say what a unit accepts, not what it rejects | 9/10 | New data item B5, reject-heat coefficients |
+| 4 | **"~35 units" contradicted "preserve 57 non-fuel archetypes"**, and "24 duty families" counted 16 sector-root codes as duties | 10/10 | Recomputed: **~95 units**, 12 service families + 14 chemistry nodes |
+| 5 | `TODOS.md` claimed as written; did not exist | 10/10 | Dropped — this document is the list |
+| 6 | A7 relaxation ladder rung flagged and unowned | 10/10 | Rungs C12 → C10 → C11 specified in §4 |
+| 7 | The concavity claim making hybrid interpolation safe was argued in prose and checked nowhere | 8/10 | V20 (e) |
+| 8 | Tier A had no scale gate, and it is the new expensive thing | 8/10 | New gate G4 |
+
+Findings 4 and the item recount are the third and fourth instances this week of a count
+written into prose without being counted, which is now a logged lesson and a rule in
+`CLAUDE.md`.
+
 No unresolved decisions. An independent second-model review was not run (codex not
 installed on the authoring machine).

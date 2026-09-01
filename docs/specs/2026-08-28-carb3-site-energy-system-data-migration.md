@@ -22,7 +22,9 @@
 
 ## TODO list — processes and decarbonisation options
 
-Written to `TODOS.md`. Groups run in order; items inside a group are parallel.
+**This document is the list.** Groups run in order; items inside a group are parallel.
+There is deliberately no root `TODOS.md` — a second copy of these items would drift from
+this one, and this document is already indexed and cross-linked from the other four.
 
 ### Group A — taxonomy split (blocks everything)
 
@@ -35,8 +37,11 @@ Written to `TODOS.md`. Groups run in order; items inside a group are parallel.
 - **A3.** Resolve `Dry kiln` (n=1). Obvious taxonomy leak; decide unit_type vs mis-tag.
 - **A4.** Build the `carrier` table from the 18 fuel commodity codes; add `heat@band`
   grades and the cascade ranking.
-- **A5.** Derive the 24 duty families from the 94 process codes; classify each as service
-  (family-keyed) or chemistry (node-keyed) per Issue 2.
+- **A5.** Derive the duty families from the 94 process codes, **excluding the 16
+  sector-root codes** (`ICH`, `ICN`, `ICR`, `IEE`, `IFD`, `IME`, `INF`, `IOI`, `IPR`,
+  `ITX`, `IVH`, `ICM`, `IGL`, `IIS`, `ILM`, `IPP`) which are sector-level demand
+  commodities and not duties. Expect 12 service families and 14 chemistry nodes; classify
+  each per Issue 2. An earlier draft said 24 families, which counted the sector roots.
 
 ### Group B — the collapse
 
@@ -48,6 +53,14 @@ Written to `TODOS.md`. Groups run in order; items inside a group are parallel.
   (LTH/HTH/STM/DRY/SPC). Non-nullable — see failure mode #6.
 - **B4.** Re-derive heat pump COP from grade lift, replacing the flat `33.333` (LTH, DRY,
   **and STM**) and `25` (SPC) coefficients.
+- **B5.** **Reject-heat coefficients — without these, waste heat recovery does not work at
+  all.** For every heat-consuming unit, state the fraction of input rejected and the grade
+  it is rejected at, as a *positive* `unit_input_output` coefficient on a low-grade heat
+  carrier. Grades alone (B3) say what a unit can *accept*, not what it *throws away*; with
+  no reject coefficient every unit rejects zero, the cascade has nothing to cascade, and
+  the 28 `efficiency_heat_recovery` options in the library stay unmodellable. Use D10
+  evidence tiers — expect most rows to start at the weakest tier, and say so rather than
+  hiding it.
 
 ### Group C — decarbonisation options
 
