@@ -81,10 +81,12 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Surfaced by: verified — spec lines 380 and 2306 sit inside both extracted ranges and `fix_relative_paths` does not depth-adjust them
   - Files: `build_interface_docs.py:136-140`
   - Verify: link resolves from `docs/specs/interfaces/`
-- [ ] **T4 (P1, human: ~2 days / CC: ~60min)** — spec — Write v2 §1–§5 (carrier network, graded heat, units, two-tier temporal)
+- [x] **T4 (P1, human: ~2 days / CC: ~60min)** — spec — Write v2 §1–§5 (carrier network, graded heat, units, two-tier temporal)
   - Surfaced by: PD1 + PD2 + Issue 2
   - Files: `docs/specs/2026-08-28-carb3-site-energy-system-implementation.md`
   - Verify: `make docs-check`; diagrams regenerate
+  - **Done for §1, §2, §3 and §5.** 9 entities, C1–C12, S0–S9. §4 left as a stub because T13 owns it — writing it here would duplicate that task and pre-empt the A4 decision it exists to make
+  - Satisfies the diagram parser contract: all 9 entities and their 72 fields parse, 19 foreign-key arrows resolve
 - [ ] **T5 (P1, human: ~4h / CC: ~20min)** — spec — Define V1b and the carrier-equivalent configuration
   - Surfaced by: Issue 1 — V1 step 4 compares per-technology capacity, which does not exist in v2
   - Files: v2 spec §10
