@@ -254,5 +254,44 @@ Nine things break and must be rewritten:
 **Additions the v1 example never had** (it claims A1–A9 but A6/A7 are prose only, A8 shows
 no rows, and A9 is never walked): show the solved LP for at least one period, show real
 output rows, and add a **PV + battery + connection-limit section** exercising C11, C12 and
-the ψ/β coefficients. That section is the entire point of v2 and the example is where it
-becomes legible.
+the ψ/β coefficients.
+
+### The cement works cannot demonstrate the carrier mechanism — a second example is required
+
+**This is the gap that matters most in this section.** Keeping the cement works is right
+for parity, but that premise is structurally blind to what v2 actually changed. Cement has
+exactly two process codes in the taxonomy, `ICMCLK` (clinker) and `ICM` (cement).
+**No `LTH`, no `STM`, no `DRY`, no `SPC`.** The consequences:
+
+| v2 mechanism | Demonstrable on a cement works? |
+|---|---|
+| Graded heat cascade (C10) | **No.** Clinker is one chemistry node at the top grade. Nothing cascades |
+| Competing units for a service duty | **No.** The kiln candidates differ by *fuel*, not by device |
+| Waste heat recovery (B5) | **No.** No low-grade duty exists to receive the reject heat |
+| CHP as a unit producing two carriers | **No.** Cement's only CHP is *fused inside* CCS rows — "Dry kiln with natural gas CHP and MEA CCS" — which is a bundled capture package, precisely the kind of fused row v2 exists to unbundle |
+| Mass denominator (D5), tier-1 vintage, stranding, CCS retrofit | **Yes**, and well. This is what the cement example is for |
+
+So the worked example, which is the document where the carrier model is supposed to become
+legible, would demonstrate everything except the thing that changed.
+
+**Add a second example on a food & drink site.** That sector carries `IFDLTH`, `IFDSTM`,
+`IFDDRY`, `IFDREF` and `IFDMOT`, and it exercises the mechanism directly:
+
+- **`IFDLTH` is the collapse in miniature.** Eight technologies today differing only by
+  fuel — biomass, coal, LPG, natural gas, hydrogen, electric, heat pump, low-temperature
+  steam — become **one `boiler` unit with five carrier bindings, plus `heat_pump`, plus
+  `electric_resistance`**, with the steam row becoming an intermediate-carrier consumer.
+  Eight rows to three units, shown rather than asserted.
+- **A 120 °C duty with real competition.** `heat@60-150C` served by boiler, CHP, heat pump
+  or electric, with C10 admitting a higher-grade steam boiler and excluding a heat pump
+  capped below the duty. This is the case a reader needs to see.
+- **A genuine cascade.** `IFDDRY` reject heat at low grade feeding a heat pump, which is
+  the B5 coefficient doing visible work.
+- **CHP as an ordinary unit** — gas in, heat and electricity out, with the electricity
+  entering the carrier balance rather than being priced at the grid rate as note 09 records
+  today.
+- PV, battery and the connection limit land far more naturally on a food site than on a
+  cement works.
+
+Keep both. Cement proves v2 did not break what v1 got right; food & drink proves v2 does
+what it was built for. Neither alone is sufficient.

@@ -123,7 +123,7 @@ pure LP.
 
 ### Second engineering review, 2026-09-01
 
-Run against the merged documents. Eight findings, four of them P1, all folded in. Three
+Run against the merged documents. Nine findings, five of them P1, all folded in. Three
 were gaps where the plan changed something and then said nothing about the consequence.
 
 | # | Finding | Confidence | Resolution |
@@ -136,6 +136,7 @@ were gaps where the plan changed something and then said nothing about the conse
 | 6 | A7 relaxation ladder rung flagged and unowned | 10/10 | Rungs C12 → C10 → C11 specified in §4 |
 | 7 | The concavity claim making hybrid interpolation safe was argued in prose and checked nowhere | 8/10 | V20 (e) |
 | 8 | Tier A had no scale gate, and it is the new expensive thing | 8/10 | New gate G4 |
+| 9 | **The planned worked example cannot demonstrate the carrier mechanism.** Cement has only `ICMCLK` and `ICM` — no `LTH`, `STM`, `DRY` or `SPC` — so no graded-heat cascade, no unit competition, no waste-heat sink, and CHP only fused inside CCS rows | 9/10 | Keep cement for parity; add a **food & drink** example for the mechanism (T16) |
 
 Findings 4 and the item recount are the third and fourth instances this week of a count
 written into prose without being counted, which is now a logged lesson and a rule in
