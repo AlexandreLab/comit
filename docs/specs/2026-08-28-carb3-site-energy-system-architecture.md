@@ -33,7 +33,7 @@
                               │  C1  duty satisfaction
   ┌───────────────────────────┴─────────────────────────────────────┐
   │ LAYER 2 — UNITS               what converts between carriers    │
-  │   ~35 units: boiler, heat_pump, CHP, kiln, PV, battery,         │
+  │   ~95 units: boiler, heat_pump, CHP, kiln, PV, battery,         │
   │   electrolyser, AD, thermal_store, CCS_train, motor, dryer      │
   │   + HYBRID units at a fixed sizing ratio: pv_battery_2h,        │
   │     chp_thermal_store, electrolyser_battery, hp_thermal_store   │
@@ -80,15 +80,37 @@ current situation where `IFDSTMHP01` (steam) carries the same `33.333` coefficie
 
 ### Unit spine — split (Issue 2)
 
-The 94 process codes are sector-prefixed. Stripping the 3-character prefix leaves 24 duty
-families. The split follows D5's existing two-denominator line:
+The 94 process codes are sector-prefixed. Stripping the 3-character prefix, and excluding
+the 16 sector-root codes that are sector-level demand commodities rather than duties,
+leaves **12 service duty families and 14 chemistry nodes**. The split follows D5's existing
+two-denominator line:
 
-| Class | Keying | Examples | Denominator |
+| Class | Keying | Members | Denominator |
 |---|---|---|---|
-| **Energy services** | Family-keyed generic units | `LTH`, `HTH`, `STM`, `DRY`, `MOT`, `SPC`, `OTH`, `REF` | PJ |
-| **Chemistry** | Node-keyed per-process units | `CLK`, `HVC`, `PIR`, `LST`, `SNT`, `HRS`, `MRG`, `OIL` | Mt |
+| **Energy services** | Family-keyed generic units | 12: `DRY`, `EN`, `HRS`, `HTH`, `LTH`, `MOT`, `NEUOTH`, `OTH`, `PHEAT`, `REF`, `SPC`, `STM` | PJ |
+| **Chemistry** | Node-keyed per-process units | 14: `IAM`, `ICMCLK`, `IGLMRG`, `IHVC`, `IISHRS`, `IISLST`, `IISPIR`, `IISSNT`, `ILMCLK`, `INDHFCOTH`, `IPPBPA`, `IPPPBD`, `IPPPBP`, `PRCOIL` | Mt |
 
 Sector specificity moves out of the unit identity and into `unit_eligibility`.
+
+**Where ~95 comes from, and why it is not ~35.** An earlier draft of this document said
+"~35 units", which cannot be right: B2 of the [data
+migration](2026-08-28-carb3-site-energy-system-data-migration.md) requires the **57
+non-fuel technologies** (CCS 25, heat pump 31, dry kiln 1) to survive as distinct
+archetypes, and 57 alone exceeds 35. The floor is
+
+```
+   12  service duty families
+ + 14  chemistry nodes
+ + 57  preserved non-fuel archetypes (B2)
+ + ~12 hybrid units (PD3)
+ ────
+  ~95  units
+```
+
+That is still a collapse from 397, and the maintainability argument survives it intact:
+adding hydrogen firing is one carrier row rather than N technology rows either way. But the
+number to quote is ~95. **Recompute it after Group B rather than carrying this figure
+forward** — it is a floor, not a result.
 
 ### Two-tier temporal structure (PD2)
 
