@@ -27,7 +27,8 @@
 | Path | What |
 |---|---|
 | `docs/specs/2026-08-28-carb3-site-energy-system-implementation.md` | The v2 spec |
-| `docs/specs/2026-08-28-carb3-site-energy-system-worked-example.md` | v2 worked example (same cement works) |
+| `docs/specs/2026-08-28-carb3-site-energy-system-worked-example-cement.md` | v2 worked example, cement works — proves parity with v1 (T10) |
+| `docs/specs/2026-08-28-carb3-site-energy-system-worked-example-food-drink.md` | v2 worked example, food & drink — proves the carrier mechanism (T16) |
 | `docs/notes/examples/validate_carb3_data.py` | Stdlib-only validator (Issue 4) |
 | `docs/notes/examples/spec_docs.config.json` | Section anchors, own-prefix, label ranges (Issue 3) |
 | `Makefile` | `make docs-check` / `make data-check` |
@@ -105,10 +106,16 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Surfaced by: Agent inventory — options keyed to CaRB3 `process_id`, technologies keyed to `output_commodity`, no join exists. PD3 adds hybrid units, which have no representation in a library where all 134 options are demand-side
   - Files: `decarbonisation_options_library.csv`, `process_decarbonisation_options.csv`, new `unit_bill_of_materials`
   - Verify: `make data-check`; 130 used options all resolve; the 12 legitimately optionless processes stay exactly 12; every hybrid unit's BOM shares sum to 1 and reconcile to its capex (V20 b)
-- [ ] **T10 (P1, human: ~1 day / CC: ~30min)** — spec — Rewrite the worked example on the same cement works, adding the PV/battery/connection section
+- [ ] **T10 (P1, human: ~1 day / CC: ~30min)** — spec — Rewrite the **cement** worked example, adding the PV/battery/connection section
   - Surfaced by: Nine structural breaks identified in the v1 example
-  - Files: `docs/specs/2026-08-28-carb3-site-energy-system-worked-example.md`
+  - Files: `docs/specs/2026-08-28-carb3-site-energy-system-worked-example-cement.md`
   - Verify: every asserted number recomputes; A6–A9 actually walked
+  - Scope: this example proves v2 did not break what v1 got right — mass denominator (D5), tier-1 vintage, stranding, CCS retrofit. It **cannot** show graded heat, unit competition or CHP; that is T16
+- [ ] **T16 (P1, human: ~1 day / CC: ~30min)** — spec — Write a second worked example on a **food & drink** site, exercising the carrier mechanism
+  - Surfaced by: Review issue 9 — cement has only `ICMCLK` and `ICM`, so no `LTH`/`STM`/`DRY`/`SPC`. The planned example is structurally blind to what v2 changed
+  - Files: `docs/specs/2026-08-28-carb3-site-energy-system-worked-example-food-drink.md`
+  - Verify: shows `IFDLTH`'s 8 fuel-variant technologies collapsing to 3 units; a 120 °C duty with boiler / CHP / heat pump / electric competing under C10; an `IFDDRY` reject-heat leg feeding a heat pump (B5); CHP producing heat **and** electricity into the carrier balance
+  - **Depends on:** T8 (Group A + B taxonomy), since the collapse it displays must be the real one
 - [ ] **T11 (P2, human: ~2h / CC: ~10min)** — docs — Vision doc revisions including the λ→ξ bug
   - Surfaced by: vision lines 74, 78 (the reuse justification this change contradicts), 146 and 240 (λ used for the stranding factor, which is ξ)
   - Files: `docs/specs/2026-08-19-carb3-site-decarbonisation-vision.md`
