@@ -131,9 +131,10 @@ wired today: there is no `.github/`, no `.githooks/`, and no `core.hooksPath`.
 
 | Check | Command | Status |
 |---|---|---|
-| Interface docs not stale | `python3 docs/notes/examples/build_interface_docs.py --check` | exists, **never run automatically** |
-| Diagrams not stale | — | **no `--check` mode exists** |
-| CaRB3 data key integrity | — | **no validator exists** |
+| Everything below, in one command | `make check` | exists, **never run automatically** |
+| Interface docs not stale | `make docs-check` | exists, **never run automatically** |
+| CaRB3 data consistency | `make data-check` | exists (T1), **never run automatically** |
+| Diagrams not stale | — | **no `--check` mode exists** (T2) |
 | R tests | `devtools::test()` | not gated |
 
 `build_interface_docs.py`'s own docstring says it exists "so a hook or CI step can refuse a
