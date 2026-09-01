@@ -66,7 +66,14 @@ Written to `TODOS.md`. Groups run in order; items inside a group are parallel.
   for one UK feedstock pool).
 - **C5.** Add the **supply units** the library has no concept of: PV, battery, thermal
   store, electrolyser, AD, CHP. All 134 current options are demand-side.
-- **C6.** Populate `unit_eligibility` including the minimum-scale screening thresholds
+- **C6.** Add the **hybrid units** (PD3), each at a fixed sizing ratio: `pv_battery`,
+  `chp_thermal_store`, `electrolyser_battery`, `hp_thermal_store`. Roughly 3 ratios × 4
+  pairings, so around 12 rows, not a combinatorial explosion. Keep the ratio set small and
+  deliberately chosen — every ratio is a separate Tier A dispatch run.
+- **C7.** Populate `unit_bill_of_materials` for every hybrid unit: component capacity
+  share, capex share and lifetime. This is what V20 (b) and (c) assert against, and what
+  lets outputs answer *how much battery does GB industry need*.
+- **C8.** Populate `unit_eligibility` including the minimum-scale screening thresholds
   that replace the MILP binary.
 
 ### Group D — new data the model does not have
@@ -77,7 +84,10 @@ Written to `TODOS.md`. Groups run in order; items inside a group are parallel.
   `scenario_parameters`.
 - **D3.** Biomethane as an `infrastructure_scenario` carrier with regional availability
   and tariff. Its constraint is a shared catchment, which D2 forbids modelling per-premise.
-- **D4.** Archetype definitions and the ψ/β/χ coefficient tables from Tier A.
+- **D4.** Archetype definitions and the ψ/β/χ/**ε** coefficient tables from Tier A, one
+  constant per coefficient per unit. **ε is non-nullable on flexible-load hybrids** —
+  without it `electrolyser_battery` is strictly dominated by a bare electrolyser and never
+  gets built, so the whole hybrid-unit mechanism silently does nothing (failure mode #8).
 
 ### Group E — hygiene, unblocked by the above
 

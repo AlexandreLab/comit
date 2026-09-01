@@ -82,17 +82,18 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Files: `build_interface_docs.py:136-140`
   - Verify: link resolves from `docs/specs/interfaces/`
 - [ ] **T4 (P1, human: ~2 days / CC: ~60min)** — spec — Write v2 §1–§5 (carrier network, graded heat, units, two-tier temporal)
-  - Surfaced by: D1 + D2 + Issue 2
+  - Surfaced by: PD1 + PD2 + Issue 2
   - Files: `docs/specs/2026-08-28-carb3-site-energy-system-implementation.md`
   - Verify: `make docs-check`; diagrams regenerate
 - [ ] **T5 (P1, human: ~4h / CC: ~20min)** — spec — Define V1b and the carrier-equivalent configuration
   - Surfaced by: Issue 1 — V1 step 4 compares per-technology capacity, which does not exist in v2
   - Files: v2 spec §10
   - Verify: the configuration is stated as precisely as §5.4's three-condition pre-D11 baseline
-- [ ] **T6 (P1, human: ~4h / CC: ~20min)** — spec — Close failure modes #3 and #5 with fallback tiers and evidence labels
-  - Surfaced by: Failure modes table — both are silent, untested and unhandled
+- [ ] **T6 (P1, human: ~3h / CC: ~15min)** — spec — Close failure mode #5 with a fallback tier and an evidence label
+  - Surfaced by: Failure modes table — a premise matching no archetype fails silently, untested and unhandled
   - Files: v2 spec §3 (`archetype_coefficient`), §8.1 (evidence fields)
   - Verify: every output row carries an archetype evidence tier
+  - Note: this was two gaps. The other, ψ extrapolated outside its fitted design-ratio range, was **removed** by the hybrid-unit decision (PD3) rather than tested for — a fixed sizing ratio leaves nothing to extrapolate along
 - [ ] **T7 (P1, human: ~4h / CC: ~20min)** — spec — New tie-break key, price-wedge rule, recomputed §9.1 arithmetic
   - Surfaced by: Issue 5 — §9.3's tie-break is `technology_code`, which v2 does not have
   - Files: v2 spec §9, §10 (V21)
@@ -101,10 +102,10 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Surfaced by: Issue 2 — `technology_category` conflates carrier, device and abatement across 397 rows
   - Files: `docs/notes/data/emissions_source_classification.csv` and successors
   - Verify: `make data-check`; explicit 397-row reconciliation, zero orphans
-- [ ] **T9 (P1, human: ~2 days / CC: ~45min)** — data — Group C decarbonisation options, especially the missing option→unit join
-  - Surfaced by: Agent inventory — options keyed to CaRB3 `process_id`, technologies keyed to `output_commodity`, no join exists
-  - Files: `decarbonisation_options_library.csv`, `process_decarbonisation_options.csv`
-  - Verify: `make data-check`; 130 used options all resolve; the 12 legitimately optionless processes stay exactly 12
+- [ ] **T9 (P1, human: ~2 days / CC: ~45min)** — data — Group C decarbonisation options: the missing option→unit join, plus the hybrid-unit set and its bill of materials
+  - Surfaced by: Agent inventory — options keyed to CaRB3 `process_id`, technologies keyed to `output_commodity`, no join exists. PD3 adds hybrid units, which have no representation in a library where all 134 options are demand-side
+  - Files: `decarbonisation_options_library.csv`, `process_decarbonisation_options.csv`, new `unit_bill_of_materials`
+  - Verify: `make data-check`; 130 used options all resolve; the 12 legitimately optionless processes stay exactly 12; every hybrid unit's BOM shares sum to 1 and reconcile to its capex (V20 b)
 - [ ] **T10 (P1, human: ~1 day / CC: ~30min)** — spec — Rewrite the worked example on the same cement works, adding the PV/battery/connection section
   - Surfaced by: Nine structural breaks identified in the v1 example
   - Files: `docs/specs/2026-08-28-carb3-site-energy-system-worked-example.md`
@@ -114,7 +115,7 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Files: `docs/specs/2026-08-19-carb3-site-decarbonisation-vision.md`
   - Verify: no bare λ outside §5.6's peak-factor sense
 - [ ] **T12 (P3, human: ~1h / CC: ~5min)** — docs — Freeze note on v1; register v2 in `docs/notes/README.md`
-  - Surfaced by: D1 — v1 stays as the parity baseline and readers must know which doc is which
+  - Surfaced by: PD1 — v1 stays as the parity baseline and readers must know which doc is which
   - Files: v1 spec header, `docs/notes/README.md`
   - Verify: index lists both with the distinction stated
 

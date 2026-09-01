@@ -35,6 +35,8 @@
   │ LAYER 2 — UNITS               what converts between carriers    │
   │   ~35 units: boiler, heat_pump, CHP, kiln, PV, battery,         │
   │   electrolyser, AD, thermal_store, CCS_train, motor, dryer      │
+  │   + HYBRID units at a fixed sizing ratio: pv_battery_2h,        │
+  │     chp_thermal_store, electrolyser_battery, hp_thermal_store   │
   │   each: input carriers (−) → output carriers (+), capex, life   │
   └───────────────────────────┬─────────────────────────────────────┘
                               │  C8  CARRIER BALANCE  (the core change)
@@ -76,7 +78,7 @@ reject heat is a low-grade supply, which is exactly the source a heat pump needs
 current situation where `IFDSTMHP01` (steam) carries the same `33.333` coefficient as
 `IFDLTHELCHP01` (low-temperature hot water) cannot recur.
 
-### Unit spine — hybrid (Issue 2)
+### Unit spine — split (Issue 2)
 
 The 94 process codes are sector-prefixed. Stripping the 3-character prefix leaves 24 duty
 families. The split follows D5's existing two-denominator line:
@@ -88,24 +90,26 @@ families. The split follows D5's existing two-denominator line:
 
 Sector specificity moves out of the unit identity and into `unit_eligibility`.
 
-### Two-tier temporal structure (D2)
+### Two-tier temporal structure (PD2)
 
 ```
   TIER A — OFFLINE, high time resolution, run once per archetype
   ┌──────────────────────────────────────────────────────────────┐
   │  ~200-400 archetypes = activity × load shape × schedule × size│
-  │  typical-day or hourly dispatch over a grid of design points  │
+  │  typical-day or hourly dispatch, evaluated once at EACH       │
+  │  hybrid unit's fixed sizing ratio                             │
   │      │                                                        │
-  │      ├── ψ(design_ratio)  PV self-consumption fraction        │
-  │      ├── β(design_ratio)  storage firm-capacity contribution  │
-  │      ├── χ                CHP heat-utilisation fraction        │
+  │      ├── ψ  onsite-generation self-consumption fraction       │
+  │      ├── β  storage firm-capacity contribution (feeds C11)    │
+  │      ├── χ  paired-output utilisation (CHP heat, HP duty)     │
+  │      ├── ε  effective purchase price for flexible loads       │
   │      └── λ, peak-to-mean  (already specified in §5.6)          │
-  │  piecewise-linearised over 3-5 segments  ───────────┐         │
-  └─────────────────────────────────────────────────────┼─────────┘
-                                                        ▼
+  │  ONE CONSTANT per coefficient per HYBRID UNIT  ──────┐        │
+  └──────────────────────────────────────────────────────┼────────┘
+                                                         ▼
   TIER B — PER-PREMISE INVESTMENT LP, annual, 5-year steps
   ┌──────────────────────────────────────────────────────────────┐
-  │  consumes ψ, β, χ as PARAMETERS → stays a pure LP (§5.2)      │
+  │  consumes ψ, β, χ, ε as PARAMETERS → stays a pure LP (§5.2)   │
   │  D2 decomposition intact · §9 tractability argument intact    │
   └──────────────────────────────────────────────────────────────┘
 ```
@@ -113,6 +117,72 @@ Sector specificity moves out of the unit identity and into `unit_eligibility`.
 The investment decision needs a *correct annualised cost*, not hourly resolution. That
 cost depends on hourly behaviour only through a handful of aggregate numbers. Computing
 them a few hundred times instead of 300k times is the whole leverage.
+
+### Hybrid units — how storage acquires a value
+
+Storage on its own is worth nothing here: a battery or thermal store charges and
+discharges inside one annual period and nets to a round-trip loss, so a cost-minimising
+model never builds one. The value is real but it is *relational* — a battery is worth
+something **relative to the asset it is paired with**.
+
+So storage enters the model mainly through **hybrid units**: co-located packages at a
+**fixed sizing ratio**, each a single unit with a single capex and a single set of
+coefficients. `pv_battery_2h` is one unit, not two decision variables.
+
+**The fixed ratio is what keeps the problem an LP, and this is the load-bearing reason
+for the whole construction.** ψ depends on the storage-to-generation ratio. If both
+capacities were free decision variables, ψ(ratio) × output would be a decision-dependent
+coefficient multiplying a decision variable, which is bilinear; linearising it piecewise
+inside a *pure* LP works only if the curve is convex in the right direction, and otherwise
+costs SOS2 or binaries. §5.2 is explicit that the pure-LP property must be defended. A
+fixed ratio makes ψ a constant and the difficulty disappears rather than being managed.
+
+**When a hybrid unit is needed, and when it is not.** The test is whether the coefficient
+depends on a ratio to a paired asset:
+
+| Value the storage creates | Coefficient | Hybrid unit? |
+|---|---|---|
+| Raises self-consumption of onsite generation | ψ | **Yes** — depends on the storage/generation ratio |
+| Raises CHP heat utilisation, or heat-pump duty via a thermal store | χ | **Yes** — depends on the store/converter ratio |
+| Lowers the effective purchase price of a flexible load (electrolyser, heat pump) | ε | **Yes** — depends on the storage/load ratio |
+| Defers a connection reinforcement | β | **No** — enters C11 linearly, no ratio dependence |
+
+A standalone battery bought purely to shave peak and defer reinforcement therefore stays
+a standalone unit and works unchanged. That is a real and common industrial case: the site
+wants to electrify, the connection binds, the battery buys headroom. Hybrid units are for
+the cases where the storage only means something relative to its partner.
+
+**ε is not optional.** For `pv_battery` the value is self-consumption and for
+`chp_thermal_store` it is heat utilisation, but for `electrolyser_battery` the battery is
+buying *cheap hours* — arbitrage against a time-varying tariff. The annual model carries
+one electricity price per period, so without ε that value is structurally invisible,
+`electrolyser_battery` is strictly dominated by a bare electrolyser, and it never gets
+built. That would reintroduce the exact problem hybrid units exist to solve.
+
+**Interpolation between hybrid units is safe, and it is worth saying why.** The LP may
+build half a `pv_battery_2h` and half a `pv_battery_4h`, and it then gets the chord between
+them. Storage benefit is concave in storage size — the first hour buys far more than the
+fourth — so the chord lies *below* the true curve. The LP understates a blend's benefit and
+prefers the discrete endpoints, which are the real costed designs. The approximation errs
+in the safe direction.
+
+**Capex must be a levelised bundle annuity, not a sum of parts.** PV lasts 30–40 years and
+a battery 10–15 with an augmentation partway, but a hybrid unit has one $L$, and both C3's
+capacity window and C4's stranding charge key on it. Embed the battery replacement in the
+annuitised capex and keep one lifetime. This also fixes something the component-wise
+approach gets wrong anyway: inverter, connection works, land and project development are
+*shared* costs that get double-counted or dropped when the parts are costed separately.
+
+**Every hybrid unit needs a bill of materials.** "Built 5 MW of `pv_battery_2h`" does not
+answer *how much battery does GB industry need*, which is a headline question this model
+will be asked. A per-unit component decomposition lets §8's `Costs` and `Network` rows
+report per component. Cheap to specify now, invisible until too late if omitted.
+
+**On naming.** These are *not* virtual power plants. In the industry a VPP aggregates
+assets **across multiple sites** and dispatches them as one, which is precisely the
+inter-premise coupling D2 forbids — so a genuine VPP is architecturally impossible in this
+model. Calling a co-located package a VPP would promise a reader exactly the thing that
+cannot be built. **Hybrid unit** throughout.
 
 ### Lumpiness — an architectural rule, not a per-technology hack
 
