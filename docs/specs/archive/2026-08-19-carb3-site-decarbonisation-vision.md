@@ -7,14 +7,14 @@
 **Worked example:** [2026-08-19-carb3-site-decarbonisation-worked-example.md](2026-08-19-carb3-site-decarbonisation-worked-example.md)
 **Supersedes:** [2026-08-05-site-heterogeneity-prd.md](2026-08-05-site-heterogeneity-prd.md)
 
-**Related reading:** [notes/06](../notes/06_inputting_measured_site_energy.md) ·
-[notes/08](../notes/08_python_redesign_approach.md) ·
-[notes/09](../notes/09_objective_function.md) ·
-[notes/11](../notes/11_sector_coverage_and_carb3_mapping.md) ·
-[notes/12](../notes/12_output_data_schema.md) ·
-[notes/13](../notes/13_emissions_calculation.md) ·
-[notes/14](../notes/14_emissions_source_split.md) ·
-[notes/15](../notes/15_carb3_process_comparison.md)
+**Related reading:** [notes/06](../../notes/06_inputting_measured_site_energy.md) ·
+[notes/08](../../notes/08_python_redesign_approach.md) ·
+[notes/09](../../notes/09_objective_function.md) ·
+[notes/11](../../notes/11_sector_coverage_and_carb3_mapping.md) ·
+[notes/12](../../notes/12_output_data_schema.md) ·
+[notes/13](../../notes/13_emissions_calculation.md) ·
+[notes/14](../../notes/14_emissions_source_split.md) ·
+[notes/15](../../notes/15_carb3_process_comparison.md)
 
 ---
 
@@ -59,7 +59,7 @@ floorspace, meter data or benchmarks into per-site energy is its own problem. Th
 design begins at the point where a validated per-site energy record exists.
 
 That single assumption removes the hardest obstacle noted in
-[note 11 §5.1](../notes/11_sector_coverage_and_carb3_mapping.md): COMIT's site sizing
+[note 11 §5.1](../../notes/11_sector_coverage_and_carb3_mapping.md): COMIT's site sizing
 depends on CO₂ point-source emissions, which most premises do not have. If energy
 arrives directly, nothing needs to be inferred from emissions at all.
 
@@ -69,11 +69,11 @@ COMIT already owns the parts that are expensive to build and easy to get wrong:
 
 | Asset | Where |
 |---|---|
-| An objective function with annuitised capex, fuel cost, carbon cost and infrastructure terms, all in present value | [note 09](../notes/09_objective_function.md) |
-| An emissions engine that separates **combustion** emissions from **process chemistry** — including biomass zero-rating and CCS capture | [notes 13](../notes/13_emissions_calculation.md), [14](../notes/14_emissions_source_split.md) |
-| A technology set whose variants differ **precisely by fuel** — 82 of 94 processes have variants differing only by `technology_category` | [note 15](../notes/15_carb3_process_comparison.md) |
+| An objective function with annuitised capex, fuel cost, carbon cost and infrastructure terms, all in present value | [note 09](../../notes/09_objective_function.md) |
+| An emissions engine that separates **combustion** emissions from **process chemistry** — including biomass zero-rating and CCS capture | [notes 13](../../notes/13_emissions_calculation.md), [14](../../notes/14_emissions_source_split.md) |
+| A technology set whose variants differ **precisely by fuel** — 82 of 94 processes have variants differing only by `technology_category` | [note 15](../../notes/15_carb3_process_comparison.md) |
 | Decision variables already indexed **site × technology × year** | `R/fct_decision_variables.R` |
-| A stable, documented output schema | [note 12](../notes/12_output_data_schema.md) |
+| A stable, documented output schema | [note 12](../../notes/12_output_data_schema.md) |
 
 Fuel switching is the primary decarbonisation lever, and COMIT's technology set is
 organised around exactly that axis. Rebuilding this from scratch would be wasteful.
@@ -90,14 +90,14 @@ R/fct_sites.R:173   demand = national_demand × scaling_factor_within_sector
 Every site is a scaled-down copy of its sector's fleet, sized by its share of sector
 emissions. The CaRB3 route supplies demand directly, so this entire mechanism is
 bypassed — and with it the assumption that sites within a sector are homogeneous
-([note 06](../notes/06_inputting_measured_site_energy.md)).
+([note 06](../../notes/06_inputting_measured_site_energy.md)).
 
 ### 4.2 Scale
 
 COMIT today: **1,026 sites → ~638,000 capacity variables**, roughly 30 technologies and
 620 variables per site. That scales linearly. The GB Factory-class stock is orders of
 magnitude larger than 1,026, so a single coupled optimisation is not reachable — and
-[note 11 §5.2](../notes/11_sector_coverage_and_carb3_mapping.md) already flagged that
+[note 11 §5.2](../../notes/11_sector_coverage_and_carb3_mapping.md) already flagged that
 even 5,374 sites would strain the current MILP.
 
 ### 4.3 Process granularity
@@ -106,7 +106,7 @@ COMIT decomposes a sector into ~10 generic energy services plus product chains i
 sectors. CaRB3 decomposes an activity into **unit operations**. These are orthogonal
 axes, not two resolutions of the same thing: of 76 distinct CaRB3 process names,
 **37 have no COMIT analogue at all**, and 34 of the remaining 39 merely *collapse* into
-a generic energy service ([note 15](../notes/15_carb3_process_comparison.md)).
+a generic energy service ([note 15](../../notes/15_carb3_process_comparison.md)).
 
 ## 5. The design
 
@@ -297,16 +297,16 @@ validation) and F2 (site process register) thinking informed the data model here
 its problem statement remains the clearest description of why site heterogeneity matters.
 
 **Language-agnostic by design.** The implementation spec is written so it can be built
-in R or Python. [Note 08](../notes/08_python_redesign_approach.md) sets out a linopy +
+in R or Python. [Note 08](../../notes/08_python_redesign_approach.md) sets out a linopy +
 xarray architecture for a COMIT rebuild; if that proceeds, this design should not need
 rewriting. A per-site independent problem is, if anything, a better fit for that stack.
 
 **Existing data assets reused:** the CaRB3 activity → process register comes from
-[`notes/data/carb3_factory_processes.json`](../notes/data/carb3_factory_processes.json);
+[`notes/data/carb3_factory_processes.json`](../../notes/data/carb3_factory_processes.json);
 the activity → COMIT sector mapping from
-[`notes/data/carb3_comit_crosswalk.csv`](../notes/data/carb3_comit_crosswalk.csv); the
+[`notes/data/carb3_comit_crosswalk.csv`](../../notes/data/carb3_comit_crosswalk.csv); the
 existing technology structure from
-[`notes/data/comit_sector_processes.csv`](../notes/data/comit_sector_processes.csv).
+[`notes/data/comit_sector_processes.csv`](../../notes/data/comit_sector_processes.csv).
 
 ## 9. Phasing
 

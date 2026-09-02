@@ -30,8 +30,8 @@ import re
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-SPEC = REPO / "docs/specs/2026-08-19-carb3-site-decarbonisation-implementation.md"
-OUT = REPO / "docs/specs/diagrams"
+SPEC = REPO / "docs/specs/archive/2026-08-19-carb3-site-decarbonisation-implementation.md"
+OUT = REPO / "docs/specs/archive/diagrams"
 
 # Some algorithms name an entity in a form the heading does not use: A1 takes
 # `raw_premise_records`, not `premise_record`. Aliases keep the match honest

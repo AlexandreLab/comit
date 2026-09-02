@@ -178,7 +178,7 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
 | Seasonal (inter-period) storage state | Matters for hydrogen, barely for industrial heat and batteries. Add only if a decision turns on it. |
 | RFNBO / LCHS hourly temporal-correlation compliance | Structurally inexpressible in an annual model. State it as a boundary in v2 §2.3, do not model it. |
 | Rewriting `2026-08-05-site-heterogeneity-prd.md` | Already formally superseded and R-specific. Its banner stays accurate. |
-| Retiring v1 | It is the COMIT-parity baseline. It stays runnable, not archived. |
+| Retiring v1 | It is the COMIT-parity baseline for V1 and V1b, and stays runnable. **It has since been moved to `docs/specs/archive/`** — archived, not retired: still read, still regenerated, just out of the main path now that v2 §3 is self-contained. |
 | CI wiring beyond a Makefile | No `.github/` exists. A Makefile target is the honest first step; CI is a separate call. |
 
 ---

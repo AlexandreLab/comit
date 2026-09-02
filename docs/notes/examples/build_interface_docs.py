@@ -27,8 +27,8 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
-SPEC = REPO / "docs/specs/2026-08-19-carb3-site-decarbonisation-implementation.md"
-OUT = REPO / "docs/specs/interfaces"
+SPEC = REPO / "docs/specs/archive/2026-08-19-carb3-site-decarbonisation-implementation.md"
+OUT = REPO / "docs/specs/archive/interfaces"
 SPEC_LINK = "../2026-08-19-carb3-site-decarbonisation-implementation.md"
 
 DOCS = [
@@ -135,7 +135,7 @@ def relink(body: str, own: str, anchors: dict[str, str]) -> str:
 
 def fix_relative_paths(body: str) -> str:
     """The published copies sit one directory deeper than the spec."""
-    body = body.replace("](../notes/", "](../../notes/")
+    body = body.replace("](../../notes/", "](../../../notes/")
     body = body.replace("](2026-08-19-carb3", "](../2026-08-19-carb3")
     return body
 

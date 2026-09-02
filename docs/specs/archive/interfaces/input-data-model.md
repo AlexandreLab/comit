@@ -187,9 +187,9 @@ to distinguish connections in results, and carries no external meaning.
 ### 3.2 `activity_process_register` — activity → processes
 
 Which processes run at a premise of a given activity. Populated by
-[`../notes/data/activity_process_register.csv`](../../notes/data/activity_process_register.csv) —
+[`../notes/data/activity_process_register.csv`](../../../notes/data/activity_process_register.csv) —
 376 rows covering all 55 activities, with provenance per row. That table supersedes
-[`carb3_factory_processes.json`](../../notes/data/carb3_factory_processes.json), which
+[`carb3_factory_processes.json`](../../../notes/data/carb3_factory_processes.json), which
 remains as the narrower source it was expanded from.
 
 | Field | Type | Unit | Req | Key | Validation |
@@ -253,7 +253,7 @@ One row per `(activity, process, vector)` that can carry energy. For each of the
 Factory-class activities:
 
 1. **The process list** — already available from
-   [`../notes/data/carb3_factory_processes.json`](../../notes/data/carb3_factory_processes.json).
+   [`../notes/data/carb3_factory_processes.json`](../../../notes/data/carb3_factory_processes.json).
 2. **Which vectors each process can consume.** A grinding mill takes electricity and
    nothing else; a kiln takes coal, gas or biomass but not electricity unless an electric
    variant exists. Combinations that cannot occur are simply absent — absent is not the
@@ -410,7 +410,7 @@ kt per tonne; denominating them per PJ severs them from their physical basis.
 
 One row per *(process × equipment type × fuel)* combination.
 
-**Naming.** Field names deliberately match COMIT's existing columns (`technology_code`, `technology_name`, `capex`, `fixed_opex`, `lifetime`, `availability_factor`, `capacity_to_activity_factor`, `emissions_released`, `retrofit_to`) so that tier-1 reuse (D6) is a direct load from [`../notes/data/comit_sector_processes.csv`](../../notes/data/comit_sector_processes.csv) and [`../notes/data/emissions_source_classification.csv`](../../notes/data/emissions_source_classification.csv) with no column translation. `process_id` corresponds to COMIT's `output_commodity` / `process_commodity`.
+**Naming.** Field names deliberately match COMIT's existing columns (`technology_code`, `technology_name`, `capex`, `fixed_opex`, `lifetime`, `availability_factor`, `capacity_to_activity_factor`, `emissions_released`, `retrofit_to`) so that tier-1 reuse (D6) is a direct load from [`../notes/data/comit_sector_processes.csv`](../../../notes/data/comit_sector_processes.csv) and [`../notes/data/emissions_source_classification.csv`](../../../notes/data/emissions_source_classification.csv) with no column translation. `process_id` corresponds to COMIT's `output_commodity` / `process_commodity`.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
