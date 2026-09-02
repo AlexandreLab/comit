@@ -1,22 +1,18 @@
-# CaRB3 Site Energy System — Spec Changes, Tests and Worked Example
+# CaRB3 Site Energy System — Change Record (archived)
 
-**Status:** Draft v1 for review
-**Date:** 2026-08-28
-**Scope:** Great Britain · CaRB3 **Factory class** only (55 activities)
-**Part of:** the v2 migration plan. What changes in the specification text.
+**Archived 2026-09-02. Superseded and folded in.** Every forward-looking statement in this
+document has been restated in present tense in the
+[implementation specification](../2026-08-28-carb3-site-energy-system-implementation.md):
+the entity changes in its §3, the constraints in §5, the algorithms in §4, emissions
+attribution in §7, the scale gate in §9, and the tests, coverage map and failure modes in
+§10.
 
-**This plan is five documents.** Read the overview first; the other four are independent.
+It is kept only as the record of what changed relative to the
+[COMIT-parity baseline specification](2026-08-19-carb3-site-decarbonisation-implementation.md),
+which is a question about this repository's history and not about the system. **Nobody needs
+to read this to understand the model.**
 
-| Doc | For | |
-|---|---|---|
-| [Overview and decisions](2026-08-28-carb3-site-energy-system-overview.md) | everyone — start here |  |
-| [Architecture](2026-08-28-carb3-site-energy-system-architecture.md) | modellers |  |
-| [Spec changes and tests](2026-08-28-carb3-site-energy-system-spec-changes.md) | whoever writes the v2 spec | **you are here** |
-| [Data migration](2026-08-28-carb3-site-energy-system-data-migration.md) | whoever owns the data tables |  |
-| [Delivery](2026-08-28-carb3-site-energy-system-delivery.md) | whoever schedules the work |  |
-
-> **This plans work; it does not specify it.** The v2 specification itself
-> (`2026-08-28-carb3-site-energy-system-implementation.md`) does not exist yet — writing it is task T4.
+s task T4.
 
 ---
 

@@ -1,22 +1,22 @@
 # CaRB3 Site Energy System — Architecture
 
-**Status:** Draft v1 for review
-**Date:** 2026-08-28
+**Status:** Draft for review
+**Date:** 2026-09-02
 **Scope:** Great Britain · CaRB3 **Factory class** only (55 activities)
-**Part of:** the v2 migration plan. The design itself, and what it reuses.
 
-**This plan is five documents.** Read the overview first; the other four are independent.
+**Five documents describe the system.** Read the [overview](2026-08-28-carb3-site-energy-system-overview.md) first.
 
 | Doc | For | |
 |---|---|---|
 | [Overview and decisions](2026-08-28-carb3-site-energy-system-overview.md) | everyone — start here |  |
 | [Architecture](2026-08-28-carb3-site-energy-system-architecture.md) | modellers | **you are here** |
-| [Spec changes and tests](2026-08-28-carb3-site-energy-system-spec-changes.md) | whoever writes the v2 spec |  |
+| [Implementation specification](2026-08-28-carb3-site-energy-system-implementation.md) | implementers |  |
 | [Data migration](2026-08-28-carb3-site-energy-system-data-migration.md) | whoever owns the data tables |  |
 | [Delivery](2026-08-28-carb3-site-energy-system-delivery.md) | whoever schedules the work |  |
 
-> **This plans work; it does not specify it.** The v2 specification itself
-> (`2026-08-28-carb3-site-energy-system-implementation.md`) does not exist yet — writing it is task T4.
+> **This document explains the design and why it is shaped this way.** The normative
+> contract — entities, fields, constraints, tests — is the
+> [implementation specification](2026-08-28-carb3-site-energy-system-implementation.md).
 
 ---
 
@@ -49,11 +49,12 @@
   └─────────────────────────────────────────────────────────────────┘
 ```
 
-**C8 generalised from intermediates to every carrier is the single change that makes the
-rest work.** Today `C8` balances only `c ∈ C^int`; electricity is a priced fuel with
-unconstrained supply. Once every carrier balances, PV / CHP / electrolysers / AD are
-ordinary units and need no special class. Note 09's grid-rate fudge disappears: CHP
-becomes gas in, heat and electricity out.
+**A balance over *every* carrier, not just intermediates, is the single thing that makes
+the rest work.** Where electricity is a priced fuel with unconstrained supply, onsite
+generation has nowhere to live and has to be faked — priced at the grid rate so that
+self-generation is not free, which is what note 09 records today. Once every carrier
+balances, PV, CHP, electrolysers and AD are ordinary units and need no special class: a CHP
+is simply gas in, heat and electricity out.
 
 ### Graded heat and the cascade
 
@@ -78,7 +79,7 @@ reject heat is a low-grade supply, which is exactly the source a heat pump needs
 current situation where `IFDSTMHP01` (steam) carries the same `33.333` coefficient as
 `IFDLTHELCHP01` (low-temperature hot water) cannot recur.
 
-### Unit spine — split (Issue 2)
+### Unit spine — split by denominator
 
 The 94 process codes are sector-prefixed. Stripping the 3-character prefix, and excluding
 the 16 sector-root codes that are sector-level demand commodities rather than duties,
@@ -92,27 +93,25 @@ two-denominator line:
 
 Sector specificity moves out of the unit identity and into `unit_eligibility`.
 
-**Where ~95 comes from, and why it is not ~35.** An earlier draft of this document said
-"~35 units", which cannot be right: B2 of the [data
-migration](2026-08-28-carb3-site-energy-system-data-migration.md) requires the **57
-non-fuel technologies** (CCS 25, heat pump 31, dry kiln 1) to survive as distinct
-archetypes, and 57 alone exceeds 35. The floor is
+**Where ~95 comes from.** B2 of the [data
+migration](2026-08-28-carb3-site-energy-system-data-migration.md) requires the **57 non-fuel
+technologies** (CCS 25, heat pump 31, dry kiln 1) to survive as distinct archetypes, so 57
+is already a floor before any duty family is counted. The full floor is
 
 ```
    12  service duty families
  + 14  chemistry nodes
  + 57  preserved non-fuel archetypes (B2)
- + ~12 hybrid units (PD3)
+ + ~12 hybrid units (PD2)
  ────
   ~95  units
 ```
 
-That is still a collapse from 397, and the maintainability argument survives it intact:
-adding hydrogen firing is one carrier row rather than N technology rows either way. But the
-number to quote is ~95. **Recompute it after Group B rather than carrying this figure
-forward** — it is a floor, not a result.
+That is still a collapse from 397, and the maintainability argument holds at either size:
+adding hydrogen firing is one carrier row rather than N technology rows. **Recompute the
+figure after Group B rather than carrying it forward** — it is a floor, not a result.
 
-### Two-tier temporal structure (PD2)
+### Two-tier temporal structure (PD1)
 
 ```
   TIER A — OFFLINE, high time resolution, run once per archetype
@@ -147,7 +146,7 @@ discharges inside one annual period and nets to a round-trip loss, so a cost-min
 model never builds one. The value is real but it is *relational* — a battery is worth
 something **relative to the asset it is paired with**.
 
-So storage enters the model mainly through **hybrid units**: co-located packages at a
+So storage enters the model mainly through **hybrid units** (PD2): co-located packages at a
 **fixed sizing ratio**, each a single unit with a single capex and a single set of
 coefficients. `pv_battery_2h` is one unit, not two decision variables.
 
@@ -210,7 +209,7 @@ cannot be built. **Hybrid unit** throughout.
 
 Real units come in sizes, and `R/fct_constraints_hydrogen.R:650` plus
 `R/fct_decision_variables.R:597` show what happens otherwise: a binary per technology per
-site, which is the MILP D7 removed. Rule for v2:
+site, which is a MILP this design deliberately avoids. The rule:
 
 > Minimum viable scale is handled by **eligibility screening upstream** (a site below the
 > threshold never gets the unit in its candidate set, decided in A2) and by **reporting
@@ -219,16 +218,19 @@ site, which is the MILP D7 removed. Rule for v2:
 
 ---
 
-## What already exists (reuse, do not rebuild)
+## Foundations reused, not reinvented
 
-| Asset | Path | How v2 uses it |
+None of the following is new work. Each is an existing, audited piece of the model or its
+tooling that this design leans on directly, and re-deriving any of them would be a mistake.
+
+| Foundation | Where it is specified | How this design uses it |
 |---|---|---|
-| `technology_input_output` sign convention | spec §3.6 (789–804) | Becomes `unit_input_output` **near-unchanged**. Consumed negative, produced positive is exactly what the carrier balance needs. §7's formulae depend on it and keep working. |
-| `premise_connection` | spec §3.1.3 (492–537) | Already carries `import_capacity`, `export_capacity`, `connection_voltage`, `onsite_generation_*`. Collected specifically for this; **nothing reads it today**. v2 reads it. |
-| §5.6 peak-derivation pseudocode | spec 2060–2085 | The 14-step method, `process_load_shape` (§3.13), `premise_operating_profile` (§3.12), `premise_weekly_profile` (§3.14) are the Tier A inputs. Do not invent a parallel mechanism. |
-| D10 three-tier evidence pattern | vision §6, spec §3.3.2 | Reused verbatim for grades, areas, COPs and ψ/β provenance. |
-| D11 vintage and stranding | spec §5.3.1, C4 | Generalises to units unchanged. η and R̄ stay parameters; the K⁰ scoping that keeps §9.1 honest still applies. |
-| `Z^infra` tariff collapse | spec §5.4 (1729–1741) | The import-tariff term for every carrier, not just H₂/CO₂. |
-| `build_interface_docs.py` relinker | `docs/notes/examples/` | Parameterised, not forked (Issue 3). |
-| `build_spec_flow_diagram.py` | `docs/notes/examples/` | Regenerates all three diagram artefacts from the spec. Diagram work is *regenerate*, not redraw. |
-| Decarb options library | `decarbonisation_options_library.csv` | 134 options with provenance and TRL. Its own README's suggested next step is this migration. |
+| **Signed input/output coefficients** | implementation spec §3.6 | Consumed negative, produced positive. This convention is exactly what the carrier balance needs, and §7's emissions formulae depend on it |
+| **`premise_connection`** | implementation spec §3.1.3 | Already carries `import_capacity`, `export_capacity`, `connection_voltage` and the onsite-generation fields. C11 bounds import against it and C12 bounds onsite generation against `available_area` |
+| **Peak derivation** | implementation spec §5.6 | The 14-step method, fed by `process_load_shape` (§3.13), `premise_operating_profile` (§3.12) and `premise_weekly_profile` (§3.14). These are also the Tier A inputs. Do not invent a parallel mechanism |
+| **D10 three-tier evidence pattern** | implementation spec §1.6, §3.3 | Reused verbatim for heat grades, usable areas, COPs, carrier mixes (A4) and the ψ/β provenance |
+| **D11 vintage and stranding** | implementation spec §5.3, C4 | Generalises from technologies to units unchanged. η and R̄ stay parameters, which is what keeps the problem a pure LP |
+| **The tariff term $Z^{\text{infra}}$** | implementation spec §5.4 | Becomes the import-tariff term for **every** carrier, not only hydrogen and CO₂ |
+| **`build_interface_docs.py`** | `docs/notes/examples/` | Publishes §3 and §8 as standalone interface documents, driven by `spec_docs.config.json`. Pointing it at a new specification is a JSON edit |
+| **`build_spec_flow_diagram.py`** | `docs/notes/examples/` | Regenerates all three diagram artefacts from the specification. Diagram work here is *regenerate*, never redraw |
+| **Decarbonisation options library** | `docs/notes/data/decarbonisation_options_library.csv` | 134 options with provenance and TRL. The data migration maps them onto units and carriers |

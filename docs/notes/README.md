@@ -26,47 +26,45 @@ Source input file under discussion: `data_template_archive/comit_input_1_4_0_pub
 | [13_emissions_calculation.md](13_emissions_calculation.md) | Plain-language walkthrough of how emissions are calculated: NAEI site emissions as input weights, the per-technology `get_emissions()` engine and its five switches (gas/source/capture/location/biomass), where emissions bite (carbon cost + national cap), the post-solve site-level tables, and why per-site emissions are emergent rather than tracked |
 | [14_emissions_source_split.md](14_emissions_source_split.md) | Splitting emissions into process chemistry vs energy combustion: the 3 process pseudo-commodities, an a-priori classification of all 397 technologies ([data/](data/emissions_source_classification.csv)), the kt/TWh detector, and what is hardcoded vs workbook-driven |
 | [15_carb3_process_comparison.md](15_carb3_process_comparison.md) | How the CaRB3 Factory activity/process/equipment taxonomy compares with COMIT's sector/service/fuel-variant one: they decompose industry on orthogonal axes — coverage of all 55 activities ([crosswalk](data/carb3_comit_crosswalk.csv)), and the 37 CaRB3 processes with no COMIT analogue |
-| [16_input_data_readiness.md](16_input_data_readiness.md) | **Input-data audit.** For every input the per-site model reads: does a schema exist, does data exist, and who supplies it. Finds three gaps that block v2 — no duty family and no heat grade on any of the 376 processes, and no default on-site generation anywhere in either spec — plus the reason `archetype_id` has no defining entity. Tasks T17–T19 |
+| [16_input_data_readiness.md](16_input_data_readiness.md) | **Input-data audit.** For every input the per-site model reads: does a schema exist, does data exist, and who supplies it. Finds three gaps — no duty family and no heat grade on any of the 376 processes, and no default on-site generation anywhere — plus the reason `archetype_id` has no defining entity. Tasks T17–T19 |
 
 ## Specifications
 
-Design documents live in [`../specs/`](../specs/). **That directory is v2 only**; everything
-v1 is in [`../specs/archive/`](../specs/archive/README.md).
+Design documents live in [`../specs/`](../specs/). The five documents there are
+self-contained; superseded and frozen material is in
+[`../specs/archive/`](../specs/archive/README.md) and is not required reading.
 
-### The live specification — v2
-
-A move from COMIT's *(sector × process × fuel)* technology table to a carrier network fed by
-generic units, so that onsite generation, storage, CHP and graded heat become representable.
-**Nothing here is built yet.** §3 is complete and self-contained; §4 and §6–§13 are stubs
-named against their delivery tasks.
+### The live specification
 
 | Doc | Topic |
 |-----|-------|
-| [2026-08-28-carb3-site-energy-system-implementation.md](../specs/2026-08-28-carb3-site-energy-system-implementation.md) | **The v2 specification itself — partial.** §1 scope and conventions, §2 system overview, §3 data model (11 entities: carrier, unit, unit_input_output, unit_eligibility, unit_bill_of_materials, archetype_coefficient, process_duty, premise_connection, scenario_parameters, activity_process_duty_profile, activity_default_unit), and §5 the optimisation model (C1–C12, including the carrier balance and the heat-grade cascade). §4 and §6–§13 are not yet written and are named against their tasks |
-| [2026-08-28-carb3-site-energy-system-overview.md](../specs/2026-08-28-carb3-site-energy-system-overview.md) | **Start here.** Why the current structure blocks onsite generation, storage and waste-heat recovery; the seven decisions taken; the review findings and the defects they surfaced in existing documents |
-| [2026-08-28-carb3-site-energy-system-architecture.md](../specs/2026-08-28-carb3-site-energy-system-architecture.md) | **The design.** Three layers with a carrier balance between them, the graded-heat cascade, the hybrid unit spine, the two-tier temporal structure that lets storage have a value without breaking §9, and the eight existing assets it reuses |
-| [2026-08-28-carb3-site-energy-system-spec-changes.md](../specs/2026-08-28-carb3-site-energy-system-spec-changes.md) | **What changes in the spec text.** Entity and constraint changes as before/after tables, four new validation tests plus one new parity test, a test-coverage diagram, a failure-mode table with two critical gaps, and the nine things that break in the worked example |
-| [2026-08-28-carb3-site-energy-system-data-migration.md](../specs/2026-08-28-carb3-site-energy-system-data-migration.md) | **The data work.** Twenty-six items in five ordered groups covering the 397-row technology collapse, the `technology_category` split, the missing decarbonisation-option join, the hybrid-unit set, reject-heat coefficients, and the inputs the model does not yet have |
-| [2026-08-28-carb3-site-energy-system-delivery.md](../specs/2026-08-28-carb3-site-energy-system-delivery.md) | **Sequencing.** Files to create and modify, nineteen tasks with effort estimates, six parallelisation lanes, an explicit not-in-scope list, and the verification commands |
+| [2026-08-28-carb3-site-energy-system-overview.md](../specs/2026-08-28-carb3-site-energy-system-overview.md) | **Start here.** What the system is, the three capabilities it exists to provide, the two programme decisions `PD1`–`PD2`, and where the boundaries are |
+| [2026-08-28-carb3-site-energy-system-implementation.md](../specs/2026-08-28-carb3-site-energy-system-implementation.md) | **The specification itself — partial.** §1 scope, conventions and the eleven design decisions `D1`–`D11`; §2 system overview; §3 data model (22 entities); §4 algorithms A1–A9 with the carrier-mix rule and the relaxation ladder; §5 the optimisation model (C1–C12); §7 emissions attribution; §9 performance and the four scale gates; §10 validation (V1–V23, the carrier-equivalent configuration, and the failure-mode table). §6, §8 and §11–§13 are not yet written |
+| [2026-08-28-carb3-site-energy-system-architecture.md](../specs/2026-08-28-carb3-site-energy-system-architecture.md) | **The design and its reasoning.** Three layers with a carrier balance between them, the graded-heat cascade, the unit spine, the two-tier temporal structure that lets storage have a value, and the nine foundations it reuses rather than reinvents |
+| [2026-08-28-carb3-site-energy-system-data-migration.md](../specs/2026-08-28-carb3-site-energy-system-data-migration.md) | **The data work.** Twenty-three items in five ordered groups covering the 397-row technology collapse, the `technology_category` split, the missing decarbonisation-option join, the hybrid-unit set, reject-heat coefficients, and the inputs the model does not yet have |
+| [2026-08-28-carb3-site-energy-system-delivery.md](../specs/2026-08-28-carb3-site-energy-system-delivery.md) | **Sequencing.** Files to create and modify, eighteen tasks with effort estimates, six parallelisation lanes, an explicit not-in-scope list, and the verification commands |
 
-### Archive — v1 and earlier
+### Archive
 
-**Archived, not retired.** v1 stays the COMIT-parity baseline: V1 validates it against
-coupled-off COMIT, and V1b compares v2 to it. Neither hop may be skipped, so v1 must stay
-readable — it simply no longer sits in the main reading path. Section numbers are aligned
-between the two documents, so a `§3.x` reference means the same thing in either.
+**Archived, not retired.** The frozen baseline specification is what anchors the results to
+COMIT: V1 validates it against coupled-off COMIT, and V1b compares the live model to it.
+Neither hop may be skipped, so it must stay readable — it simply no longer sits in the main
+reading path. Section numbers are aligned between the two, so a `§3.x` reference means the
+same thing in either.
 
 See [`../specs/archive/README.md`](../specs/archive/README.md) for the full contents and what
 still points there.
 
 | Doc | Topic |
 |-----|-------|
-| [archive/…-vision.md](../specs/archive/2026-08-19-carb3-site-decarbonisation-vision.md) | **Still live for one thing: it defines `D1`–`D11`**, cited throughout v2 and defined nowhere else. Also the v1 rationale — why COMIT is the base, the three assumptions that block the route, and what is lost by solving each site independently |
-| [archive/…-implementation.md](../specs/archive/2026-08-19-carb3-site-decarbonisation-implementation.md) | **v1, frozen and authoritative for parity.** Data model, algorithms A1–A9, the optimisation stated mathematically, emissions rules, output schema, scale gates, validation |
-| [archive/…-worked-example.md](../specs/archive/2026-08-19-carb3-site-decarbonisation-worked-example.md) | One cement premise end to end through v1's A1–A9, plus the same premise without site intelligence |
-| [archive/interfaces/](../specs/archive/interfaces/input-data-model.md) | v1's input and output contracts, generated from its §3 and §8 |
-| [archive/diagrams/](../specs/archive/diagrams/spec_data_model.md) | v1's flow and data-model diagrams, generated from the whole spec |
-| [archive/…-site-heterogeneity-prd.md](../specs/archive/2026-08-05-site-heterogeneity-prd.md) | ⚠️ **Superseded** long before v2, and R-file-specific |
+| [archive/…-implementation.md](../specs/archive/2026-08-19-carb3-site-decarbonisation-implementation.md) | **The COMIT-parity baseline, frozen.** Data model, algorithms A1–A9, the optimisation stated mathematically, emissions rules, output schema, scale gates, validation |
+| [archive/…-vision.md](../specs/archive/2026-08-19-carb3-site-decarbonisation-vision.md) | The rationale behind `D1`–`D11` — why COMIT is the base, the three assumptions that block the route, and what is lost by solving each site independently. The decisions themselves are stated in the live specification at §1.6 |
+| [archive/…-worked-example.md](../specs/archive/2026-08-19-carb3-site-decarbonisation-worked-example.md) | One cement premise end to end through the baseline's A1–A9, plus the same premise without site intelligence |
+| [archive/…-spec-changes.md](../specs/archive/2026-08-28-carb3-site-energy-system-spec-changes.md) | The change record against the baseline. Every forward-looking statement in it has been folded into the live specification |
+| [archive/…-review-log.md](../specs/archive/2026-09-01-carb3-site-energy-system-review-log.md) | The two engineering reviews, their fourteen findings and resolutions, and the three known defects in the frozen documents |
+| [archive/interfaces/](../specs/archive/interfaces/input-data-model.md) | The baseline's input and output contracts, generated from its §3 and §8 |
+| [archive/diagrams/](../specs/archive/diagrams/spec_data_model.md) | The baseline's flow and data-model diagrams, generated from the whole document |
+| [archive/…-site-heterogeneity-prd.md](../specs/archive/2026-08-05-site-heterogeneity-prd.md) | ⚠️ **Superseded** and R-file-specific |
 
 ## Conventions
 - Units (from the workbook `Contents` sheet): energy/capacity in **PJ** (GW for CHP),

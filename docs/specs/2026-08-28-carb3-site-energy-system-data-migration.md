@@ -1,22 +1,22 @@
 # CaRB3 Site Energy System — Data Migration
 
-**Status:** Draft v1 for review
-**Date:** 2026-08-28
+**Status:** Draft for review
+**Date:** 2026-09-02
 **Scope:** Great Britain · CaRB3 **Factory class** only (55 activities)
-**Part of:** the v2 migration plan. The process and decarbonisation-option tables.
 
-**This plan is five documents.** Read the overview first; the other four are independent.
+**Five documents describe the system.** Read the [overview](2026-08-28-carb3-site-energy-system-overview.md) first.
 
 | Doc | For | |
 |---|---|---|
 | [Overview and decisions](2026-08-28-carb3-site-energy-system-overview.md) | everyone — start here |  |
 | [Architecture](2026-08-28-carb3-site-energy-system-architecture.md) | modellers |  |
-| [Spec changes and tests](2026-08-28-carb3-site-energy-system-spec-changes.md) | whoever writes the v2 spec |  |
+| [Implementation specification](2026-08-28-carb3-site-energy-system-implementation.md) | implementers |  |
 | [Data migration](2026-08-28-carb3-site-energy-system-data-migration.md) | whoever owns the data tables | **you are here** |
 | [Delivery](2026-08-28-carb3-site-energy-system-delivery.md) | whoever schedules the work |  |
 
-> **This plans work; it does not specify it.** The v2 specification itself
-> (`2026-08-28-carb3-site-energy-system-implementation.md`) does not exist yet — writing it is task T4.
+> **This is the work list for the reference data.** What the tables must contain is
+> specified in [implementation spec §3](2026-08-28-carb3-site-energy-system-implementation.md);
+> this document says what has to change to get there.
 
 ---
 
@@ -24,7 +24,7 @@
 
 **This document is the list.** Groups run in order; items inside a group are parallel.
 There is deliberately no root `TODOS.md` — a second copy of these items would drift from
-this one, and this document is already indexed and cross-linked from the other four.
+this one.
 
 ### Group A — taxonomy split (blocks everything)
 
@@ -41,7 +41,8 @@ this one, and this document is already indexed and cross-linked from the other f
   sector-root codes** (`ICH`, `ICN`, `ICR`, `IEE`, `IFD`, `IME`, `INF`, `IOI`, `IPR`,
   `ITX`, `IVH`, `ICM`, `IGL`, `IIS`, `ILM`, `IPP`) which are sector-level demand
   commodities and not duties. Expect 12 service families and 14 chemistry nodes; classify
-  each per Issue 2. An earlier draft said 24 families, which counted the sector roots.
+  each into the service/chemistry split of the
+  [architecture](2026-08-28-carb3-site-energy-system-architecture.md).
 
 ### Group B — the collapse
 
@@ -50,7 +51,7 @@ this one, and this document is already indexed and cross-linked from the other f
 - **B2.** Preserve the 57 non-fuel technologies (CCS 25, heat pump 31, dry kiln 1) as
   distinct unit archetypes; do not let them collapse.
 - **B3.** Assign `grade_in`/`grade_out` to every unit and every heat duty
-  (LTH/HTH/STM/DRY/SPC). Non-nullable — see failure mode #6.
+  (LTH/HTH/STM/DRY/SPC). Non-nullable — see [implementation spec §10.5](2026-08-28-carb3-site-energy-system-implementation.md), failure mode #6.
 - **B4.** Re-derive heat pump COP from grade lift, replacing the flat `33.333` (LTH, DRY,
   **and STM**) and `25` (SPC) coefficients.
 - **B5.** **Reject-heat coefficients — without these, waste heat recovery does not work at
@@ -79,7 +80,7 @@ this one, and this document is already indexed and cross-linked from the other f
   for one UK feedstock pool).
 - **C5.** Add the **supply units** the library has no concept of: PV, battery, thermal
   store, electrolyser, AD, CHP. All 134 current options are demand-side.
-- **C6.** Add the **hybrid units** (PD3), each at a fixed sizing ratio: `pv_battery`,
+- **C6.** Add the **hybrid units** (PD2), each at a fixed sizing ratio: `pv_battery`,
   `chp_thermal_store`, `electrolyser_battery`, `hp_thermal_store`. Roughly 3 ratios × 4
   pairings, so around 12 rows, not a combinatorial explosion. Keep the ratio set small and
   deliberately chosen — every ratio is a separate Tier A dispatch run.
@@ -100,15 +101,11 @@ this one, and this document is already indexed and cross-linked from the other f
 - **D4.** Archetype definitions and the ψ/β/χ/**ε** coefficient tables from Tier A, one
   constant per coefficient per unit. **ε is non-nullable on flexible-load hybrids** —
   without it `electrolyser_battery` is strictly dominated by a bare electrolyser and never
-  gets built, so the whole hybrid-unit mechanism silently does nothing (failure mode #8).
+  gets built, so the whole hybrid-unit mechanism silently does nothing
+  ([implementation spec §10.5](2026-08-28-carb3-site-energy-system-implementation.md), failure mode #8).
 
 ### Group E — hygiene, unblocked by the above
 
-- **E1.** Validator for all seven Family-B files (Issue 4) — **do this first**, on today's
-  data, for a green baseline.
-- **E2.** Fix the vision doc λ→ξ bug at lines 146 and 240.
-- **E3.** Fix the worked example's wrong cross-reference at line 372 (`§1.5` should be
-  `§1.6`) and the inconsistent withholding set at line 414 (omits `§1.9`).
-- **E4.** Reconcile the worked example's A3 shares against
-  `activity_process_energy_profile.csv` — the example uses coal 0.97 to the kiln, the data
-  asset says 1.0.
+- **E1.** Validator for all seven hand-researched reference files — **do this first**, on
+  today's data, for a green baseline. Until it is green on unmodified data, no later failure
+  can be attributed to the migration rather than to a pre-existing condition.

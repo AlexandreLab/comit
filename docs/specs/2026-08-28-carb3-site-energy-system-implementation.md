@@ -1,20 +1,19 @@
-# CaRB3 Site Energy System — Implementation Specification (v2)
+# CaRB3 Site Energy System — Implementation Specification
 
-**Status:** Draft — §1, §2, §3 and §5 written. §4 is a stub owned by T13; §6–§13 are not yet written
-**Self-contained:** §3 inlines every entity carried over from v1, so nothing here requires opening the archived v1 spec
-**Date:** 2026-09-01
+**Status:** Draft — §1, §2, §3, §4, §5, §7, §9 and §10 written. §6, §8 and §11–§13 are not yet written
+**Date:** 2026-09-02
 **Scope:** Great Britain (England, Wales, Scotland) · CaRB3 **Factory class** only (55 activities)
-**Plan:** [overview](2026-08-28-carb3-site-energy-system-overview.md) ·
+**Companion documents:** [overview and decisions](2026-08-28-carb3-site-energy-system-overview.md) ·
 [architecture](2026-08-28-carb3-site-energy-system-architecture.md) ·
-[spec changes](2026-08-28-carb3-site-energy-system-spec-changes.md) ·
 [data migration](2026-08-28-carb3-site-energy-system-data-migration.md) ·
 [delivery](2026-08-28-carb3-site-energy-system-delivery.md)
-**v1, frozen:** [archive/2026-08-19-carb3-site-decarbonisation-implementation.md](archive/2026-08-19-carb3-site-decarbonisation-implementation.md) — retained as the COMIT-parity baseline that V1 validates against
-**Design decisions:** [vision §6](archive/2026-08-19-carb3-site-decarbonisation-vision.md) defines `D1`–`D11`
 
-> **Incomplete by design.** This document is being written section by section against the
-> delivery plan. §4 (algorithms) is T13. §6–§13 are T5, T6, T7, T14 and T15. Do not treat a
-> missing section as a decision that it is unnecessary.
+> **This document is self-contained.** Every entity, decision label and symbol it uses is
+> defined here. Nothing in it requires reading another document first.
+
+> **Incomplete by design.** It is being written section by section against the delivery
+> plan, which names the owner of each outstanding section. Do not treat a missing section as
+> a decision that it is unnecessary.
 
 ---
 
@@ -28,28 +27,26 @@ A build specification: one record per premise in, a least-cost decarbonisation p
 solved independently per premise. It states **what to build**, not how to build it in a
 particular language.
 
-It supersedes v1 **for architecture only**. v1 remains authoritative as the COMIT-parity
-baseline, and the chain of custody runs in two hops: v1 reproduces coupled-off COMIT (V1,
-unchanged), and v2 reproduces v1 in the carrier-equivalent configuration (V1b, T5). Neither
-hop may be skipped.
+**Validation chain.** The model's results are anchored to COMIT, the R optimisation model
+that runs today, in two hops and neither may be skipped. **V1** asserts that the
+[COMIT-parity baseline specification](archive/2026-08-19-carb3-site-decarbonisation-implementation.md)
+reproduces coupled-off COMIT. **V1b** asserts that this model reproduces that baseline in
+the *carrier-equivalent configuration* defined in §10.
 
-### 1.2 What changed from v1, in one table
+### 1.2 What this architecture must express
 
-| | v1 | v2 |
+Three capabilities are required of the model, and each is impossible under a design that
+maps technologies to processes by table and prices every fuel exogenously. They are the
+reason for the duty / unit / carrier spine described in §2 and specified in §3 and §5.
+
+| Requirement | Why a table-mapped design cannot express it | How this design expresses it |
 |---|---|---|
-| The thing that converts energy | `technology`, one row per *(process × equipment × fuel)*, 397 rows | `unit`, ~95 rows. Fuel moves out of the identity and into carrier bindings |
-| What a process asks for | A quantity of its own output commodity | A **carrier at a grade** — `heat@60-150C`, not "gas" |
-| How supply meets demand | Technologies mapped to processes by table | A **carrier balance at every node** (C8), plus a one-way heat-grade cascade (C10) |
-| Electricity | A priced fuel with unconstrained supply | A balanced carrier with import, export and a connection limit |
-| Onsite generation | Inexpressible. C1 has no place for a technology serving no process | An ordinary unit. PV, CHP, electrolysers and AD need no special class |
-| Storage | Worth exactly zero — it nets to a round-trip loss inside one annual period | **Hybrid units** at a fixed sizing ratio (PD3), with coefficients from an offline archetype layer |
-| Waste heat | Nowhere to go | A low-grade supply, which is exactly what a heat pump needs |
-| Temporal structure | Annual only | **Two tiers.** Offline hourly dispatch produces ψ, β, χ, ε; the per-premise problem stays annual and a pure LP |
+| **Onsite generation** — PV, CHP, electrolysers, anaerobic digestion | These produce a carrier rather than serving a process demand, so a duty-satisfaction constraint of the form `Σ output = demand` has no place to put them. Pricing onsite electricity at the grid tariff to compensate nullifies PV, whose entire value is that its energy costs LCOE and not the tariff | A generator is an ordinary **unit**. Its output enters the **carrier balance** (C8) alongside imports, and needs no special class |
+| **Storage** | A battery or thermal store charges and discharges inside one annual period and nets to a round-trip loss, so a cost-minimising model never builds one | **Hybrid units** at a fixed sizing ratio (PD2), whose value is measured offline by the Tier A archetype layer and enters as the coefficients ψ, β, χ, ε |
+| **Heat quality and waste heat** | Temperature lives in the *process code* (`LTH`/`HTH`/`STM`/`DRY`), so what stops a heat pump firing a kiln is a mapping table rather than physics. A kiln's reject heat has nowhere to go, and 28 of the 134 options in `decarbonisation_options_library.csv` are heat recovery | Heat is a **graded carrier** with a one-way cascade (C10). Reject heat is a low-grade supply, which is exactly the source a heat pump needs |
 
-**What did not change, and is carried over unaltered:** D2 per-premise decomposition; D7
-exogenous infrastructure; D11 plant vintage, ageing and the stranding charge; the
-sign convention on input/output coefficients; the two-denominator rule (D5); the D10
-three-tier evidence pattern; and the objective's discounting and annuitisation.
+The single structural move behind all three is to **separate the duty from the unit that
+meets it, and put a carrier network between them**. Everything else follows.
 
 ### 1.3 Language-agnostic conventions
 
@@ -74,12 +71,12 @@ Label families in this document, and where each is defined:
 | Family | Meaning | Defined in |
 |---|---|---|
 | `C1`–`C12` | Constraints | §5.5 |
-| `A1`–`A9` | Algorithms | §4 (T13) |
-| `S0`–`S9` | Pipeline stages | §2.1. **`S0` is new** — the offline archetype layer. v1's family started at `S1` |
-| `V1`–`V23` | Validation tests | §10 (T5, T14, T15) |
-| `G1`–`G4` | Scale gates | §9 (T7, T15) |
-| `D1`–`D11` | Design decisions | **the vision doc**, not here |
-| `PD1`–`PD3` | Plan decisions | the v2 overview doc |
+| `A1`–`A9` | Algorithms | §4 |
+| `S0`–`S9` | Pipeline stages | §2.1 |
+| `V1`–`V23` | Validation tests | §10 |
+| `G1`–`G4` | Scale gates | §9 |
+| `D1`–`D11` | Design decisions | §1.6 |
+| `PD1`–`PD2` | Programme decisions | the [overview](2026-08-28-carb3-site-energy-system-overview.md) |
 
 ### 1.5 Glossary
 
@@ -89,7 +86,7 @@ Label families in this document, and where each is defined:
 | **Grade** | A temperature band on a heat carrier. Ordered, and the cascade runs one way only |
 | **Duty** | What a process requires: a quantity of a carrier at a grade. The demand side |
 | **Unit** | What converts between carriers. The supply side. Boiler, heat pump, kiln, CHP, PV, battery |
-| **Hybrid unit** | A co-located package at a **fixed sizing ratio**, e.g. `pv_battery_2h`. One unit, one capex, one coefficient set (PD3) |
+| **Hybrid unit** | A co-located package at a **fixed sizing ratio**, e.g. `pv_battery_2h`. One unit, one capex, one coefficient set (PD2) |
 | **Primary carrier** | One that enters the site or is extracted: gas, coal, biomass, grid electricity. Emissions attach here |
 | **Intermediate carrier** | One produced and consumed on site: heat, steam, recovered heat. Emissions never attach here |
 | **Tier A / Tier B** | The offline archetype dispatch layer, and the per-premise annual investment LP |
@@ -97,9 +94,26 @@ Label families in this document, and where each is defined:
 **Not a virtual power plant.** A VPP aggregates assets across multiple sites, which is the
 inter-premise coupling D2 forbids. "Hybrid unit" means co-located, one premise.
 
-### 1.6 Design decisions assumed
+### 1.6 Design decisions
 
-D1–D11 are defined in the vision doc. Four have the widest reach here:
+Eleven decisions fix the shape of the model. Everything in §2–§13 is written inside them,
+and each is cited by label wherever it constrains a choice.
+
+| # | Decision | What it buys | What it costs |
+|---|---|---|---|
+| **D1** | Full CaRB3 **Factory-class** stock — all 55 activities, every premise | Coverage of the whole industrial stock, not just the ~1,026 point sources | Rules out a single coupled optimisation; non-Factory premises (offices, retail, schools, warehouses) are excluded |
+| **D2** | Per-site independent solves | Linear scaling; embarrassingly parallel; genuinely per-site answers | Removes national and cluster coupling entirely |
+| **D3** | Full CaRB3 unit operations as processes | Process switching becomes a real lever, not just fuel switching | A large data build |
+| **D4** | Baseline energy supplied upstream by the stock model | Removes the emissions-proxy problem; real heterogeneity per site | A hard dependency on the stock model's quality |
+| **D5** | Hybrid denominators — energy (PJ) by default, mass (Mt) for chemistry | Most coefficients derivable from supplied energy; keeps process emissions physically grounded (kt CO₂ per Mt) | Two denominator conventions to keep straight |
+| **D6** | Tiered cost provenance — reuse COMIT, then BREF/BAT, then proxy | Shrinks the data build far below the naive count; weak estimates visible, not hidden | A mixed-confidence dataset needs careful reporting |
+| **D7** | Infrastructure exogenous — H₂, CO₂ and biomethane availability as scenario input | Simple and explicable; the assumption is owned and stated | **No infrastructure co-optimisation** |
+| **D8** | Great Britain scope | Keeps Grangemouth and Peterhead; matches expected stock coverage | Excludes Northern Ireland — 56 sites and the Londonderry cluster |
+| **D9** | One direction for site heterogeneity — this specification, not a parallel roadmap | No conflicting roadmaps | — |
+| **D10** | Tiered site intelligence — known site detail replaces activity defaults outright | Real sites modelled as themselves wherever evidence exists; the model improves as intelligence accumulates, without redesign | Mixed-evidence results; every output row must carry its evidence tier or the quality is invisible |
+| **D11** | Existing plant has an age — it retires when its life ends, and early replacement pays the residual value | Replacement timing becomes an economic result instead of an artefact; near-new plant stops being scrapped for free | A vintage assumption for every premise with no age data, and one more parameter (ξ, §5.3) to defend |
+
+Four have the widest reach in this document:
 
 - **D2 — per-site independent solves.** No constraint may couple two premises. Anything
   needing cross-site information becomes a scenario input or a post-hoc comparison. This is
@@ -108,7 +122,8 @@ D1–D11 are defined in the vision doc. Four have the widest reach here:
   also the line the unit spine splits on (§3.2).
 - **D10 — tiered site intelligence.** Known site detail replaces activity defaults outright,
   and every output row carries its evidence tier.
-- **D11 — plant has an age.** Carried over unchanged, now attaching to units.
+- **D11 — plant has an age.** Ageing, early retirement and the stranding charge attach
+  to units (C4).
 
 ---
 
@@ -120,11 +135,11 @@ D1–D11 are defined in the vision doc. Four have the widest reach here:
 
 | # | Component | Responsibility |
 |---|---|---|
-| S0 | **Archetype dispatch (Tier A)** | **New.** Offline, hourly, once per archetype per hybrid sizing ratio. Emits ψ, β, χ, ε |
+| S0 | **Archetype dispatch (Tier A)** | Offline, hourly, once per archetype per hybrid sizing ratio. Emits ψ, β, χ, ε |
 | S1 | Ingestion and validation | Accept premise records, validate, reject with reasons |
 | S2 | Process and unit expansion | Premise → its duties, and the candidate unit set via `unit_eligibility` |
 | S3 | Carrier allocation | Split metered energy onto carriers |
-| S4 | Baseline capacity, mix and vintage | Back-solve implied unit capacity, the carrier mix (T13), and plant age |
+| S4 | Baseline capacity, mix and vintage | Back-solve implied unit capacity, the carrier mix (A4), and plant age |
 | S5 | Scenario application | Attach prices, carbon price, infrastructure availability, archetype coefficients |
 | S6 | Problem builder | Construct the per-premise optimisation (§5) |
 | S7 | Solver driver | Solve, extract, handle infeasibility |
@@ -175,16 +190,10 @@ it, do not model it.
 
 *Section last updated: 2026-09-02*
 
-**Twenty-two entities, and this document is now self-contained** — nothing here sends you
-to v1. Entities v1 defined and v2 keeps unchanged are inlined below rather than cited, which
-is what the previous draft's §3.12 said had to happen before v2 could stand alone.
-
-**Section numbers are aligned with v1 on purpose.** Where v1 and v2 both define an entity it
-sits at the same number in both — §3.11 is `premise_measured_emissions` in each. Where v2
-replaces a v1 entity, the replacement takes the number the original had: v2's `carrier` is
-§3.4 because v1's `commodity` was, and `unit` is §3.5 because `technology` was. So a §3.x
-reference means the same thing whichever document you came from, and the archived v1 spec
-can be read alongside without translation.
+**Twenty-two entities.** Every one of them is defined here in full: fields, types, units,
+keys and validation rules. Four are supplied by the CaRB3 stock model, seven by the
+modelling team, two by scenario definition, one is derived at run time, six are optional
+per-premise intelligence, and two carry defaults and the offline archetype layer.
 
 | | Supplied by | Entities |
 |---|---|---|
@@ -197,11 +206,10 @@ can be read alongside without translation.
 
 ### 3.1 `premise_record` — the premise itself
 
-*v1 §3.1, unchanged.*
-
 The interface between the CaRB3 stock model and this model is three **required**
 entities — this one, plus `premise_energy` (§3.1.1) and `premise_throughput` (§3.1.2) —
-and one optional fourth, `premise_connection` (§3.1.3), which **v2 reads for the first time** — C11 bounds import against it, C12 bounds onsite generation against its `available_area`.
+and one optional fourth, `premise_connection` (§3.1.3) — C11 bounds import against it, and
+C12 bounds onsite generation against its `available_area`.
 That is the same set §3's preamble calls the first four. One row per premise
 here; the other two are long tables keyed on `premise_id`. Stated in requirement terms,
 with rationale, in **§1.6**; these tables are normative for validation.
@@ -235,8 +243,6 @@ several carriers and may make several products — so both are long tables keyed
 
 #### 3.1.1 `premise_energy` — consumption by carrier
 
-*v1 §3.1.1, `commodity_id` renamed `carrier_id`.*
-
 One row per premise per carrier. Replaces the fixed `energy_electricity` … `energy_other`
 columns: a new carrier is a new row, not a schema change, and the `energy_other` /
 `energy_other_carrier` pair disappears because every carrier now names itself.
@@ -264,7 +270,7 @@ decarbonisation options. So:
 - A carrier **known not to be consumed** is stated explicitly: `quantity = 0` with
   `data_status = not_consumed`.
 - A carrier that was **not assessed** is simply absent, and any result for that premise
-  is reported as having incomplete carrier coverage (§8, T14).
+  is reported as having incomplete carrier coverage (§8).
 
 The stock model should aim to state all five main vectors for every premise, whether by a
 positive quantity or an explicit zero. Absence is a last resort, not the default.
@@ -277,8 +283,6 @@ the connection is a modelled object (§3.1.3) and the difference is load-bearing
 Sites with a single connection may omit `connection_id` entirely and are unaffected.
 
 #### 3.1.2 `premise_throughput` — physical output by carrier
-
-*v1 §3.1.2, `commodity_id` renamed `carrier_id`.*
 
 One row per premise per product. Long for the same reason, and it lifts a real
 limitation: the previous single `throughput_quantity` column could not represent a site
@@ -302,8 +306,6 @@ have at least one `premise_throughput` row, and A1 rejects it otherwise
 
 #### 3.1.3 `premise_connection`
 
-*v1 §3.1.3 plus `available_area`; **read for the first time** (C11, C12).*
-
 One row per MPAN or MPRN.
 
 | Field | Type | Unit | Req | Key | Validation |
@@ -325,8 +327,6 @@ the LP builds infinite PV. Where the stock model cannot supply it, a per-activit
 fraction applied to the GIS footprint is the fallback, and it carries its evidence tier.
 
 ### 3.2 `activity_process_register` — activity → processes
-
-*v1 §3.2, unchanged.*
 
 Which processes run at a premise of a given activity. Populated by
 [`../notes/data/activity_process_register.csv`](../notes/data/activity_process_register.csv) —
@@ -363,8 +363,6 @@ a different activity is rejected on ingest with reason `invalid_process_set`.
 
 ### 3.3 `activity_process_duty_profile`
 
-***new** — replaces v1 §3.3 `activity_process_energy_profile`.*
-
 **The default duty of each process, per activity.** The activity-level default that A2
 expands into a premise's `process_duty` (§3.7) wherever no site intelligence overrides it.
 This is the demand side of the carrier model, and **nothing holds it today** — see
@@ -381,13 +379,14 @@ This is the demand side of the carrier model, and **nothing holds it today** —
 | `duty_share` | real | fraction | yes | — | ∈ [0, 1]. Share of this process's energy that is this duty |
 | `share_low` | real | fraction | no | — | ≤ `duty_share` if present |
 | `share_high` | real | fraction | no | — | ≥ `duty_share` if present |
-| `evidence_tier` | enum{measured, engineering, published_sec, fallback} | — | yes | — | Same ladder as the v1 energy profile |
+| `evidence_tier` | enum{measured, engineering, published_sec, fallback} | — | yes | — | The D10 ladder |
 | `provenance` | string | — | yes | — | Citation |
 | `confidence` | enum{high, medium, low} | — | yes | — | Carried to output |
 
 **Rule (shares sum to one).** For each `(carb3_activity, process_set_id, process_id)`,
-`duty_share` must sum to 1.00 ± 0.015 — the same tolerance the v1 energy profile is already
-validated against, so one check covers both.
+`duty_share` must sum to 1.00 ± 0.015. The tolerance is the one
+[`../notes/data/activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv)
+is already validated against, so a single check covers both tables.
 
 **Rule (a heat duty must have a grade).** Where the carrier is gradeable, `grade_rank` is
 non-nullable. A heat duty with no grade is invisible to C10's cascade: it can be served by
@@ -396,20 +395,18 @@ cheapest. This is the failure the data-migration plan flags as mode #6, and it f
 
 **Rule (inheritance).** A non-default process set need not restate every row; where a
 `(process_id, duty_family, grade_rank)` is absent it inherits the default set's value.
-Identical to the v1 energy profile's inheritance rule.
 
-**This replaces the vector split as an input, and does not merely add to it.** v1 asks which
-*fuel* serves a process (`activity_process_energy_profile.energy_share` by vector); v2's
-carrier balance **decides** that, so supplying it too would over-determine the problem.
-The 490-row v1 profile therefore becomes the **parity target for V1b** — the thing v2's
-chosen fuel mix is compared against — rather than an input. §3.12 says the same from the
-other direction.
+**A duty is not a fuel share, and the two must not both be supplied.** This entity states
+which *duty* a process presents — a carrier at a grade. Which *fuel* serves that duty is
+decided by the carrier balance, so supplying a fuel split as well would over-determine the
+problem. The 490-row fuel split in
+[`../notes/data/activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv)
+is therefore a **parity target for V1b** — the thing the model's chosen fuel mix is compared
+against — and never an input.
 
 ### 3.4 `carrier`
 
-***new** — replaces v1 §3.4 `commodity`.*
-
-Anything that flows and balances. Replaces v1's `commodity`.
+Anything that flows and balances: a fuel, electricity, hydrogen, CO₂, or heat at a grade.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -434,9 +431,8 @@ stock.
 
 ### 3.5 `unit`
 
-***new** — replaces v1 §3.5 `technology`.*
-
-What converts between carriers. Replaces v1's `technology`.
+What converts between carriers. Fuel is not part of a unit's identity — it enters through
+the unit's carrier bindings in §3.6.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -467,14 +463,11 @@ dairy and a paper mill alike. Chemistry (`ICMCLK`, `IHVC`, `IISPIR` and eleven m
 node-keyed, because a cement kiln is not a generic device. Sector specificity lives in
 `unit_eligibility`, not in the unit's identity.
 
-**Abatement is a unit, not a retrofit pointer.** v1's `retrofit_to` differenced one
-technology's costs against another. Here a CCS train is a unit that consumes a CO₂ carrier
-produced by its host and names the host in `abates_unit_id`. It inherits the host's
-remaining life under D11 and strands nothing.
+**Abatement is a unit, not a cost differential against another unit.** A CCS train is a
+unit that consumes a CO₂ carrier produced by its host and names that host in
+`abates_unit_id`. It inherits the host's remaining life under D11 and strands nothing.
 
 #### 3.5.1 `unit_eligibility`
-
-***new**.*
 
 Which units may serve which duty, for which activity, and above what scale. **This is where
 sector specificity lives.**
@@ -499,8 +492,6 @@ pattern.
 
 #### 3.5.2 `unit_bill_of_materials`
 
-***new**.*
-
 One row per hybrid unit per component. Required whenever `unit.is_hybrid` is true.
 
 | Field | Type | Unit | Req | Key | Validation |
@@ -520,10 +511,9 @@ V20 (c) checks that against.
 
 ### 3.6 `unit_input_output`
 
-***new** — replaces v1 §3.6 `technology_input_output`.*
-
-Coefficients per unit per carrier, per unit of the unit's output. Carried over from v1's
-`technology_input_output` with the key renamed and **the sign convention unchanged**.
+Coefficients per unit per carrier, per unit of the unit's output. This entity is what makes
+the carrier balance (C8) computable, and its **sign convention is load-bearing**: consumed
+negative, produced positive.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -544,8 +534,6 @@ was charged to the rejecting unit.
 
 ### 3.7 `infrastructure_scenario` — exogenous availability (D7)
 
-*v1 §3.7, unchanged.*
-
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `scenario_id` | string | — | yes | PK part | — |
@@ -562,9 +550,7 @@ radius get `available = false` for hydrogen and CO₂ transport.
 
 ### 3.8 `scenario_parameters`
 
-*v1 §3.8, extended.*
-
-Extended from v1. New rows only are listed.
+Scalar and per-carrier series driving the objective and the constraints.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -579,10 +565,9 @@ must be **strictly below** `import_price` (V21, and it is physically true anyway
 
 ### 3.9 `process_duty`
 
-***new** — v1 §3.9 was `site_pathway`, an output, which belongs in §8.*
-
-What a premise must produce, per period. Replaces v1's vector-share allocation, which the
-carrier balance makes unnecessary.
+What a premise must produce, per period. Derived at run time by A2 from
+`activity_process_register` and `activity_process_duty_profile`, refined by any
+per-premise intelligence that exists (D10).
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -595,8 +580,6 @@ carrier balance makes unnecessary.
 | `evidence_tier` | enum{site_known, named_set, activity_default} | — | yes | — | D10 |
 
 ### 3.10 `premise_process_detail` — known site processes and capacity
-
-*v1 §3.10, `technology_code` renamed `unit_id`.*
 
 **Optional per-premise intelligence.** Where the actual processes at a site are known —
 from a permit, an audit, a site visit, or an operator disclosure — they are stated here
@@ -631,8 +614,6 @@ say that, and averaging the two is the thing D11 exists to stop.
 
 ### 3.11 `premise_measured_emissions` — reported emissions, where they exist
 
-*v1 §3.11, unchanged.*
-
 **Optional per-premise intelligence.** For sites in UK ETS, or covered by permit
 reporting or NAEI point-source data, measured emissions exist and are better evidence
 than anything this model computes. They are used to **reconcile and calibrate** the
@@ -655,8 +636,6 @@ same premise-year, the parts must sum to the total within 1%, or the record is r
 with reason `emissions_inconsistent`.
 
 ### 3.12 `premise_operating_profile` — schedule and load shape
-
-*v1 §3.12, unchanged.*
 
 **Optional per-premise intelligence.** Two distinct things live here, and they answer
 different questions. The **operating schedule** says when the site runs, which validates
@@ -698,8 +677,6 @@ Divergence beyond that is reported as `profile_energy_inconsistent` — most oft
 vintage mismatch between the profile year and `data_year`.
 
 ### 3.13 `process_load_shape` — how a process presents its demand
-
-*v1 §3.13, unchanged.*
 
 **The shape belongs to the process, not to the unit.** A kiln runs continuously
 whether it is fired by gas or by hydrogen; a batch dryer is batchy whether it is gas or
@@ -743,8 +720,6 @@ and the presses do not.
 
 ### 3.14 `premise_weekly_profile` — measured shape, where it exists
 
-*v1 §3.14, unchanged.*
-
 **Optional, and deliberately small.** A representative **half-hourly week** — 336
 points — captures the daily cycle and the weekday/weekend difference, which is most of
 what shape means for a connection question, at ~2% of a full year's data. Supplied per
@@ -779,8 +754,6 @@ attributed to the right process when the mix changes.
 ---
 
 ### 3.15 `premise_process_vintage` — when the plant was installed (D11)
-
-*v1 §3.15, `technology_code` renamed `unit_id`.*
 
 **Optional per-premise intelligence, and the highest tier of vintage evidence.** Where
 the commissioning date of the plant serving a process is known — from a permit, a
@@ -830,8 +803,6 @@ actually arrives.
 
 ### 3.16 `activity_default_unit`
 
-***new**.*
-
 **What plant an activity typically already has.** The base-year supply side: which units
 serve each duty today, before any investment decision. Also **absent from both specs** until
 now, and the reason a site with a 20 MW CHP and one without are currently the same row.
@@ -858,26 +829,23 @@ process_id)` has no `unit_eligibility` entry is rejected. The default cannot ass
 model would refuse to build, or A4 back-solves a baseline the optimiser cannot reproduce.
 
 **No electricity co-product field, deliberately.** A CHP's electrical output is already
-described by `unit_input_output` (§3.3), which gives every unit its full carrier vector.
+described by `unit_input_output` (§3.6), which gives every unit its full carrier vector.
 Restating it here would be a second place for the same number to live, and they would
 disagree. This entity says only *which* unit and *how much of the duty*; what the unit does
 with that duty is the unit's own definition.
 
-**Why an activity default rather than back-solving.** v1's A4 infers existing technology
-from metered energy, which works while every technology is a fuel variant of a demand
-device — the fuel identifies the plant. It stops working once generation, storage and CHP
-exist: a CHP is not inferable from a heat duty, because the same heat is equally consistent
-with a boiler. Some of the supply side has to be asserted, and the activity default is where
-it is asserted for premises with no site intelligence. Where §3.10 of the v1 spec
-(`premise_process_detail`) gives real plant for a real site, that wins — the D10 ladder is
-unchanged.
+**Why an activity default rather than back-solving.** Inferring existing plant from metered
+energy works only while every unit is a fuel variant of a demand device, because then the
+fuel identifies the plant. It stops working once generation, storage and CHP exist: a CHP is
+not inferable from a heat duty, since the same heat is equally consistent with a boiler.
+Some of the supply side therefore has to be asserted, and this entity is where it is
+asserted for premises with no site intelligence. Where `premise_process_detail` (§3.10)
+gives real plant for a real site, that wins — the D10 ladder applies unchanged.
 
 ### 3.17 `archetype_coefficient`
 
-***new**.*
-
 What Tier A emits. **One constant per coefficient per unit** — not a function of a design
-ratio, because a hybrid unit fixes the ratio (PD3).
+ratio, because a hybrid unit fixes the ratio (PD2).
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -907,21 +875,59 @@ fitted match. This is the D10 pattern, applied to a new kind of evidence.
 
 ## 4. Algorithms
 
-*Section last updated: 2026-09-01*
+*Section last updated: 2026-09-02*
 
-**Not written. Owned by T13.** A1–A9 carry over from v1 in outline, but five change
-materially and one of those is the deepest open question in the design:
+> **Partially written.** The numbered pseudocode for A1–A9 is outstanding; the delivery plan
+> names its owner. What each algorithm is responsible for, and the two rules that were open
+> questions in the design, are settled and stated below.
 
-- **A2** also resolves the candidate unit set and applies `unit_eligibility.min_duty`.
-- **A3** is largely removed; the carrier balance replaces share allocation.
-- **A4 is under-determined as written.** In v1 the technology code pins the fuel, so
-  `energy → capacity` has one answer. Here a unit may burn a mix, so the same metered energy
-  is consistent with many (capacity, mix) pairs. The proposed resolution is a three-tier
-  carrier-mix rule in the D10 pattern; see the [spec changes
-  document](2026-08-28-carb3-site-energy-system-spec-changes.md). **V1b cannot be defined
-  until this is closed**, so T13 blocks T5.
-- **A6** declares variables over units and carrier flows, and attaches ψ, β, χ, ε.
-- **A7**'s relaxation ladder gains rungs **C12 → C10 → C11**, ahead of C9.
+Nine algorithms run the pipeline of §2.1. A1–A9 map onto the stages S1–S9 one for one.
+
+| # | Algorithm | Responsibility |
+|---|---|---|
+| A1 | Ingest and validate premise records | Accept a premise record and its companions, apply the load-scope validation of §10, reject with reasons |
+| A2 | Expand premise to duties and candidate units | Resolve the process set, produce `process_duty` rows, and resolve the **candidate unit set** from `unit_eligibility` — including the `min_duty` screening that keeps minimum viable scale out of the LP |
+| A3 | Allocate premise energy onto carriers | Split metered energy across carriers. It does **not** allocate energy across processes: the carrier balance decides that |
+| A4 | Back-solve implied capacity, carrier mix and vintage | Turn metered energy into installed unit capacity, the mix of carriers each unit burns (§4.1), and plant age under D11 |
+| A5 | Apply the scenario | Attach prices, carbon price, infrastructure availability and the archetype coefficients ψ, β, χ, ε |
+| A6 | Build the per-premise problem | Declare variables over units and carrier flows, assemble C1–C12 and the objective of §5.4 |
+| A7 | Solve and extract | Solve, extract the pathway, and handle infeasibility by the relaxation ladder of §4.2 |
+| A8 | Assemble output tables | Produce the per-premise pathway rows, each carrying its evidence tier |
+| A9 | Aggregate to GB and compare | Roll up across premises; compare against ECUK and the GHGI |
+
+### 4.1 A4 — the carrier-mix rule
+
+**The problem.** Where a unit's identity pins its fuel, `energy → capacity` has exactly one
+answer. Here a unit may burn a mix, so the same metered energy is consistent with many
+`(capacity, mix)` pairs and the back-solve is under-determined. The mix must therefore be
+pinned from evidence rather than solved for, in the D10 pattern used everywhere else:
+
+| Tier | Evidence | Mix |
+|---|---|---|
+| 1 — `site_known` | `premise_process_detail` names the unit and its carriers | Observed. Fully determined |
+| 2 — `carrier_bounded` | `premise_energy` gives site totals per carrier, and the premise runs one unit on that carrier | Determined by division |
+| 3 — `activity_default` | Neither | The activity-default mix, carried as an assumption |
+
+Tiers are tried in order and exactly one resolves. Where several units share a carrier at
+tier 2, split by duty share and **record the split as an assumption** rather than presenting
+it as measured. Every output row carries a `mix_evidence_tier` (§8), so a premise running on
+an assumed mix is never mistaken on paper for one running on an observed one. V23 asserts
+all three properties.
+
+### 4.2 A7 — the relaxation ladder
+
+An infeasible premise is relaxed in a fixed order, and every relaxation is reported. The
+order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
+
+- **C12 (siting cap) relaxes first** of the three connection-and-physics constraints. It is
+  the softest: an over-large PV array is an input-data problem about roof area, not a
+  statement about the site's physics.
+- **C10 (grade cascade) next**, and relaxing it must be loud — it means the model served a
+  duty with heat that cannot physically reach that temperature. Report it; never silently
+  absorb it.
+- **C11 (connection capacity) last of the three**, because relaxing it asserts a network
+  reinforcement that nobody has costed, which is exactly the error §5.6 warns about for
+  peak.
 
 ---
 
@@ -965,9 +971,9 @@ All continuous and non-negative. **The problem is a pure LP and must stay one.**
 | $x_{c,k,t}$ | Export of carrier $c$ at connection $k$ | PJ/yr |
 | $w_{k,t}$ | Reinforcement purchased at connection $k$ | MW |
 
-**Activity is $z$, not $u$.** v1 used $u$ for activity; here $u$ indexes units, so the
-activity variable is renamed to avoid the collision. This is deliberate and is the kind of
-clash the label rules in §1.4 exist to prevent.
+**Activity is $z$, not $u$.** $u$ indexes units throughout this document, so the activity
+variable takes a different letter. The separation is deliberate and is the kind of clash the
+label rules in §1.4 exist to prevent.
 
 **No binaries.** Minimum scale is handled by eligibility screening in A2 and by reporting,
 never by a fixed-charge binary. Any proposal to add one must be weighed against §9.
@@ -988,9 +994,8 @@ never by a fixed-charge binary. Any proposal to add one must be weighed against 
 | $A_k, \delta^{\text{area}}$ | `premise_connection`, `scenario_parameters` | Available area, MW per m² |
 | $\pi_t, \tau_{c,t}, \sigma, r, i$ | `scenario_parameters` | Carbon price, tariff, stability factor, discount and interest rates |
 
-**D11's survival function $\eta$ and mean remaining life $\bar R$ are carried over from v1
-§5.3.1 unchanged**, with `technology` reading as `unit`. They are parameters computed before
-the problem is built, which is what keeps D11 free of binaries.
+**D11's survival function $\eta$ and mean remaining life $\bar R$ are parameters, computed
+per unit before the problem is built.** That is what keeps D11 free of binaries.
 
 ### 5.4 Objective
 
@@ -1011,7 +1016,7 @@ $$Z^{\text{net}}_t = \sum_{k} \gamma_k\big(w_{k,t}\big)$$
 negative term.** No implementation may assume cost components are non-negative. V6 already
 records this trap for emissions; it now applies to costs.
 
-**Carbon cost carries the $10^{-3}$ unit conversion** that v1 §5.4 documents. Emission
+**Carbon cost carries a $10^{-3}$ unit conversion.** Emission
 factors are kt/PJ and the carbon price is £/t.
 
 ### 5.5 Constraints
@@ -1024,24 +1029,23 @@ $$\sum_{u \in U_q} z_{u,t} = D_{q,t} \qquad \forall q \in Q,\; t \in T$$
 
 $$z_{u,t} \le a_{u,t}\,\gamma_u\,\alpha_u \qquad \forall u,\, t$$
 
-**C3 — Capacity transfer between periods.** Carried over from v1 unchanged with $u$ reading
-as a unit:
+**C3 — Capacity transfer between periods.**
 
 $$a_{u,t} = e_{u,t} + \sum_{s \le t} n_{u,s}\,\mathbb{1}[\,s \le t \le s + \ell_{u,s} - 1\,]$$
 
 with $e_{u,t} \equiv 0$ for $u \notin U^0$. An abatement unit expires with its host, not on
 its own life.
 
-**C4 — Incumbent ageing and early retirement (D11).** Carried over from v1 §5.5 unchanged in
-all four parts, with `technology` reading as `unit` and the retrofit rule restated on
-`abates_unit_id`: a unit whose host is still standing has not been scrapped, so it attracts
-no stranding charge and inherits the host's remaining life.
+**C4 — Incumbent ageing and early retirement (D11).** Incumbent capacity decays by the
+survival function $\eta$, may be retired early against a stranding charge in $\xi$, and the
+abatement rule keys on `abates_unit_id`: a unit whose host is still standing has not been
+scrapped, so it attracts no stranding charge and inherits the host's remaining life.
 
 **C5 — No building in the start year.** $n_{u,t_0} = 0 \;\; \forall u$.
 
-**C6 — Unit stability.** Two-legged ramp limit, carried over from v1 unchanged in form.
-$\sigma$ is measured against deliverable output $\bar z_{u,t} = a_{u,t}\gamma_u\alpha_u$, so a
-value calibrated for v1 carries over directly.
+**C6 — Unit stability.** A two-legged ramp limit on how fast a unit's activity may change
+between periods. $\sigma$ is measured against deliverable output
+$\bar z_{u,t} = a_{u,t}\gamma_u\alpha_u$, not against installed capacity.
 
 **C7 — Known changes.** Announced commitments fix or bound $z_{u,t}$ or $a_{u,t}$.
 
@@ -1050,15 +1054,14 @@ premise:
 
 $$\sum_{u \in U} z_{u,t}\,\iota_{u,c} \;+\; \sum_{k \in \mathcal{K}} \big(m_{c,k,t} - x_{c,k,t}\big) \;=\; 0 \qquad \forall c \in \mathcal{C},\, t$$
 
-with $m_{c,k,t} = x_{c,k,t} = 0$ where the premise has no connection carrying $c$. v1
-balanced only intermediate commodities and treated electricity as an unconstrained priced
-fuel; balancing every carrier is what makes onsite generation, CHP and export expressible at
-all.
+with $m_{c,k,t} = x_{c,k,t} = 0$ where the premise has no connection carrying $c$. Every
+carrier balances, including electricity: that is what makes onsite generation, CHP and
+export expressible at all.
 
 **C9 — Infrastructure availability (D7).** A unit whose carrier is unavailable at the premise
-in a period cannot run, and where a cap is specified the premise's draw respects it. Extended
-from v1 to cover a `biomethane` carrier, whose real constraint is a shared catchment and
-therefore cannot be modelled per premise.
+in a period cannot run, and where a cap is specified the premise's draw respects it. This
+covers `biomethane` as well as hydrogen and CO₂ transport: biomethane's real constraint is a
+shared catchment, which D2 forbids modelling per premise.
 
 **C10 — Heat grade cascade.** A unit may serve a duty only at or below its output grade:
 
@@ -1069,15 +1072,16 @@ is why V19 is a load-scope test. Stating it as a constraint keeps §5 complete; 
 it as a filter keeps the problem small.
 
 **High grade may serve a low-grade duty, never the reverse.** A steam boiler at 150–400 °C
-serves a 120 °C duty; a heat pump capped at 100 °C does not. This is the physics v1 enforced
-by a mapping table and could not state.
+serves a 120 °C duty; a heat pump capped at 100 °C does not. Stating it as physics rather
+than as a technology-to-process mapping is what lets a new unit be added without editing a
+mapping table.
 
 **C11 — Connection capacity.** Per connection, never summed across connections:
 
 $$P^{\text{peak}}_{k,t} \;\le\; \overline{P}^{\text{imp}}_{k} + w_{k,t} + \sum_{u} \beta_u\,a_{u,t} \qquad \forall k \in \mathcal{K},\, t$$
 
 and export bounded by $\sum_c x_{c,k,t} \le \overline{P}^{\text{exp}}_k$ after conversion to
-power. Peak is rebuilt from the solved pathway by the §5.6 method carried over from v1, using
+power. Peak is rebuilt from the solved pathway by the §5.6 method, using
 `process_load_shape` and the diversity step that must not be skipped.
 
 **$\beta$ is how storage earns its keep here**, and it is the one place a standalone battery
@@ -1095,14 +1099,241 @@ Without this the LP builds unbounded PV and exports it. This constraint is the r
 per period, asserted at load (V21). Equal prices make building and importing exactly
 cost-equivalent, and the solver is then free to report either — two identical runs would
 disagree on onsite capacity. The deterministic tie-break is lexicographic over
-$(\texttt{unit\_id}, \texttt{carrier\_id})$; v1's key was `technology_code`, which no longer
-exists.
+$(\texttt{unit\_id}, \texttt{carrier\_id})$.
 
 ---
 
-## 6–13. Not yet written
+## 6. Constraint disposition
 
-§6 constraint disposition, §7 emissions accounting (**T14**), §8 output schema, §9
-performance and scale gates including G4 (**T7**, **T15**), §10 validation including V1b and
-V18–V23 (**T5**, **T14**, **T15**), §11 phasing, §12 reference map, §13 worked examples
-(**T10**, **T16**).
+*Section last updated: 2026-09-02*
+
+**Not yet written.** Which constraints bind in practice, which are reported rather than
+enforced, and the "reported comparison, not constraint" pattern used for the national
+emissions cap and for minimum viable scale.
+
+---
+
+## 7. Emissions accounting
+
+*Section last updated: 2026-09-02*
+
+Emissions have two sources: combustion of a fuel carrier, and process chemistry tied to
+physical throughput. Both are attributed to units, and the attribution rule below is what
+keeps a carrier chain from being counted twice.
+
+| # | Rule |
+|---|---|
+| 7.1 | **Two sources.** Fuel CO₂ is charged to the unit that **consumes the fuel carrier**, never to the unit that consumes the heat that fuel made. Process CO₂ is charged to the chemistry unit against its mass denominator (D5) |
+| 7.2 | **Non-CO₂ gases** are tracked separately and **CCS never abates them** |
+| 7.3 | **Biomass zero-rating is applied before capture**, so a biomass unit with CCS reports net-negative emissions rather than zero |
+| 7.4 | **Direct versus indirect** is a property of the carrier — `carrier.is_indirect` (§3.4) — not a list held in code |
+| 7.5 | **Reporting categories** are derived over units. Categories may overlap, and a unit may appear in more than one |
+| 7.6 | **Reconciliation.** Reported totals reconcile against `premise_measured_emissions` (§3.11) wherever it exists |
+
+**The rule that stops double-counting.** Emissions attach to the unit that consumes a
+**primary** carrier — gas, coal, biomass, grid electricity. A unit consuming an
+**intermediate** carrier — heat at any grade, steam, recovered heat — adds nothing. The heat
+was already paid for upstream, and charging it again at the point of use would double-count
+every boiler in the stock.
+
+**Recovered heat is emissions-free, and that is a real result rather than an accounting
+trick.** A kiln's reject heat carries no fuel, so a heat pump drawing on it inherits no
+emissions; the fuel that made it stays charged to the kiln. This is precisely why heat
+recovery abates, and it works only because the rule above is stated rather than assumed.
+V22 asserts all three legs.
+
+---
+
+## 8. Output schema
+
+*Section last updated: 2026-09-02*
+
+**Not yet written.** One row per premise per unit per carrier per period, plus the cost and
+network roll-ups. Every row carries its evidence tiers, including `mix_evidence_tier` from
+A4 (§4.1) and the archetype tier from §3.17.
+
+---
+
+## 9. Performance and scale
+
+*Section last updated: 2026-09-02*
+
+### 9.1 Problem size
+
+**Not yet written.** The per-premise variable and constraint count, computed from the unit,
+carrier-flow and storage families.
+
+### 9.2 Scale gates
+
+Four gates must be passed, each measured before the work that depends on it is commissioned.
+
+| Gate | Subject | Requirement |
+|---|---|---|
+| G1 | Single-premise solve | A representative premise solves within a stated wall-clock budget |
+| G2 | Batch solve | A representative batch scales linearly under D2's independence |
+| G3 | Full stock | The whole Factory-class stock completes within a stated budget |
+| **G4** | **Tier A archetype build** | The full coefficient build completes within a stated wall-clock budget, **measured before the data build is commissioned** |
+
+G1–G3 size the per-premise LP. **G4 exists because Tier A is the expensive new thing:**
+hourly dispatch per archetype per hybrid sizing ratio is a few hundred archetypes times
+roughly twelve hybrid units, so a few thousand hourly optimisations, each far heavier than
+one annual LP. Learning that it is unaffordable early costs days; learning it late costs the
+data build.
+
+### 9.3 Determinism
+
+Two identical runs must produce identical results. The tie-break key is lexicographic over
+$(\texttt{unit\_id}, \texttt{carrier\_id})$, and the price-wedge rule of §5.5 removes the
+degeneracy that would otherwise let the solver report either of two equal-cost answers
+(V21).
+
+---
+
+## 10. Validation
+
+*Section last updated: 2026-09-02*
+
+### 10.1 Scopes
+
+Every test declares a scope: **load** (asserted once when reference data is read),
+**premise** (asserted per premise solve), **batch**, or **release**.
+
+### 10.2 The carrier-equivalent configuration
+
+V1b compares this model against the
+[COMIT-parity baseline specification](archive/2026-08-19-carb3-site-decarbonisation-implementation.md)
+on the same 1,026 sites. The comparison is only meaningful in a configuration where the two
+can agree, and that configuration is defined here as precisely as §5.4 defines the pre-D11
+cost baseline. **All five conditions hold together:**
+
+1. **One carrier per unit.** Every unit's carrier mix is pinned to a single primary carrier,
+   so a unit's identity determines its fuel.
+2. **No storage.** No unit with `is_storage`, and no hybrid unit.
+3. **No onsite generation.** No unit in $U^{\text{gen}}$.
+4. **C10, C11 and C12 inactive.** No grade cascade, no connection limit, no siting cap.
+5. **No export.** $x_{c,k,t} = 0$ for every carrier, connection and period, so the objective
+   carries no negative term.
+
+Under these five conditions the carrier balance reduces to duty satisfaction plus a fuel
+price, which is exactly what the baseline computes.
+
+### 10.3 Tests
+
+| # | Scope | Blocking | Assertion |
+|---|---|---|---|
+| V1 | release | yes | The COMIT-parity baseline reproduces coupled-off COMIT. Asserted against the baseline specification, not against this one |
+| **V1b** | release | yes | This model reproduces that baseline's objective and per-carrier energy on the same 1,026 sites, in the carrier-equivalent configuration of §10.2 |
+| V2 | load | yes | `capacity_to_activity_factor` and `io_coefficient` round-trip per unit to 1e-6 |
+| V4 | load | yes | Carrier consistency: every unit's declared carriers appear in `unit_input_output`, and profile uncertainty bands order correctly (R1–R3) |
+| V5 | premise | yes | Emissions invariants over units, including biomass zero-rating **before** capture |
+| V6 | premise | yes | No component of the objective is assumed non-negative — $Z^{\text{exp}}$ is genuinely negative |
+| V10 | release | yes | Determinism: two identical runs agree, under the §9.3 tie-break |
+| V11 | load | yes | Process sets resolve to exactly one tier per premise |
+| V12 | premise | yes | Capacity bounds hold, including the siting cap |
+| V16 | batch | yes | Connection peak is rebuilt correctly from the solved pathway |
+| V17 | premise | yes | Vintage and stranding per unit. An abatement unit inherits its host's remaining life through `abates_unit_id`, and strands nothing while the host stands |
+| **V18** | premise | yes | **Carrier balance closes to 1e-6 at every carrier node, every period** |
+| **V19** | load | yes | No unit is eligible for a duty above its `grade_out`. Asserted at load, not per premise |
+| **V20** | load | yes | Five legs, all on the archetype and hybrid-unit data — see below |
+| **V21** | load | yes | The price wedge $p^{\text{exp}} < p^{\text{imp}}$ holds strictly for every carrier and period |
+| **V22** | premise | yes | Emissions attribution closes across a carrier chain — three legs, see below |
+| **V23** | load + premise | yes | A4's carrier mix resolves to exactly one tier per unit, tiers are tried in order, and `mix_evidence_tier` appears on every output row |
+
+**V20's five legs.**
+
+- (a) ψ, β, χ ∈ [0, 1] and ε > 0 for every unit that declares them.
+- (b) Every hybrid unit's `unit_bill_of_materials` shares sum to 1 and reconcile to its capex
+  and capacity.
+- (c) Every hybrid unit's lifetime is levelised over its components — no component lifetime
+  exceeds the unit's $L$ without a replacement charge inside the annuity.
+- (d) Every unit with `is_storage` and no hybrid parent has β set and ψ, χ, ε unset, since
+  standalone storage may only earn through C11.
+- (e) Across the hybrid units sharing a pairing, each coefficient is **concave in the sizing
+  ratio**. This is what makes LP interpolation between them err on the safe side, and it
+  needs at least three ratios per pairing to be meaningful.
+
+**V22's three legs.**
+
+- (a) Total emissions equal the sum over units consuming **primary** carriers only. No unit
+  consuming an intermediate carrier contributes.
+- (b) A chain `gas → boiler → heat@150-400C → dryer` books exactly the boiler's fuel, once.
+- (c) A recovered-heat leg contributes zero, and the fuel that produced it remains charged to
+  the rejecting unit.
+
+### 10.4 What each new mechanism is guarded by
+
+```
+  MECHANISM                             GUARDED BY        SCOPE
+  ─────────────────────────────────────────────────────────────────
+  carrier balance closure          ───▶ V18               premise
+  heat grade cascade (C10)         ───▶ V19               load
+  archetype coefficients ψ/β/χ/ε   ───▶ V20 (a)           load
+  hybrid unit bill of materials    ───▶ V20 (b)           load
+  hybrid unit capex levelisation   ───▶ V20 (c)           load
+  standalone storage earns only β  ───▶ V20 (d)           load
+  hybrid coefficient concavity     ───▶ V20 (e)           load
+  emissions attribution (§7)       ───▶ V22               premise
+  A4 carrier-mix tiering           ───▶ V23               load+premise
+  A7 ladder rungs C10/C11/C12      ───▶ V23 + A7 report   premise
+  Tier A build cost                ───▶ G4                release
+  export price wedge               ───▶ V21               load
+  connection peak (C11)            ───▶ V16               batch
+  siting cap (C12)                 ───▶ V12 + V20         premise
+  unit vintage / stranding         ───▶ V17               premise
+  parity against the baseline      ───▶ V1b               release
+  baseline parity against COMIT    ───▶ V1                release
+  determinism under the tie-break  ───▶ V10               release
+```
+
+### 10.5 Failure modes and their handling
+
+| # | Failure | Guarded by | Handling |
+|---|---|---|---|
+| 1 | Carrier balance leaks — a unit produces a carrier nothing consumes and it silently vanishes | V18 | Premise assertion |
+| 2 | A duty has no eligible unit after screening, so the premise is infeasible | A7 ladder | Relaxation in the §4.2 order, reported |
+| 3 | A hybrid unit's capex is not levelised over component lifetimes, so C3's capacity window and C4's stranding charge both key on a wrong $L$ | V20 (c) | Load assertion |
+| 4 | Export price ≥ import price in a scenario, giving non-reproducible onsite capacity | V21 | Load assertion |
+| 5 | A premise matches no archetype | §3.17 `evidence_tier` | Substitution ladder: `fitted` → `substituted` → `default`, recorded on every output row |
+| 6 | Heat grade unset on a process, making C10 vacuous so a heat pump can fire a kiln | V19 | Load assertion, and `grade_rank` is non-nullable wherever the carrier is gradeable (§3.3) |
+| 7 | The option-to-unit join is broken in the reference data | `make data-check` | Load-time validator |
+| 8 | ε unset on a flexible-load hybrid, so `electrolyser_battery` is strictly dominated by a bare electrolyser and never built | V20 (a) | Load assertion, and ε is non-nullable on flexible-load hybrids (§3.17) |
+
+---
+
+## 11. Phasing
+
+*Section last updated: 2026-09-02*
+
+**Not yet written.** Which capabilities land in which phase, and the exit criteria for each.
+
+---
+
+## 12. Reference map
+
+*Section last updated: 2026-09-02*
+
+**Not yet written.** Where each reference table lives, who owns it, and what validates it.
+
+---
+
+## 13. Worked examples
+
+*Section last updated: 2026-09-02*
+
+**Not yet written.** Two examples are planned and both are needed.
+
+- **A cement works** — one chemistry node at the top grade, a mass denominator (D5), tier-1
+  vintage, stranding and a CCS capture unit. It exercises the parity case: everything the
+  model must not get wrong.
+- **A food and drink site** — `IFDLTH`, `IFDSTM`, `IFDDRY`, `IFDREF` and `IFDMOT`. It
+  exercises the mechanism: eight fuel-variant rows collapsing to three units, a 120 °C duty
+  with boiler, CHP, heat pump and electric resistance competing under C10, a reject-heat leg
+  feeding a heat pump, CHP producing heat **and** electricity into the carrier balance, and
+  PV, a battery and a connection limit.
+
+**Cement alone is not sufficient**, and the reason is structural rather than a matter of
+taste: cement carries exactly two process codes, `ICMCLK` and `ICM`. There is no `LTH`, no
+`STM`, no `DRY` and no `SPC`, so nothing cascades, the candidates differ by *fuel* rather
+than by device, no low-grade duty exists to receive reject heat, and CHP appears only fused
+inside bundled capture rows. A worked example on a cement works would demonstrate everything
+except the mechanism this model exists for.
