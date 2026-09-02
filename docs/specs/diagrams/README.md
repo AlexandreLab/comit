@@ -4,8 +4,20 @@ Generated from the [implementation specification](../2026-08-19-carb3-site-decar
 not drawn by hand. Regenerate after any change to the data model or the algorithms:
 
 ```bash
-python3 docs/notes/examples/build_spec_flow_diagram.py
+python3 docs/notes/examples/build_spec_flow_diagram.py            # rebuild
+python3 docs/notes/examples/build_spec_flow_diagram.py --check    # is it stale?
+make docs-check                                                   # both generators
 ```
+
+`--check` exits non-zero if any file here differs from what the spec would produce
+now, so a hook or CI step can refuse a spec change that left the pictures behind. A
+stale diagram still renders perfectly, which is exactly why it needs checking.
+
+Which spec is read, where the output goes, and which entities count as premise,
+scenario or output data all come from
+[`spec_docs.config.json`](../../notes/examples/spec_docs.config.json). Add a spec
+there, not in the Python. `--spec KEY` selects one; `--all` builds every one that is
+switched on.
 
 Standard library only — no graphviz, no mermaid CLI, no npm.
 

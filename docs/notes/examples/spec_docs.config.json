@@ -1,0 +1,135 @@
+{
+  "_readme": [
+    "Configuration for the two spec generators, build_interface_docs.py and",
+    "build_spec_flow_diagram.py. Before this file existed both had one specification's",
+    "structure compiled into them as literals: heading strings, section numbers, entity",
+    "role sets and label ranges. Adding the v2 spec meant editing Python to publish a",
+    "Markdown change, which is the wrong shape and was tracked as delivery task T2.",
+    "",
+    "Select a target with --spec KEY (default: the `default` key below).",
+    "",
+    "Label ranges are NOT authoritative here. Each spec declares its own families in its",
+    "Notation table, and the generators read that table and cross-check it against the",
+    "`label_note.families` listed below. A range that drifts fails the build with the",
+    "spec's value and this file's side by side, rather than publishing a stale claim."
+  ],
+
+  "default": "v1",
+
+  "specs": {
+    "v1": {
+      "title": "CaRB3 per-site decarbonisation — v1, frozen COMIT-parity baseline",
+      "spec_path": "docs/specs/2026-08-19-carb3-site-decarbonisation-implementation.md",
+      "notation_heading": "Notation",
+
+      "interfaces": {
+        "enabled": true,
+        "out_dir": "docs/specs/interfaces",
+        "label_note": {
+          "see": "1.3",
+          "families": [
+            { "prefix": "A", "gloss": "algorithms" },
+            { "prefix": "C", "gloss": "constraints" },
+            { "prefix": "V", "gloss": "validation tests" },
+            { "prefix": "D", "gloss": "design decisions" }
+          ]
+        },
+        "documents": [
+          {
+            "file": "input-data-model.md",
+            "section": "3",
+            "start": "## 3. Data model",
+            "end": "## 4. Algorithms",
+            "title": "CaRB3 Per-Site Decarbonisation — Input Data Model",
+            "blurb": "Every entity the model reads: the premise record and its long companions,\nthe reference tables the modelling team maintains, and the optional per-site\nintelligence that replaces an assumption with a fact where it exists.",
+            "audience": "**Who this is for.** Anyone supplying data to the model — principally the\nCaRB3 building-stock team, who own §3.1 and its companions. §1.6 of the\nspecification states the same contract as a requirement with rationale, and is\nthe better starting point if you are deciding *what to collect*; this document\nis the normative field-level detail you validate against.",
+            "sibling_file": "output-data-schema.md",
+            "sibling_desc": "what the model produces"
+          },
+          {
+            "file": "output-data-schema.md",
+            "section": "8",
+            "start": "## 8. Output schema",
+            "end": "## 9. Performance and parallelisation",
+            "title": "CaRB3 Per-Site Decarbonisation — Output Data Schema",
+            "blurb": "Every table a run produces, its keys, its units, and the traps that make two\nof them look interchangeable when they are not.",
+            "audience": "**Who this is for.** Anyone consuming results — analysts, aggregation code,\nand anyone comparing one run against another. The evidence-tier and confidence\nfields are not decoration: they are the only way to tell how much of a result\nrests on a measurement rather than on a default, and §10 has validation tests\nthat exist solely to keep them honest.",
+            "sibling_file": "input-data-model.md",
+            "sibling_desc": "what the model reads"
+          }
+        ]
+      },
+
+      "diagrams": {
+        "enabled": true,
+        "out_dir": "docs/specs/diagrams",
+        "aliases": {
+          "premise_record": ["raw_premise_records", "premise records"]
+        },
+        "roles": {
+          "input": [
+            "premise_record",
+            "premise_energy",
+            "premise_throughput",
+            "premise_connection",
+            "premise_process_detail",
+            "premise_process_vintage",
+            "premise_measured_emissions",
+            "premise_operating_profile",
+            "premise_weekly_profile"
+          ],
+          "scenario": ["infrastructure_scenario", "scenario_parameters"],
+          "output": ["site_pathway"]
+        }
+      }
+    },
+
+    "v2": {
+      "title": "CaRB3 site energy system — v2, proposed, partially written",
+      "spec_path": "docs/specs/2026-08-28-carb3-site-energy-system-implementation.md",
+      "notation_heading": "Notation",
+
+      "interfaces": {
+        "enabled": false,
+        "blocked_by": "T14 owns §7 and §6-§13 are unwritten, so there is no §8 output schema to publish. §3 alone would ship a half-contract whose companion link is dead.",
+        "out_dir": "docs/specs/interfaces/v2",
+        "label_note": {
+          "see": "1.4",
+          "families": [
+            { "prefix": "A", "gloss": "algorithms" },
+            { "prefix": "C", "gloss": "constraints" },
+            { "prefix": "S", "gloss": "pipeline stages" },
+            { "prefix": "V", "gloss": "validation tests" },
+            { "prefix": "G", "gloss": "scale gates" },
+            { "prefix": "D", "gloss": "design decisions" }
+          ]
+        },
+        "documents": [
+          {
+            "file": "input-data-model.md",
+            "section": "3",
+            "start": "## 3. Data model",
+            "end": "## 4. Algorithms",
+            "title": "CaRB3 Site Energy System — Input Data Model",
+            "blurb": "The nine entities of the carrier/duty/unit spine: what flows, what needs it,\nand what converts between the two.",
+            "audience": "**Who this is for.** Anyone supplying data to the v2 model. This is a\nproposed contract against an unbuilt system — v1 remains the COMIT-parity\nbaseline and its interface documents are the ones in force.",
+            "sibling_file": "output-data-schema.md",
+            "sibling_desc": "what the model produces"
+          }
+        ]
+      },
+
+      "diagrams": {
+        "enabled": false,
+        "blocked_by": "T13 owns §4; it is a stub with no `### A1 — ` headings, so the journey diagram and the SVG flow would both come out empty.",
+        "out_dir": "docs/specs/diagrams/v2",
+        "aliases": {},
+        "roles": {
+          "input": ["premise_connection", "process_duty"],
+          "scenario": ["scenario_parameters"],
+          "output": []
+        }
+      }
+    }
+  }
+}
