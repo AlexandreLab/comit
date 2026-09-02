@@ -3,8 +3,8 @@
     "Configuration for the two spec generators, build_interface_docs.py and",
     "build_spec_flow_diagram.py. Before this file existed both had one specification's",
     "structure compiled into them as literals: heading strings, section numbers, entity",
-    "role sets and label ranges. Adding the v2 spec meant editing Python to publish a",
-    "Markdown change, which is the wrong shape and was tracked as delivery task T2.",
+    "role sets and label ranges. Adding a second specification meant editing Python to",
+    "publish a Markdown change, which is the wrong shape.",
     "",
     "Select a target with --spec KEY (default: the `default` key below).",
     "",
@@ -14,11 +14,11 @@
     "spec's value and this file's side by side, rather than publishing a stale claim."
   ],
 
-  "default": "v1",
+  "default": "baseline",
 
   "specs": {
-    "v1": {
-      "title": "CaRB3 per-site decarbonisation — v1, frozen COMIT-parity baseline",
+    "baseline": {
+      "title": "CaRB3 per-site decarbonisation — frozen COMIT-parity baseline",
       "spec_path": "docs/specs/archive/2026-08-19-carb3-site-decarbonisation-implementation.md",
       "notation_heading": "Notation",
 
@@ -84,14 +84,14 @@
       }
     },
 
-    "v2": {
-      "title": "CaRB3 site energy system — v2, proposed, partially written",
+    "site-energy-system": {
+      "title": "CaRB3 site energy system — proposed, partially written",
       "spec_path": "docs/specs/2026-08-28-carb3-site-energy-system-implementation.md",
       "notation_heading": "Notation",
 
       "interfaces": {
         "enabled": false,
-        "blocked_by": "T14 owns §7 and §6-§13 are unwritten, so there is no §8 output schema to publish. §3 alone would ship a half-contract whose companion link is dead.",
+        "blocked_by": "§8 is unwritten, so there is no output schema to publish. §3 alone would ship a half-contract whose companion link is dead.",
         "out_dir": "docs/specs/interfaces",
         "label_note": {
           "see": "1.4",
@@ -112,7 +112,7 @@
             "end": "## 4. Algorithms",
             "title": "CaRB3 Site Energy System — Input Data Model",
             "blurb": "The nine entities of the carrier/duty/unit spine: what flows, what needs it,\nand what converts between the two.",
-            "audience": "**Who this is for.** Anyone supplying data to the v2 model. This is a\nproposed contract against an unbuilt system — v1 remains the COMIT-parity\nbaseline and its interface documents are the ones in force.",
+            "audience": "**Who this is for.** Anyone supplying data to this model. It is a proposed\ncontract against a system that has not been built; the interface documents in\nforce today are those of the COMIT-parity baseline.",
             "sibling_file": "output-data-schema.md",
             "sibling_desc": "what the model produces"
           }
@@ -121,7 +121,7 @@
 
       "diagrams": {
         "enabled": false,
-        "blocked_by": "T13 owns §4; it is a stub with no `### A1 — ` headings, so the journey diagram and the SVG flow would both come out empty.",
+        "blocked_by": "§4 carries no `### A1 — ` headings yet, so the journey diagram and the SVG flow would both come out empty.",
         "out_dir": "docs/specs/diagrams",
         "aliases": {},
         "roles": {
