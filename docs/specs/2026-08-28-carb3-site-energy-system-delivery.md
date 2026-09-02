@@ -16,7 +16,8 @@
 | [Delivery](2026-08-28-carb3-site-energy-system-delivery.md) | whoever schedules the work | **you are here** |
 
 > **This plans work; it does not specify it.** The v2 specification itself
-> (`2026-08-28-carb3-site-energy-system-implementation.md`) does not exist yet — writing it is task T4.
+> (`2026-08-28-carb3-site-energy-system-implementation.md`) now exists as far as §5; T4
+> wrote §1–§3 and §5, and §4 and §6–§13 are still stubs owned by T13, T14 and T5–T7.
 
 ---
 
@@ -30,7 +31,8 @@
 | `docs/specs/2026-08-28-carb3-site-energy-system-worked-example-cement.md` | v2 worked example, cement works — proves parity with v1 (T10) |
 | `docs/specs/2026-08-28-carb3-site-energy-system-worked-example-food-drink.md` | v2 worked example, food & drink — proves the carrier mechanism (T16) |
 | `docs/notes/examples/validate_carb3_data.py` | Stdlib-only validator (Issue 4) |
-| `docs/notes/examples/spec_docs.config.json` | Section anchors, own-prefix, label ranges (Issue 3) |
+| `docs/notes/examples/spec_docs.config.json` | Per-spec section anchors, own-prefix, output dirs, entity roles (Issue 3). **Not label ranges** — those are read from each spec's Notation table, see T2 |
+| `docs/notes/examples/spec_docs_config.py` | Shared config loader and the spec-vs-config label cross-check (T2) |
 | `Makefile` | `make docs-check` / `make data-check` |
 
 ### Modify
@@ -38,7 +40,7 @@
 | Path | Change |
 |---|---|
 | `docs/notes/examples/build_interface_docs.py` | Read config not literals; fix the `](interfaces/…)` dead link; add v2 targets |
-| `docs/notes/examples/build_spec_flow_diagram.py` | Add `--check`; parameterise the `3\.[\d.]+` entity regex and the hardcoded entity-name lists (41–59) |
+| `docs/notes/examples/build_spec_flow_diagram.py` | Add `--check`; move the hardcoded entity-name lists (41–59) to config. The `3\.[\d.]+` entity regex was **left alone** — v2 numbers its data model `### 3.x` too, so it already parses both (T4 confirmed 9/9 entities) and generalising it would add a config knob nothing turns |
 | `docs/specs/2026-08-19-carb3-site-decarbonisation-vision.md` | §3 reuse claim; D3/D6/D11 rows; §4.2 variable arithmetic; §9 phasing; **and the λ→ξ bug at lines 146 and 240** |
 | `docs/notes/README.md` | Register v2 spec, v2 worked example, v2 interface docs |
 | `docs/specs/2026-08-19-carb3-site-decarbonisation-implementation.md` | Header note only: "v1, frozen. Superseded for architecture by v2; retained as the COMIT-parity baseline (V1)." |
@@ -75,14 +77,38 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Verify: `make data-check` green on unmodified `docs/notes/data/`
   - **Done.** 12 blocking checks + 2 advisory, all green on unmodified data. Baseline counts: 376 register keys, 359 profile keys, 137 share-sum groups, 1109 option mappings, 134 library options, 270 references, 198 cited. Advisory: 17 processes with no profile, 12 with no option, 4 unused options — **these numbers are the baseline; a change in them after migration is the signal**
   - Surfaced while building it: only **37 of 490** profile rows carry uncertainty bands (8%), so V4's R3 band-ordering assertion barely runs today. Reported as advisory, not enforced — backfilling bands is research, not a correctness bug
-- [ ] **T2 (P1, human: ~1 day / CC: ~25min)** — tooling — Parameterise both spec generators, add `--check` to the diagram builder
+- [x] **T2 (P1, human: ~1 day / CC: ~25min)** — tooling — Parameterise both spec generators, add `--check` to the diagram builder
   - Surfaced by: Issue 3 — `build_interface_docs.py:38-39,58-59,168-169` hardcodes headings, own-prefix and label ranges
-  - Files: `build_interface_docs.py`, `build_spec_flow_diagram.py`, `spec_docs.config.json`, `Makefile`
+  - Files: `build_interface_docs.py`, `build_spec_flow_diagram.py`, `spec_docs_config.py`, `spec_docs.config.json`, `Makefile`
   - Verify: `make docs-check` reproduces today's v1 interface docs byte-identically
-- [ ] **T3 (P2, human: ~30min / CC: ~5min)** — tooling — Fix the live `](interfaces/…)` dead link in both generated files
+  - **Done.** All five v1 outputs regenerate byte-identically — the only diff against the
+    pre-T2 files is the two lines T3 fixes. Both generators take `--spec / --all / --check
+    / --list`; `make docs-check` now covers the diagrams too, which it never did
+  - **Label ranges were deliberately kept out of the config.** Putting `C1`–`C9` in JSON
+    only moves the staleness from Python to JSON, and the failure is silent — a document
+    citing `C1`–`C9` against a spec defining `C12` still renders. Instead each generator
+    parses the target spec's own Notation table and cross-checks it against the families
+    the config asks it to cite. Four injected defects all caught: a spec-side `C9`→`C10`
+    and a hand-edited diagram both fail `--check` (exit 1); a deleted family and a renamed
+    Notation heading both raise `ConfigError` naming the spec's value and the config's side
+    by side (exit 2)
+  - v2 is registered but both outputs are `enabled: false` with a `blocked_by` reason, so
+    the tooling is wired ahead of T13 (§4 is a stub — zero algorithms, so the journey
+    diagram and SVG would come out empty) and T14 (§6–§13 unwritten, so there is no §8 to
+    publish). Flip the flag when those land; no code change needed
+  - Fixed in passing: `make` targets used paths relative to the caller, so every target
+    failed from a subdirectory with a `FileNotFoundError` that read like a missing
+    generator. Paths are now derived from `MAKEFILE_LIST`; verified from `R/`
+- [x] **T3 (P2, human: ~30min / CC: ~5min)** — tooling — Fix the live `](interfaces/…)` dead link in both generated files
   - Surfaced by: verified — spec lines 380 and 2306 sit inside both extracted ranges and `fix_relative_paths` does not depth-adjust them
   - Files: `build_interface_docs.py:136-140`
   - Verify: link resolves from `docs/specs/interfaces/`
+  - **Done**, folded into T2 since it is the same function. `fix_relative_paths` no longer
+    matches on the `2026-08-19-` date slug — which never fired inside these two ranges
+    anyway — but applies one rule to every relative target: prepend `../` per level of
+    depth, except a link into the output directory itself, which becomes a bare sibling
+    filename. `interfaces/input-data-model.md` read from `docs/specs/interfaces/` resolved
+    to `docs/specs/interfaces/interfaces/…`; it now resolves to the file itself
 - [x] **T4 (P1, human: ~2 days / CC: ~60min)** — spec — Write v2 §1–§5 (carrier network, graded heat, units, two-tier temporal)
   - Surfaced by: PD1 + PD2 + Issue 2
   - Files: `docs/specs/2026-08-28-carb3-site-energy-system-implementation.md`
@@ -166,8 +192,8 @@ make data-check          # validator on unmodified docs/notes/data/
 make docs-check          # both generators reproduce today's v1 outputs byte-identically
 
 # 2. After the spec work
-python3 docs/notes/examples/build_interface_docs.py --check
-python3 docs/notes/examples/build_spec_flow_diagram.py --check   # new in T2
+python3 docs/notes/examples/build_interface_docs.py --all --check
+python3 docs/notes/examples/build_spec_flow_diagram.py --all --check   # --check new in T2
 
 # 3. After the data migration
 make data-check          # share sums, band ordering, reference resolution,

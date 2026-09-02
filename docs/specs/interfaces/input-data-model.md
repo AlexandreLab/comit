@@ -26,7 +26,7 @@ every other `§` links back to the specification. Labels of the form `A1`–`A9`
 ---
 
 **Also published standalone** as
-[interfaces/input-data-model.md](interfaces/input-data-model.md), for people who supply
+[interfaces/input-data-model.md](input-data-model.md), for people who supply
 data to the model and have no reason to hold the rest of this specification. That file is
 **generated from this section** — edit here, then run
 `python3 docs/notes/examples/build_interface_docs.py`. A field table maintained in two
