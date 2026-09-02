@@ -172,10 +172,14 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-09-01*
+*Section last updated: 2026-09-02*
 
-Nine entities are defined below. Entities carried over from v1 unchanged are listed in §3.10
+Eleven entities are defined below. Entities carried over from v1 unchanged are listed in §3.12
 rather than restated; they must be inlined here before v2 can stand alone.
+
+§3.10 and §3.11 are the **default database**: what duty each process presents, and what plant
+typically serves it. Both were missing from v1 and v2 alike — the audit in
+[notes/16](../notes/16_input_data_readiness.md) sets out what that left broken.
 
 ### 3.1 `carrier`
 
@@ -385,20 +389,111 @@ New parameters: `import_price` and `export_price` per carrier per period; `expor
 must be **strictly below** `import_price` (V21, and it is physically true anyway);
 `reinforcement_cost` per voltage band; `area_density` in MW per m² for onsite generation.
 
-### 3.10 Entities carried over from v1 unchanged
+### 3.10 `activity_process_duty_profile`
+
+**The default duty of each process, per activity.** The activity-level default that A2
+expands into a premise's `process_duty` (§3.7) wherever no site intelligence overrides it.
+This is the demand side of the carrier model, and **nothing holds it today** — see
+[notes/16](../notes/16_input_data_readiness.md).
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
+| `process_set_id` | string | — | yes | PK part | → `activity_process_register`. `default` unless a named route |
+| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `duty_family` | enum{DRY, EN, HRS, HTH, LTH, MOT, NEUOTH, OTH, PHEAT, REF, SPC, STM} | — | yes | PK part | The 12 service families |
+| `carrier_id` | string | — | yes | → `carrier` | What the duty is *for* |
+| `grade_rank` | integer | — | no | PK part → `carrier` | **Required where `carrier.is_gradeable`.** Non-nullable for heat |
+| `duty_share` | real | fraction | yes | — | ∈ [0, 1]. Share of this process's energy that is this duty |
+| `share_low` | real | fraction | no | — | ≤ `duty_share` if present |
+| `share_high` | real | fraction | no | — | ≥ `duty_share` if present |
+| `evidence_tier` | enum{measured, engineering, published_sec, fallback} | — | yes | — | Same ladder as the v1 energy profile |
+| `provenance` | string | — | yes | — | Citation |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried to output |
+
+**Rule (shares sum to one).** For each `(carb3_activity, process_set_id, process_id)`,
+`duty_share` must sum to 1.00 ± 0.015 — the same tolerance the v1 energy profile is already
+validated against, so one check covers both.
+
+**Rule (a heat duty must have a grade).** Where the carrier is gradeable, `grade_rank` is
+non-nullable. A heat duty with no grade is invisible to C10's cascade: it can be served by
+any grade at all, including one far below what the process needs, and the LP will take the
+cheapest. This is the failure the data-migration plan flags as mode #6, and it fails silently.
+
+**Rule (inheritance).** A non-default process set need not restate every row; where a
+`(process_id, duty_family, grade_rank)` is absent it inherits the default set's value.
+Identical to the v1 energy profile's inheritance rule.
+
+**This replaces the vector split as an input, and does not merely add to it.** v1 asks which
+*fuel* serves a process (`activity_process_energy_profile.energy_share` by vector); v2's
+carrier balance **decides** that, so supplying it too would over-determine the problem.
+The 490-row v1 profile therefore becomes the **parity target for V1b** — the thing v2's
+chosen fuel mix is compared against — rather than an input. §3.12 says the same from the
+other direction.
+
+### 3.11 `activity_default_unit`
+
+**What plant an activity typically already has.** The base-year supply side: which units
+serve each duty today, before any investment decision. Also **absent from both specs** until
+now, and the reason a site with a 20 MW CHP and one without are currently the same row.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
+| `process_set_id` | string | — | yes | PK part | → `activity_process_register` |
+| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `duty_family` | string | — | yes | PK part | → `activity_process_duty_profile` |
+| `unit_id` | string | — | yes | PK part | → `unit`. Must be eligible for this activity and process (§3.4) |
+| `default_share` | real | fraction | yes | — | ∈ [0, 1]. Share of this duty the unit serves in the base year |
+| `sizing_basis` | enum{duty_annual, duty_peak, throughput} | — | yes | — | How installed capacity is derived from the duty |
+| `evidence_tier` | enum{sector_statistic, derived, assumed} | — | yes | — | **Non-nullable.** `sector_statistic` means a published figure (DUKES, CHPQA) |
+| `provenance` | string | — | yes | — | Citation |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried to output |
+
+**Rule (every duty is served).** For each `(carb3_activity, process_set_id, process_id,
+duty_family)`, `default_share` must sum to 1.00 ± 0.015. A duty is met by *something* today;
+a shortfall means the unit set is incomplete, not that the duty goes unmet.
+
+**Rule (eligibility is a precondition).** A row whose `(unit_id, carb3_activity,
+process_id)` has no `unit_eligibility` entry is rejected. The default cannot assert plant the
+model would refuse to build, or A4 back-solves a baseline the optimiser cannot reproduce.
+
+**No electricity co-product field, deliberately.** A CHP's electrical output is already
+described by `unit_input_output` (§3.3), which gives every unit its full carrier vector.
+Restating it here would be a second place for the same number to live, and they would
+disagree. This entity says only *which* unit and *how much of the duty*; what the unit does
+with that duty is the unit's own definition.
+
+**Why an activity default rather than back-solving.** v1's A4 infers existing technology
+from metered energy, which works while every technology is a fuel variant of a demand
+device — the fuel identifies the plant. It stops working once generation, storage and CHP
+exist: a CHP is not inferable from a heat duty, because the same heat is equally consistent
+with a boiler. Some of the supply side has to be asserted, and the activity default is where
+it is asserted for premises with no site intelligence. Where §3.10 of the v1 spec
+(`premise_process_detail`) gives real plant for a real site, that wins — the D10 ladder is
+unchanged.
+
+### 3.12 Entities carried over from v1 unchanged
 
 These are unchanged in fields and meaning and are **not restated here**. They must be
 inlined before v2 supersedes v1; until then read them in the v1 spec at the section given.
 
-`premise_record` (§3.1) · `premise_energy` (§3.1.1) · `premise_throughput` (§3.1.2) ·
-`activity_process_register` (§3.2) · `infrastructure_scenario` (§3.7) ·
-`premise_process_detail` (§3.10) · `premise_measured_emissions` (§3.11) ·
-`premise_operating_profile` (§3.12) · `process_load_shape` (§3.13) ·
-`premise_weekly_profile` (§3.14) · `premise_process_vintage` (§3.15).
+**Every number in this list is a `v1 §` and none of them is a section of this document.**
+The two specs now overlap in the 3.10–3.12 range — v1's `premise_process_detail`,
+`premise_measured_emissions` and `premise_operating_profile` sit at exactly the numbers this
+document gives `activity_process_duty_profile`, `activity_default_unit` and this section. The
+`v1` prefix below is therefore load-bearing, not decoration.
+
+`premise_record` (v1 §3.1) · `premise_energy` (v1 §3.1.1) · `premise_throughput` (v1 §3.1.2) ·
+`activity_process_register` (v1 §3.2) · `infrastructure_scenario` (v1 §3.7) ·
+`premise_process_detail` (v1 §3.10) · `premise_measured_emissions` (v1 §3.11) ·
+`premise_operating_profile` (v1 §3.12) · `process_load_shape` (v1 §3.13) ·
+`premise_weekly_profile` (v1 §3.14) · `premise_process_vintage` (v1 §3.15).
 
 **`activity_process_energy_profile` is deliberately absent.** Its vector-share allocation is
 replaced by the carrier balance. The table itself survives as an input to S3, which splits
-metered energy onto carriers, but it no longer determines how energy reaches a process.
+metered energy onto carriers, and as V1b's parity target (§3.10 of *this* document), but it
+no longer determines how energy reaches a process.
 
 ---
 
