@@ -69,10 +69,12 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
 
 ## Implementation Tasks
 
-- [ ] **T1 (P1, human: ~1 day / CC: ~30min)** — tooling — Write the stdlib-only data validator and establish a green baseline
+- [x] **T1 (P1, human: ~1 day / CC: ~30min)** — tooling — Write the stdlib-only data validator and establish a green baseline
   - Surfaced by: Issue 4 — no generator and no validator exists for the seven Family-B files
   - Files: `docs/notes/examples/validate_carb3_data.py`, `Makefile`
   - Verify: `make data-check` green on unmodified `docs/notes/data/`
+  - **Done.** 12 blocking checks + 2 advisory, all green on unmodified data. Baseline counts: 376 register keys, 359 profile keys, 137 share-sum groups, 1109 option mappings, 134 library options, 270 references, 198 cited. Advisory: 17 processes with no profile, 12 with no option, 4 unused options — **these numbers are the baseline; a change in them after migration is the signal**
+  - Surfaced while building it: only **37 of 490** profile rows carry uncertainty bands (8%), so V4's R3 band-ordering assertion barely runs today. Reported as advisory, not enforced — backfilling bands is research, not a correctness bug
 - [ ] **T2 (P1, human: ~1 day / CC: ~25min)** — tooling — Parameterise both spec generators, add `--check` to the diagram builder
   - Surfaced by: Issue 3 — `build_interface_docs.py:38-39,58-59,168-169` hardcodes headings, own-prefix and label ranges
   - Files: `build_interface_docs.py`, `build_spec_flow_diagram.py`, `spec_docs.config.json`, `Makefile`
