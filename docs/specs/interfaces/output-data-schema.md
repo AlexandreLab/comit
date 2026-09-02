@@ -25,7 +25,7 @@ every other `§` links back to the specification. Labels of the form `A1`–`A9`
 ---
 
 **Also published standalone** as
-[interfaces/output-data-schema.md](interfaces/output-data-schema.md), for people who
+[interfaces/output-data-schema.md](output-data-schema.md), for people who
 consume results. Generated from this section on the same terms as [§3](../2026-08-19-carb3-site-decarbonisation-implementation.md#3-data-model) — edit here and
 re-run the builder.
 
