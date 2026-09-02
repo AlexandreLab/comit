@@ -10,7 +10,11 @@ Sources in the spec:
   edges       - the INPUT:/OUTPUT: lines of each algorithm's pseudocode block,
                 plus entity names mentioned in the body (read edges)
 
-Emits, into docs/specs/diagrams/:
+Which spec to read, where to write, and which entities count as premise, scenario
+or output data all come from `spec_docs.config.json`; nothing about a particular
+specification is compiled in here.
+
+Emits, into the configured output directory:
   spec_journey.md     Mermaid sequence diagram: the journey from ingesting a premise
                       to writing its pathway, step by step
   spec_data_model.md  Mermaid class diagram: entities, their fields and foreign keys
@@ -22,44 +26,27 @@ inline on GitHub.
 No third-party packages. Standard library only.
 
 Usage:  python3 docs/notes/examples/build_spec_flow_diagram.py
+        python3 docs/notes/examples/build_spec_flow_diagram.py --check
+        python3 docs/notes/examples/build_spec_flow_diagram.py --spec v2
+        python3 docs/notes/examples/build_spec_flow_diagram.py --list
+
+--check regenerates in memory and exits non-zero if any file on disk differs, so a
+hook or CI step can refuse a spec change that left the diagrams behind. The
+interface builder has had that since it was written; this one had no way to tell
+you the picture was out of date, which is worse — a stale diagram still renders.
 """
 
 from __future__ import annotations
 
+import argparse
 import re
+import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[3]
-SPEC = REPO / "docs/specs/archive/2026-08-19-carb3-site-decarbonisation-implementation.md"
-OUT = REPO / "docs/specs/archive/diagrams"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import spec_docs_config as conf  # noqa: E402  (needs the path above)
 
-# Some algorithms name an entity in a form the heading does not use: A1 takes
-# `raw_premise_records`, not `premise_record`. Aliases keep the match honest
-# rather than loosening the word-boundary rule for everything.
-ALIASES = {
-    "premise_record": [r"raw_premise_records", r"premise records"],
-}
-
-# Entities that are reference/scenario data rather than premise data get a
-# different colour, so the diagram distinguishes what the stock model supplies
-# from what the modelling team maintains.
-INPUT_ENTITIES = {
-    "premise_record",
-    "premise_energy",
-    "premise_throughput",
-    "premise_connection",
-    "premise_process_detail",
-    "premise_process_vintage",
-    "premise_measured_emissions",
-    "premise_operating_profile",
-    "premise_weekly_profile",
-}
-SCENARIO_ENTITIES = {"infrastructure_scenario", "scenario_parameters"}
-OUTPUT_ENTITIES = {"site_pathway"}
-
-
-def read_spec() -> str:
-    return SPEC.read_text(encoding="utf-8")
+REPO = conf.REPO
 
 
 def find_entities(text: str) -> list[str]:
@@ -149,7 +136,7 @@ def io_lines(block: str) -> tuple[str, str, str]:
     return inp, out, "\n".join(body_lines)
 
 
-def build_graph(text: str) -> dict:
+def build_graph(text: str, aliases: dict[str, list[str]], roles: dict[str, list[str]]) -> dict:
     entities = find_entities(text)
     algos = find_algorithms(text)
     edges: list[dict] = []
@@ -167,7 +154,7 @@ def build_graph(text: str) -> dict:
         body = body + "\n" + a.get("prose", "")
         for e in entities:
             # word-boundary match so premise_energy does not match inside another name
-            alts = "|".join([re.escape(e)] + ALIASES.get(e, []))
+            alts = "|".join([re.escape(e)] + aliases.get(e, []))
             word = re.compile(rf"\b(?:{alts})\b")
             in_input = bool(word.search(inp))
             in_output = bool(word.search(out))
@@ -187,21 +174,18 @@ def build_graph(text: str) -> dict:
     for i in range(len(algos) - 1):
         edges.append({"from": algos[i]["id"], "to": algos[i + 1]["id"], "kind": "flow"})
 
+    # Entities that are reference/scenario data rather than premise data get a
+    # different colour, so the diagram distinguishes what the stock model supplies
+    # from what the modelling team maintains. Anything unlisted is reference data.
+    role_of = {name: role for role, names in roles.items() for name in names}
+
     used = {e["from"] for e in edges} | {e["to"] for e in edges}
     nodes = [
         {
             "id": e,
             "label": e,
             "type": "entity",
-            "role": (
-                "input"
-                if e in INPUT_ENTITIES
-                else "scenario"
-                if e in SCENARIO_ENTITIES
-                else "output"
-                if e in OUTPUT_ENTITIES
-                else "reference"
-            ),
+            "role": role_of.get(e, "reference"),
         }
         for e in entities
         if e in used
@@ -289,21 +273,22 @@ def to_classes(fields: dict[str, list[dict]]) -> str:
     return "\n".join(out) + "\n"
 
 
-HEADER = (
-    "Generated from [the implementation specification]"
-    "(../2026-08-19-carb3-site-decarbonisation-implementation.md) by "
-    "`docs/notes/examples/build_spec_flow_diagram.py`. Do not edit by hand — regenerate.\n"
-)
+def header_line(spec_link: str) -> str:
+    return (
+        "Generated from [the implementation specification]"
+        f"({spec_link}) by "
+        "`docs/notes/examples/build_spec_flow_diagram.py`. Do not edit by hand — regenerate.\n"
+    )
 
 
-def wrap(title: str, intro: str, body: str) -> str:
+def wrap(title: str, intro: str, body: str, header: str) -> str:
     """A mermaid graph in a fenced block, inside a Markdown document.
 
     A bare .mmd file opens as plain text: the VS Code Mermaid extensions hook
     Markdown *preview*, not a standalone mermaid file. The fence makes it
     previewable there and on GitHub.
     """
-    return f"# {title}\n\n{HEADER}\n{intro}\n\n```mermaid\n{body}```\n"
+    return f"# {title}\n\n{header}\n{intro}\n\n```mermaid\n{body}```\n"
 
 
 def to_mermaid(g: dict) -> str:
@@ -417,17 +402,29 @@ def to_svg(g: dict, pos: dict[str, dict]) -> str:
     return "\n".join(out)
 
 
-def main() -> None:
-    text = read_spec()
-    g = build_graph(text)
-    fields = find_entity_fields(text)
-    pos = layout(g)
-    OUT.mkdir(parents=True, exist_ok=True)
-    entities = sum(1 for n in g["nodes"] if n["type"] == "entity")
-    algos = sum(1 for n in g["nodes"] if n["type"] == "algorithm")
+def render(cfg: dict, diag: dict) -> dict[str, str]:
+    """Every output file this spec produces, as name -> content, written nowhere yet.
 
-    (OUT / "spec_journey.md").write_text(
-        wrap(
+    Rendering fully in memory is what makes --check possible: the same code path
+    produces the bytes that are compared and the bytes that are written, so the
+    check cannot pass against a build the writer would not have produced.
+    """
+    text = cfg["text"]
+    out_dir = diag["out_dir"]
+    depth = len(out_dir.relative_to(cfg["spec_path"].parent).parts)
+    header = header_line("../" * depth + cfg["spec_path"].name)
+
+    g = build_graph(text, diag.get("aliases", {}), diag.get("roles", {}))
+    fields = find_entity_fields(text)
+    algos = sum(1 for n in g["nodes"] if n["type"] == "algorithm")
+    if not algos:
+        raise conf.ConfigError(
+            f"spec {cfg['key']!r} declares no algorithms — §4 has no '### A1 — ' "
+            f"headings, so the journey diagram and the SVG flow would come out empty"
+        )
+
+    return {
+        "spec_journey.md": wrap(
             "The journey of one premise",
             f"What happens to a single premise between arriving from the stock model and "
             f"leaving as a pathway. {algos} steps, in the order §4 specifies them. Data "
@@ -435,24 +432,85 @@ def main() -> None:
             f"on the arrow, so nothing is lost. Solid arrows into a step are reads; dashed "
             f"arrows out are writes.",
             to_sequence(g),
+            header,
         ),
-        encoding="utf-8",
-    )
-    (OUT / "spec_data_model.md").write_text(
-        wrap(
+        "spec_data_model.md": wrap(
             "Data model",
             f"The {len(fields)} entities of §3 with their fields and foreign keys. "
             f"`+` marks a required field, `-` an optional one; `PK` marks a primary-key "
             f"part and `FK` a foreign key. Arrows read many-to-one.",
             to_classes(fields),
+            header,
         ),
-        encoding="utf-8",
-    )
-    (OUT / "spec_flow.svg").write_text(to_svg(g, pos), encoding="utf-8")
-    print(f"{entities} entities, {algos} algorithms, {len(g['edges'])} edges")
-    for f in sorted(OUT.iterdir()):
+        "spec_flow.svg": to_svg(g, layout(g)),
+        "_summary": (
+            f"{sum(1 for n in g['nodes'] if n['type'] == 'entity')} entities, "
+            f"{algos} algorithms, {len(g['edges'])} edges"
+        ),
+    }
+
+
+def run(spec_key: str | None, check: bool) -> int:
+    cfg = conf.load(spec_key)
+    diag = cfg.get("diagrams")
+    if not diag or not diag.get("enabled"):
+        why = (diag or {}).get("blocked_by", "no `diagrams` block in the config")
+        print(f"spec {cfg['key']!r}: diagrams not generated — {why}")
+        return 0
+
+    files = render(cfg, diag)
+    summary = files.pop("_summary")
+    out_dir = diag["out_dir"]
+
+    if check:
+        stale = []
+        for name, body in files.items():
+            path = out_dir / name
+            current = path.read_text(encoding="utf-8") if path.exists() else ""
+            if current != body:
+                stale.append(name)
+        if stale:
+            print(f"STALE ({cfg['key']}), spec has moved on: " + ", ".join(sorted(stale)))
+            print(f"Run: python3 docs/notes/examples/build_spec_flow_diagram.py "
+                  f"--spec {cfg['key']}")
+            return 1
+        print(f"diagrams ({cfg['key']}) are in step with the spec — {summary}")
+        return 0
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for name, body in files.items():
+        (out_dir / name).write_text(body, encoding="utf-8")
+    print(summary)
+    for name in sorted(files):
+        f = out_dir / name
         print(f"  {f.relative_to(REPO)}  {f.stat().st_size:,} bytes")
+    return 0
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p.add_argument("--spec", help="config key to build (default: the config's `default`)")
+    p.add_argument("--all", action="store_true",
+                   help="every spec whose diagrams are enabled")
+    p.add_argument("--check", action="store_true",
+                   help="verify the generated diagrams match; exit 1 if not")
+    p.add_argument("--list", action="store_true", help="list the configured specs")
+    args = p.parse_args()
+
+    if args.list:
+        for key in conf.spec_keys():
+            cfg = conf.load(key)
+            state = "on " if cfg.get("diagrams", {}).get("enabled") else "off"
+            print(f"  {key:4s} [{state}] {cfg['title']}")
+        return 0
+
+    keys = conf.enabled_keys("diagrams") if args.all else [args.spec]
+    try:
+        return max((run(k, args.check) for k in keys), default=0)
+    except conf.ConfigError as exc:
+        print(f"CONFIG ERROR: {exc}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
