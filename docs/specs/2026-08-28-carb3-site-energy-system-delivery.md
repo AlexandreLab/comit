@@ -33,6 +33,10 @@
 | `docs/notes/examples/validate_carb3_data.py` | Stdlib-only validator (Issue 4) |
 | `docs/notes/examples/spec_docs.config.json` | Per-spec section anchors, own-prefix, output dirs, entity roles (Issue 3). **Not label ranges** — those are read from each spec's Notation table, see T2 |
 | `docs/notes/examples/spec_docs_config.py` | Shared config loader and the spec-vs-config label cross-check (T2) |
+| `docs/notes/16_input_data_readiness.md` | Input-data audit: what has a schema, what has data, what has neither (T17) |
+| `docs/notes/data/carb3_comit_process_crosswalk.csv` | CaRB3 process → COMIT process code, the join that does not exist (T17) |
+| `docs/notes/data/activity_process_duty_profile.csv` | Default duty family + heat grade per process (T17) |
+| `docs/notes/data/activity_default_unit.csv` | Default installed units per activity/process/duty, incl. CHP (T18) |
 | `Makefile` | `make docs-check` / `make data-check` |
 
 ### Modify
@@ -113,8 +117,8 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Surfaced by: PD1 + PD2 + Issue 2
   - Files: `docs/specs/2026-08-28-carb3-site-energy-system-implementation.md`
   - Verify: `make docs-check`; diagrams regenerate
-  - **Done for §1, §2, §3 and §5.** 9 entities, C1–C12, S0–S9. §4 left as a stub because T13 owns it — writing it here would duplicate that task and pre-empt the A4 decision it exists to make
-  - Satisfies the diagram parser contract: all 9 entities and their 72 fields parse, 19 foreign-key arrows resolve
+  - **Done for §1, §2, §3 and §5.** 9 entities at the time (11 after T17), C1–C12, S0–S9. §4 left as a stub because T13 owns it — writing it here would duplicate that task and pre-empt the A4 decision it exists to make
+  - Satisfies the diagram parser contract: all 9 entities and their 72 fields parse, 19 foreign-key arrows resolve. **Re-verified after T17 added §3.10 and §3.11:** 11 entities, 94 fields, 29 FK arrows
 - [ ] **T5 (P1, human: ~4h / CC: ~20min)** — spec — Define V1b and the carrier-equivalent configuration
   - Surfaced by: Issue 1 — V1 step 4 compares per-technology capacity, which does not exist in v2
   - Files: v2 spec §10
@@ -145,7 +149,28 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Surfaced by: Review issue 9 — cement has only `ICMCLK` and `ICM`, so no `LTH`/`STM`/`DRY`/`SPC`. The planned example is structurally blind to what v2 changed
   - Files: `docs/specs/2026-08-28-carb3-site-energy-system-worked-example-food-drink.md`
   - Verify: shows `IFDLTH`'s 8 fuel-variant technologies collapsing to 3 units; a 120 °C duty with boiler / CHP / heat pump / electric competing under C10; an `IFDDRY` reject-heat leg feeding a heat pump (B5); CHP producing heat **and** electricity into the carrier balance
-  - **Depends on:** T8 (Group A + B taxonomy), since the collapse it displays must be the real one
+  - **Depends on:** T8 (Group A + B taxonomy), since the collapse it displays must be the real one, **and T17** — the example asserts a 120 °C duty and a CHP default, neither of which exists in any table today
+- [ ] **T17 (P1, human: ~3 days / CC: ~90min)** — data + spec — Give every process a duty family and a heat grade
+  - Surfaced by: the input-data audit ([notes/16](../notes/16_input_data_readiness.md)). v2 decides what a site may build by walking `process → duty → eligible units`, and **only the first link exists**. No temperature or grade column exists in any of the ten CaRB3 reference files; the 376 register rows carry no duty family
+  - Files: v2 spec §3.10 (**done** — `activity_process_duty_profile`), `docs/notes/data/carb3_comit_process_crosswalk.csv`, `docs/notes/data/activity_process_duty_profile.csv`, `validate_carb3_data.py`
+  - Verify: `make data-check`; `duty_share` sums to 1.00 ±0.015 per (activity, set, process); **`grade_rank` non-nullable wherever the carrier is gradeable**; every row resolves to the register
+  - **Seedable, but not scriptable.** COMIT's 94 `process_commodity` codes already encode the family as a suffix — `IFDLTH` is Food & Drink · Low-Temperature Heat — giving `LTH` 11, `OTH` 11, `MOT` 10, `SPC` 8, `HTH` 7, `DRY` 6, `STM` 6, `REF` 2, `HRS`/`NEUOTH` 1 each. But `carb3_comit_crosswalk.csv` is **activity-level** (55 rows → 16 COMIT sectors) and does not join CaRB3's 376 processes to those 94 codes. That process-level crosswalk is the missing artefact
+  - **Scope honestly:** by crosswalk coverage, 228 register rows sit in `direct` activities (seedable with review), 57 in `catch-all`/`partial`/`generic` (partly), and **91 in `absent`/`gap`/`weak`/`ambiguous` — those have no COMIT analogue and need first-principles classification**
+  - Temperatures do exist in the repo but on the **supply** side: 28 rows of `decarbonisation_options_library.duty` and 45 of `process_decarbonisation_options.notes` carry °C values, against **3 incidental** occurrences in the register. Useful as corroboration, not as a source
+  - **Blocks T16.** Feeds T13 — A4's carrier-mix rule chooses between units serving a duty, and without duty families there is nothing for a unit to be eligible for
+- [ ] **T18 (P1, human: ~2 days / CC: ~45min)** — data — Build the default installed-unit table, so existing CHP stops being invisible
+  - Surfaced by: the same audit. A column scan of all ten reference files found **no column** matching generation, capacity, storage, onsite, import, export or self-consumption. Today a Chemical Works with a 20 MW CHP and one without are the same row
+  - Files: v2 spec §3.11 (**done** — `activity_default_unit`), `docs/notes/data/activity_default_unit.csv`, `validate_carb3_data.py`
+  - Verify: `make data-check`; `default_share` sums to 1.00 ±0.015 per (activity, set, process, duty_family); every `(unit_id, activity, process_id)` has a `unit_eligibility` entry; no row asserts a unit the optimiser could not build
+  - **Has a real public source**, unlike Group D1's roof-area problem: **DUKES Table 7** and the **CHPQA register** give existing industrial CHP capacity and output by sector. `evidence_tier = sector_statistic` is reserved for figures traceable to those
+  - Today CHP appears only inside process *names* — `Chemical Works / utilities_steam` is "Steam system and utilities (boiler/CHP losses…)". The energy lands on the steam duty; nothing says whether a boiler or a CHP produces it, and **no electricity co-product exists**. `unit_input_output` already supplies that co-product once the unit is named, which is why this entity carries no electricity field
+  - **Depends on T17** (a unit cannot be assigned to a duty that does not exist) and **T8/T9** (the unit library it references)
+- [ ] **T19 (P2, human: ~4h / CC: ~15min)** — spec — Define the site-composition archetype and give `archetype_id` a referent
+  - Surfaced by: the audit — `archetype_coefficient` is keyed `(archetype_id, unit_id)` but **no entity anywhere defines what an `archetype_id` is**. Group D4 lists the definitions as missing data; nothing owns the schema
+  - Files: v2 spec §3, §9.2
+  - Verify: every `archetype_coefficient` row resolves to a defined archetype; the `activity × load shape × schedule × size` dimensions are enumerated
+  - **Name it away from the Tier A sense.** v2 already uses "archetype" for the offline dispatch archetype (~200–400 of them, S0). A site-composition archetype is a different object and reusing the word is the collision this repo has already hit three times
+
 - [ ] **T11 (P2, human: ~2h / CC: ~10min)** — docs — Vision doc revisions including the λ→ξ bug
   - Surfaced by: vision lines 74, 78 (the reuse justification this change contradicts), 146 and 240 (λ used for the stranding factor, which is ξ)
   - Files: `docs/specs/2026-08-19-carb3-site-decarbonisation-vision.md`
