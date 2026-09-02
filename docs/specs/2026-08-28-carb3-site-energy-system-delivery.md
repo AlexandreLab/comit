@@ -106,7 +106,7 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
 - [x] **T3 (P2, human: ~30min / CC: ~5min)** — tooling — Fix the live `](interfaces/…)` dead link in both generated files
   - Surfaced by: verified — spec lines 380 and 2306 sit inside both extracted ranges and `fix_relative_paths` does not depth-adjust them
   - Files: `build_interface_docs.py:136-140`
-  - Verify: link resolves from `docs/specs/interfaces/`
+  - Verify: link resolves from `docs/specs/archive/interfaces/` (the published copies moved there when v1 was archived)
   - **Done**, folded into T2 since it is the same function. `fix_relative_paths` no longer
     matches on the `2026-08-19-` date slug — which never fired inside these two ranges
     anyway — but applies one rule to every relative target: prepend `../` per level of
@@ -204,7 +204,7 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
 | Seasonal (inter-period) storage state | Matters for hydrogen, barely for industrial heat and batteries. Add only if a decision turns on it. |
 | RFNBO / LCHS hourly temporal-correlation compliance | Structurally inexpressible in an annual model. State it as a boundary in v2 §2.3, do not model it. |
 | Rewriting `2026-08-05-site-heterogeneity-prd.md` | Already formally superseded and R-specific. Its banner stays accurate. |
-| Retiring v1 | It is the COMIT-parity baseline. It stays runnable, not archived. |
+| Retiring v1 | It is the COMIT-parity baseline for V1 and V1b, and stays runnable. **It has since been moved to `docs/specs/archive/`** — archived, not retired: still read, still regenerated, just out of the main path now that v2 §3 is self-contained. |
 | CI wiring beyond a Makefile | No `.github/` exists. A Makefile target is the honest first step; CI is a separate call. |
 
 ---

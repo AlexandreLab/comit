@@ -538,9 +538,9 @@ to distinguish connections in results, and carries no external meaning.
 ### 3.2 `activity_process_register` — activity → processes
 
 Which processes run at a premise of a given activity. Populated by
-[`../notes/data/activity_process_register.csv`](../notes/data/activity_process_register.csv) —
+[`../notes/data/activity_process_register.csv`](../../notes/data/activity_process_register.csv) —
 376 rows covering all 55 activities, with provenance per row. That table supersedes
-[`carb3_factory_processes.json`](../notes/data/carb3_factory_processes.json), which
+[`carb3_factory_processes.json`](../../notes/data/carb3_factory_processes.json), which
 remains as the narrower source it was expanded from.
 
 | Field | Type | Unit | Req | Key | Validation |
@@ -604,7 +604,7 @@ One row per `(activity, process, vector)` that can carry energy. For each of the
 Factory-class activities:
 
 1. **The process list** — already available from
-   [`../notes/data/carb3_factory_processes.json`](../notes/data/carb3_factory_processes.json).
+   [`../notes/data/carb3_factory_processes.json`](../../notes/data/carb3_factory_processes.json).
 2. **Which vectors each process can consume.** A grinding mill takes electricity and
    nothing else; a kiln takes coal, gas or biomass but not electricity unless an electric
    variant exists. Combinations that cannot occur are simply absent — absent is not the
@@ -761,7 +761,7 @@ kt per tonne; denominating them per PJ severs them from their physical basis.
 
 One row per *(process × equipment type × fuel)* combination.
 
-**Naming.** Field names deliberately match COMIT's existing columns (`technology_code`, `technology_name`, `capex`, `fixed_opex`, `lifetime`, `availability_factor`, `capacity_to_activity_factor`, `emissions_released`, `retrofit_to`) so that tier-1 reuse (D6) is a direct load from [`../notes/data/comit_sector_processes.csv`](../notes/data/comit_sector_processes.csv) and [`../notes/data/emissions_source_classification.csv`](../notes/data/emissions_source_classification.csv) with no column translation. `process_id` corresponds to COMIT's `output_commodity` / `process_commodity`.
+**Naming.** Field names deliberately match COMIT's existing columns (`technology_code`, `technology_name`, `capex`, `fixed_opex`, `lifetime`, `availability_factor`, `capacity_to_activity_factor`, `emissions_released`, `retrofit_to`) so that tier-1 reuse (D6) is a direct load from [`../notes/data/comit_sector_processes.csv`](../../notes/data/comit_sector_processes.csv) and [`../notes/data/emissions_source_classification.csv`](../../notes/data/emissions_source_classification.csv) with no column translation. `process_id` corresponds to COMIT's `output_commodity` / `process_commodity`.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -1175,7 +1175,7 @@ activity rather than random (§3.3.5).
 ### A4 — Back-solve implied existing capacity and vintage
 
 Inverts the relationship COMIT uses to compute a technology's output from its capacity
-(described in [notes/04 §Step 3](../notes/04_site_energy_estimation.md)):
+(described in [notes/04 §Step 3](../../notes/04_site_energy_estimation.md)):
 
 ```
 annual_output = capacity × capacity_to_activity_factor × availability_factor
@@ -1639,7 +1639,7 @@ $$\min \; Z = \sum_{t \in T} \Big[\; \delta_t \big( Z^{\text{capex}}_t + Z^{\tex
 
 where $\delta_t$ is the present-value factor for period $t$ **aggregated over the
 timestep** — matching the treatment described in
-[notes/09](../notes/09_objective_function.md) — and $d_t$ is the **single-year**
+[notes/09](../../notes/09_objective_function.md) — and $d_t$ is the **single-year**
 present-value factor at the start of period $t$.
 
 **Two discount factors, because the terms are two different kinds of quantity.** The five
@@ -1964,7 +1964,7 @@ $$\sum_{k} u_{k,t}\,|\iota_{k,c}| \le \text{caps}[c, t] \qquad \forall c \in \{\
 
 **Retrofit differencing.** Where `technology.retrofit_to` is set, the technology's costs
 are charged **net of** the base technology it replaces, matching COMIT's treatment
-(notes [09](../notes/09_objective_function.md), [14](../notes/14_emissions_source_split.md)).
+(notes [09](../../notes/09_objective_function.md), [14](../../notes/14_emissions_source_split.md)).
 This is why negative cost entries are legitimate and must not be clamped to zero. Under
 D11 the same relationship also governs vintage: a retrofit inherits its base's age and
 remaining life, and does not strand it — see the retrofit rule under C4 above.
@@ -2249,7 +2249,7 @@ absurd direct emissions. Making the list data-driven removes the trap.
 
 ### 7.5 Emissions categories to report
 
-Reproduce COMIT's categories (see [notes/12 §4.4](../notes/12_output_data_schema.md)),
+Reproduce COMIT's categories (see [notes/12 §4.4](../../notes/12_output_data_schema.md)),
 because they overlap by design and consumers must be able to filter:
 
 `Direct (total CO2e)` · `Direct (split by ghg type)` · `Direct_and_Indirect` ·
@@ -2307,7 +2307,7 @@ not have taken from the same vintage.
 consume results. Generated from this section on the same terms as §3 — edit here and
 re-run the builder.
 
-Reuse the structure documented in [notes/12](../notes/12_output_data_schema.md), extended
+Reuse the structure documented in [notes/12](../../notes/12_output_data_schema.md), extended
 with a **process** dimension. Convention: long in dimensions, wide in periods; the period
 columns are generated from `start_year`/`end_year`/`timestep` and **must not be
 hardcoded**.
@@ -2358,7 +2358,7 @@ is the fact a reader needs.
 As above, plus `input_commodity`, with two period-column families:
 `⟨period⟩_PJ` and `⟨period⟩_ktCO2e`.
 
-**Carry forward the warning from [notes/12 gotcha 14](../notes/12_output_data_schema.md):**
+**Carry forward the warning from [notes/12 gotcha 14](../../notes/12_output_data_schema.md):**
 the `ktCO2e` columns here are gross combustion emissions of the fuel, before biogenic
 zero-rating and capture. They are **not** interchangeable with the `Emissions` table.
 Document this in the output workbook itself.
@@ -2535,7 +2535,7 @@ The per-premise problem is a **pure LP** (§5.2). Any LP solver suffices.
 - **R:** the existing `ROI` / `highs` path (`R/comit_solver.R:284`, `comit_highs_solver`)
   can be reused per premise.
 - **Python:** `linopy` + `highspy` as set out in
-  [notes/08](../notes/08_python_redesign_approach.md). A per-premise problem is a
+  [notes/08](../../notes/08_python_redesign_approach.md). A per-premise problem is a
   natural fit for that stack, and the site dimension becomes an ordinary array axis.
 
 Two cautions carried from COMIT:
@@ -2737,7 +2737,7 @@ failure in the middle of a national run.
 #### V5 — Emissions invariants
 
 **Checks.** The post-solve emissions identities that COMIT already satisfies, carried
-over unchanged from [notes/14](../notes/14_emissions_source_split.md).
+over unchanged from [notes/14](../../notes/14_emissions_source_split.md).
 
 **Scope.** Release, and Batch on any run whose technology data has changed.
 **Blocking.** Yes.
@@ -2788,7 +2788,7 @@ negative, and **not** on the ones that can.
 problem formulation should be suspected before the data.
 
 **Why step 2 is stated as a prohibition.** Costs may be negative through retrofit
-differencing (§5.5), and emissions may be negative through BECCS. [notes/14](../notes/14_emissions_source_split.md)
+differencing (§5.5), and emissions may be negative through BECCS. [notes/14](../../notes/14_emissions_source_split.md)
 records blanket non-negativity as a **falsified** invariant — it was asserted, and real
 model output broke it. Re-adding that assertion will produce false failures on correct
 results, which is worse than no test at all. If §5.6's export revenue term is ever
@@ -3357,31 +3357,31 @@ either language can verify against a working model.
 
 | Specified in | Behaviour | COMIT reference |
 |---|---|---|
-| §4 A4 | Capacity ↔ output relationship | [notes/04 Step 3](../notes/04_site_energy_estimation.md) |
-| §5.4 | The eight PV cost terms | [notes/09](../notes/09_objective_function.md); `R/fct_pv_*.R` |
+| §4 A4 | Capacity ↔ output relationship | [notes/04 Step 3](../../notes/04_site_energy_estimation.md) |
+| §5.4 | The eight PV cost terms | [notes/09](../../notes/09_objective_function.md); `R/fct_pv_*.R` |
 | §5.4 | Capex annuitisation, PMT, truncation at horizon | `R/fct_finance.R`; `R/fct_create_cost_tables.R` |
 | §5.4 | Rebasing to base price year via deflators | `R/fct_finance.R:130` (`base_year_adjustment`) |
 | §5.5 | Constraint families | `R/fct_constraints_*.R` (17 files) |
 | §5.3.1, §6.1 | Straight-line decay of existing capacity — the tier-3 survival curve | `R/fct_constraints_capacity_transfer.R:252`; also `R/fct_constraints_existing_capacity.R:47`, which is switchable and marked *"not currently used"* |
 | §5.5 C3 | Capacity transfer, and the lifetime window on new build | `R/fct_constraints_capacity_transfer.R:244-245` |
 | §5.5 C4 | Retrofit capacity decaying alongside the base technology — **an analogue, not a match**, see the note below | `R/fct_constraints_capacity_transfer.R:262-263` |
-| §5.5 | Retrofit cost differencing | [notes/09](../notes/09_objective_function.md) |
+| §5.5 | Retrofit cost differencing | [notes/09](../../notes/09_objective_function.md) |
 | §7.1 | Process vs fuel CO₂ split | `R/fct_emissions.R:255-290` |
 | §7.2 | Non-CO₂; capture fixed at zero | `R/fct_emissions.R:308-330`, esp. `:327-328` |
 | §7.3 | Biomass zero-rating; hardcoded category string | `R/fct_emissions.R:234` |
 | §7.4 | Indirect commodity list, hardcoded | `R/fct_emissions.R:180-183` |
-| §7.5 | Emissions categories and their overlap | [notes/12 §4.4](../notes/12_output_data_schema.md), [notes/13](../notes/13_emissions_calculation.md) |
-| §8 | Output table structure and traps | [notes/12](../notes/12_output_data_schema.md) |
+| §7.5 | Emissions categories and their overlap | [notes/12 §4.4](../../notes/12_output_data_schema.md), [notes/13](../../notes/13_emissions_calculation.md) |
+| §8 | Output table structure and traps | [notes/12](../../notes/12_output_data_schema.md) |
 | §9.3 | Solver invocation and selection | `R/comit_solver.R:284`, `:327` |
-| §3.2 | CaRB3 activity → process register | [`../notes/data/activity_process_register.csv`](../notes/data/activity_process_register.csv) (376 rows, 55 activities) |
-| §3.2 | The narrower source the register was expanded from | [`../notes/data/carb3_factory_processes.json`](../notes/data/carb3_factory_processes.json) |
-| §3.3 | Activity → process energy profile | [`../notes/data/activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv) (490 rows, 137 (activity, set, vector) groups) |
-| §3.3 | Per-activity evidence notes and known gaps | [`../notes/data/activity_profile_coverage_notes.csv`](../notes/data/activity_profile_coverage_notes.csv) |
-| §3.2, §3.3 | Source bibliography for both tables | [`../notes/data/references.csv`](../notes/data/references.csv) |
-| §3.5, D6 | Decarbonisation options per process, with maturity evidence | [`../notes/data/process_decarbonisation_options.csv`](../notes/data/process_decarbonisation_options.csv), [`../notes/data/decarbonisation_options_library.csv`](../notes/data/decarbonisation_options_library.csv) |
-| §8.1, A9 | Activity → COMIT sector mapping | [`../notes/data/carb3_comit_crosswalk.csv`](../notes/data/carb3_comit_crosswalk.csv) |
-| §3.5 | Existing technology structure to reuse (D6 tier 1) | [`../notes/data/comit_sector_processes.csv`](../notes/data/comit_sector_processes.csv) |
-| §7 | Which technologies carry process emissions | [`../notes/data/emissions_source_classification.csv`](../notes/data/emissions_source_classification.csv) |
+| §3.2 | CaRB3 activity → process register | [`../notes/data/activity_process_register.csv`](../../notes/data/activity_process_register.csv) (376 rows, 55 activities) |
+| §3.2 | The narrower source the register was expanded from | [`../notes/data/carb3_factory_processes.json`](../../notes/data/carb3_factory_processes.json) |
+| §3.3 | Activity → process energy profile | [`../notes/data/activity_process_energy_profile.csv`](../../notes/data/activity_process_energy_profile.csv) (490 rows, 137 (activity, set, vector) groups) |
+| §3.3 | Per-activity evidence notes and known gaps | [`../notes/data/activity_profile_coverage_notes.csv`](../../notes/data/activity_profile_coverage_notes.csv) |
+| §3.2, §3.3 | Source bibliography for both tables | [`../notes/data/references.csv`](../../notes/data/references.csv) |
+| §3.5, D6 | Decarbonisation options per process, with maturity evidence | [`../notes/data/process_decarbonisation_options.csv`](../../notes/data/process_decarbonisation_options.csv), [`../notes/data/decarbonisation_options_library.csv`](../../notes/data/decarbonisation_options_library.csv) |
+| §8.1, A9 | Activity → COMIT sector mapping | [`../notes/data/carb3_comit_crosswalk.csv`](../../notes/data/carb3_comit_crosswalk.csv) |
+| §3.5 | Existing technology structure to reuse (D6 tier 1) | [`../notes/data/comit_sector_processes.csv`](../../notes/data/comit_sector_processes.csv) |
+| §7 | Which technologies carry process emissions | [`../notes/data/emissions_source_classification.csv`](../../notes/data/emissions_source_classification.csv) |
 
 **Where COMIT is an analogue rather than a match (D11).** The retrofit row above is the
 one citation in this table that is not a like-for-like parity anchor. COMIT's `int`
@@ -3398,7 +3398,7 @@ than approximately.
 **What is hardcoded in COMIT today and must become configuration here:** the indirect
 commodity list (§7.4), the biomass category string (§7.3), non-CO₂ capture fixed at zero
 (§7.2), and the allowed emission-source taxonomy. Full analysis:
-[notes/14 §6](../notes/14_emissions_source_split.md).
+[notes/14 §6](../../notes/14_emissions_source_split.md).
 
 ---
 

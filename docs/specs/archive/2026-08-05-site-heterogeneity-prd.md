@@ -19,11 +19,11 @@
 
 **Status:** Superseded — was Draft v2 for review
 **Date:** 2026-08-05
-**Related reading:** [notes/04_site_energy_estimation.md](../notes/04_site_energy_estimation.md),
-[notes/06_inputting_measured_site_energy.md](../notes/06_inputting_measured_site_energy.md),
-[notes/07_high_level_testing_strategy.md](../notes/07_high_level_testing_strategy.md),
-[notes/10_site_level_pathways.md](../notes/10_site_level_pathways.md),
-[notes/11_sector_coverage_and_carb3_mapping.md](../notes/11_sector_coverage_and_carb3_mapping.md)
+**Related reading:** [notes/04_site_energy_estimation.md](../../notes/04_site_energy_estimation.md),
+[notes/06_inputting_measured_site_energy.md](../../notes/06_inputting_measured_site_energy.md),
+[notes/07_high_level_testing_strategy.md](../../notes/07_high_level_testing_strategy.md),
+[notes/10_site_level_pathways.md](../../notes/10_site_level_pathways.md),
+[notes/11_sector_coverage_and_carb3_mapping.md](../../notes/11_sector_coverage_and_carb3_mapping.md)
 
 ---
 

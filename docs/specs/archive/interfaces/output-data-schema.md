@@ -29,7 +29,7 @@ every other `§` links back to the specification. Labels of the form `A1`–`A9`
 consume results. Generated from this section on the same terms as [§3](../2026-08-19-carb3-site-decarbonisation-implementation.md#3-data-model) — edit here and
 re-run the builder.
 
-Reuse the structure documented in [notes/12](../../notes/12_output_data_schema.md), extended
+Reuse the structure documented in [notes/12](../../../notes/12_output_data_schema.md), extended
 with a **process** dimension. Convention: long in dimensions, wide in periods; the period
 columns are generated from `start_year`/`end_year`/`timestep` and **must not be
 hardcoded**.
@@ -80,7 +80,7 @@ is the fact a reader needs.
 As above, plus `input_commodity`, with two period-column families:
 `⟨period⟩_PJ` and `⟨period⟩_ktCO2e`.
 
-**Carry forward the warning from [notes/12 gotcha 14](../../notes/12_output_data_schema.md):**
+**Carry forward the warning from [notes/12 gotcha 14](../../../notes/12_output_data_schema.md):**
 the `ktCO2e` columns here are gross combustion emissions of the fuel, before biogenic
 zero-rating and capture. They are **not** interchangeable with the `Emissions` table.
 Document this in the output workbook itself.

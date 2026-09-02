@@ -1,6 +1,7 @@
 # CaRB3 Site Energy System — Implementation Specification (v2)
 
-**Status:** Draft — §1, §2, §3 and §5 written (T4). §4 is a stub owned by T13; §6–§13 are not yet written
+**Status:** Draft — §1, §2, §3 and §5 written. §4 is a stub owned by T13; §6–§13 are not yet written
+**Self-contained:** §3 inlines every entity carried over from v1, so nothing here requires opening the archived v1 spec
 **Date:** 2026-09-01
 **Scope:** Great Britain (England, Wales, Scotland) · CaRB3 **Factory class** only (55 activities)
 **Plan:** [overview](2026-08-28-carb3-site-energy-system-overview.md) ·
@@ -8,8 +9,8 @@
 [spec changes](2026-08-28-carb3-site-energy-system-spec-changes.md) ·
 [data migration](2026-08-28-carb3-site-energy-system-data-migration.md) ·
 [delivery](2026-08-28-carb3-site-energy-system-delivery.md)
-**v1, frozen:** [2026-08-19-carb3-site-decarbonisation-implementation.md](2026-08-19-carb3-site-decarbonisation-implementation.md) — retained as the COMIT-parity baseline that V1 validates against
-**Design decisions:** [vision §6](2026-08-19-carb3-site-decarbonisation-vision.md) defines `D1`–`D11`
+**v1, frozen:** [archive/2026-08-19-carb3-site-decarbonisation-implementation.md](archive/2026-08-19-carb3-site-decarbonisation-implementation.md) — retained as the COMIT-parity baseline that V1 validates against
+**Design decisions:** [vision §6](archive/2026-08-19-carb3-site-decarbonisation-vision.md) defines `D1`–`D11`
 
 > **Incomplete by design.** This document is being written section by section against the
 > delivery plan. §4 (algorithms) is T13. §6–§13 are T5, T6, T7, T14 and T15. Do not treat a
@@ -174,187 +175,136 @@ it, do not model it.
 
 *Section last updated: 2026-09-02*
 
-Eleven entities are defined below. Entities carried over from v1 unchanged are listed in §3.12
-rather than restated; they must be inlined here before v2 can stand alone.
+**Twenty-two entities, and this document is now self-contained** — nothing here sends you
+to v1. Entities v1 defined and v2 keeps unchanged are inlined below rather than cited, which
+is what the previous draft's §3.12 said had to happen before v2 could stand alone.
 
-§3.10 and §3.11 are the **default database**: what duty each process presents, and what plant
-typically serves it. Both were missing from v1 and v2 alike — the audit in
-[notes/16](../notes/16_input_data_readiness.md) sets out what that left broken.
+**Section numbers are aligned with v1 on purpose.** Where v1 and v2 both define an entity it
+sits at the same number in both — §3.11 is `premise_measured_emissions` in each. Where v2
+replaces a v1 entity, the replacement takes the number the original had: v2's `carrier` is
+§3.4 because v1's `commodity` was, and `unit` is §3.5 because `technology` was. So a §3.x
+reference means the same thing whichever document you came from, and the archived v1 spec
+can be read alongside without translation.
 
-### 3.1 `carrier`
+| | Supplied by | Entities |
+|---|---|---|
+| §3.1–§3.1.3 | the CaRB3 stock model | `premise_record`, `premise_energy`, `premise_throughput`, `premise_connection` |
+| §3.2–§3.6 | the modelling team | `activity_process_register`, `activity_process_duty_profile`, `carrier`, `unit`, `unit_input_output` |
+| §3.7–§3.8 | scenario definition | `infrastructure_scenario`, `scenario_parameters` |
+| §3.9 | derived at run time (A2) | `process_duty` |
+| §3.10–§3.15 | optional per-premise intelligence (D10) | `premise_process_detail` and companions |
+| §3.16–§3.17 | defaults and the offline layer | `activity_default_unit`, `archetype_coefficient` |
 
-Anything that flows and balances. Replaces v1's `commodity`.
+### 3.1 `premise_record` — the premise itself
 
-| Field | Type | Unit | Req | Key | Validation |
-|---|---|---|---|---|---|
-| `carrier_id` | string | — | yes | PK | — |
-| `carrier_name` | string | — | yes | — | — |
-| `carrier_kind` | enum{primary, intermediate, product, emission} | — | yes | — | Decides emissions attribution (§7) |
-| `is_gradeable` | boolean | — | yes | — | True only for heat |
-| `grade_rank` | integer | — | no | — | Required if `is_gradeable`. Higher serves lower |
-| `grade_label` | string | °C | no | — | Required if `is_gradeable`, e.g. `150-400C` |
-| `is_indirect` | boolean | — | yes | — | Emissions counted as indirect. **Config, not a hardcoded list** |
-| `emission_factor_source` | string | — | no | — | → `scenario_parameters` series |
-| `denominator_kind` | enum{energy, mass} | — | yes | — | D5 |
+*v1 §3.1, unchanged.*
 
-**Grades are carriers, not an attribute of one.** `heat@60-150C` and `heat@150-400C` are two
-`carrier` rows with different `grade_rank`. This is what lets C8 balance them independently
-and C10 order them, without a special case in either.
-
-**`carrier_kind` is load-bearing for emissions.** Fuel emissions attach only to units
-consuming a `primary` carrier. A unit consuming an `intermediate` adds nothing, because the
-fuel was already charged upstream. Getting this wrong double-counts every boiler in the
-stock.
-
-### 3.2 `unit`
-
-What converts between carriers. Replaces v1's `technology`.
+The interface between the CaRB3 stock model and this model is three **required**
+entities — this one, plus `premise_energy` (§3.1.1) and `premise_throughput` (§3.1.2) —
+and one optional fourth, `premise_connection` (§3.1.3), which **v2 reads for the first time** — C11 bounds import against it, C12 bounds onsite generation against its `available_area`.
+That is the same set §3's preamble calls the first four. One row per premise
+here; the other two are long tables keyed on `premise_id`. Stated in requirement terms,
+with rationale, in **§1.6**; these tables are normative for validation.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
-| `unit_id` | string | — | yes | PK | — |
-| `unit_name` | string | — | yes | — | — |
-| `unit_class` | enum{converter, generator, storage, hybrid, abatement} | — | yes | — | — |
-| `spine` | enum{service, chemistry} | — | yes | — | Service units are family-keyed, chemistry node-keyed |
-| `duty_family` | string | — | no | — | Required if `spine` = service |
-| `process_id` | string | — | no | → `activity_process_register` | Required if `spine` = chemistry |
-| `grade_out` | integer | — | no | → `carrier` | Max grade rank it can produce |
-| `grade_in_max` | integer | — | no | → `carrier` | Max grade rank it can consume as a source |
-| `capex` | real | £m per capacity unit | yes | — | ≥ 0. **Levelised over components if hybrid** |
-| `fixed_opex` | real | £m/yr per capacity unit | yes | — | ≥ 0 |
-| `lifetime` | integer | years | yes | — | > 0. One value even for a hybrid |
-| `availability_factor` | real | fraction | yes | — | ∈ (0, 1] |
-| `capacity_to_activity_factor` | real | — | yes | — | > 0 |
-| `emissions_released` | real | fraction | yes | — | ∈ [0, 1]. Fraction **not** captured |
-| `min_viable_scale` | real | capacity units | no | — | Screening threshold, applied in A2 — **never a binary** |
-| `is_hybrid` | boolean | — | yes | — | If true, `unit_bill_of_materials` rows must exist |
-| `abates_unit_id` | string | — | no | → `unit` | For abatement units: the unit whose output it captures |
-| `provenance` | enum{comit_reuse, bref, proxy} | — | yes | — | D6 |
-| `confidence` | enum{high, medium, low} | — | yes | — | D6 |
+| `premise_id` | string | — | yes | PK | Unique, stable across runs |
+| `carb3_activity` | string | — | yes | → `activity_process_register` | Must match one of the **55 CaRB3 Factory-class activities** (D1). Any other class is rejected with reason `out_of_scope_activity`; an unrecognised string with `unknown_activity` (A1) |
+| `latitude` | real | degrees | yes | — | Within GB bounding box |
+| `longitude` | real | degrees | yes | — | Within GB bounding box |
+| `nation` | enum{England, Wales, Scotland} | — | yes | — | NI rejected with reason `out_of_scope_nation` |
+| `floorspace` | real | m² | no | — | > 0 if present |
+| `process_set_id` | string | — | no | → `activity_process_register` | Selects a named non-default process set (§3.2). Absent ⇒ the activity's default set |
+| `construction_year` | integer | year | no | — | **D11.** ≤ `data_year` if present. When the premise was built. Bounds plant age from above (§3.15, §5.3.1) |
+| `construction_year_band` | string | — | no | — | **D11.** Where only a band is held, e.g. `1945-1964`. Used only if `construction_year` is absent, and read as its **earliest** year |
+| `last_refurbishment_year` | integer | year | no | — | **Future use.** ≥ `construction_year`, ≤ `data_year` if present. Collected, not read |
+| `data_year` | integer | year | yes | — | Provenance |
+| `source` | string | — | yes | — | Provenance |
 
-**The spine is split, and the split follows D5.** Energy services (`LTH`, `HTH`, `STM`,
-`DRY`, `MOT`, `SPC`, `OTH`, `REF`, and four more) are family-keyed: one `boiler` serves a
-dairy and a paper mill alike. Chemistry (`ICMCLK`, `IHVC`, `IISPIR` and eleven more) is
-node-keyed, because a cement kiln is not a generic device. Sector specificity lives in
-`unit_eligibility`, not in the unit's identity.
+**On the age band (D11).** CaRB3-style stock data usually holds building age as a band
+rather than a year, so both forms are accepted and the year wins where both are present.
+A band is read as its **earliest** year, which is the conservative reading: it admits the
+widest range of plant ages and therefore stays closest to the default tier. Reading it as
+the midpoint or the latest year would make plant look younger than the evidence supports,
+and erring in that direction is the more dangerous mistake.
 
-**Abatement is a unit, not a retrofit pointer.** v1's `retrofit_to` differenced one
-technology's costs against another. Here a CCS train is a unit that consumes a CO₂ carrier
-produced by its host and names the host in `abates_unit_id`. It inherits the host's
-remaining life under D11 and strands nothing.
+Energy and throughput are **not** columns here. Both are one-to-many — a premise consumes
+several carriers and may make several products — so both are long tables keyed on
+`premise_id`, matching the shape already used by `premise_measured_emissions` (§3.11) and
+`premise_weekly_profile` (§3.14).
 
-### 3.3 `unit_input_output`
+#### 3.1.1 `premise_energy` — consumption by carrier
 
-Coefficients per unit per carrier, per unit of the unit's output. Carried over from v1's
-`technology_input_output` with the key renamed and **the sign convention unchanged**.
+*v1 §3.1.1, `commodity_id` renamed `carrier_id`.*
+
+One row per premise per carrier. Replaces the fixed `energy_electricity` … `energy_other`
+columns: a new carrier is a new row, not a schema change, and the `energy_other` /
+`energy_other_carrier` pair disappears because every carrier now names itself.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
-| `unit_id` | string | — | yes | PK part → `unit` | — |
-| `carrier_id` | string | — | yes | PK part → `carrier` | — |
-| `coefficient` | real | per output unit | yes | — | **Consumed negative, produced positive** |
-| `is_primary_output` | boolean | — | yes | — | Exactly one true per unit |
-| `is_reject` | boolean | — | yes | — | True marks recovered heat leaving the unit |
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `carrier_id` | string | — | yes | PK part | → `carrier`. The carrier as metered |
+| `connection_id` | string | — | no | PK part → `premise_connection` | **Optional.** The metered connection this quantity came through (§3.1.3). Absent ⇒ the premise's default connection |
+| `vector` | enum{electricity, gas, oil, coal, biomass, other} | — | yes | — | The grouping used to join `activity_process_duty_profile` (§3.3). Must be consistent with the carrier's `carrier_kind` (§3.4) |
+| `quantity` | real | PJ/yr | yes | — | ≥ 0 |
+| `data_status` | enum{measured, estimated, modelled, not_consumed} | — | yes | — | See the absence rule below |
+| `data_year` | integer | year | no | — | Defaults to `premise_record.data_year`; set only where a carrier is metered on a different vintage |
+| `source` | string | — | yes | — | Provenance for this carrier specifically |
 
-**Sign convention, restated because §7 depends on it.** Consumed carriers are negative,
-produced carriers positive. Process-emission carriers are produced, hence positive.
+**Rule (at least one positive).** A premise must have at least one row with
+`quantity > 0`, or it is rejected with reason `no_energy`.
 
-**`is_reject` is what makes waste heat work.** A kiln's reject heat is a *positive*
-coefficient on a low-grade heat carrier. Without these rows every unit rejects zero, the
-cascade has nothing to cascade, and the 28 `efficiency_heat_recovery` options in the library
-stay unmodellable. A reject carrier is `intermediate`, so it carries no emissions — its fuel
-was charged to the rejecting unit.
+**Rule (absence is not zero — the one trap in this format).** A wide table with required
+columns forces every carrier to be stated, so a zero is unambiguous. A long table loses
+that: a missing row could mean *"this site burns no oil"* or *"nobody checked whether it
+burns oil"*, and those two lead to very different conclusions about a site's
+decarbonisation options. So:
 
-### 3.4 `unit_eligibility`
+- A carrier **known not to be consumed** is stated explicitly: `quantity = 0` with
+  `data_status = not_consumed`.
+- A carrier that was **not assessed** is simply absent, and any result for that premise
+  is reported as having incomplete carrier coverage (§8, T14).
 
-Which units may serve which duty, for which activity, and above what scale. **This is where
-sector specificity lives.**
+The stock model should aim to state all five main vectors for every premise, whether by a
+positive quantity or an explicit zero. Absence is a last resort, not the default.
 
-| Field | Type | Unit | Req | Key | Validation |
-|---|---|---|---|---|---|
-| `unit_id` | string | — | yes | PK part → `unit` | — |
-| `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
-| `process_id` | string | — | yes | PK part | → `activity_process_register` |
-| `min_duty` | real | PJ/yr or Mt/yr | no | — | Below this the unit is not offered at all |
-| `max_share` | real | fraction | no | — | ∈ (0, 1]. Cap on this unit's share of the duty |
-| `earliest_year` | integer | year | no | — | Availability |
-| `provenance` | enum{comit_reuse, bref, proxy} | — | yes | — | D6 |
+**Rule (one row per carrier per connection).** `(premise_id, carrier_id, connection_id)`
+is unique. Two meters on the *same* connection are one row — meter-level detail below the
+connection belongs upstream. Two meters on *different* connections are two rows, because
+the connection is a modelled object (§3.1.3) and the difference is load-bearing.
 
-**`min_duty` replaces the MILP binary.** COMIT introduces a binary per hydrogen technology
-per site when a minimum plant size is set (`R/fct_constraints_hydrogen.R:650`,
-`R/fct_decision_variables.R:597`), which at 300k premises is exactly the tractability
-problem D7 removed. Here the decision is made **outside the LP**, in A2: a premise below the
-threshold never gets the unit in its candidate set. Sites whose optimal size lands below a
-credible minimum are **reported**, following the "reported comparison, not constraint"
-pattern.
+Sites with a single connection may omit `connection_id` entirely and are unaffected.
 
-### 3.5 `unit_bill_of_materials`
+#### 3.1.2 `premise_throughput` — physical output by carrier
 
-One row per hybrid unit per component. Required whenever `unit.is_hybrid` is true.
+*v1 §3.1.2, `commodity_id` renamed `carrier_id`.*
 
-| Field | Type | Unit | Req | Key | Validation |
-|---|---|---|---|---|---|
-| `unit_id` | string | — | yes | PK part → `unit` | Must have `is_hybrid` true |
-| `component_id` | string | — | yes | PK part | e.g. `pv`, `battery`, `inverter` |
-| `capacity_share` | real | fraction | yes | — | Shares sum to 1 per unit |
-| `capex_share` | real | fraction | yes | — | Shares sum to 1 per unit |
-| `component_lifetime` | integer | years | yes | — | > 0 |
-| `replacements_in_life` | integer | — | yes | — | ≥ 0. How often it is replaced within the unit's life |
-
-**Two jobs.** First, outputs can answer *how much battery does GB industry need* rather than
-reporting bundle capacity — §8's `Costs` and `Network` rows decompose through this table.
-Second, it makes the levelised capex auditable: PV lasts 30–40 years and a battery 10–15, so
-`unit.capex` must already contain the battery replacement. `replacements_in_life` is what
-V20 (c) checks that against.
-
-### 3.6 `archetype_coefficient`
-
-What Tier A emits. **One constant per coefficient per unit** — not a function of a design
-ratio, because a hybrid unit fixes the ratio (PD3).
+One row per premise per product. Long for the same reason, and it lifts a real
+limitation: the previous single `throughput_quantity` column could not represent a site
+making more than one product, which paper, chemicals and food sites routinely do.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
-| `archetype_id` | string | — | yes | PK part | — |
-| `unit_id` | string | — | yes | PK part → `unit` | — |
-| `psi` | real | fraction | no | — | ∈ [0, 1]. Onsite-generation self-consumption |
-| `beta` | real | fraction | no | — | ∈ [0, 1]. Firm capacity contribution, feeds C11 |
-| `chi` | real | fraction | no | — | ∈ [0, 1]. Paired-output utilisation |
-| `epsilon` | real | fraction | no | — | > 0. Effective purchase price multiplier for flexible loads |
-| `evidence_tier` | enum{fitted, substituted, default} | — | yes | — | **Non-nullable.** See below |
-| `sizing_ratio` | real | — | no | — | Required if the unit is hybrid. Concavity is checked across these |
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `carrier_id` | string | — | yes | PK part | → `carrier`. Must have `denominator_kind = mass` (D5) |
+| `quantity` | real | Mt/yr | yes | — | > 0 |
+| `data_status` | enum{measured, estimated, modelled} | — | yes | — | — |
+| `source` | string | — | yes | — | Provenance |
 
-**`epsilon` is not optional on a flexible-load hybrid.** For `pv_battery` the value is
-self-consumption and for `chp_thermal_store` it is heat utilisation, but for
-`electrolyser_battery` the battery buys cheap hours — arbitrage against a time-varying
-tariff. An annual model carries one price per period, so without ε that value is invisible,
-`electrolyser_battery` is strictly dominated by a bare electrolyser, and the hybrid-unit
-mechanism silently does nothing.
+**On throughput (agreed 2026-08-21).** Physical throughput is **not** a best-effort
+optional input: without it, the mass denominators that D5 requires cannot be populated,
+and process emissions — calcination CO₂ and equivalents — lose their physical basis for
+precisely the activities where they dominate. The upstream stock model will be extended
+to supply it. A premise whose activity carries a mass-denominated process must therefore
+have at least one `premise_throughput` row, and A1 rejects it otherwise
+(`missing_throughput`). Activities with no mass-denominated process need no rows at all.
 
-**`evidence_tier` exists because a premise can match no archetype.** `fitted` means Tier A
-ran for this archetype; `substituted` means the nearest archetype's coefficients were used
-and the substitution is recorded; `default` means an activity-level fallback. A premise
-running on a substituted coefficient must never be mistaken on paper for one running on a
-fitted match. This is the D10 pattern, applied to a new kind of evidence.
+#### 3.1.3 `premise_connection`
 
-### 3.7 `process_duty`
+*v1 §3.1.3 plus `available_area`; **read for the first time** (C11, C12).*
 
-What a premise must produce, per period. Replaces v1's vector-share allocation, which the
-carrier balance makes unnecessary.
-
-| Field | Type | Unit | Req | Key | Validation |
-|---|---|---|---|---|---|
-| `premise_id` | string | — | yes | PK part → `premise_record` | — |
-| `process_id` | string | — | yes | PK part | → `activity_process_register` |
-| `period` | integer | — | yes | PK part | Period index, not a calendar year |
-| `carrier_id` | string | — | yes | → `carrier` | What the duty is *for* |
-| `quantity` | real | PJ/yr or Mt/yr | yes | — | ≥ 0. Unit follows `carrier.denominator_kind` |
-| `grade_rank` | integer | — | no | → `carrier` | Required where the carrier is gradeable |
-| `evidence_tier` | enum{site_known, named_set, activity_default} | — | yes | — | D10 |
-
-### 3.8 `premise_connection`
-
-Carried over from v1 §3.1.3 **unchanged in fields**, and read for the first time. One row per
-MPAN or MPRN.
+One row per MPAN or MPRN.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -374,22 +324,46 @@ connection for exactly this reason.
 the LP builds infinite PV. Where the stock model cannot supply it, a per-activity usable-area
 fraction applied to the GIS footprint is the fallback, and it carries its evidence tier.
 
-### 3.9 `scenario_parameters`
+### 3.2 `activity_process_register` — activity → processes
 
-Extended from v1. New rows only are listed.
+*v1 §3.2, unchanged.*
+
+Which processes run at a premise of a given activity. Populated by
+[`../notes/data/activity_process_register.csv`](../notes/data/activity_process_register.csv) —
+376 rows covering all 55 activities, with provenance per row. That table supersedes
+[`carb3_factory_processes.json`](../notes/data/carb3_factory_processes.json), which
+remains as the narrower source it was expanded from.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
-| `parameter_id` | string | — | yes | PK | — |
-| `carrier_id` | string | — | no | → `carrier` | Set for per-carrier series |
-| `period` | integer | — | no | PK part | Period index |
-| `value` | real | varies | yes | — | — |
+| `carb3_activity` | string | — | yes | PK part | — |
+| `process_set_id` | string | — | yes | PK part | Names the variant. Every activity has exactly one set with `is_default = true` |
+| `set_name` | string | — | yes | — | Human-readable, e.g. `kraft_pulping`, `recycled_fibre` |
+| `is_default` | boolean | — | yes | — | Exactly one true per `carb3_activity` |
+| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `process_name` | string | — | yes | — | Human-readable |
+| `is_optional` | boolean | — | yes | — | If true, may be absent at a given premise |
+| `provenance` | string | — | yes | — | For non-default sets: what intelligence justifies it |
 
-New parameters: `import_price` and `export_price` per carrier per period; `export_price`
-must be **strictly below** `import_price` (V21, and it is physically true anyway);
-`reinforcement_cost` per voltage band; `area_density` in MW per m² for onsite generation.
+**On process sets.** An activity rarely has one universal process route. Two paper mills
+in the same CaRB3 activity may run kraft pulping and recycled-fibre lines that share
+almost no unit operations, and where that is known for a specific site it should be used
+rather than averaged away. Each activity therefore carries **one default set plus any
+number of named alternatives**, and a premise selects one via
+`premise_record.process_set_id` (§3.1). Absent that, the default applies. Finer-grained
+still, a premise may declare its processes explicitly in `premise_process_detail`
+(§3.10), which overrides both.
 
-### 3.10 `activity_process_duty_profile`
+**Rule.** Every `(carb3_activity, process_set_id, process_id)` triple must resolve to
+rows in `activity_process_duty_profile`, directly or by inheritance (§3.3), or the set
+cannot be modelled.
+
+**Rule.** `process_set_id` must be valid *for the premise's activity*. A set belonging to
+a different activity is rejected on ingest with reason `invalid_process_set`.
+
+### 3.3 `activity_process_duty_profile`
+
+***new** — replaces v1 §3.3 `activity_process_energy_profile`.*
 
 **The default duty of each process, per activity.** The activity-level default that A2
 expands into a premise's `process_duty` (§3.7) wherever no site intelligence overrides it.
@@ -431,7 +405,432 @@ The 490-row v1 profile therefore becomes the **parity target for V1b** — the t
 chosen fuel mix is compared against — rather than an input. §3.12 says the same from the
 other direction.
 
-### 3.11 `activity_default_unit`
+### 3.4 `carrier`
+
+***new** — replaces v1 §3.4 `commodity`.*
+
+Anything that flows and balances. Replaces v1's `commodity`.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `carrier_id` | string | — | yes | PK | — |
+| `carrier_name` | string | — | yes | — | — |
+| `carrier_kind` | enum{primary, intermediate, product, emission} | — | yes | — | Decides emissions attribution (§7) |
+| `is_gradeable` | boolean | — | yes | — | True only for heat |
+| `grade_rank` | integer | — | no | — | Required if `is_gradeable`. Higher serves lower |
+| `grade_label` | string | °C | no | — | Required if `is_gradeable`, e.g. `150-400C` |
+| `is_indirect` | boolean | — | yes | — | Emissions counted as indirect. **Config, not a hardcoded list** |
+| `emission_factor_source` | string | — | no | — | → `scenario_parameters` series |
+| `denominator_kind` | enum{energy, mass} | — | yes | — | D5 |
+
+**Grades are carriers, not an attribute of one.** `heat@60-150C` and `heat@150-400C` are two
+`carrier` rows with different `grade_rank`. This is what lets C8 balance them independently
+and C10 order them, without a special case in either.
+
+**`carrier_kind` is load-bearing for emissions.** Fuel emissions attach only to units
+consuming a `primary` carrier. A unit consuming an `intermediate` adds nothing, because the
+fuel was already charged upstream. Getting this wrong double-counts every boiler in the
+stock.
+
+### 3.5 `unit`
+
+***new** — replaces v1 §3.5 `technology`.*
+
+What converts between carriers. Replaces v1's `technology`.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `unit_id` | string | — | yes | PK | — |
+| `unit_name` | string | — | yes | — | — |
+| `unit_class` | enum{converter, generator, storage, hybrid, abatement} | — | yes | — | — |
+| `spine` | enum{service, chemistry} | — | yes | — | Service units are family-keyed, chemistry node-keyed |
+| `duty_family` | string | — | no | — | Required if `spine` = service |
+| `process_id` | string | — | no | → `activity_process_register` | Required if `spine` = chemistry |
+| `grade_out` | integer | — | no | → `carrier` | Max grade rank it can produce |
+| `grade_in_max` | integer | — | no | → `carrier` | Max grade rank it can consume as a source |
+| `capex` | real | £m per capacity unit | yes | — | ≥ 0. **Levelised over components if hybrid** |
+| `fixed_opex` | real | £m/yr per capacity unit | yes | — | ≥ 0 |
+| `lifetime` | integer | years | yes | — | > 0. One value even for a hybrid |
+| `availability_factor` | real | fraction | yes | — | ∈ (0, 1] |
+| `capacity_to_activity_factor` | real | — | yes | — | > 0 |
+| `emissions_released` | real | fraction | yes | — | ∈ [0, 1]. Fraction **not** captured |
+| `min_viable_scale` | real | capacity units | no | — | Screening threshold, applied in A2 — **never a binary** |
+| `load_shape_override` | string | — | no | → `process_load_shape` | **By exception only.** The shape belongs to the process (§3.13); a unit overrides it only where the device genuinely changes the draw |
+| `is_hybrid` | boolean | — | yes | — | If true, `unit_bill_of_materials` rows must exist |
+| `abates_unit_id` | string | — | no | → `unit` | For abatement units: the unit whose output it captures |
+| `provenance` | enum{comit_reuse, bref, proxy} | — | yes | — | D6 |
+| `confidence` | enum{high, medium, low} | — | yes | — | D6 |
+
+**The spine is split, and the split follows D5.** Energy services (`LTH`, `HTH`, `STM`,
+`DRY`, `MOT`, `SPC`, `OTH`, `REF`, and four more) are family-keyed: one `boiler` serves a
+dairy and a paper mill alike. Chemistry (`ICMCLK`, `IHVC`, `IISPIR` and eleven more) is
+node-keyed, because a cement kiln is not a generic device. Sector specificity lives in
+`unit_eligibility`, not in the unit's identity.
+
+**Abatement is a unit, not a retrofit pointer.** v1's `retrofit_to` differenced one
+technology's costs against another. Here a CCS train is a unit that consumes a CO₂ carrier
+produced by its host and names the host in `abates_unit_id`. It inherits the host's
+remaining life under D11 and strands nothing.
+
+#### 3.5.1 `unit_eligibility`
+
+***new**.*
+
+Which units may serve which duty, for which activity, and above what scale. **This is where
+sector specificity lives.**
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `unit_id` | string | — | yes | PK part → `unit` | — |
+| `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
+| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `min_duty` | real | PJ/yr or Mt/yr | no | — | Below this the unit is not offered at all |
+| `max_share` | real | fraction | no | — | ∈ (0, 1]. Cap on this unit's share of the duty |
+| `earliest_year` | integer | year | no | — | Availability |
+| `provenance` | enum{comit_reuse, bref, proxy} | — | yes | — | D6 |
+
+**`min_duty` replaces the MILP binary.** COMIT introduces a binary per hydrogen technology
+per site when a minimum plant size is set (`R/fct_constraints_hydrogen.R:650`,
+`R/fct_decision_variables.R:597`), which at 300k premises is exactly the tractability
+problem D7 removed. Here the decision is made **outside the LP**, in A2: a premise below the
+threshold never gets the unit in its candidate set. Sites whose optimal size lands below a
+credible minimum are **reported**, following the "reported comparison, not constraint"
+pattern.
+
+#### 3.5.2 `unit_bill_of_materials`
+
+***new**.*
+
+One row per hybrid unit per component. Required whenever `unit.is_hybrid` is true.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `unit_id` | string | — | yes | PK part → `unit` | Must have `is_hybrid` true |
+| `component_id` | string | — | yes | PK part | e.g. `pv`, `battery`, `inverter` |
+| `capacity_share` | real | fraction | yes | — | Shares sum to 1 per unit |
+| `capex_share` | real | fraction | yes | — | Shares sum to 1 per unit |
+| `component_lifetime` | integer | years | yes | — | > 0 |
+| `replacements_in_life` | integer | — | yes | — | ≥ 0. How often it is replaced within the unit's life |
+
+**Two jobs.** First, outputs can answer *how much battery does GB industry need* rather than
+reporting bundle capacity — §8's `Costs` and `Network` rows decompose through this table.
+Second, it makes the levelised capex auditable: PV lasts 30–40 years and a battery 10–15, so
+`unit.capex` must already contain the battery replacement. `replacements_in_life` is what
+V20 (c) checks that against.
+
+### 3.6 `unit_input_output`
+
+***new** — replaces v1 §3.6 `technology_input_output`.*
+
+Coefficients per unit per carrier, per unit of the unit's output. Carried over from v1's
+`technology_input_output` with the key renamed and **the sign convention unchanged**.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `unit_id` | string | — | yes | PK part → `unit` | — |
+| `carrier_id` | string | — | yes | PK part → `carrier` | — |
+| `coefficient` | real | per output unit | yes | — | **Consumed negative, produced positive** |
+| `is_primary_output` | boolean | — | yes | — | Exactly one true per unit |
+| `is_reject` | boolean | — | yes | — | True marks recovered heat leaving the unit |
+
+**Sign convention, restated because §7 depends on it.** Consumed carriers are negative,
+produced carriers positive. Process-emission carriers are produced, hence positive.
+
+**`is_reject` is what makes waste heat work.** A kiln's reject heat is a *positive*
+coefficient on a low-grade heat carrier. Without these rows every unit rejects zero, the
+cascade has nothing to cascade, and the 28 `efficiency_heat_recovery` options in the library
+stay unmodellable. A reject carrier is `intermediate`, so it carries no emissions — its fuel
+was charged to the rejecting unit.
+
+### 3.7 `infrastructure_scenario` — exogenous availability (D7)
+
+*v1 §3.7, unchanged.*
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `scenario_id` | string | — | yes | PK part | — |
+| `carrier` | enum{hydrogen, co2_transport, grid_headroom} | — | yes | PK part | — |
+| `cluster_id` | string | — | yes | PK part | One of the 9 GB clusters, or `none` |
+| `period` | integer | year | yes | PK part | A model period |
+| `available` | boolean | — | yes | — | Whether the carrier can be used |
+| `capacity_limit` | real | PJ/yr or kt/yr | no | — | Optional per-premise cap; unbounded if absent |
+| `unit_tariff` | real | £m per PJ or kt | yes | — | **Replaces COMIT's four infrastructure PV terms** (§5.4) |
+
+**Rule.** A premise is assigned to the nearest in-scope cluster on ingest (A1). Its
+availability is read from that cluster's rows. Premises beyond a configured cluster
+radius get `available = false` for hydrogen and CO₂ transport.
+
+### 3.8 `scenario_parameters`
+
+*v1 §3.8, extended.*
+
+Extended from v1. New rows only are listed.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `parameter_id` | string | — | yes | PK | — |
+| `carrier_id` | string | — | no | → `carrier` | Set for per-carrier series |
+| `period` | integer | — | no | PK part | Period index |
+| `value` | real | varies | yes | — | — |
+
+New parameters: `import_price` and `export_price` per carrier per period; `export_price`
+must be **strictly below** `import_price` (V21, and it is physically true anyway);
+`reinforcement_cost` per voltage band; `area_density` in MW per m² for onsite generation.
+
+### 3.9 `process_duty`
+
+***new** — v1 §3.9 was `site_pathway`, an output, which belongs in §8.*
+
+What a premise must produce, per period. Replaces v1's vector-share allocation, which the
+carrier balance makes unnecessary.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part → `premise_record` | — |
+| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `period` | integer | — | yes | PK part | Period index, not a calendar year |
+| `carrier_id` | string | — | yes | → `carrier` | What the duty is *for* |
+| `quantity` | real | PJ/yr or Mt/yr | yes | — | ≥ 0. Unit follows `carrier.denominator_kind` |
+| `grade_rank` | integer | — | no | → `carrier` | Required where the carrier is gradeable |
+| `evidence_tier` | enum{site_known, named_set, activity_default} | — | yes | — | D10 |
+
+### 3.10 `premise_process_detail` — known site processes and capacity
+
+*v1 §3.10, `technology_code` renamed `unit_id`.*
+
+**Optional per-premise intelligence.** Where the actual processes at a site are known —
+from a permit, an audit, a site visit, or an operator disclosure — they are stated here
+and override both the default set and any named variant. Zero rows for a premise is the
+normal case and means "use the register".
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `connection_id` | string | — | no | → `premise_connection` | **Optional.** Which electricity connection serves this process (§3.1.3). Absent ⇒ the default. This is what decides where electrified load lands |
+| `known_capacity` | real | capacity units | no | — | > 0 if present. Units follow the process's denominator (D5): PJ/yr-equivalent for energy, Mt/yr for mass |
+| `unit_id` | string | — | no | → `unit` | The specific installed unit, where known |
+| `provenance` | string | — | yes | — | Citation: permit number, audit reference, disclosure |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Rule (completeness).** The rows for a premise are treated as its **complete** process
+list. A partial list would silently delete processes the site runs and misstate its
+energy balance, so a premise with any rows must have rows for every process it runs. If
+only fragmentary knowledge exists, use a named `process_set_id` instead.
+
+**Rule (precedence).** Where `unit_id` is given, that unit is the premise's
+existing plant for that process and A4 does not choose between candidates. Where
+`known_capacity` is given, it is used directly and A4 back-solves *utilisation* instead
+of capacity (§A4).
+
+**On vintage (D11).** When the plant was commissioned lives in `premise_process_vintage`
+(§3.15), not here. It was moved out because this table is keyed premise × process and can
+hold exactly one year, while a real works commonly runs two units of the same process
+installed decades apart — a 1998 kiln line and a 2016 one. One year per process cannot
+say that, and averaging the two is the thing D11 exists to stop.
+
+### 3.11 `premise_measured_emissions` — reported emissions, where they exist
+
+*v1 §3.11, unchanged.*
+
+**Optional per-premise intelligence.** For sites in UK ETS, or covered by permit
+reporting or NAEI point-source data, measured emissions exist and are better evidence
+than anything this model computes. They are used to **reconcile and calibrate** the
+baseline, not to replace the computed value — see §7.6 for why that distinction is
+forced rather than chosen.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `emission_year` | integer | year | yes | PK part | Should match `premise_record.data_year` |
+| `source_category` | enum{combustion, process, total} | — | yes | PK part | `total` only where the split is unavailable |
+| `ghg` | enum{CO2, CH4, N2O, total_co2e} | — | yes | PK part | — |
+| `quantity` | real | kt CO₂e/yr | yes | — | ≥ 0 |
+| `scope` | enum{direct, indirect} | — | yes | — | Indirect excluded from the §7.4 direct comparison |
+| `provenance` | string | — | yes | — | Citation: UK ETS account, permit, NAEI reference |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Rule.** If both `total` and a `combustion`/`process` breakdown are supplied for the
+same premise-year, the parts must sum to the total within 1%, or the record is rejected
+with reason `emissions_inconsistent`.
+
+### 3.12 `premise_operating_profile` — schedule and load shape
+
+*v1 §3.12, unchanged.*
+
+**Optional per-premise intelligence.** Two distinct things live here, and they answer
+different questions. The **operating schedule** says when the site runs, which validates
+the utilisation A4 derives. The **load statistics** say how peaky it is, which is what a
+connection capacity is actually about (§5.6).
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `connection_id` | string | — | no | PK part → `premise_connection` | Peak and load-factor fields are **per connection** where a site has more than one. Absent ⇒ the default connection. Schedule fields are premise-wide and repeat |
+| `operating_pattern` | enum{continuous, three_shift, double_day, single_shift, seasonal_campaign} | — | no | — | Coarse classification; `continuous` ⇒ ~8,760 h/yr |
+| `operating_hours_per_year` | real | h/yr | no | — | ∈ (0, 8784]. Preferred over `operating_pattern` where known |
+| `operating_days_per_week` | real | d/wk | no | — | ∈ (0, 7] |
+| `shutdown_weeks` | real | wk/yr | no | — | ≥ 0. Planned maintenance or campaign downtime |
+| `peak_electricity` | real | MW | no | — | > 0 if present. Measured maximum demand |
+| `peak_gas` | real | MW | no | — | > 0 if present. Peak gas offtake expressed as power |
+| `load_factor_electricity` | real | fraction | no | — | ∈ (0, 1]. Annual energy ÷ (peak × 8,760) |
+| `load_factor_gas` | real | fraction | no | — | ∈ (0, 1] |
+| `within_shift_peak_factor` | real | ratio | no | — | ≥ 1. Peak ÷ mean demand *during operating hours* (§5.6) |
+| `profile_basis` | enum{half_hourly, daily, monthly, schedule_only, estimated} | — | yes | — | What the statistics were derived from |
+| `provenance` | string | — | yes | — | Citation: meter operator, DNO connection record, site audit |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Rule (derived statistics, not raw profiles).** Half-hourly data is ~17,520 points per
+premise per year and does not belong in this contract — at stock scale it is larger than
+every other input combined, and this model is annual (§5.1) so it cannot consume the
+series directly. The stock model retains the raw profile; what crosses the interface is
+the **derived statistics above**. If richer shape information is later needed, extend
+this entity with a small number of representative day shapes or load-duration-curve
+percentiles, never the full series.
+
+**Rule (consistency).** Where both a peak and a load factor are supplied for a vector,
+they must reconcile against that vector's annual energy in `premise_energy` (§3.1.1)
+within 5%:
+
+$$\text{load factor} = \frac{E\,[\text{PJ/yr}] \times 277{,}778}{P^{\text{peak}}\,[\text{MW}] \times 8{,}760}$$
+
+Divergence beyond that is reported as `profile_energy_inconsistent` — most often a
+vintage mismatch between the profile year and `data_year`.
+
+### 3.13 `process_load_shape` — how a process presents its demand
+
+*v1 §3.13, unchanged.*
+
+**The shape belongs to the process, not to the unit.** A kiln runs continuously
+whether it is fired by gas or by hydrogen; a batch dryer is batchy whether it is gas or
+electric. What a unit operation *does* determines when it draws power, so the shape is
+declared once per process and inherited by every unit serving it. Units
+override it only by exception (`unit.load_shape_override`, §3.5).
+
+This is the decomposition that makes the peak question tractable. Declaring shapes per
+unit would multiply the data build by the fuel variants — 82 of 94 COMIT processes
+differ only by fuel — for information that does not vary along that axis.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `shape_id` | string | — | yes | PK | — |
+| `process_id` | string | — | yes | → `carrier` | The process this describes |
+| `shape_class` | enum{flat, throughput_following, batch_cyclic, intermittent, standing, seasonal} | — | yes | — | See below |
+| `duty_factor` | real | fraction | yes | — | ∈ (0, 1]. Share of operating hours in which the process draws power |
+| `peak_to_mean` | real | ratio | yes | — | ≥ 1. Peak ÷ mean demand across the hours it is running |
+| `runs_when_idle` | boolean | — | yes | — | True ⇒ draws power outside the site's operating hours |
+| `seasonality` | enum{none, winter_weighted, summer_weighted, campaign} | — | yes | — | Drives whether the annual peak falls outside a representative week |
+| `provenance` | string | — | yes | — | Citation |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**The shape classes.**
+
+| Class | Meaning | Typical `duty_factor` | Typical `peak_to_mean` | Examples |
+|---|---|---|---|---|
+| `flat` | Constant while the site operates | ~1.0 | ~1.0–1.1 | Rotary kiln, continuous furnace, continuous digester |
+| `throughput_following` | Proportional to production rate | 0.7–1.0 | 1.1–1.4 | Mills, crushers, conveyors, pumps |
+| `batch_cyclic` | Repeating on/off cycles | 0.3–0.7 | 2–4 | Batch ovens, autoclaves, curing, electric melting |
+| `intermittent` | Driven by operator activity | 0.1–0.4 | 3–6 | Welding, hand tools, workshop equipment |
+| `standing` | Runs regardless of production | ~1.0 | ~1.0 | Refrigeration, lighting, compressed air, site services |
+| `seasonal` | Weather- or campaign-driven | varies | varies | Space heating, seasonal processing campaigns |
+
+Values are indicative of the shape's character, not defaults to be adopted unexamined.
+
+**Rule.** `standing` processes must have `runs_when_idle = true`; every other class must
+have it false unless a citation says otherwise. This distinction is what makes a
+single-shift site's peak differ from its energy — refrigeration runs through the night
+and the presses do not.
+
+### 3.14 `premise_weekly_profile` — measured shape, where it exists
+
+*v1 §3.14, unchanged.*
+
+**Optional, and deliberately small.** A representative **half-hourly week** — 336
+points — captures the daily cycle and the weekday/weekend difference, which is most of
+what shape means for a connection question, at ~2% of a full year's data. Supplied per
+premise per vector, and per process only where sub-metering makes that real.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `connection_id` | string | — | no | PK part → `premise_connection` | Half-hourly data arrives per MPAN, so a multi-connection site has one series per connection. Absent ⇒ the default |
+| `vector` | enum{electricity, gas} | — | yes | PK part | The metered vectors only |
+| `process_id` | string | — | no | PK part | Present only where sub-metered; absent ⇒ whole site |
+| `season` | enum{annual, winter, summer, shoulder} | — | yes | PK part | `annual` ⇒ a single representative week |
+| `interval_index` | integer | — | yes | PK part | 1–336, Monday 00:00 to Sunday 23:30 |
+| `fraction_of_peak` | real | fraction | yes | — | ∈ [0, 1]. Normalised so the maximum across the week is 1 |
+| `annual_peak` | real | MW | yes | — | The **annual** maximum, recorded separately — see the rule below |
+| `provenance` | string | — | yes | — | Citation: meter operator, DNO record |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Rule (the representative week does not contain the annual peak).** A typical week is
+typical by construction, so its maximum is not the year's maximum — and the year's
+maximum is exactly what a connection capacity is sized against. The week gives the
+*shape*; `annual_peak` carries the *level*, taken from the full series upstream. Using
+the week's own maximum as the site peak understates it, and for `seasonal` processes
+substantially.
+
+**Rule (seasons are optional but recommended where seasonality is not `none`).** One
+`annual` week suffices for a continuous process. Where §3.13 declares
+`winter_weighted`, `summer_weighted` or `campaign` seasonality, supply `winter`, `summer`
+and `shoulder` weeks — 1,008 points, still small — or the annual peak cannot be
+attributed to the right process when the mix changes.
+
+---
+
+### 3.15 `premise_process_vintage` — when the plant was installed (D11)
+
+*v1 §3.15, `technology_code` renamed `unit_id`.*
+
+**Optional per-premise intelligence, and the highest tier of vintage evidence.** Where
+the commissioning date of the plant serving a process is known — from a permit, a
+BAT/BREF review, an asset register, a site visit or an operator disclosure — it is stated
+here. Zero rows for a premise is the normal case and means "fall through to
+`premise_record.construction_year`, and then to the default" (§5.3.1).
+
+One row per **cohort**: a distinct tranche of capacity commissioned in the same year. A
+works with one kiln has one row; a works whose second line was added eighteen years after
+the first has two.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `cohort_id` | string | — | yes | PK part | Stable within the premise-process. `1`, `2`, … is sufficient |
+| `unit_id` | string | — | no | → `unit` | The unit this cohort is. Absent ⇒ whatever A4 resolves for the process |
+| `commissioned_year` | integer | year | yes | — | ≤ `premise_record.data_year`. Rejected with reason `vintage_in_future` otherwise |
+| `capacity_share` | real | fraction | yes | — | ∈ (0, 1]. Share of the process's existing capacity in this cohort |
+| `provenance` | string | — | yes | — | Citation: permit number, asset register, disclosure |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Rule (shares sum).** For each `(premise_id, process_id)` the `capacity_share` values
+must sum to 1 within 1e-6, or the premise's vintage rows are rejected with reason
+`vintage_shares_unbalanced` and that process falls back to the next tier. Partial vintage
+knowledge is expressed as a cohort with the year you do know plus a residual cohort with
+your best estimate — not as shares that do not close, which would silently shrink the
+site's capacity.
+
+**Rule (units are shares, not capacities).** The absolute capacity of the process is A4's
+business and may be back-solved rather than known. Stating vintage as a share keeps the
+two independent, so a site can supply ages without supplying capacities and vice versa.
+
+**Rule (refurbishment is not recommissioning).** A cohort's year is when the plant was
+*installed*, not when it was last overhauled. A 1998 kiln relined in 2019 is a 1998
+cohort. Life extension through major refurbishment is real and is a known gap, noted in
+§5.3.1 — recording an overhaul as a new commissioning date is the wrong way to represent
+it, because it also resets the residual value the asset is carrying and makes early
+replacement look more expensive than it is.
+
+**Why a separate entity from §3.10.** `premise_process_detail` is keyed premise × process
+and asserts a *complete* process list; this table is keyed one level finer and asserts
+nothing about completeness. A premise may have vintage rows for its kiln and none for its
+mills, and the mills simply fall to the next tier. Forcing the two into one table would
+have made vintage all-or-nothing for a site, which is the opposite of how the evidence
+actually arrives.
+
+### 3.16 `activity_default_unit`
+
+***new**.*
 
 **What plant an activity typically already has.** The base-year supply side: which units
 serve each duty today, before any investment decision. Also **absent from both specs** until
@@ -473,27 +872,36 @@ it is asserted for premises with no site intelligence. Where §3.10 of the v1 sp
 (`premise_process_detail`) gives real plant for a real site, that wins — the D10 ladder is
 unchanged.
 
-### 3.12 Entities carried over from v1 unchanged
+### 3.17 `archetype_coefficient`
 
-These are unchanged in fields and meaning and are **not restated here**. They must be
-inlined before v2 supersedes v1; until then read them in the v1 spec at the section given.
+***new**.*
 
-**Every number in this list is a `v1 §` and none of them is a section of this document.**
-The two specs now overlap in the 3.10–3.12 range — v1's `premise_process_detail`,
-`premise_measured_emissions` and `premise_operating_profile` sit at exactly the numbers this
-document gives `activity_process_duty_profile`, `activity_default_unit` and this section. The
-`v1` prefix below is therefore load-bearing, not decoration.
+What Tier A emits. **One constant per coefficient per unit** — not a function of a design
+ratio, because a hybrid unit fixes the ratio (PD3).
 
-`premise_record` (v1 §3.1) · `premise_energy` (v1 §3.1.1) · `premise_throughput` (v1 §3.1.2) ·
-`activity_process_register` (v1 §3.2) · `infrastructure_scenario` (v1 §3.7) ·
-`premise_process_detail` (v1 §3.10) · `premise_measured_emissions` (v1 §3.11) ·
-`premise_operating_profile` (v1 §3.12) · `process_load_shape` (v1 §3.13) ·
-`premise_weekly_profile` (v1 §3.14) · `premise_process_vintage` (v1 §3.15).
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `archetype_id` | string | — | yes | PK part | — |
+| `unit_id` | string | — | yes | PK part → `unit` | — |
+| `psi` | real | fraction | no | — | ∈ [0, 1]. Onsite-generation self-consumption |
+| `beta` | real | fraction | no | — | ∈ [0, 1]. Firm capacity contribution, feeds C11 |
+| `chi` | real | fraction | no | — | ∈ [0, 1]. Paired-output utilisation |
+| `epsilon` | real | fraction | no | — | > 0. Effective purchase price multiplier for flexible loads |
+| `evidence_tier` | enum{fitted, substituted, default} | — | yes | — | **Non-nullable.** See below |
+| `sizing_ratio` | real | — | no | — | Required if the unit is hybrid. Concavity is checked across these |
 
-**`activity_process_energy_profile` is deliberately absent.** Its vector-share allocation is
-replaced by the carrier balance. The table itself survives as an input to S3, which splits
-metered energy onto carriers, and as V1b's parity target (§3.10 of *this* document), but it
-no longer determines how energy reaches a process.
+**`epsilon` is not optional on a flexible-load hybrid.** For `pv_battery` the value is
+self-consumption and for `chp_thermal_store` it is heat utilisation, but for
+`electrolyser_battery` the battery buys cheap hours — arbitrage against a time-varying
+tariff. An annual model carries one price per period, so without ε that value is invisible,
+`electrolyser_battery` is strictly dominated by a bare electrolyser, and the hybrid-unit
+mechanism silently does nothing.
+
+**`evidence_tier` exists because a premise can match no archetype.** `fitted` means Tier A
+ran for this archetype; `substituted` means the nearest archetype's coefficients were used
+and the substitution is recorded; `default` means an activity-level fallback. A premise
+running on a substituted coefficient must never be mistaken on paper for one running on a
+fitted match. This is the D10 pattern, applied to a new kind of evidence.
 
 ---
 

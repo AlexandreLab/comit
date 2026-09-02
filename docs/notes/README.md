@@ -30,24 +30,15 @@ Source input file under discussion: `data_template_archive/comit_input_1_4_0_pub
 
 ## Specifications
 
-Design documents live in [`../specs/`](../specs/).
+Design documents live in [`../specs/`](../specs/). **That directory is v2 only**; everything
+v1 is in [`../specs/archive/`](../specs/archive/README.md).
 
-| Doc | Topic |
-|-----|-------|
-| [2026-08-19-carb3-site-decarbonisation-vision.md](../specs/2026-08-19-carb3-site-decarbonisation-vision.md) | **High-level plan.** Driving a modified COMIT from a CaRB3 building-stock register to assess per-premise decarbonisation across GB: why COMIT is the base, the three assumptions that block the route, the eleven design decisions, and what is lost by solving each site independently |
-| [2026-08-19-carb3-site-decarbonisation-implementation.md](../specs/2026-08-19-carb3-site-decarbonisation-implementation.md) | **Detailed plan, language-agnostic** (implementable in R or Python). Data model, algorithms A1–A9 as pseudocode, the optimisation stated mathematically, constraint disposition, emissions rules, output schema, scale gates, and validation. The worked example lives in its own document |
-| [interfaces/input-data-model.md](../specs/interfaces/input-data-model.md) | **Input contract, standalone.** Every entity the model reads — the premise record and its long companions, the reference tables the modelling team maintains, and the optional per-site intelligence. Generated from implementation §3; edit the spec, not this |
-| [interfaces/output-data-schema.md](../specs/interfaces/output-data-schema.md) | **Output contract, standalone.** Every table a run produces, its keys, units, evidence-tier fields, and the traps that make two of them look interchangeable. Generated from implementation §8 |
-| [2026-08-19-carb3-site-decarbonisation-worked-example.md](../specs/2026-08-19-carb3-site-decarbonisation-worked-example.md) | **Worked example.** One cement premise carried end to end through A1–A9 with every input entity populated, plus the same premise re-run without site intelligence to show what the optional inputs contribute |
-| [2026-08-05-site-heterogeneity-prd.md](../specs/2026-08-05-site-heterogeneity-prd.md) | ⚠️ **Superseded** by the three above. Site-level baselines, plans and pathways (F0–F6) specced against the current coupled model |
+### The live specification — v2
 
-### v2 migration plan — proposed re-architecture, under review
-
-Five independently reviewable documents planning a move from COMIT's *(sector × process ×
-fuel)* technology table to a carrier network fed by generic units, so that onsite
-generation, storage, CHP and graded heat become representable. **Nothing here is built
-yet, and the implementation spec above stays authoritative and frozen as the COMIT-parity
-baseline.**
+A move from COMIT's *(sector × process × fuel)* technology table to a carrier network fed by
+generic units, so that onsite generation, storage, CHP and graded heat become representable.
+**Nothing here is built yet.** §3 is complete and self-contained; §4 and §6–§13 are stubs
+named against their delivery tasks.
 
 | Doc | Topic |
 |-----|-------|
@@ -57,6 +48,25 @@ baseline.**
 | [2026-08-28-carb3-site-energy-system-spec-changes.md](../specs/2026-08-28-carb3-site-energy-system-spec-changes.md) | **What changes in the spec text.** Entity and constraint changes as before/after tables, four new validation tests plus one new parity test, a test-coverage diagram, a failure-mode table with two critical gaps, and the nine things that break in the worked example |
 | [2026-08-28-carb3-site-energy-system-data-migration.md](../specs/2026-08-28-carb3-site-energy-system-data-migration.md) | **The data work.** Twenty-six items in five ordered groups covering the 397-row technology collapse, the `technology_category` split, the missing decarbonisation-option join, the hybrid-unit set, reject-heat coefficients, and the inputs the model does not yet have |
 | [2026-08-28-carb3-site-energy-system-delivery.md](../specs/2026-08-28-carb3-site-energy-system-delivery.md) | **Sequencing.** Files to create and modify, nineteen tasks with effort estimates, six parallelisation lanes, an explicit not-in-scope list, and the verification commands |
+
+### Archive — v1 and earlier
+
+**Archived, not retired.** v1 stays the COMIT-parity baseline: V1 validates it against
+coupled-off COMIT, and V1b compares v2 to it. Neither hop may be skipped, so v1 must stay
+readable — it simply no longer sits in the main reading path. Section numbers are aligned
+between the two documents, so a `§3.x` reference means the same thing in either.
+
+See [`../specs/archive/README.md`](../specs/archive/README.md) for the full contents and what
+still points there.
+
+| Doc | Topic |
+|-----|-------|
+| [archive/…-vision.md](../specs/archive/2026-08-19-carb3-site-decarbonisation-vision.md) | **Still live for one thing: it defines `D1`–`D11`**, cited throughout v2 and defined nowhere else. Also the v1 rationale — why COMIT is the base, the three assumptions that block the route, and what is lost by solving each site independently |
+| [archive/…-implementation.md](../specs/archive/2026-08-19-carb3-site-decarbonisation-implementation.md) | **v1, frozen and authoritative for parity.** Data model, algorithms A1–A9, the optimisation stated mathematically, emissions rules, output schema, scale gates, validation |
+| [archive/…-worked-example.md](../specs/archive/2026-08-19-carb3-site-decarbonisation-worked-example.md) | One cement premise end to end through v1's A1–A9, plus the same premise without site intelligence |
+| [archive/interfaces/](../specs/archive/interfaces/input-data-model.md) | v1's input and output contracts, generated from its §3 and §8 |
+| [archive/diagrams/](../specs/archive/diagrams/spec_data_model.md) | v1's flow and data-model diagrams, generated from the whole spec |
+| [archive/…-site-heterogeneity-prd.md](../specs/archive/2026-08-05-site-heterogeneity-prd.md) | ⚠️ **Superseded** long before v2, and R-file-specific |
 
 ## Conventions
 - Units (from the workbook `Contents` sheet): energy/capacity in **PJ** (GW for CHP),

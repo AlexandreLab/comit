@@ -58,7 +58,7 @@ five documents and two of them look alike:
 |---|---|---|
 | **PD1–PD3** | Plan decisions — scope calls made in this review | the table below |
 | **Issue 1–5** | Review findings and their resolutions | [Provenance](#provenance) below |
-| **D1–D11** | The **vision doc's** design decisions (per-site solves, exogenous infrastructure, plant vintage) | [vision §6](2026-08-19-carb3-site-decarbonisation-vision.md) |
+| **D1–D11** | The **vision doc's** design decisions (per-site solves, exogenous infrastructure, plant vintage) | [vision §6](archive/2026-08-19-carb3-site-decarbonisation-vision.md) |
 
 So `D2` always means the vision's *per-site independent solves*, never this plan's
 temporal-depth decision — that is `PD2`. Group letters in the
