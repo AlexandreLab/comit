@@ -19,7 +19,7 @@ Emits, into the configured output directory:
 
 Usage:  python3 docs/notes/examples/build_interface_docs.py
         python3 docs/notes/examples/build_interface_docs.py --check
-        python3 docs/notes/examples/build_interface_docs.py --spec v2
+        python3 docs/notes/examples/build_interface_docs.py --spec site-energy-system
         python3 docs/notes/examples/build_interface_docs.py --list
 
 --check regenerates in memory and exits non-zero if any file on disk differs,
@@ -42,7 +42,7 @@ import spec_docs_config as conf  # noqa: E402  (needs the path above)
 # The generated header was hand-written at this width. It is not the spec's own
 # wrap (~88): the header is a narrower block, and the label sentence is generated
 # into the middle of it, so it has to match its neighbours or the paragraph looks
-# ragged. The byte-identity check on the v1 documents is what holds this honest.
+# ragged. The byte-identity check on the published documents is what holds this honest.
 WRAP = 84
 
 

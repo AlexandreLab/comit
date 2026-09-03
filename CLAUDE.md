@@ -62,13 +62,27 @@ the source and regenerate.
 |---|---|---|---|
 | `docs/specs/archive/interfaces/*.md` | `build_interface_docs.py` | the archived **baseline** spec §3 and §8 | **yes** |
 | `docs/specs/archive/diagrams/*` | `build_spec_flow_diagram.py` | the archived **baseline** spec | **yes** |
+| `docs/specs/diagrams/*` | `build_spec_flow_diagram.py` | the **live** spec §3 | **yes** |
 | `docs/notes/data/emissions_source_classification.csv` | `build_emissions_classification.R` | the input workbook | no |
 | `docs/notes/data/comit_sector_processes.{csv,json}` | `build_comit_process_taxonomy.R` | the input workbook | no |
 
 Both Python generators read `docs/notes/examples/spec_docs.config.json`. Heading
-strings, section numbers, output directories and entity role sets live there, so
-**pointing the tooling at a new spec is a JSON edit, not a Python one** — add a key under
-`specs`, with `enabled: false` and a `blocked_by` reason while it is unpublishable.
+strings, section numbers, output directories, entity role sets and the subject grouping
+behind the ER views live there, so **pointing the tooling at a new spec is a JSON edit,
+not a Python one** — add a key under `specs`, with `enabled: false` and a `blocked_by`
+reason while it is unpublishable.
+
+Publishability is **per document**, so `diagrams` also carries an `outputs` map
+(`journey`, `data_model`, `entities`, `flow_svg`) with a `blocked_outputs` reason for each
+one switched off. The live spec publishes `entities` only: the journey and the SVG read
+§4's algorithm headings, and §4 numbers them `### 4.1 A4 — …` rather than the `### A1 — …`
+the parser wants. An `outputs` map naming a document the script does not emit is a
+`ConfigError`, not a silent skip.
+
+`diagrams.domains` groups §3's entities by **subject** — processes, duties, units,
+connections and so on — which is a different cut from §3's own grouping by *who supplies
+the data*, and both are worth having. It is checked to be a partition: an entity added to
+§3 and left out of every domain fails the build.
 
 Label *ranges* are not in that config and must not be. Each generator reads them from the
 target spec's own Notation table and cross-checks against the families the config asks it

@@ -18,7 +18,12 @@ Emits, into the configured output directory:
   spec_journey.md     Mermaid sequence diagram: the journey from ingesting a premise
                       to writing its pathway, step by step
   spec_data_model.md  Mermaid class diagram: entities, their fields and foreign keys
+  spec_entities.md    Mermaid ER diagrams: how the tables relate, grouped by subject
   spec_flow.svg       dependency-free SVG overview; drop into Mural or any SVG tool
+
+Each spec switches its outputs on individually, under `diagrams.outputs`, because
+publishability is per-document: a §4 with no algorithm headings blocks the journey
+and the SVG while leaving the data-model views perfectly buildable.
 
 The two Markdown files preview in VS Code with a Mermaid extension and render
 inline on GitHub.
@@ -27,7 +32,7 @@ No third-party packages. Standard library only.
 
 Usage:  python3 docs/notes/examples/build_spec_flow_diagram.py
         python3 docs/notes/examples/build_spec_flow_diagram.py --check
-        python3 docs/notes/examples/build_spec_flow_diagram.py --spec v2
+        python3 docs/notes/examples/build_spec_flow_diagram.py --spec baseline
         python3 docs/notes/examples/build_spec_flow_diagram.py --list
 
 --check regenerates in memory and exits non-zero if any file on disk differs, so a
@@ -273,6 +278,192 @@ def to_classes(fields: dict[str, list[dict]]) -> str:
     return "\n".join(out) + "\n"
 
 
+# --------------------------------------------------------------------------- #
+# Entity relationships: the same §3 tables, read as an ER model
+# --------------------------------------------------------------------------- #
+
+
+def find_entity_headings(text: str) -> dict[str, tuple[str, str]]:
+    """Entity -> (section number, the gloss after the em dash).
+
+    §3.13's heading is '### 3.13 `process_load_shape` — how a process presents its
+    demand'; entities defined without a gloss simply get an empty one.
+    """
+    pattern = re.compile(r"^#{3,4} (3\.[\d.]+) `([a-z_]+)`(.*)$", re.M)
+    return {m.group(2): (m.group(1), m.group(3).strip().lstrip("—").strip())
+            for m in pattern.finditer(text)}
+
+
+def relationships(fields: dict[str, list[dict]]) -> list[dict]:
+    """Every foreign key as a child -> parent relationship, in document order."""
+    out, seen = [], set()
+    for entity, rows in fields.items():
+        for r in rows:
+            target = r["fk"]
+            if not target or target not in fields or target == entity:
+                continue
+            key = (entity, target, r["name"])
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(
+                {
+                    "child": entity,
+                    "parent": target,
+                    "via": r["name"],
+                    # the foreign key is part of the child's own primary key, so a
+                    # child cannot exist without its parent
+                    "identifying": bool(r["pk"]),
+                    "optional": not r["required"],
+                }
+            )
+    return out
+
+
+def pair_edges(rels: list[dict]) -> list[dict]:
+    """One edge per entity pair, columns merged onto its label.
+
+    A composite foreign key is several columns but a single relationship. Drawing
+    it once per column triples the arrows between the two busiest boxes and says
+    nothing the label does not already say.
+    """
+    pairs: dict[tuple[str, str], dict] = {}
+    for r in rels:
+        p = pairs.setdefault(
+            (r["child"], r["parent"]),
+            {"child": r["child"], "parent": r["parent"], "via": [],
+             "identifying": True, "optional": False},
+        )
+        p["via"].append(r["via"])
+        p["identifying"] &= r["identifying"]
+        p["optional"] |= r["optional"]
+    return list(pairs.values())
+
+
+def mermaid_type(raw: str) -> str:
+    """A mermaid ER attribute type must be one bare word.
+
+    `enum{flat, batch_cyclic, seasonal}` is not; it becomes `enum`, and the full
+    domain stays where it belongs, in the spec's own Type column.
+    """
+    t = re.sub(r"\{.*?\}", "", raw or "").strip()
+    t = re.sub(r"[^A-Za-z0-9_]", "_", t).strip("_")
+    return t or "string"
+
+
+def er_lines(edges: list[dict]) -> list[str]:
+    """`parent ||--o{ child : "columns"` — one parent, many children."""
+    out = []
+    for e in edges:
+        parent_card = "|o" if e["optional"] else "||"
+        child_card = "|{" if e["identifying"] else "o{"
+        out.append(
+            f'    {e["parent"]} {parent_card}--{child_card} {e["child"]} '
+            f': "{", ".join(e["via"])}"'
+        )
+    return out
+
+
+def to_er(fields: dict[str, list[dict]], edges: list[dict], attributes: bool) -> str:
+    out = ["erDiagram"] + er_lines(edges)
+    if attributes:
+        for entity, rows in fields.items():
+            out.append(f"    {entity} {{")
+            for r in rows:
+                # mermaid takes multiple attribute keys comma-separated ("PK,FK");
+                # separating them with a space is a parse error, not a wider gap
+                keys = ",".join(
+                    k for k, on in (("PK", r["pk"]), ("FK", bool(r["fk"]))) if on
+                )
+                req = "required" if r["required"] else "optional"
+                out.append(
+                    f'        {mermaid_type(r["type"])} {r["name"]} {keys} "{req}"'.replace(
+                        "  ", " "
+                    )
+                )
+            out.append("    }")
+    return "\n".join(out) + "\n"
+
+
+def resolve_domains(fields: dict[str, list[dict]], domains: list[dict]) -> list[dict]:
+    """The config's subject grouping, checked against the entities the spec defines.
+
+    Only a human knows which subject an entity belongs to, so the grouping is
+    config, like the role colours. What is mechanical is that it stays a
+    *partition*: an entity added to §3 and not to a domain would silently vanish
+    from the grouped view, which is exactly the kind of quiet omission these
+    generators exist to prevent.
+    """
+    placed: dict[str, str] = {}
+    for d in domains:
+        for e in d["entities"]:
+            if e not in fields:
+                raise conf.ConfigError(
+                    f"domain {d['name']!r} lists {e!r}, which §3 does not define"
+                )
+            if e in placed:
+                raise conf.ConfigError(
+                    f"entity {e!r} is in two domains: {placed[e]!r} and {d['name']!r}"
+                )
+            placed[e] = d["name"]
+    missing = [e for e in fields if e not in placed]
+    if missing:
+        raise conf.ConfigError(
+            f"§3 defines {len(missing)} entities no domain claims "
+            f"({', '.join(missing)}); add them to `diagrams.domains`"
+        )
+    return domains
+
+
+def to_domain_flowchart(
+    fields: dict[str, list[dict]],
+    edges: list[dict],
+    domains: list[dict],
+    heads: dict[str, tuple[str, str]],
+) -> str:
+    """The same graph, boxed by subject.
+
+    `erDiagram` has no grouping construct, so the subject view has to be a
+    flowchart. It loses cardinality, which the ER diagram above it already
+    carries, and gains the one thing that diagram cannot show: which tables hold
+    data about the same thing.
+    """
+    out = ["flowchart LR"]
+    for i, d in enumerate(domains):
+        out.append(f'    subgraph d{i}["{d["name"]}"]')
+        out.append("        direction TB")
+        for e in d["entities"]:
+            section = heads.get(e, ("", ""))[0]
+            label = f"{e}<br/>§{section}" if section else e
+            out.append(f'        {e}["{label}"]')
+        out.append("    end")
+    for e in edges:
+        out.append(f'    {e["child"]} -->|{", ".join(e["via"])}| {e["parent"]}')
+    return "\n".join(out) + "\n"
+
+
+def domain_table(
+    fields: dict[str, list[dict]],
+    domains: list[dict],
+    heads: dict[str, tuple[str, str]],
+) -> str:
+    """Which table holds which subject, and on which column.
+
+    Every non-key column is listed, not a sample of them. This table exists to
+    answer "which table has the floor area in it"; a truncated list answers that
+    question for some columns and silently fails for the rest.
+    """
+    rows = ["| Subject | Table | § | What it is | Columns |", "|---|---|---|---|---|"]
+    for d in domains:
+        for n, e in enumerate(d["entities"]):
+            section, gloss = heads.get(e, ("", ""))
+            payload = [r["name"] for r in fields[e] if not r["pk"] and not r["fk"]]
+            cols = ", ".join(f"`{c}`" for c in payload) or "keys only"
+            subject = d["name"] if n == 0 else ""
+            rows.append(f"| {subject} | `{e}` | §{section} | {gloss or '—'} | {cols} |")
+    return "\n".join(rows) + "\n"
+
+
 def header_line(spec_link: str) -> str:
     return (
         "Generated from [the implementation specification]"
@@ -289,6 +480,22 @@ def wrap(title: str, intro: str, body: str, header: str) -> str:
     previewable there and on GitHub.
     """
     return f"# {title}\n\n{header}\n{intro}\n\n```mermaid\n{body}```\n"
+
+
+def wrap_views(title: str, intro: str, views: list[tuple[str, str, str]], header: str) -> str:
+    """Several views of one subject in a single document.
+
+    The relationships, the subject grouping and the full attribute list are three
+    answers to three different questions about the same graph. Splitting them
+    across three files would make them drift; stacking them under one heading
+    each keeps them regenerated together and read together.
+    """
+    parts = [f"# {title}\n\n{header}\n{intro}\n"]
+    for heading, prose, body in views:
+        parts.append(f"\n## {heading}\n\n{prose}\n")
+        if body is not None:
+            parts.append(f"\n```mermaid\n{body}```\n")
+    return "".join(parts)
 
 
 def to_mermaid(g: dict) -> str:
@@ -402,6 +609,76 @@ def to_svg(g: dict, pos: dict[str, dict]) -> str:
     return "\n".join(out)
 
 
+# Switch name in the config -> the file it writes. A spec names the switches it
+# wants under `diagrams.outputs`; naming one this script does not emit is an error
+# rather than a silently skipped document.
+OUTPUTS = {
+    "journey": "spec_journey.md",
+    "data_model": "spec_data_model.md",
+    "entities": "spec_entities.md",
+    "flow_svg": "spec_flow.svg",
+}
+
+
+def entities_doc(
+    text: str, fields: dict[str, list[dict]], diag: dict, header: str
+) -> str:
+    """Three views of the §3 tables: how they relate, by subject, in full."""
+    domains = resolve_domains(fields, diag.get("domains", []))
+    heads = find_entity_headings(text)
+    rels = relationships(fields)
+    edges = pair_edges(rels)
+
+    intro = (
+        f"The {len(fields)} entities of §3 and the {len(edges)} relationships between "
+        f"them, read straight out of the field tables: the Key column supplies the "
+        f"primary keys, and an arrow to a table name in either the Key or the "
+        f"Validation column supplies the foreign keys. Nothing here is maintained by "
+        f"hand, so a foreign key added to the spec appears on the next regeneration "
+        f"and one removed disappears."
+    )
+
+    cards = (
+        "Read `A ||--o{ B` as *one A, many B*. `|{` on the child end marks an "
+        "**identifying** relationship — the foreign key is part of B's own primary "
+        "key, so a B cannot exist without its A. `|o` on the parent end marks a "
+        "foreign key the child may leave unset.\n\n"
+        f"A composite foreign key is drawn once, with its columns merged onto the "
+        f"label: {len(rels)} foreign-key columns become {len(edges)} arrows."
+    )
+
+    subjects = (
+        "The same graph, boxed by what each table holds data *about*. Cardinality is "
+        "dropped here — the diagram above carries it — in exchange for the one thing "
+        "an ER diagram cannot show: which tables describe the same subject. Arrows "
+        "run from the table holding the foreign key to the table it points at, "
+        "labelled with the column."
+    )
+
+    return wrap_views(
+        "Entity relationships",
+        intro,
+        [
+            ("How the tables relate", cards, to_er(fields, edges, attributes=False)),
+            ("By subject", subjects, to_domain_flowchart(fields, edges, domains, heads)),
+            (
+                "Where each subject lives",
+                "One row per table, in the order §3 defines them.\n\n"
+                + domain_table(fields, domains, heads),
+                None,
+            ),
+            (
+                "Every field",
+                "The full model. `PK` marks a primary-key part, `FK` a foreign key; "
+                "each attribute is tagged `required` or `optional`. Enumerated types "
+                "are shown as `enum` — their members are in the spec's Type column.",
+                to_er(fields, edges, attributes=True),
+            ),
+        ],
+        header,
+    )
+
+
 def render(cfg: dict, diag: dict) -> dict[str, str]:
     """Every output file this spec produces, as name -> content, written nowhere yet.
 
@@ -414,17 +691,29 @@ def render(cfg: dict, diag: dict) -> dict[str, str]:
     depth = len(out_dir.relative_to(cfg["spec_path"].parent).parts)
     header = header_line("../" * depth + cfg["spec_path"].name)
 
+    # Which documents this spec publishes. Absent means all of them, so a config
+    # written before the switches existed keeps building exactly what it built.
+    wanted = diag.get("outputs") or {k: True for k in OUTPUTS}
+    unknown = sorted(set(wanted) - set(OUTPUTS))
+    if unknown:
+        raise conf.ConfigError(
+            f"spec {cfg['key']!r} switches on unknown diagram outputs "
+            f"({', '.join(unknown)}); this script emits: {', '.join(OUTPUTS)}"
+        )
+
     g = build_graph(text, diag.get("aliases", {}), diag.get("roles", {}))
     fields = find_entity_fields(text)
     algos = sum(1 for n in g["nodes"] if n["type"] == "algorithm")
-    if not algos:
+    needs_algos = [k for k in ("journey", "flow_svg") if wanted.get(k)]
+    if needs_algos and not algos:
         raise conf.ConfigError(
             f"spec {cfg['key']!r} declares no algorithms — §4 has no '### A1 — ' "
-            f"headings, so the journey diagram and the SVG flow would come out empty"
+            f"headings, so {' and '.join(needs_algos)} would come out empty. Switch "
+            f"them off under `diagrams.outputs`, or give §4 those headings"
         )
 
-    return {
-        "spec_journey.md": wrap(
+    built = {
+        "journey": lambda: wrap(
             "The journey of one premise",
             f"What happens to a single premise between arriving from the stock model and "
             f"leaving as a pathway. {algos} steps, in the order §4 specifies them. Data "
@@ -434,7 +723,7 @@ def render(cfg: dict, diag: dict) -> dict[str, str]:
             to_sequence(g),
             header,
         ),
-        "spec_data_model.md": wrap(
+        "data_model": lambda: wrap(
             "Data model",
             f"The {len(fields)} entities of §3 with their fields and foreign keys. "
             f"`+` marks a required field, `-` an optional one; `PK` marks a primary-key "
@@ -442,12 +731,19 @@ def render(cfg: dict, diag: dict) -> dict[str, str]:
             to_classes(fields),
             header,
         ),
-        "spec_flow.svg": to_svg(g, layout(g)),
-        "_summary": (
-            f"{sum(1 for n in g['nodes'] if n['type'] == 'entity')} entities, "
-            f"{algos} algorithms, {len(g['edges'])} edges"
-        ),
+        "entities": lambda: entities_doc(text, fields, diag, header),
+        "flow_svg": lambda: to_svg(g, layout(g)),
     }
+
+    files = {OUTPUTS[k]: build() for k, build in built.items() if wanted.get(k)}
+    # The graph is built from the algorithms, so it is empty for a spec that
+    # publishes only the data-model views. Count the entities from §3 itself.
+    files["_summary"] = (
+        f"{len(fields)} entities, {len(relationships(fields))} foreign keys, "
+        f"{algos} algorithms, {len(g['edges'])} flow edges, "
+        f"{len(files)} document{'' if len(files) == 1 else 's'}"
+    )
+    return files
 
 
 def run(spec_key: str | None, check: bool) -> int:
