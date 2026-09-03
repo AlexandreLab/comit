@@ -60,10 +60,12 @@ def spec_keys() -> list[str]:
 def enabled_keys(part: str) -> list[str]:
     """Spec keys whose `part` ('interfaces' or 'diagrams') is switched on.
 
-    A spec can be registered before it is publishable — v2's §4 is a stub and its
-    §8 does not exist yet — so the config carries an `enabled` flag and a
-    `blocked_by` reason rather than being absent, and `make docs-check` covers
-    exactly the targets that can actually be generated today.
+    A spec can be registered before it is publishable — a §4 without algorithm
+    headings, a §8 that does not exist yet — so the config carries an `enabled`
+    flag and a `blocked_by` reason rather than being absent, and `make docs-check`
+    covers exactly the targets that can actually be generated today. `diagrams`
+    narrows this further with a per-document `outputs` map, since publishability
+    is per document: the data-model views build from a §3 alone.
     """
     raw = json.loads(CONFIG.read_text(encoding="utf-8"))
     return sorted(k for k, s in raw["specs"].items() if s.get(part, {}).get("enabled"))

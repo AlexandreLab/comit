@@ -691,7 +691,7 @@ differ only by fuel — for information that does not vary along that axis.
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `shape_id` | string | — | yes | PK | — |
-| `process_id` | string | — | yes | → `carrier` | The process this describes |
+| `process_id` | string | — | yes | → `activity_process_register` | The process this describes |
 | `shape_class` | enum{flat, throughput_following, batch_cyclic, intermittent, standing, seasonal} | — | yes | — | See below |
 | `duty_factor` | real | fraction | yes | — | ∈ (0, 1]. Share of operating hours in which the process draws power |
 | `peak_to_mean` | real | ratio | yes | — | ≥ 1. Peak ÷ mean demand across the hours it is running |

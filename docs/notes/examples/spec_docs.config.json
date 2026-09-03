@@ -80,6 +80,13 @@
           ],
           "scenario": ["infrastructure_scenario", "scenario_parameters"],
           "output": ["site_pathway"]
+        },
+
+        "outputs": {
+          "journey": true,
+          "data_model": true,
+          "entities": false,
+          "flow_svg": true
         }
       }
     },
@@ -120,15 +127,92 @@
       },
 
       "diagrams": {
-        "enabled": false,
-        "blocked_by": "§4 carries no `### A1 — ` headings yet, so the journey diagram and the SVG flow would both come out empty.",
+        "enabled": true,
         "out_dir": "docs/specs/diagrams",
         "aliases": {},
         "roles": {
           "input": ["premise_connection", "process_duty"],
           "scenario": ["scenario_parameters"],
           "output": []
-        }
+        },
+
+        "outputs": {
+          "journey": false,
+          "data_model": false,
+          "entities": true,
+          "flow_svg": false
+        },
+
+        "blocked_outputs": {
+          "journey": "§4 numbers its algorithms `### 4.1 A4 — `, not `### A1 — `, so the sequence diagram would come out empty.",
+          "data_model": "The class diagram is the archived baseline's view; `spec_entities.md` supersedes it here, and carries the attributes as well.",
+          "flow_svg": "Same missing `### A1 — ` headings as the journey."
+        },
+
+        "domains": [
+          {
+            "name": "The premise",
+            "entities": [
+              "premise_record",
+              "premise_energy",
+              "premise_throughput"
+            ]
+          },
+          {
+            "name": "Connections",
+            "entities": [
+              "premise_connection"
+            ]
+          },
+          {
+            "name": "Processes",
+            "entities": [
+              "activity_process_register",
+              "premise_process_detail",
+              "premise_process_vintage",
+              "process_load_shape"
+            ]
+          },
+          {
+            "name": "Duties",
+            "entities": [
+              "activity_process_duty_profile",
+              "process_duty"
+            ]
+          },
+          {
+            "name": "Carriers",
+            "entities": [
+              "carrier"
+            ]
+          },
+          {
+            "name": "Units",
+            "entities": [
+              "unit",
+              "unit_eligibility",
+              "unit_bill_of_materials",
+              "unit_input_output",
+              "activity_default_unit",
+              "archetype_coefficient"
+            ]
+          },
+          {
+            "name": "Measured profiles and emissions",
+            "entities": [
+              "premise_operating_profile",
+              "premise_weekly_profile",
+              "premise_measured_emissions"
+            ]
+          },
+          {
+            "name": "Scenario",
+            "entities": [
+              "infrastructure_scenario",
+              "scenario_parameters"
+            ]
+          }
+        ]
       }
     }
   }
