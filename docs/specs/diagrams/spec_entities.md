@@ -155,11 +155,11 @@ One row per table, in the order §3 defines them.
 | Subject | Table | § | What it is | Columns |
 |---|---|---|---|---|
 | The premise | `premise_record` | §3.1 | the premise itself | `latitude`, `longitude`, `nation`, `floorspace`, `construction_year`, `construction_year_band`, `last_refurbishment_year`, `data_year`, `source` |
-|  | `premise_energy` | §3.1.1 | consumption by carrier | `vector`, `quantity`, `data_status`, `data_year`, `source` |
+|  | `premise_energy` | §3.1.1 | consumption by carrier | `vector`, `quantity`, `data_status`, `source` |
 |  | `premise_throughput` | §3.1.2 | physical output by carrier | `quantity`, `data_status`, `source` |
 | Connections | `premise_connection` | §3.1.3 | — | `import_capacity`, `export_capacity`, `connection_voltage`, `available_area` |
 | Processes | `activity_process_register` | §3.2 | activity → processes | `set_name`, `is_default`, `process_name`, `is_optional`, `provenance` |
-|  | `premise_process_detail` | §3.10 | known site processes and capacity | `known_capacity`, `provenance`, `confidence` |
+|  | `premise_process_detail` | §3.10 | known site processes and capacity | `valid_to_year`, `known_capacity`, `provenance`, `confidence` |
 |  | `premise_process_vintage` | §3.15 | when the plant was installed (D11) | `commissioned_year`, `capacity_share`, `provenance`, `confidence` |
 |  | `process_load_shape` | §3.13 | how a process presents its demand | `shape_class`, `duty_factor`, `peak_to_mean`, `runs_when_idle`, `seasonality`, `provenance`, `confidence` |
 | Duties | `activity_process_duty_profile` | §3.3 | — | `duty_share`, `share_low`, `share_high`, `evidence_tier`, `provenance`, `confidence` |
@@ -245,13 +245,14 @@ erDiagram
     enum vector "required"
     real quantity "required"
     enum data_status "required"
-    integer data_year "optional"
+    integer data_year PK "required"
     string source "required"
     }
     premise_throughput {
     string premise_id PK,FK "required"
     string carrier_id PK,FK "required"
     real quantity "required"
+    integer data_year PK "required"
     enum data_status "required"
     string source "required"
     }
@@ -372,6 +373,8 @@ erDiagram
     premise_process_detail {
     string premise_id PK,FK "required"
     string process_id PK,FK "required"
+    integer valid_from_year PK "required"
+    integer valid_to_year "optional"
     string connection_id FK "optional"
     real known_capacity "optional"
     string unit_id FK "optional"
@@ -391,6 +394,7 @@ erDiagram
     premise_operating_profile {
     string premise_id PK,FK "required"
     string connection_id PK,FK "optional"
+    integer profile_year PK "required"
     enum operating_pattern "optional"
     real operating_hours_per_year "optional"
     real operating_days_per_week "optional"
@@ -418,6 +422,7 @@ erDiagram
     premise_weekly_profile {
     string premise_id PK,FK "required"
     string connection_id PK,FK "optional"
+    integer profile_year PK "required"
     enum vector PK "required"
     string process_id PK "optional"
     enum season PK "required"
