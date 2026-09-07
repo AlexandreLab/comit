@@ -39,11 +39,23 @@ self-contained; superseded and frozen material is in
 | Doc | Topic |
 |-----|-------|
 | [2026-08-28-carb3-site-energy-system-overview.md](../specs/2026-08-28-carb3-site-energy-system-overview.md) | **Start here.** What the system is, the three capabilities it exists to provide, the two programme decisions `PD1`–`PD2`, and where the boundaries are |
-| [2026-08-28-carb3-site-energy-system-implementation.md](../specs/2026-08-28-carb3-site-energy-system-implementation.md) | **The specification itself — partial.** §1 scope, conventions and the eleven design decisions `D1`–`D11`; §2 system overview; §3 data model (22 entities); §4 algorithms A1–A9 with the carrier-mix rule and the relaxation ladder; §5 the optimisation model (C1–C12); §7 emissions attribution; §9 performance and the four scale gates; §10 validation (V1–V23, the carrier-equivalent configuration, and the failure-mode table). §6, §8 and §11–§13 are not yet written |
+| [2026-08-28-carb3-site-energy-system-implementation.md](../specs/2026-08-28-carb3-site-energy-system-implementation.md) | **The specification itself — partial.** §1 scope, conventions and the twelve design decisions `D1`–`D12`; §2 system overview; §3 data model (22 entities); §4 algorithms A1–A9 with the carrier-mix rule and the relaxation ladder; §5 the optimisation model (C1–C12); §7 emissions attribution; §9 performance and the four scale gates; §10 validation (V1–V26, the carrier-equivalent configuration, and the failure-mode table). §6, §8 and §11–§13 are not yet written, and §5.3.1 and §5.6 are cited but unwritten (delivery T23) |
 | [2026-08-28-carb3-site-energy-system-architecture.md](../specs/2026-08-28-carb3-site-energy-system-architecture.md) | **The design and its reasoning.** Three layers with a carrier balance between them, the graded-heat cascade, the unit spine, the two-tier temporal structure that lets storage have a value, and the nine foundations it reuses rather than reinvents |
 | [2026-08-28-carb3-site-energy-system-data-migration.md](../specs/2026-08-28-carb3-site-energy-system-data-migration.md) | **The data work.** Twenty-three items in five ordered groups covering the 397-row technology collapse, the `technology_category` split, the missing decarbonisation-option join, the hybrid-unit set, reject-heat coefficients, and the inputs the model does not yet have |
 | [diagrams/](../specs/diagrams/README.md) | **Generated — do not hand-edit.** The 22 entities of §3 as an ER diagram, the same graph boxed into eight subjects, a locator table naming every non-key column, and the full attribute model |
-| [2026-08-28-carb3-site-energy-system-delivery.md](../specs/2026-08-28-carb3-site-energy-system-delivery.md) | **Sequencing.** Files to create and modify, eighteen tasks with effort estimates, six parallelisation lanes, an explicit not-in-scope list, and the verification commands |
+| [2026-08-28-carb3-site-energy-system-delivery.md](../specs/2026-08-28-carb3-site-energy-system-delivery.md) | **Sequencing.** Files to create and modify, twenty-three tasks with effort estimates, six parallelisation lanes, an explicit not-in-scope list, and the verification commands |
+
+### Implementation plans
+
+Working documents. Each one is executed against the specification and then kept as the
+record of what was decided and what was deliberately left out.
+
+| Doc | Topic |
+|-----|-------|
+| [2026-09-07-temporal-coverage.md](../superpowers/plans/2026-09-07-temporal-coverage.md) | **Temporal coverage.** Several years of measured history behind one base year (D12), and a premise's process list stated as at a year. Carries the reviewed design for the declared forward process switch, which is deferred behind delivery T23 |
+| [2026-08-04-comit-headless-integration.md](../superpowers/plans/2026-08-04-comit-headless-integration.md) | Running COMIT without the Shiny front end, so another model can call it |
+| [2026-08-04-site-level-pathways-note.md](../superpowers/plans/2026-08-04-site-level-pathways-note.md) | The note explaining how sites sharing a base-year configuration can follow different modelled pathways |
+| [../superpowers/specs/2026-08-04-site-level-pathways-design.md](../superpowers/specs/2026-08-04-site-level-pathways-design.md) | The design behind that note. Kept for its reasoning; the note is the reader-facing version |
 
 ### Archive
 
