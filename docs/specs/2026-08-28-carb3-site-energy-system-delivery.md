@@ -32,6 +32,7 @@
 | `docs/notes/examples/spec_docs.config.json` | Per-spec section anchors, own-prefix, output dirs, entity roles. **Not label ranges** — those are read from each spec's Notation table, see T2 |
 | `docs/notes/examples/spec_docs_config.py` | Shared config loader and the spec-vs-config label cross-check (T2) |
 | `docs/notes/16_input_data_readiness.md` | Input-data audit: what has a schema, what has data, what has neither (T17) |
+| `docs/superpowers/plans/2026-09-07-temporal-coverage.md` | The temporal-coverage plan: T20 and T21 as executed, and the design preserved for T24 |
 | `docs/notes/data/carb3_comit_process_crosswalk.csv` | CaRB3 process → COMIT process code, the join that does not exist (T17) |
 | `docs/notes/data/activity_process_duty_profile.csv` | Default duty family + heat grade per process (T17) |
 | `docs/notes/data/activity_default_unit.csv` | Default installed units per activity/process/duty, incl. CHP (T18) |
@@ -193,6 +194,37 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Files: spec §9.2, §10 (V20)
   - Verify: G4 has a stated wall-clock budget; V20 (e) runs at load scope
   - **Partly done.** G4 is in §9.2 and V20 (e) is in §10.3. What remains is the wall-clock budget number itself, which needs a measurement
+- [x] **T20 (P1, human: ~1 day / CC: ~35min)** — spec — Hold several years of measured history and read one base year (D12)
+  - Surfaced by: `premise_energy` was keyed premise × carrier × connection with `data_year` a non-key column, so a second year collided on the key; `premise_throughput` had no year column; `premise_operating_profile` and `premise_weekly_profile` had none either, while §3.12's consistency rule already blamed "a vintage mismatch between the profile year and `data_year`" — a field that did not exist
+  - Files: spec §1.4, §1.6 (D12), §3.1, §3.1.1, §3.1.2, §3.11, §3.12, §3.14, §3.17, §4 (A1, A3, A4), §7.6, §10.3 (V24, V25), §10.4, §10.5
+  - Verify: `make check`; entity count unchanged at 22
+  - **Done.** `data_year` is a key part on `premise_energy` and `premise_throughput`, `profile_year` on both profile entities. The base-year rule is stated once in §3.1.1 and cited from the other four
+  - **The substitution ladder is the load-bearing part.** Promoting `data_year` into the key, on its own, reverses that field's original meaning ("set only where a carrier is metered on a different vintage") and silently reclassifies an off-vintage carrier as history, then as not assessed, so A4 back-solves no plant for it and the site's baseline emissions fall. §3.1.1 now substitutes from the nearest year and records `year_evidence_tier`, on the §3.17 pattern
+  - Surfaced while building it: **§5.6 does not exist.** It is cited from §3.12, §3.14, §4.2 and C11 and has no heading. C11's peak must select the base year; recorded as an open dependency under §3.14 and owned by T23
+- [x] **T21 (P1, human: ~4h / CC: ~20min)** — spec — State a premise's process list as at a year
+  - Surfaced by: `premise_process_detail` was keyed premise × process with no validity dates and asserted a *complete* list, so a site that ran one route until 2023 and another since could not be stated, and A4 would back-solve a blend of both
+  - Files: spec §1.4, §3.10, §3.15, §4 (A2, A4), §10.3 (V26), §10.4
+  - Verify: `make check`; foreign-key count unchanged
+  - **Done.** `valid_from_year` joins the key, `valid_to_year` is open-ended, intervals must be disjoint, and completeness is asserted *as at* a year. The pattern is named in the text as valid-time versioning so it is not reinvented
+  - **Two paragraphs had to be rewritten, not just added to.** §3.10's "On vintage (D11)" justified moving vintage out because the table "can hold exactly one year", and §3.15's "Why a separate entity" said §3.10 "is keyed premise × process". Both were falsified by the key change. §3.15's reference to §3.10 is now explicitly to a *process identity*, not to a row
+- [x] **T22 (P3, human: ~1h / CC: ~10min)** — docs — Register the temporal-coverage work and refresh the stale index facts
+  - Surfaced by: `docs/notes/README.md` is the only index and is maintained by hand; T20 and T21 move the design-decision range, the validation-test range and this document's task count
+  - Files: `docs/notes/README.md`, this document
+  - Verify: every count in the index is produced by a `grep -c`, not carried over
+  - **Done.** `docs/superpowers/plans/` had three plan documents and none of them was registered; the index now has a section for them
+- [ ] **T23 (P1, human: ~3 days / CC: ~90min)** — spec — Complete §5: write §5.6 and §5.3.1, period-index $Q$, give C4 and C6 their algebra
+  - Surfaced by: the 2026-09-07 review of the temporal-coverage plan, in which three independent reviewers converged
+  - Files: spec §5.1, §5.3.1, §5.5 (C4, C6), §5.6, §9.1
+  - Verify: every §5 citation resolves to a heading that exists; C4 and C6 are stated as mathematics
+  - **Four defects, all verified.** (a) §5.6 (C11's peak-rebuild method) and §5.3.1 (D11's vintage fallback ladder) are cited seven times between them and neither exists, while the document's status line says §5 is written. (b) §5.1 defines $Q$ as "duties at this premise" with no period index while C1 is written $\forall q \in Q$, so a duty appearing mid-horizon is never constrained. (c) $z_{u,t}$ carries no duty index, and §3.5 makes service units family-keyed, so one boiler at one premise can sit in two $U_q$ and its single activity variable is credited in full against both duties. (d) C4 and C6 are prose with no algebra, so nothing depending on their behaviour can be tested
+  - **Blocks T24.** Also blocks any honest statement of §9.1's problem size
+- [ ] **T24 (P2, human: ~1.5 days / CC: ~50min)** — spec — Accept a declared forward process switch
+  - Surfaced by: the third gap in the temporal-coverage work — `process_duty` is keyed by period but nothing upstream varies with period, so A2 expands one process set flat across the horizon. Separately, C7 has no backing entity in §3
+  - Files: spec §3.18 (`premise_process_transition`), §3.19 (`premise_committed_unit`), §3.9, §4 (A2, A6), §5.5 (C6, C7), §10.2, §10.3
+  - Verify: a declared switch changes $D_{q,t}$ and the premise's electricity import rises, with duty reconstructed per duty family and per grade
+  - **Blocked by T23**, and the blocker is structural rather than a matter of sequencing: without a period-indexed $Q$ the new duties are never in C1, so a declared switch sheds the old route's duty and the LP is never required to serve the new one. Cost and emissions both collapse and the switch reads as total decarbonisation
+  - The entity design that survived review is preserved in [`../superpowers/plans/2026-09-07-temporal-coverage.md`](../superpowers/plans/2026-09-07-temporal-coverage.md): calendar `transition_year` rather than a period index, an explicit `to_process_set_id`, `share` against the base-year quantity with the sum rule cumulative in $t$, `duty_ratio` per duty family, grade monotonicity, and the C6 exemption defined on the **duty** rather than the unit so it is resolvable before the solve
+  - **This is the first task since T19 to add an entity.** §3 leaves 22, the §3 preamble's two counts both move, and every new entity needs an entry in `diagrams.domains` in `spec_docs.config.json` or the partition check fails the build
 
 ---
 

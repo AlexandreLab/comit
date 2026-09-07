@@ -1,7 +1,7 @@
 # CaRB3 Site Energy System — Implementation Specification
 
 **Status:** Draft — §1, §2, §3, §4, §5, §7, §9 and §10 written. §6, §8 and §11–§13 are not yet written
-**Date:** 2026-09-02
+**Date:** 2026-09-07
 **Scope:** Great Britain (England, Wales, Scotland) · CaRB3 **Factory class** only (55 activities)
 **Companion documents:** [overview and decisions](2026-08-28-carb3-site-energy-system-overview.md) ·
 [architecture](2026-08-28-carb3-site-energy-system-architecture.md) ·
@@ -19,7 +19,7 @@
 
 ## 1. Scope, inputs, conventions, and how to read this
 
-*Section last updated: 2026-09-01*
+*Section last updated: 2026-09-07*
 
 ### 1.1 What this document is
 
@@ -73,9 +73,9 @@ Label families in this document, and where each is defined:
 | `C1`–`C12` | Constraints | §5.5 |
 | `A1`–`A9` | Algorithms | §4 |
 | `S0`–`S9` | Pipeline stages | §2.1 |
-| `V1`–`V23` | Validation tests | §10 |
+| `V1`–`V26` | Validation tests | §10 |
 | `G1`–`G4` | Scale gates | §9 |
-| `D1`–`D11` | Design decisions | §1.6 |
+| `D1`–`D12` | Design decisions | §1.6 |
 | `PD1`–`PD2` | Programme decisions | the [overview](2026-08-28-carb3-site-energy-system-overview.md) |
 
 ### 1.5 Glossary
@@ -96,7 +96,7 @@ inter-premise coupling D2 forbids. "Hybrid unit" means co-located, one premise.
 
 ### 1.6 Design decisions
 
-Eleven decisions fix the shape of the model. Everything in §2–§13 is written inside them,
+Twelve decisions fix the shape of the model. Everything in §2–§13 is written inside them,
 and each is cited by label wherever it constrains a choice.
 
 | # | Decision | What it buys | What it costs |
@@ -112,6 +112,7 @@ and each is cited by label wherever it constrains a choice.
 | **D9** | One direction for site heterogeneity — this specification, not a parallel roadmap | No conflicting roadmaps | — |
 | **D10** | Tiered site intelligence — known site detail replaces activity defaults outright | Real sites modelled as themselves wherever evidence exists; the model improves as intelligence accumulates, without redesign | Mixed-evidence results; every output row must carry its evidence tier or the quality is invisible |
 | **D11** | Existing plant has an age — it retires when its life ends, and early replacement pays the residual value | Replacement timing becomes an economic result instead of an artefact; near-new plant stops being scrapped for free | A vintage assumption for every premise with no age data, and one more parameter (ξ, §5.3) to defend |
+| **D12** | Measured inputs are a time series; exactly one year is the **base year**, and only that year is read | History becomes available for reconciliation, trend evidence and audit without touching the annual LP or A4's back-solve | A base year must be named per premise, a substitution ladder is needed for carriers metered off it, and every history row is data nobody reads today |
 
 Four have the widest reach in this document:
 
@@ -188,7 +189,7 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-09-02*
+*Section last updated: 2026-09-07*
 
 **Twenty-two entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, seven by the
@@ -226,7 +227,7 @@ with rationale, in **§1.6**; these tables are normative for validation.
 | `construction_year` | integer | year | no | — | **D11.** ≤ `data_year` if present. When the premise was built. Bounds plant age from above (§3.15, §5.3.1) |
 | `construction_year_band` | string | — | no | — | **D11.** Where only a band is held, e.g. `1945-1964`. Used only if `construction_year` is absent, and read as its **earliest** year |
 | `last_refurbishment_year` | integer | year | no | — | **Future use.** ≥ `construction_year`, ≤ `data_year` if present. Collected, not read |
-| `data_year` | integer | year | yes | — | Provenance |
+| `data_year` | integer | year | yes | — | **The base year.** The one year the model reads, on §3.1.1's base-year rule. Where it differs from the scenario's start year the offset is recorded and reported, never silently absorbed |
 | `source` | string | — | yes | — | Provenance |
 
 **On the age band (D11).** CaRB3-style stock data usually holds building age as a band
@@ -243,9 +244,10 @@ several carriers and may make several products — so both are long tables keyed
 
 #### 3.1.1 `premise_energy` — consumption by carrier
 
-One row per premise per carrier. Replaces the fixed `energy_electricity` … `energy_other`
-columns: a new carrier is a new row, not a schema change, and the `energy_other` /
-`energy_other_carrier` pair disappears because every carrier now names itself.
+One row per premise per carrier **per year**. Replaces the fixed `energy_electricity` …
+`energy_other` columns: a new carrier is a new row, not a schema change, and the
+`energy_other` / `energy_other_carrier` pair disappears because every carrier now names
+itself. Only the base year is read (D12); the rest is history.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -255,7 +257,7 @@ columns: a new carrier is a new row, not a schema change, and the `energy_other`
 | `vector` | enum{electricity, gas, oil, coal, biomass, other} | — | yes | — | The grouping used to join `activity_process_duty_profile` (§3.3). Must be consistent with the carrier's `carrier_kind` (§3.4) |
 | `quantity` | real | PJ/yr | yes | — | ≥ 0 |
 | `data_status` | enum{measured, estimated, modelled, not_consumed} | — | yes | — | See the absence rule below |
-| `data_year` | integer | year | no | — | Defaults to `premise_record.data_year`; set only where a carrier is metered on a different vintage |
+| `data_year` | integer | year | yes | PK part | The year this quantity was measured. One row per carrier per connection **per year**. See the base-year rule below |
 | `source` | string | — | yes | — | Provenance for this carrier specifically |
 
 **Rule (at least one positive).** A premise must have at least one row with
@@ -275,24 +277,64 @@ decarbonisation options. So:
 The stock model should aim to state all five main vectors for every premise, whether by a
 positive quantity or an explicit zero. Absence is a last resort, not the default.
 
-**Rule (one row per carrier per connection).** `(premise_id, carrier_id, connection_id)`
-is unique. Two meters on the *same* connection are one row — meter-level detail below the
-connection belongs upstream. Two meters on *different* connections are two rows, because
-the connection is a modelled object (§3.1.3) and the difference is load-bearing.
+**Rule (one row per carrier per connection per year).** `(premise_id, carrier_id,
+connection_id, data_year)` is unique. Two meters on the *same* connection are one row —
+meter-level detail below the connection belongs upstream. Two meters on *different*
+connections are two rows, because the connection is a modelled object (§3.1.3) and the
+difference is load-bearing.
 
 Sites with a single connection may omit `connection_id` entirely and are unaffected.
 
+**Rule (the base year, and history) — D12.** `premise_record.data_year` is the premise's
+**base year**. Exactly one row per key carries it, and that row is the only one any
+algorithm reads. Rows at other years are **history**: held for reconciliation, trend
+evidence and reporting, and never consumed by the model (V25).
+
+The rule binds differently on required and optional entities, because zero rows is the
+normal case on the optional ones:
+
+| Entity | Behaviour where no row carries the base year |
+|---|---|
+| `premise_energy` (this entity) | Substitute from the nearest year, see below |
+| `premise_throughput` (§3.1.2) | Substitute from the nearest year, see below |
+| `premise_measured_emissions` (§3.11) | §7.6's reconciliation is **skipped and reported** as `emissions_year_unmatched`. Never a rejection: the entity is optional intelligence, and rejecting the premise would discard the evidence |
+| `premise_operating_profile` (§3.12), `premise_weekly_profile` (§3.14) | No profile is read, and the premise is **reported** as `profile_base_year_missing`. Never a rejection |
+
+A duplicate `(key, year)` is rejected with reason `duplicate_year_row` on every entity above.
+
+**Rule (a carrier metered off the base year substitutes; it does not vanish).** Where a
+carrier has no row at the base year but has rows at other years, the **nearest** year is
+used, ties resolving to the later one, and the substitution is recorded as
+`year_evidence_tier = substituted` on the premise's output rows. Only a carrier with no row
+at any year is "not assessed", and only then is the premise reported as having incomplete
+carrier coverage (§8).
+
+This is the §3.17 pattern applied to a new kind of evidence: `base_year` where the row sits
+at `data_year`, `substituted` where it came from another year, `absent` where there is none.
+A premise running on a substituted vintage must never be mistaken on paper for one running
+on a base-year reading. Without this ladder the key change above would silently delete a
+carrier that *was* assessed, merely on a different vintage, and A4 would back-solve no plant
+for it.
+
+**Rule (the base year is per premise; periods are not).** Stock data is mixed vintage, so
+two premises may hold different `data_year` values while the model's periods are global. A
+premise's base-year quantities are read as representing the scenario's start period, and the
+offset in years is recorded on its output rows. Stating the offset is what stops a carbon
+price at one period being applied to two different calendar years without trace.
+
 #### 3.1.2 `premise_throughput` — physical output by carrier
 
-One row per premise per product. Long for the same reason, and it lifts a real
+One row per premise per product **per year**. Long for the same reason, and it lifts a real
 limitation: the previous single `throughput_quantity` column could not represent a site
-making more than one product, which paper, chemicals and food sites routinely do.
+making more than one product, which paper, chemicals and food sites routinely do. Only the
+base year is read (D12); the rest is history.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
 | `carrier_id` | string | — | yes | PK part | → `carrier`. Must have `denominator_kind = mass` (D5) |
 | `quantity` | real | Mt/yr | yes | — | > 0 |
+| `data_year` | integer | year | yes | PK part | The year this throughput was measured. The base-year row, or its substitute, is what D5's mass denominators are computed from. See §3.1.1's base-year rule |
 | `data_status` | enum{measured, estimated, modelled} | — | yes | — | — |
 | `source` | string | — | yes | — | Provenance |
 
@@ -364,7 +406,7 @@ a different activity is rejected on ingest with reason `invalid_process_set`.
 ### 3.3 `activity_process_duty_profile`
 
 **The default duty of each process, per activity.** The activity-level default that A2
-expands into a premise's `process_duty` (§3.7) wherever no site intelligence overrides it.
+expands into a premise's `process_duty` (§3.9) wherever no site intelligence overrides it.
 This is the demand side of the carrier model, and **nothing holds it today** — see
 [notes/16](../notes/16_input_data_readiness.md).
 
@@ -590,27 +632,57 @@ normal case and means "use the register".
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
 | `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `valid_from_year` | integer | year | yes | PK part | The year this process started at the premise. ≤ `premise_record.data_year`. A future year is rejected with reason `process_change_in_future`: a *planned* change is not an observation |
+| `valid_to_year` | integer | year | no | — | The year it stopped. Absent ⇒ still running. ≥ `valid_from_year` if present |
 | `connection_id` | string | — | no | → `premise_connection` | **Optional.** Which electricity connection serves this process (§3.1.3). Absent ⇒ the default. This is what decides where electrified load lands |
 | `known_capacity` | real | capacity units | no | — | > 0 if present. Units follow the process's denominator (D5): PJ/yr-equivalent for energy, Mt/yr for mass |
 | `unit_id` | string | — | no | → `unit` | The specific installed unit, where known |
 | `provenance` | string | — | yes | — | Citation: permit number, audit reference, disclosure |
 | `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
 
-**Rule (completeness).** The rows for a premise are treated as its **complete** process
-list. A partial list would silently delete processes the site runs and misstate its
-energy balance, so a premise with any rows must have rows for every process it runs. If
-only fragmentary knowledge exists, use a named `process_set_id` instead.
+**Rule (completeness, as at a year).** The rows valid at a given year are treated as the
+premise's **complete** process list for that year. A partial list would silently delete
+processes the site runs and misstate its energy balance. A premise with any rows must have
+at least one row valid at the base year, or it is rejected with reason
+`no_process_valid_in_base_year`. If only fragmentary knowledge exists, use a named
+`process_set_id` instead.
 
-**Rule (precedence).** Where `unit_id` is given, that unit is the premise's
-existing plant for that process and A4 does not choose between candidates. Where
-`known_capacity` is given, it is used directly and A4 back-solves *utilisation* instead
-of capacity (§A4).
+**Rule (intervals do not overlap).** For each `(premise_id, process_id)` the validity
+intervals must be disjoint. Overlap is two contradictory statements about the same process
+in the same year, and the premise is rejected with reason `process_intervals_overlap`.
+
+This is valid-time versioning, the pattern usually called a slowly-changing dimension of
+type 2. The two rules above are its standard obligations, stated here so an implementer
+recognises them rather than reinventing them.
+
+**Rule (an unknown start year is stated, not left blank).** A permit or an audit commonly
+names the processes a site runs without saying when each began, and `valid_from_year` is
+required. Where the year is unknown, state `premise_record.data_year` and say so in
+`provenance`. That is the reading which asserts least: the process is known to run in the
+base year, which is the only year the model reads, and nothing is claimed about years the
+evidence does not cover. This mirrors §3.15's residual cohort, and the alternative — every
+data supplier inventing a convention — is what makes the field unusable.
+
+**Rule (precedence).** Where `unit_id` is given, that unit is the premise's existing plant
+for that process **for an interval valid at the base year**, and A4 does not choose between
+candidates. A closed interval's `unit_id` describes plant the site no longer has. Where
+`known_capacity` is given, it is used directly and A4 back-solves *utilisation* instead of
+capacity (§A4).
+
+**On history.** A closed interval is evidence, not an input to the optimisation. It does
+two jobs. It tells A2 and A4 which rows to read, only those valid at the base year, so a
+site that changed route mid-history is not back-solved into a blended plant that never
+existed. And it explains a step change in `premise_energy`'s history (§3.1.1) that would
+otherwise look like a data error. The optimisation starts from the base year and never
+looks back.
 
 **On vintage (D11).** When the plant was commissioned lives in `premise_process_vintage`
-(§3.15), not here. It was moved out because this table is keyed premise × process and can
-hold exactly one year, while a real works commonly runs two units of the same process
-installed decades apart — a 1998 kiln line and a 2016 one. One year per process cannot
-say that, and averaging the two is the thing D11 exists to stop.
+(§3.15), not here. The two answer different questions. This table says **which processes
+the site ran, and when it ran them**; §3.15 says **when the plant serving a process was
+installed**, one row per cohort. A works running two lines of the same process installed
+decades apart — a 1998 kiln line and a 2016 one — has one row here and two there. No
+interval on this table can express those two commissioning years, and averaging them is the
+thing D11 exists to stop.
 
 ### 3.11 `premise_measured_emissions` — reported emissions, where they exist
 
@@ -623,7 +695,7 @@ forced rather than chosen.
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
-| `emission_year` | integer | year | yes | PK part | Should match `premise_record.data_year` |
+| `emission_year` | integer | year | yes | PK part | Multi-year. §7.6 reconciles against the base-year row; other years are a reported trend. A premise with rows but none at the base year is reported `emissions_year_unmatched`, never rejected. See §3.1.1 |
 | `source_category` | enum{combustion, process, total} | — | yes | PK part | `total` only where the split is unavailable |
 | `ghg` | enum{CO2, CH4, N2O, total_co2e} | — | yes | PK part | — |
 | `quantity` | real | kt CO₂e/yr | yes | — | ≥ 0 |
@@ -646,6 +718,7 @@ connection capacity is actually about (§5.6).
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
 | `connection_id` | string | — | no | PK part → `premise_connection` | Peak and load-factor fields are **per connection** where a site has more than one. Absent ⇒ the default connection. Schedule fields are premise-wide and repeat |
+| `profile_year` | integer | year | yes | PK part | The year the statistics were derived from. Closes the vintage-mismatch rule below, which until now named a field this entity did not have. The model reads the base year, per §3.1.1 |
 | `operating_pattern` | enum{continuous, three_shift, double_day, single_shift, seasonal_campaign} | — | no | — | Coarse classification; `continuous` ⇒ ~8,760 h/yr |
 | `operating_hours_per_year` | real | h/yr | no | — | ∈ (0, 8784]. Preferred over `operating_pattern` where known |
 | `operating_days_per_week` | real | d/wk | no | — | ∈ (0, 7] |
@@ -667,14 +740,20 @@ the **derived statistics above**. If richer shape information is later needed, e
 this entity with a small number of representative day shapes or load-duration-curve
 percentiles, never the full series.
 
-**Rule (consistency).** Where both a peak and a load factor are supplied for a vector,
-they must reconcile against that vector's annual energy in `premise_energy` (§3.1.1)
-within 5%:
+**Rule (consistency, at like years).** Where both a peak and a load factor are supplied for
+a vector, they must reconcile against that vector's annual energy in `premise_energy`
+(§3.1.1) **at the same year** within 5%. The check runs at every year for which both sides
+exist, not only the base year, because a divergence in a history year is still evidence
+about the meter. Where no `premise_energy` row exists at a given `profile_year`, that year's
+check is skipped and reported as `profile_year_unmatched` rather than failed. A premise with
+no profile at the base year at all is a different condition and carries a different code,
+`profile_base_year_missing` (§3.1.1):
 
 $$\text{load factor} = \frac{E\,[\text{PJ/yr}] \times 277{,}778}{P^{\text{peak}}\,[\text{MW}] \times 8{,}760}$$
 
 Divergence beyond that is reported as `profile_energy_inconsistent` — most often a
-vintage mismatch between the profile year and `data_year`.
+vintage mismatch between `profile_year` and `data_year`, which this entity can now state
+rather than merely blame.
 
 ### 3.13 `process_load_shape` — how a process presents its demand
 
@@ -723,12 +802,14 @@ and the presses do not.
 **Optional, and deliberately small.** A representative **half-hourly week** — 336
 points — captures the daily cycle and the weekday/weekend difference, which is most of
 what shape means for a connection question, at ~2% of a full year's data. Supplied per
-premise per vector, and per process only where sub-metering makes that real.
+premise per vector **per year**, and per process only where sub-metering makes that real.
+Only the base year is read (D12).
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
 | `connection_id` | string | — | no | PK part → `premise_connection` | Half-hourly data arrives per MPAN, so a multi-connection site has one series per connection. Absent ⇒ the default |
+| `profile_year` | integer | year | yes | PK part | The year the series was drawn from. One representative week per season **per year**; the model reads the base year, per §3.1.1 |
 | `vector` | enum{electricity, gas} | — | yes | PK part | The metered vectors only |
 | `process_id` | string | — | no | PK part | Present only where sub-metered; absent ⇒ whole site |
 | `season` | enum{annual, winter, summer, shoulder} | — | yes | PK part | `annual` ⇒ a single representative week |
@@ -750,6 +831,11 @@ substantially.
 `winter_weighted`, `summer_weighted` or `campaign` seasonality, supply `winter`, `summer`
 and `shoulder` weeks — 1,008 points, still small — or the annual peak cannot be
 attributed to the right process when the mix changes.
+
+**Open dependency (§5.6).** C11's peak is rebuilt from this entity by the §5.6 method, and
+**§5.6 is not written** — it is cited from here, from §3.12, from §4.2 and from C11 itself.
+Whoever writes it must select the base year on §3.1.1's rule. Recorded here so the choice is
+made deliberately rather than discovered through a wrong connection size.
 
 ---
 
@@ -794,11 +880,18 @@ cohort. Life extension through major refurbishment is real and is a known gap, n
 it, because it also resets the residual value the asset is carrying and makes early
 replacement look more expensive than it is.
 
-**Why a separate entity from §3.10.** `premise_process_detail` is keyed premise × process
-and asserts a *complete* process list; this table is keyed one level finer and asserts
-nothing about completeness. A premise may have vintage rows for its kiln and none for its
-mills, and the mills simply fall to the next tier. Forcing the two into one table would
-have made vintage all-or-nothing for a site, which is the opposite of how the evidence
+**Rule (the reference is to a process, not to a row).** This entity's `(premise_id,
+process_id)` names a process identity at a premise, not one `premise_process_detail` row —
+that table is keyed one field wider since it gained validity intervals (§3.10). Cohorts are
+read only for processes valid at the base year. Plant serving a process the site has stopped
+running is not incumbent capacity, and ageing it under D11 would strand an asset that is
+already gone.
+
+**Why a separate entity from §3.10.** `premise_process_detail` asserts a *complete* process
+list as at a year; this table is keyed finer still, per cohort within a premise-process, and
+asserts nothing about completeness. A premise may have vintage rows for its kiln and none
+for its mills, and the mills simply fall to the next tier. Forcing the two into one table
+would have made vintage all-or-nothing for a site, which is the opposite of how the evidence
 actually arrives.
 
 ### 3.16 `activity_default_unit`
@@ -871,11 +964,17 @@ and the substitution is recorded; `default` means an activity-level fallback. A 
 running on a substituted coefficient must never be mistaken on paper for one running on a
 fitted match. This is the D10 pattern, applied to a new kind of evidence.
 
+**Rule (the archetype match reads the base year).** A premise is matched to an archetype on
+its `premise_operating_profile` and `premise_weekly_profile` at the **base year**, on
+§3.1.1's rule, and a substituted profile vintage is carried into `evidence_tier`. The match
+decides ψ, β, χ and ε, which move C11 and the objective, so reading an arbitrary year here
+would change a premise's answer without changing any input the reader can see.
+
 ---
 
 ## 4. Algorithms
 
-*Section last updated: 2026-09-02*
+*Section last updated: 2026-09-07*
 
 > **Partially written.** The numbered pseudocode for A1–A9 is outstanding; the delivery plan
 > names its owner. What each algorithm is responsible for, and the two rules that were open
@@ -885,10 +984,10 @@ Nine algorithms run the pipeline of §2.1. A1–A9 map onto the stages S1–S9 o
 
 | # | Algorithm | Responsibility |
 |---|---|---|
-| A1 | Ingest and validate premise records | Accept a premise record and its companions, apply the load-scope validation of §10, reject with reasons |
-| A2 | Expand premise to duties and candidate units | Resolve the process set, produce `process_duty` rows, and resolve the **candidate unit set** from `unit_eligibility` — including the `min_duty` screening that keeps minimum viable scale out of the LP |
-| A3 | Allocate premise energy onto carriers | Split metered energy across carriers. It does **not** allocate energy across processes: the carrier balance decides that |
-| A4 | Back-solve implied capacity, carrier mix and vintage | Turn metered energy into installed unit capacity, the mix of carriers each unit burns (§4.1), and plant age under D11 |
+| A1 | Ingest and validate premise records | Accept a premise record and its companions, apply the load-scope validation of §10, reject with reasons. **Resolve the base year (D12), apply §3.1.1's substitution ladder, and report `duplicate_year_row`, `profile_year_unmatched` and `emissions_year_unmatched`** |
+| A2 | Expand premise to duties and candidate units | Resolve the process set, produce `process_duty` rows, and resolve the **candidate unit set** from `unit_eligibility` — including the `min_duty` screening that keeps minimum viable scale out of the LP. **Reads only the `premise_process_detail` rows valid at the base year (§3.10)** |
+| A3 | Allocate premise energy onto carriers | Split metered energy across carriers. It does **not** allocate energy across processes: the carrier balance decides that. **Reads the base year only; history rows are carried to reporting untouched** |
+| A4 | Back-solve implied capacity, carrier mix and vintage | Turn metered energy into installed unit capacity, the mix of carriers each unit burns (§4.1), and plant age under D11. **Back-solves from the base year only, reads only base-year-valid process rows, and carries a substituted carrier vintage into the mix evidence** |
 | A5 | Apply the scenario | Attach prices, carbon price, infrastructure availability and the archetype coefficients ψ, β, χ, ε |
 | A6 | Build the per-premise problem | Declare variables over units and carrier flows, assemble C1–C12 and the objective of §5.4 |
 | A7 | Solve and extract | Solve, extract the pathway, and handle infeasibility by the relaxation ladder of §4.2 |
@@ -1115,7 +1214,7 @@ emissions cap and for minimum viable scale.
 
 ## 7. Emissions accounting
 
-*Section last updated: 2026-09-02*
+*Section last updated: 2026-09-07*
 
 Emissions have two sources: combustion of a fuel carrier, and process chemistry tied to
 physical throughput. Both are attributed to units, and the attribution rule below is what
@@ -1128,7 +1227,7 @@ keeps a carrier chain from being counted twice.
 | 7.3 | **Biomass zero-rating is applied before capture**, so a biomass unit with CCS reports net-negative emissions rather than zero |
 | 7.4 | **Direct versus indirect** is a property of the carrier — `carrier.is_indirect` (§3.4) — not a list held in code |
 | 7.5 | **Reporting categories** are derived over units. Categories may overlap, and a unit may appear in more than one |
-| 7.6 | **Reconciliation.** Reported totals reconcile against `premise_measured_emissions` (§3.11) wherever it exists |
+| 7.6 | **Reconciliation, at the base year.** Reported totals reconcile against `premise_measured_emissions` (§3.11) **at the base year** wherever a row exists there. Other years are a reported trend and never a calibration target. A premise with rows but none at the base year is reported `emissions_year_unmatched` and not reconciled (§3.1.1) |
 
 **The rule that stops double-counting.** Emissions attach to the unit that consumes a
 **primary** carrier — gas, coal, biomass, grid electricity. A unit consuming an
@@ -1191,7 +1290,7 @@ degeneracy that would otherwise let the solver report either of two equal-cost a
 
 ## 10. Validation
 
-*Section last updated: 2026-09-02*
+*Section last updated: 2026-09-07*
 
 ### 10.1 Scopes
 
@@ -1238,6 +1337,9 @@ price, which is exactly what the baseline computes.
 | **V21** | load | yes | The price wedge $p^{\text{exp}} < p^{\text{imp}}$ holds strictly for every carrier and period |
 | **V22** | premise | yes | Emissions attribution closes across a carrier chain — three legs, see below |
 | **V23** | load + premise | yes | A4's carrier mix resolves to exactly one tier per unit, tiers are tried in order, and `mix_evidence_tier` appears on every output row |
+| **V24** | load + premise | yes | One measured row per key at the base year or a recorded substitution; no duplicate `(key, year)`; the optional entities of §3.1.1's table report rather than reject |
+| **V25** | premise | yes | **History is never read.** Adding history rows at years both **before and after** the base year leaves every §5.3 parameter, every constraint coefficient, the solution, **and every reported reconciliation (§7.6)** identical to 1e-9 |
+| **V26** | premise | yes | Validity intervals per `(premise_id, process_id)` are disjoint, at least one row is valid at the base year, and A2, A4 and §3.15's cohort read touch no row outside it |
 
 **V20's five legs.**
 
@@ -1259,6 +1361,12 @@ price, which is exactly what the baseline computes.
 - (b) A chain `gas → boiler → heat@150-400C → dryer` books exactly the boiler's fuel, once.
 - (c) A recovered-heat leg contributes zero, and the fuel that produced it remains charged to
   the rejecting unit.
+
+**V25 runs in both directions, and that is the point.** History must be added at years
+**before and after** the base year. A test that only adds older years passes against an
+implementation that silently reads `max(data_year)`, which is the most natural wrong thing to
+write. Its scope is the whole built problem, not just A3 and A4: the archetype match (§3.17),
+§7.6's reconciliation and, when it is written, §5.6's peak all read a year.
 
 ### 10.4 What each new mechanism is guarded by
 
@@ -1283,7 +1391,20 @@ price, which is exactly what the baseline computes.
   parity against the baseline      ───▶ V1b               release
   baseline parity against COMIT    ───▶ V1                release
   determinism under the tie-break  ───▶ V10               release
+  base-year selection (D12)        ───▶ V24               load+premise
+  off-vintage carrier substitution ───▶ V24               premise
+  history isolation from the model ───▶ V25               premise
+  process validity intervals       ───▶ V26               premise
+  §5.6 peak selects the base year  ───▶ (none, §5.6 unwritten)
+  §1.4 label ranges match the spec ───▶ (none, checked by hand)
 ```
+
+**Two rows carry no guard, and say so rather than hiding it.** §5.6 does not exist, so
+nothing can assert which year its peak method reads; that is closed when §5.6 is written.
+And the label ranges in §1.4 have no automated check for this document: `label_families()`
+runs only from the interface-doc generator, which is switched off for this specification
+while §8 is unwritten, and even where it runs it checks family *presence*, not range values.
+Widening a range is a manual step in the same commit as the label.
 
 ### 10.5 Failure modes and their handling
 
@@ -1297,6 +1418,8 @@ price, which is exactly what the baseline computes.
 | 6 | Heat grade unset on a process, making C10 vacuous so a heat pump can fire a kiln | V19 | Load assertion, and `grade_rank` is non-nullable wherever the carrier is gradeable (§3.3) |
 | 7 | The option-to-unit join is broken in the reference data | `make data-check` | Load-time validator |
 | 8 | ε unset on a flexible-load hybrid, so `electrolyser_battery` is strictly dominated by a bare electrolyser and never built | V20 (a) | Load assertion, and ε is non-nullable on flexible-load hybrids (§3.17) |
+| 9 | Two years of the same carrier are averaged, or the later one silently wins, so the back-solve runs on a snapshot that never existed. Or a carrier metered on a different vintage is read as absent, and the site's baseline emissions fall | V24 + V25 | Load and premise assertions, plus §3.1.1's substitution ladder |
+| 10 | A premise that changed process route mid-history is back-solved as a blend of both routes | V26 | Premise assertion; A2 and A4 read only base-year-valid rows (§3.10) |
 
 ---
 
