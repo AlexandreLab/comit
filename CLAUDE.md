@@ -84,12 +84,22 @@ connections and so on — which is a different cut from §3's own grouping by *w
 the data*, and both are worth having. It is checked to be a partition: an entity added to
 §3 and left out of every domain fails the build.
 
-Label *ranges* are not in that config and must not be. Each generator reads them from the
-target spec's own Notation table and cross-checks against the families the config asks it
-to cite; a `C10` or a `V18` appearing in the spec fails `make docs-check` rather than
-publishing a document that still claims `C1`–`C9`. A family the spec stops declaring
-raises `ConfigError` naming both sides. Adding a family is still a config edit — that is
-deliberate, since only a human knows the gloss.
+Label *ranges* are not in that config and must not be. `spec_label_ranges()` reads them
+**out of** the target spec's own Notation table so the generated documents quote whatever
+the spec declares. A family the spec stops declaring raises `ConfigError` naming both
+sides. Adding a family is still a config edit — that is deliberate, since only a human
+knows the gloss.
+
+> **The range itself is not validated, and nothing catches a stale one.** An earlier
+> version of this file claimed "a `C10` or a `V18` appearing in the spec fails
+> `make docs-check`". It does not. `label_families()` is called from exactly one place,
+> `build_interface_docs.py:137`, and `interfaces.enabled` is `false` for
+> `site-energy-system` while §8 is unwritten, so it never runs for the live spec at all;
+> `build_spec_flow_diagram.py` never calls it. Even where it does run it checks family
+> *presence*, never range values. **Widening `D1`–`D11` or `V1`–`V23` in §1.4 is a manual
+> step, in the same commit as the label.** Verified 2026-09-07 while adding D12 and
+> V24–V26. The `diagrams.domains` partition check described below *is* real; do not
+> confuse the two.
 
 Python here is stdlib-only by necessity: **`pandas` is not installed.** Write validators
 and tools in stdlib Python or R.
