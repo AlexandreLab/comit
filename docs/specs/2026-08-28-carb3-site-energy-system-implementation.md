@@ -19,7 +19,7 @@
 
 ## 1. Scope, inputs, conventions, and how to read this
 
-*Section last updated: 2026-09-07*
+*Section last updated: 2026-09-08*
 
 ### 1.1 What this document is
 
@@ -28,10 +28,14 @@ solved independently per premise. It states **what to build**, not how to build 
 particular language.
 
 **Validation chain.** The model's results are anchored to COMIT, the R optimisation model
-that runs today, in two hops and neither may be skipped. **V1** asserts that the
+that runs today, by one comparison. **V1** asserts that a single run of COMIT with its
+coupling constraints switched off exists and is frozen: its tables, and a manifest naming
+the workbook hash, the R package commit, the solver version and the switches used. **V1b**
+asserts that this model reproduces that run in the *carrier-equivalent configuration*
+defined in §10, with COMIT's technology rows related to this model's units through the
+data migration's lineage table. The R run is a comparison point, not ground truth. The
 [COMIT-parity baseline specification](archive/2026-08-19-carb3-site-decarbonisation-implementation.md)
-reproduces coupled-off COMIT. **V1b** asserts that this model reproduces that baseline in
-the *carrier-equivalent configuration* defined in §10.
+is not built; it stays as the document that says what the R run's tables mean.
 
 ### 1.2 What this architecture must express
 
@@ -189,7 +193,7 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-09-07*
+*Section last updated: 2026-09-08*
 
 **Twenty-two entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, seven by the
@@ -491,6 +495,7 @@ the unit's carrier bindings in §3.6.
 | `lifetime` | integer | years | yes | — | > 0. One value even for a hybrid |
 | `availability_factor` | real | fraction | yes | — | ∈ (0, 1] |
 | `capacity_to_activity_factor` | real | — | yes | — | > 0 |
+| `area_per_capacity` | real | m² per capacity unit | no | — | ≥ 0. **Set only on area-bound units** — PV, solar thermal, anything sited against roof or land. Unset means the unit takes no area and is outside C12: a CHP is compact plant and leaves it unset |
 | `emissions_released` | real | fraction | yes | — | ∈ [0, 1]. Fraction **not** captured |
 | `min_viable_scale` | real | capacity units | no | — | Screening threshold, applied in A2 — **never a binary** |
 | `load_shape_override` | string | — | no | → `process_load_shape` | **By exception only.** The shape belongs to the process (§3.13); a unit overrides it only where the device genuinely changes the draw |
@@ -603,7 +608,9 @@ Scalar and per-carrier series driving the objective and the constraints.
 
 New parameters: `import_price` and `export_price` per carrier per period; `export_price`
 must be **strictly below** `import_price` (V21, and it is physically true anyway);
-`reinforcement_cost` per voltage band; `area_density` in MW per m² for onsite generation.
+`reinforcement_cost` per voltage band. There is no site-wide area density: how much area a
+unit takes is the unit's own attribute, `area_per_capacity` in §3.5, so that C12 binds
+area-bound units and no others.
 
 ### 3.9 `process_duty`
 
@@ -1032,7 +1039,7 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-09-01*
+*Section last updated: 2026-09-08*
 
 **This section is authoritative.** Everything else serves it.
 
@@ -1045,6 +1052,10 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 | $Q$ | Duties at this premise |
 | $U$ | Units available, $U = \bigcup_{q} U_q$ |
 | $U_q$ | Units eligible for duty $q$, after `unit_eligibility` screening |
+| $Q_u$ | Duties $u$ is eligible for, $Q_u = \{q : u \in U_q\}$. The transpose of $U_q$ |
+| $U^{\text{gen}}$ | Generator units, those with `unit_class` = generator |
+| $U^{\text{area}}$ | Area-bound units, those with `area_per_capacity` set (§3.5). Not $U^{\text{gen}}$: PV is in both; a CHP, an engine or a boiler house takes no area and is outside $U^{\text{area}}$ whatever its class |
+| $c^{\star}_u$ | Primary output carrier of $u$ — the one `is_primary_output` row of §3.6 |
 | $U^0$ | **Incumbent** units, those with existing capacity |
 | $\mathcal{C}$ | Carriers |
 | $\mathcal{C}^{\text{prim}}$ | Primary carriers. Emissions attach here and nowhere else |
@@ -1063,12 +1074,22 @@ All continuous and non-negative. **The problem is a pure LP and must stay one.**
 |---|---|---|
 | $n_{u,t}$ | New capacity of unit $u$ built in $t$ | capacity units |
 | $a_{u,t}$ | Capacity of $u$ available in $t$ | capacity units |
-| $z_{u,t}$ | Activity of $u$ in $t$ | output units |
+| $z_{u,q,t}$ | Activity of $u$ dispatched to duty $q$, declared over $u \in U_q$ only | output units of $u$ |
+| $z^{\circ}_{u,t}$ | Activity of $u$ whose primary output is released into the carrier balance rather than dispatched to a duty | output units of $u$ |
+| $h_{c \to c',t}$ | Heat cascaded from carrier $c$ down to carrier $c'$, declared only where both are gradeable and $g(c') < g(c)$ | PJ/yr |
 | $e_{u,t}$ | Surviving incumbent capacity of $u$ (D11), declared over $U^0$ only | capacity units |
 | $r_{u,t}$ | Incumbent capacity retired early in $t$ (D11), over $U^0$ only | capacity units |
 | $m_{c,k,t}$ | Import of carrier $c$ at connection $k$ | PJ/yr |
 | $x_{c,k,t}$ | Export of carrier $c$ at connection $k$ | PJ/yr |
 | $w_{k,t}$ | Reinforcement purchased at connection $k$ | MW |
+
+**Total activity is a defined expression, not a variable.**
+$z_{u,t} \equiv \sum_{q \in Q_u} z_{u,q,t} + z^{\circ}_{u,t}$, and it is what C2, C6, C7 and §7
+read. **The duty index is what stops one unit being credited twice.** §3.5 makes service
+units family-keyed, so one boiler at one premise sits in several $U_q$; with a single
+activity variable it would be credited in full against every duty it is eligible for.
+Dispatch is per duty, capacity is shared through C2, and a high-grade unit serving a
+low-grade duty is simply a dispatch to a $q$ below its `grade_out` (C10).
 
 **Activity is $z$, not $u$.** $u$ indexes units throughout this document, so the activity
 variable takes a different letter. The separation is deliberate and is the kind of clash the
@@ -1090,7 +1111,8 @@ never by a fixed-charge binary. Any proposal to add one must be weighed against 
 | $\xi$ | `scenario_parameters` | Stranding factor |
 | $p^{\text{imp}}_{c,t}, p^{\text{exp}}_{c,t}$ | `scenario_parameters` | Import and export prices |
 | $\overline{P}^{\text{imp}}_k, \overline{P}^{\text{exp}}_k$ | `premise_connection` | Connection capacities |
-| $A_k, \delta^{\text{area}}$ | `premise_connection`, `scenario_parameters` | Available area, MW per m² |
+| $A_k$ | `premise_connection` | Available area at connection $k$, m² |
+| $\lambda_u$ | `unit.area_per_capacity` | Area taken per capacity unit, m². Defined over $U^{\text{area}}$ only |
 | $\pi_t, \tau_{c,t}, \sigma, r, i$ | `scenario_parameters` | Carbon price, tariff, stability factor, discount and interest rates |
 
 **D11's survival function $\eta$ and mean remaining life $\bar R$ are parameters, computed
@@ -1122,11 +1144,17 @@ factors are kt/PJ and the carbon price is £/t.
 
 **C1 — Duty satisfaction.** Each duty is met in each period, by units eligible for it:
 
-$$\sum_{u \in U_q} z_{u,t} = D_{q,t} \qquad \forall q \in Q,\; t \in T$$
+$$\sum_{u \in U_q} z_{u,q,t} = D_{q,t} \qquad \forall q \in Q,\; t \in T$$
+
+Dispatch is per (unit, duty) pair, so a unit sitting in several $U_q$ contributes to each
+duty only what it sends there.
 
 **C2 — Activity limited by available capacity.**
 
 $$z_{u,t} \le a_{u,t}\,\gamma_u\,\alpha_u \qquad \forall u,\, t$$
+
+with $z_{u,t}$ the total of §5.2, so a unit's dispatches to every duty it serves, plus what
+it releases to the balance, share one capacity.
 
 **C3 — Capacity transfer between periods.**
 
@@ -1151,11 +1179,22 @@ $\bar z_{u,t} = a_{u,t}\gamma_u\alpha_u$, not against installed capacity.
 **C8 — Carrier balance. This is the core change.** For every carrier at every period, at the
 premise:
 
-$$\sum_{u \in U} z_{u,t}\,\iota_{u,c} \;+\; \sum_{k \in \mathcal{K}} \big(m_{c,k,t} - x_{c,k,t}\big) \;=\; 0 \qquad \forall c \in \mathcal{C},\, t$$
+$$\sum_{u \in U} \Big( \mathbb{1}[c \neq c^{\star}_u]\, z_{u,t} \;+\; \mathbb{1}[c = c^{\star}_u]\, z^{\circ}_{u,t} \Big)\,\iota_{u,c}
+\;+\; \sum_{c'' :\, g(c'') > g(c)} h_{c'' \to c,t} \;-\; \sum_{c' :\, g(c') < g(c)} h_{c \to c',t}
+\;+\; \sum_{k \in \mathcal{K}} \big(m_{c,k,t} - x_{c,k,t}\big) \;=\; 0 \qquad \forall c \in \mathcal{C},\, t$$
 
-with $m_{c,k,t} = x_{c,k,t} = 0$ where the premise has no connection carrying $c$. Every
-carrier balances, including electricity: that is what makes onsite generation, CHP and
-export expressible at all.
+with $m_{c,k,t} = x_{c,k,t} = 0$ where the premise has no connection carrying $c$, and both
+cascade sums empty where $c$ is not gradeable. Every carrier balances, including
+electricity: that is what makes onsite generation, CHP and export expressible at all.
+
+**Three things the form settles.** A unit's inputs, co-products and reject heat scale with
+its *total* activity — a CHP makes electricity whether its heat went to a duty or to the
+steam node. Its primary output enters the balance only for the activity not dispatched to a
+duty, so the same PJ of heat cannot both satisfy a duty in C1 and feed another unit here;
+$\iota_{u,c^{\star}_u}$ is 1 per output unit by §3.6's definition. And $h$ is the cascade
+the architecture calls a one-way ordering in the balance: heat may flow down a grade at no
+cost, never up, which is what lets a kiln's reject heat at one band be drawn by a heat pump
+whose input row sits at a lower one.
 
 **C9 — Infrastructure availability (D7).** A unit whose carrier is unavailable at the premise
 in a period cannot run, and where a cap is specified the premise's draw respects it. This
@@ -1164,16 +1203,20 @@ shared catchment, which D2 forbids modelling per premise.
 
 **C10 — Heat grade cascade.** A unit may serve a duty only at or below its output grade:
 
-$$z_{u,t} = 0 \quad \text{for } u \in U_q \text{ where } \text{grade\_out}(u) < g\big(\text{carrier}(q)\big)$$
+$$z_{u,q,t} = 0 \quad \text{where } \text{grade\_out}(u) < g\big(\text{carrier}(q)\big), \qquad\qquad h_{c \to c',t} \text{ exists only where } g(c') < g(c)$$
 
-In practice this is enforced by **eligibility at load** rather than as a row in the LP, which
-is why V19 is a load-scope test. Stating it as a constraint keeps §5 complete; implementing
-it as a filter keeps the problem small.
+In practice the first is enforced by **eligibility at load** rather than as a row in the LP —
+a unit whose `grade_out` is below the duty's grade is not in $U_q$, so the variable is never
+created — which is why V19 is a load-scope test. The second is the declaration set of $h$,
+so no upward variable exists to relax. Stating both as constraints keeps §5 complete;
+implementing them as filters keeps the problem small.
 
 **High grade may serve a low-grade duty, never the reverse.** A steam boiler at 150–400 °C
 serves a 120 °C duty; a heat pump capped at 100 °C does not. Stating it as physics rather
 than as a technology-to-process mapping is what lets a new unit be added without editing a
-mapping table.
+mapping table. The cascade has two sides and the algebra covers both: on the duty side a
+unit in several $U_q$ serves each through its own $z_{u,q,t}$, sharing one capacity through
+C2; on the carrier side $h$ in C8 carries heat down the grade ladder and nothing carries it up.
 
 **C11 — Connection capacity.** Per connection, never summed across connections:
 
@@ -1187,12 +1230,19 @@ power. Peak is rebuilt from the solved pathway by the §5.6 method, using
 is worth building: it contributes firm capacity linearly, with no dependence on a sizing
 ratio, so it needs no hybrid pairing.
 
-**C12 — Siting cap.** Onsite generation is bounded by usable area:
+**C12 — Siting cap.** Area-bound units are bounded by usable area, each at its own footprint:
 
-$$\sum_{u \in U^{\text{gen}}} a_{u,t} \;\le\; \delta^{\text{area}} \sum_{k} A_k \qquad \forall t$$
+$$\sum_{u \in U^{\text{area}}} \lambda_u\, a_{u,t} \;\le\; \sum_{k \in \mathcal{K}} A_k \qquad \forall t$$
 
 Without this the LP builds unbounded PV and exports it. This constraint is the reason
 `available_area` is the highest-priority missing input.
+
+**The coefficient is per unit, and the sum runs over area-bound units only.** One site-wide
+area density applied to every generator would cap a CHP at the footprint of the PV array
+that fits on the same roof, which is not a constraint a CHP has. A CHP, an engine or a
+boiler house carries no `area_per_capacity` and is outside the sum; PV and solar thermal
+carry theirs. Area is summed across connections here, unlike capacity in C11, because roof
+and land are one estate however many supplies serve it.
 
 **Non-degeneracy rule.** $p^{\text{exp}}_{c,t} < p^{\text{imp}}_{c,t}$ strictly, per carrier
 per period, asserted at load (V21). Equal prices make building and importing exactly
@@ -1290,7 +1340,7 @@ degeneracy that would otherwise let the solver report either of two equal-cost a
 
 ## 10. Validation
 
-*Section last updated: 2026-09-07*
+*Section last updated: 2026-09-08*
 
 ### 10.1 Scopes
 
@@ -1299,11 +1349,10 @@ Every test declares a scope: **load** (asserted once when reference data is read
 
 ### 10.2 The carrier-equivalent configuration
 
-V1b compares this model against the
-[COMIT-parity baseline specification](archive/2026-08-19-carb3-site-decarbonisation-implementation.md)
-on the same 1,026 sites. The comparison is only meaningful in a configuration where the two
-can agree, and that configuration is defined here as precisely as §5.4 defines the pre-D11
-cost baseline. **All five conditions hold together:**
+V1b compares this model against the coupled-off R run of §1.1 on the same 1,026 sites. The
+comparison is only meaningful in a configuration where the two can agree, and that
+configuration is defined here as precisely as §5.4 defines the pre-D11 cost baseline.
+**All five conditions hold together:**
 
 1. **One carrier per unit.** Every unit's carrier mix is pinned to a single primary carrier,
    so a unit's identity determines its fuel.
@@ -1314,21 +1363,52 @@ cost baseline. **All five conditions hold together:**
    carries no negative term.
 
 Under these five conditions the carrier balance reduces to duty satisfaction plus a fuel
-price, which is exactly what the baseline computes.
+price, which is exactly what the R run computes.
+
+**The comparison point.** One run of COMIT on the reference workbook with its cluster,
+national-cap and headroom constraint functions switched off, so that each site is solved on
+its own. What it produced is frozen — the objective, per-technology capacity by period, and
+the cost, energy and emissions tables — with a manifest naming the workbook hash, the R
+package commit, the solver version and the switches used. It is never rerun, and it is a
+comparison point rather than ground truth: where the two models disagree, the checks that
+need no other model — the invariants of §10.3 and §7.6's reconciliation — decide which one
+is wrong. The
+[COMIT-parity baseline specification](archive/2026-08-19-carb3-site-decarbonisation-implementation.md)
+is what the frozen tables are read through; it is not built.
+
+**The mapping.** COMIT's technology rows and this model's units are related through the
+lineage table the data migration produces (Group B): every source row has exactly one
+disposition — collapsed into a unit with a carrier binding, preserved as a unit, or dropped
+with a reason. V1b compares through that table and nothing else, so a row it drops is
+absent from both sides and a row it maps is compared unit for unit.
+
+**What is compared, and how closely.** Objective per site, and energy per carrier per
+period summed over the site. Which constraints bind is not compared: no row mapping exists
+between the two models, and the R run has neither the price wedge nor the §9.3 tie-break,
+so its degenerate choices are legitimately different. The tolerances are placeholders until
+the first comparison confirms them:
+
+| Quantity | Tolerance |
+|---|---|
+| Objective per site | within 0.5 percent |
+| Energy per carrier per period, summed over the site | within 1 percent |
+
+Every site outside tolerance is listed with a reason. The list is the deliverable, not a
+pass mark.
 
 ### 10.3 Tests
 
 | # | Scope | Blocking | Assertion |
 |---|---|---|---|
-| V1 | release | yes | The COMIT-parity baseline reproduces coupled-off COMIT. Asserted against the baseline specification, not against this one |
-| **V1b** | release | yes | This model reproduces that baseline's objective and per-carrier energy on the same 1,026 sites, in the carrier-equivalent configuration of §10.2 |
+| V1 | release | yes | The coupled-off R run of §10.2 exists, is bounded and optimal, and is frozen with its tables and manifest. Never rerun; a comparison point, not ground truth |
+| **V1b** | release | yes | This model reproduces the R run's objective and per-carrier energy on the same 1,026 sites, in the carrier-equivalent configuration of §10.2, through the lineage table and within §10.2's tolerances |
 | V2 | load | yes | `capacity_to_activity_factor` and `io_coefficient` round-trip per unit to 1e-6 |
 | V4 | load | yes | Carrier consistency: every unit's declared carriers appear in `unit_input_output`, and profile uncertainty bands order correctly (R1–R3) |
 | V5 | premise | yes | Emissions invariants over units, including biomass zero-rating **before** capture |
 | V6 | premise | yes | No component of the objective is assumed non-negative — $Z^{\text{exp}}$ is genuinely negative |
 | V10 | release | yes | Determinism: two identical runs agree, under the §9.3 tie-break |
 | V11 | load | yes | Process sets resolve to exactly one tier per premise |
-| V12 | premise | yes | Capacity bounds hold, including the siting cap |
+| V12 | premise | yes | Capacity bounds hold, including the siting cap, whose sum runs over area-bound units only |
 | V16 | batch | yes | Connection peak is rebuilt correctly from the solved pathway |
 | V17 | premise | yes | Vintage and stranding per unit. An abatement unit inherits its host's remaining life through `abates_unit_id`, and strands nothing while the host stands |
 | **V18** | premise | yes | **Carrier balance closes to 1e-6 at every carrier node, every period** |
@@ -1388,8 +1468,8 @@ write. Its scope is the whole built problem, not just A3 and A4: the archetype m
   connection peak (C11)            ───▶ V16               batch
   siting cap (C12)                 ───▶ V12 + V20         premise
   unit vintage / stranding         ───▶ V17               premise
-  parity against the baseline      ───▶ V1b               release
-  baseline parity against COMIT    ───▶ V1                release
+  parity against the R run         ───▶ V1b               release
+  the R run exists and is frozen   ───▶ V1                release
   determinism under the tie-break  ───▶ V10               release
   base-year selection (D12)        ───▶ V24               load+premise
   off-vintage carrier substitution ───▶ V24               premise

@@ -61,11 +61,11 @@ record of what was decided and what was deliberately left out.
 
 ### Archive
 
-**Archived, not retired.** The frozen baseline specification is what anchors the results to
-COMIT: V1 validates it against coupled-off COMIT, and V1b compares the live model to it.
-Neither hop may be skipped, so it must stay readable — it simply no longer sits in the main
-reading path. Section numbers are aligned between the two, so a `§3.x` reference means the
-same thing in either.
+**Archived, not retired.** The frozen baseline specification is not built; it says what the
+tables of the coupled-off R run mean. V1 freezes that run, and V1b compares the live model
+to it through the data migration's lineage table (live spec §10.2). The baseline must stay
+readable for that reading — it simply no longer sits in the main reading path. Section
+numbers are aligned between the two, so a `§3.x` reference means the same thing in either.
 
 See [`../specs/archive/README.md`](../specs/archive/README.md) for the full contents and what
 still points there.

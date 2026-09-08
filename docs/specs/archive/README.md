@@ -6,22 +6,24 @@ and its four companions in [`../`](../). Those five documents are self-contained
 every entity, label and symbol they use, and **nothing in this directory is required reading
 to understand the model.**
 
-These documents are archived, **not retired**. One of them is the COMIT-parity baseline, and
-the chain of custody that makes any result defensible runs through it in two hops:
+These documents are archived, **not retired**. One of them is the COMIT-parity baseline. It
+is not built: the chain of custody that makes any result defensible is one comparison against
+a single coupled-off run of COMIT, and the baseline is the document its frozen tables are
+read through:
 
 ```
-   coupled-off COMIT  ──V1──►  baseline specification  ──V1b──►  the live specification
-                                        (here)                        (../)
+   coupled-off COMIT run  ──V1──►  frozen tables + manifest  ──V1b──►  the live specification
+                                   (read through the baseline, here)          (../)
 ```
 
-Neither hop may be skipped, so the baseline must stay readable, citable and runnable. It
-just no longer sits in the main reading path.
+The comparison runs through it, so the baseline must stay readable and citable. It just no
+longer sits in the main reading path.
 
 ## What is here
 
 | Document | Why it is kept |
 |---|---|
-| [`2026-08-19-carb3-site-decarbonisation-implementation.md`](2026-08-19-carb3-site-decarbonisation-implementation.md) | **The COMIT-parity baseline, frozen.** What V1 validates against and V1b compares to. 3,417 lines. Do not restructure it |
+| [`2026-08-19-carb3-site-decarbonisation-implementation.md`](2026-08-19-carb3-site-decarbonisation-implementation.md) | **The COMIT-parity baseline, frozen.** Says what the R run's tables mean; V1b's carrier-equivalent configuration is defined against it. 3,417 lines. Do not restructure it |
 | [`2026-08-19-carb3-site-decarbonisation-vision.md`](2026-08-19-carb3-site-decarbonisation-vision.md) | The reasoning behind the eleven design decisions `D1`–`D11`. The decisions themselves are now stated in the live specification at its §1.6, so nothing depends on this document |
 | [`2026-08-19-carb3-site-decarbonisation-worked-example.md`](2026-08-19-carb3-site-decarbonisation-worked-example.md) | One cement premise walked through the baseline's A1–A9 |
 | [`2026-08-28-carb3-site-energy-system-spec-changes.md`](2026-08-28-carb3-site-energy-system-spec-changes.md) | The change record: what the live design altered relative to the baseline. Every forward-looking statement in it has been folded into the live specification |

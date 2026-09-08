@@ -39,7 +39,7 @@ COMIT-parity baseline specification".
 | `2026-08-28-…-architecture.md` | The design and its reasoning; the foundations it reuses |
 | `2026-08-28-…-data-migration.md` | The reference-data work list, 23 items in five groups |
 | `2026-08-28-…-delivery.md` | Files, 18 tasks, lanes, scope boundary, verification |
-| `archive/2026-08-19-…-implementation.md` | **The COMIT-parity baseline. Frozen.** What V1 validates against and V1b compares to. Do not restructure it |
+| `archive/2026-08-19-…-implementation.md` | **The COMIT-parity baseline. Frozen.** Says what the R run's tables mean; §10.2's configuration is defined against it. Do not restructure it |
 | `archive/2026-08-19-…-vision.md` | The rationale behind `D1`–`D11`. The decisions themselves now live in the live spec §1.6, so nothing depends on this |
 | `archive/2026-08-19-…-worked-example.md` | One cement premise end to end, against the baseline |
 | `archive/2026-08-28-…-spec-changes.md` | The change record against the baseline; fully folded into the live spec |
@@ -124,6 +124,14 @@ things:
 `C` alongside the constraints and had to be renamed `S`. The archived vision doc still uses
 `λ` for the stranding factor, which is `ξ` — `λ` is the §5.6 peak factor. And the programme
 decisions initially reused `D1`–`D3`, colliding with `D1`–`D11` in documents citing both.
+
+**Never cite a label bare.** `C1`, `A7`, `V1b`, `T23`, `D11` mean nothing to a reader who
+has not memorised the tables, and that includes Alexandre reading a chat reply, a PR body
+or a commit message. Every use in prose carries its meaning in brackets at least once per
+message or section: "C1 (duty satisfaction)", "A7 (the relaxation ladder)", "T23 (complete
+§5)", "D11 (existing plant has an age)". The label tables in the specs are where the meaning
+is *defined*; prose is where it has to be *repeated*. A label with no bracket is a defect in
+the sentence, not a shorthand.
 
 Before introducing any new label **or distinguishing adjective**, grep for it. When a
 collision is unavoidable, the house pattern is rename plus a short disambiguation note, as
