@@ -12,7 +12,9 @@ Two decisions taken on 2026-09-08 frame everything below. **The build is in Pyth
 everything**; nothing in `R/` is wrapped or kept, and the Python stack is the one
 [08_python_redesign_approach.md](08_python_redesign_approach.md) recommends: linopy over
 HiGHS, xarray for dimensioned data, pandera for table schemas, parquet as the native format.
-**The R model is run once more, as the oracle for the parity tables, and is then retired.**
+**The R model is run once more, with its coupling switched off, to produce a comparison point.
+It is not ground truth.** Its tables are frozen and compared against; the model itself is not
+kept on the path.
 
 Companion documents: the
 [overview](../specs/2026-08-28-carb3-site-energy-system-overview.md) says why the system is
@@ -82,21 +84,29 @@ gives storage a value (PD1, S0), are deliberately after the MVP.
 
 ## Parity, defined
 
-"Parity" is a two-hop chain of tests, and **neither hop may be skipped** (§1.1). It exists
-because a rewrite's dominant risk is silent divergence: a Python model that runs, looks
-plausible, and disagrees with the R model by a few percent for reasons nobody can locate
-([08 §1](08_python_redesign_approach.md)).
+"Parity" here means one comparison, not a proof. The rewrite's dominant risk is silent
+divergence: a Python model that runs, looks plausible, and disagrees with the R model by a few
+percent for reasons nobody can locate ([08 §1](08_python_redesign_approach.md)). Parity makes
+that divergence visible and explainable. It does **not** make the R model right.
 
-### Hop 1 — V1: the baseline reproduces coupled-off COMIT
+The specification writes parity as a two-hop chain: V1, the archived baseline specification
+reproduces coupled-off COMIT, then V1b, the live model reproduces that baseline (§1.1, §10.3).
+V1 assumed the baseline would be built. With Python for everything it never is, so the chain
+collapses to one hop against the R run itself, and the baseline specification stays as the
+document that says what those tables mean. That is a specification change and is recorded in
+[note 18](18_mvp_feature_prioritisation.md)'s cross-check.
 
-Run COMIT on the reference workbook with the cluster and national coupling switched off, so
-that each site is solved on its own, and freeze what it produces: the objective, the
-per-technology capacity by period, and the cost, energy and emissions tables. The archived
-baseline specification, solved per site, must reproduce those numbers. V1 is asserted against
-the baseline specification, not against the live one (§10.3). It shows that solving per site
-loses nothing that coupling was providing for those sites.
+### The comparison point: one R run with coupling off
 
-### Hop 2 — V1b: the MVP reproduces the baseline
+Run COMIT once on the reference workbook with the cluster, national-cap and headroom
+constraint functions switched off through its `constraints_to_include` sheet, so that each
+site is solved on its own. Freeze what it produces: the objective, the per-technology capacity
+by period, and the cost, energy and emissions tables, with a manifest naming the workbook
+hash, the R package commit, the solver version and the switches used. **The R model is a
+comparison point, not ground truth.** Where the two models disagree, the question is which one
+is wrong, and the oracle-free checks below are what answer it.
+
+### V1b: the MVP reproduces the comparison point
 
 Run the MVP in the **carrier-equivalent configuration** (§10.2) on the same 1,026 sites. All
 five conditions hold together:
@@ -110,28 +120,49 @@ five conditions hold together:
    carries no negative term.
 
 Under these conditions the carrier balance collapses to duty satisfaction plus a fuel price,
-which is exactly what the baseline computes. V1b asserts that the MVP reproduces the
-baseline's objective and per-carrier energy on those sites (§10.3).
+which is exactly what the R run computes. V1b asserts that the MVP reproduces the comparison
+point's objective and per-carrier energy on those sites (§10.3). COMIT's technology rows are
+mapped to the MVP's units and carrier bindings through the lineage table the data migration
+produces, one disposition per source row, so the two sets of numbers are comparable at all.
 
 ### What is compared, and at what tolerance
 
-Tolerances apply to the quantities an LP determines uniquely: the objective, period totals,
-and which constraints bind. They are **not** applied cell by cell. Per-site fuel splits and
-build timing can be degenerate, meaning several solutions are cost-equivalent and the solver
-may legitimately pick a different one on a different machine
+Tolerances apply to the quantities an LP determines uniquely, and are **not** applied cell by
+cell. Per-site fuel splits and build timing can be degenerate, meaning several solutions are
+cost-equivalent and the solver may legitimately pick a different one on a different machine
 ([08 §4](08_python_redesign_approach.md), §9.3). The price wedge and the lexicographic
-tie-break (§5.5, §9.3) remove most of that degeneracy in the MVP, but the R oracle has neither,
-so the comparison has to be robust to it.
+tie-break (§5.5, §9.3) remove most of that degeneracy in the MVP, but the R run has neither,
+so the comparison has to be robust to it. The placeholder tolerances, confirmed at the first
+milestone, are:
 
-### What the Python decision changes
+| Quantity | Tolerance |
+|---|---|
+| Objective per site | within 0.5 percent |
+| Energy per carrier per period, summed over the site | within 1 percent |
+| Which constraints bind | not compared; no row mapping exists between the two models |
 
-Parity used to be a parallel-run migration, with both models kept alive and compared
-constraint by constraint. With Python for everything, the R model is run **once**, with
-coupling disabled, to produce the V1 tables. Those tables are committed as parquet golden
-masters under the Python package's tests, and the R model is then frozen and retired. The
-constraint-by-constraint comparison still happens, but against the frozen tables rather than
-against a live R process. The archived baseline specification stays readable for the same
-reason: it is what the tables mean.
+Every site outside tolerance is listed with the reason, and the list is the deliverable of the
+gate rather than a pass mark.
+
+### What stands beside the comparison
+
+The comparison catches drift from COMIT. It cannot say whether COMIT was right. Four checks
+that need no other model carry that weight, and they are Must features that land before the
+comparison runs:
+
+- **Analytical fixtures.** Tiny scenarios whose least-cost answer is computed by hand,
+  starting from the linopy proof-of-concept's objective of 1425 and adding one with a carrier
+  balance, a graded duty and an export.
+- **Constraint-row satisfaction.** After every solve, multiply the built constraint matrix by
+  the returned solution and check every row, independently of the solver.
+- **Metamorphic relations.** Scale all costs and the objective scales; tighten the carbon
+  price and emissions do not rise; make one unit strictly dominant and it is built wherever
+  eligible.
+- **Base-year reconciliation.** The back-solved baseline reproduces the premise's metered
+  energy by carrier, and its emissions match the measured figure where one exists (§7.6).
+
+The committed coupled COMIT run under `outputs/` is a bounded sanity check on aggregate
+totals only. Coupling changes the answer by design, so it is never a parity target.
 
 ---
 
@@ -240,7 +271,7 @@ wrong** rather than the new mechanism, which is why it is the parity site.
   stands (§3.5, C4, V17).
 - **Run in the carrier-equivalent configuration**, one carrier per unit, no generation, no
   export, no cascade, the cement works' problem is duty satisfaction plus fuel prices, and V1b
-  compares its objective and per-carrier energy with the baseline's.
+  compares its objective and per-carrier energy with the R run's.
 
 Cement carries exactly two process codes, `ICMCLK` and `ICM`, so there is nothing at a
 low grade and nothing to cascade. That is why the specification says **cement alone is not
