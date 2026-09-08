@@ -125,6 +125,14 @@ things:
 `λ` for the stranding factor, which is `ξ` — `λ` is the §5.6 peak factor. And the programme
 decisions initially reused `D1`–`D3`, colliding with `D1`–`D11` in documents citing both.
 
+**Never cite a label bare.** `C1`, `A7`, `V1b`, `T23`, `D11` mean nothing to a reader who
+has not memorised the tables, and that includes Alexandre reading a chat reply, a PR body
+or a commit message. Every use in prose carries its meaning in brackets at least once per
+message or section: "C1 (duty satisfaction)", "A7 (the relaxation ladder)", "T23 (complete
+§5)", "D11 (existing plant has an age)". The label tables in the specs are where the meaning
+is *defined*; prose is where it has to be *repeated*. A label with no bracket is a defect in
+the sentence, not a shorthand.
+
 Before introducing any new label **or distinguishing adjective**, grep for it. When a
 collision is unavoidable, the house pattern is rename plus a short disambiguation note, as
 at the archived baseline's §6, lines 2126–2127.
