@@ -39,7 +39,7 @@ COMIT-parity baseline specification".
 | `2026-08-28-…-architecture.md` | The design and its reasoning; the foundations it reuses |
 | `2026-08-28-…-data-migration.md` | The reference-data work list, 23 items in five groups |
 | `2026-08-28-…-delivery.md` | Files, 18 tasks, lanes, scope boundary, verification |
-| `archive/2026-08-19-…-implementation.md` | **The COMIT-parity baseline. Frozen.** What V1 validates against and V1b compares to. Do not restructure it |
+| `archive/2026-08-19-…-implementation.md` | **The COMIT-parity baseline. Frozen.** Says what the R run's tables mean; §10.2's configuration is defined against it. Do not restructure it |
 | `archive/2026-08-19-…-vision.md` | The rationale behind `D1`–`D11`. The decisions themselves now live in the live spec §1.6, so nothing depends on this |
 | `archive/2026-08-19-…-worked-example.md` | One cement premise end to end, against the baseline |
 | `archive/2026-08-28-…-spec-changes.md` | The change record against the baseline; fully folded into the live spec |

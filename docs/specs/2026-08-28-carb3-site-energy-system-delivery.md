@@ -49,8 +49,8 @@
 ### Do not touch
 
 Everything under `docs/specs/archive/`. Those documents are frozen: one of them is the
-COMIT-parity baseline that V1 validates against, and rewriting it would invalidate the
-baseline rather than improve it. Known defects in them are recorded in
+COMIT-parity baseline, the document that says what the R run's tables mean, and rewriting
+it would break that reading rather than improve it. Known defects in them are recorded in
 [`archive/README.md`](archive/README.md).
 
 ---
@@ -218,6 +218,7 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Verify: every §5 citation resolves to a heading that exists; C4 and C6 are stated as mathematics
   - **Four defects, all verified.** (a) §5.6 (C11's peak-rebuild method) and §5.3.1 (D11's vintage fallback ladder) are cited seven times between them and neither exists, while the document's status line says §5 is written. (b) §5.1 defines $Q$ as "duties at this premise" with no period index while C1 is written $\forall q \in Q$, so a duty appearing mid-horizon is never constrained. (c) $z_{u,t}$ carries no duty index, and §3.5 makes service units family-keyed, so one boiler at one premise can sit in two $U_q$ and its single activity variable is credited in full against both duties. (d) C4 and C6 are prose with no algebra, so nothing depending on their behaviour can be tested
   - **Blocks T24.** Also blocks any honest statement of §9.1's problem size
+  - **Partly done (2026-09-08), ahead of the rest.** Three defects the MVP plan's review found were closed on their own. (c) is fixed: activity is $z_{u,q,t}$ per (unit, duty), with $z^{\circ}_{u,t}$ for output released to the balance and $h$ for the one-way cascade, so C1, C2, C8 and C10 now carry the algebra. C12 takes a per-unit area coefficient over area-bound units only, so a CHP is no longer roof-limited. And §1.1, §10.2 and §10.3 name the coupled-off R run as V1's comparison point and the lineage table as V1b's mapping, replacing the two-hop chain through a built baseline. Still open here: (a), (b), (d), assigning each unit's import and export to a connection for C11, and the ladder's slack algebra
 - [ ] **T24 (P2, human: ~1.5 days / CC: ~50min)** — spec — Accept a declared forward process switch
   - Surfaced by: the third gap in the temporal-coverage work — `process_duty` is keyed by period but nothing upstream varies with period, so A2 expands one process set flat across the horizon. Separately, C7 has no backing entity in §3
   - Files: spec §3.18 (`premise_process_transition`), §3.19 (`premise_committed_unit`), §3.9, §4 (A2, A6), §5.5 (C6, C7), §10.2, §10.3
@@ -232,12 +233,12 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
 
 | Deferred | Why |
 |---|---|
-| Any change to `R/` (18,126 lines, 64 files) | This specification targets a system that has not been built. COMIT is what V1 validates against, so touching it now buys nothing and risks the baseline. |
+| Any change to `R/` (18,126 lines, 64 files) | This specification targets a system that has not been built. COMIT is run once, coupled off, to produce V1's comparison point, so touching it now buys nothing and risks that run. |
 | Full 8760-hour dispatch in the per-premise LP | Attacks §9's tractability argument directly at stock scale. Tier A exists precisely to avoid it. |
 | Seasonal (inter-period) storage state | Matters for hydrogen, barely for industrial heat and batteries. Add only if a decision turns on it. |
 | RFNBO / LCHS hourly temporal-correlation compliance | Structurally inexpressible in an annual model. Stated as a boundary in spec §2.3; not modelled. |
 | Rewriting anything under `docs/specs/archive/` | Frozen by design; see *Do not touch* above. |
-| Retiring the COMIT-parity baseline specification | It is what V1 and V1b are anchored to, and it stays runnable. It lives in `docs/specs/archive/` — archived, not retired: still read and still regenerated, just out of the main path. |
+| Retiring the COMIT-parity baseline specification | It says what the R run's tables mean, and §10.2's carrier-equivalent configuration is defined against its §5.4. It lives in `docs/specs/archive/` — archived, not retired: still read and still regenerated, just out of the main path. |
 | CI wiring beyond a Makefile | No `.github/` exists. A Makefile target is the honest first step; CI is a separate call. |
 
 ---

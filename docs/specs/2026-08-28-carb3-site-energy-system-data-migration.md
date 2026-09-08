@@ -48,6 +48,11 @@ this one.
 
 - **B1.** Collapse the 293 pure fuel-variant technologies into units plus carrier
   bindings. **Reconcile row counts explicitly** — 397 in, units + bindings out, no orphans.
+  The reconciliation is a **lineage table**: one row per source technology with exactly one
+  disposition — collapsed into unit X with binding Y, preserved as unit Z, or dropped with a
+  reason — summing to 397 with no unassigned row. V1b compares the model with the R run
+  through this table ([implementation spec §10.2](2026-08-28-carb3-site-energy-system-implementation.md)),
+  so it is a deliverable, not a working file.
 - **B2.** Preserve the 57 non-fuel technologies (CCS 25, heat pump 31, dry kiln 1) as
   distinct unit archetypes; do not let them collapse.
 - **B3.** Assign `grade_in`/`grade_out` to every unit and every heat duty
@@ -94,6 +99,9 @@ this one.
 
 - **D1.** Roof and land area per premise, or a per-activity usable-area fraction. **The
   single biggest gap** — without it C12 is unbounded and the LP builds infinite PV.
+  Alongside it, `area_per_capacity` on every area-bound unit — PV, solar thermal — and
+  unset on compact plant such as CHP, so that C12 binds the units that take area and no
+  others.
 - **D2.** Export price and per-carrier import/export tariff series in
   `scenario_parameters`.
 - **D3.** Biomethane as an `infrastructure_scenario` carrier with regional availability
