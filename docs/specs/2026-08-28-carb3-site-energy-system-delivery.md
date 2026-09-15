@@ -134,11 +134,13 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Files: spec §9, §10 (V21)
   - Verify: V21 stated at load scope
   - **Partly done.** The tie-break key and the price-wedge rule are stated in §5.5 and §9.3, and V21 is at load scope in §10.3. What remains is §9.1's per-premise variable and constraint arithmetic, recomputed from the unit, carrier-flow and storage families
-- [ ] **T8 (P1, human: ~2 days / CC: ~45min)** — data — Group A + B taxonomy split and collapse
+- [x] **T8 (P1, human: ~2 days / CC: ~45min)** — data — Group A + B taxonomy split and collapse
+  - **First build 2026-09-15.** `carrier.csv` (44 rows, six heat bands) and `comit_technology_lineage.csv` (397 rows: collapsed 311, preserved 64, dropped 13, unmapped 9, zero orphans); `Standard_FF` and `Dry kiln` resolved explicitly. Open points in [notes/20](../notes/20_reference_data_open_questions.md)
   - Surfaced by: `technology_category` conflates carrier, device and abatement across 397 rows
   - Files: `docs/notes/data/emissions_source_classification.csv` and successors
   - Verify: `make data-check`; explicit 397-row reconciliation, zero orphans
-- [ ] **T9 (P1, human: ~2 days / CC: ~45min)** — data — Group C decarbonisation options: the missing option→unit join, plus the hybrid-unit set and its bill of materials
+- [x] **T9 (P1, human: ~2 days / CC: ~45min)** — data — Group C decarbonisation options: the missing option→unit join, plus the hybrid-unit set and its bill of materials
+  - **First build 2026-09-15.** `unit.csv` (137 units, 12 hybrids), `unit_input_output.csv` (446), `unit_bill_of_materials.csv` (24), `unit_eligibility.csv` (2,612), `decarbonisation_option_unit.csv` (163: all 134 options joined, 58 with no unit representation), and the library gains `displaces_carrier_ids`, `route_change`, `exclusivity_group`. `min_duty` has no source beyond the worked examples; capture trains other than `ccs_amine` have no coefficients — see [notes/20](../notes/20_reference_data_open_questions.md)
   - Surfaced by: options are keyed to CaRB3 `process_id` and technologies to `output_commodity`, and no join exists. PD2 adds hybrid units, which have no representation in a library where all 134 options are demand-side
   - Files: `decarbonisation_options_library.csv`, `process_decarbonisation_options.csv`, new `unit_bill_of_materials`
   - Verify: `make data-check`; 130 used options all resolve; the 12 legitimately optionless processes stay exactly 12; every hybrid unit's BOM shares sum to 1 and reconcile to its capex (V20 b)
@@ -160,7 +162,8 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - The 120 °C competition, the heat pump refused at 200 °C, the `IFDDRY` reject-heat leg feeding a heat pump, and the CHP producing heat **and** electricity into the balance are all walked with arithmetic
   - Two results the numbers produced rather than the plan anticipated: the 2050 export limit **sheds CHP rather than curtailing PV**, and §7.7's allocation puts the CHP's electricity at **282 gCO₂e/kWh** against a grid at 65, which is what kills the gas CHP by 2040
   - **Still rests on T17 and T18 data that does not exist**: the duty families, the heat-grade bands and the default installed-unit table are asserted by the example, not read from a table
-- [ ] **T17 (P1, human: ~3 days / CC: ~90min)** — data + spec — Give every process a duty family and a heat grade
+- [x] **T17 (P1, human: ~3 days / CC: ~90min)** — data + spec — Give every process a duty family and a heat grade
+  - **First build 2026-09-15.** `activity_process_duty_profile.csv` (427 rows, all 376 register rows, every heat row graded on a six-band set) and `carb3_comit_process_crosswalk.csv` (376 rows: direct 149, analogue 123, none 104). The §3.3 per-process sum rule disagrees with the food-and-drink example's per-vector reading — [notes/20](../notes/20_reference_data_open_questions.md) item 1
   - Surfaced by: the input-data audit ([notes/16](../notes/16_input_data_readiness.md)). The model decides what a site may build by walking `process → duty → eligible units`, and **only the first link exists**. No temperature or grade column exists in any of the ten CaRB3 reference files; the 376 register rows carry no duty family
   - Files: spec §3.3 (**done** — `activity_process_duty_profile`), `docs/notes/data/carb3_comit_process_crosswalk.csv`, `docs/notes/data/activity_process_duty_profile.csv`, `validate_carb3_data.py`
   - Verify: `make data-check`; `duty_share` sums to 1.00 ±0.015 per (activity, set, process); **`grade_rank` non-nullable wherever the carrier is gradeable**; every row resolves to the register
@@ -168,7 +171,8 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - **Scope honestly:** by crosswalk coverage, 228 register rows sit in `direct` activities (seedable with review), 57 in `catch-all`/`partial`/`generic` (partly), and **91 in `absent`/`gap`/`weak`/`ambiguous` — those have no COMIT analogue and need first-principles classification**
   - Temperatures do exist in the repo but on the **supply** side: 28 rows of `decarbonisation_options_library.duty` and 45 of `process_decarbonisation_options.notes` carry °C values, against **3 incidental** occurrences in the register. Useful as corroboration, not as a source
   - **Blocks T16.** Feeds T13 — A4's carrier-mix rule chooses between units serving a duty, and without duty families there is nothing for a unit to be eligible for
-- [ ] **T18 (P1, human: ~2 days / CC: ~45min)** — data — Build the default installed-unit table, so existing CHP stops being invisible
+- [x] **T18 (P1, human: ~2 days / CC: ~45min)** — data — Build the default installed-unit table, so existing CHP stops being invisible
+  - **First build 2026-09-15.** `activity_default_unit.csv` (455 rows; CHP on 17 rows across 11 activities from DUKES 7.4 ÷ ECUK U4, `sector_statistic` on 10 rows, `derived` 78, `assumed` 367). The food-and-drink example's 0.60 CHP share is 0.235 by the statistic it cites — [notes/20](../notes/20_reference_data_open_questions.md) item 9
   - Surfaced by: the same audit. A column scan of all ten reference files found **no column** matching generation, capacity, storage, onsite, import, export or self-consumption. Today a Chemical Works with a 20 MW CHP and one without are the same row
   - Files: spec §3.16 (**done** — `activity_default_unit`), `docs/notes/data/activity_default_unit.csv`, `validate_carb3_data.py`
   - Verify: `make data-check`; `default_share` sums to 1.00 ±0.015 per (activity, set, process, duty_family); every `(unit_id, activity, process_id)` has a `unit_eligibility` entry; no row asserts a unit the optimiser could not build
