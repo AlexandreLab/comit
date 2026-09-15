@@ -142,16 +142,24 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Surfaced by: options are keyed to CaRB3 `process_id` and technologies to `output_commodity`, and no join exists. PD2 adds hybrid units, which have no representation in a library where all 134 options are demand-side
   - Files: `decarbonisation_options_library.csv`, `process_decarbonisation_options.csv`, new `unit_bill_of_materials`
   - Verify: `make data-check`; 130 used options all resolve; the 12 legitimately optionless processes stay exactly 12; every hybrid unit's BOM shares sum to 1 and reconcile to its capex (V20 b)
-- [ ] **T10 (P1, human: ~1 day / CC: ~30min)** — spec — Rewrite the **cement** worked example, adding the PV/battery/connection section
+- [x] **T10 (P1, human: ~1 day / CC: ~30min)** — spec — Rewrite the **cement** worked example, adding the PV/battery/connection section
   - Surfaced by: the cement premise is the parity case and has to be walked end to end
   - Files: `docs/specs/2026-08-28-carb3-site-energy-system-worked-example-cement.md`
   - Verify: every asserted number recomputes; A6–A9 actually walked
   - Scope: this example covers the mass denominator (D5), tier-1 vintage, stranding and the CCS capture unit. It **cannot** show graded heat, unit competition or CHP; that is T16
-- [ ] **T16 (P1, human: ~1 day / CC: ~30min)** — spec — Write a second worked example on a **food & drink** site, exercising the carrier mechanism
+  - **Done 2026-09-15.** Thirteen sections, `A1`–`A9` walked end to end on premise `P-000123`, published as a fixture (`MF-22`). Every asserted figure recomputes; the process split runs on the **published** `Cement Works` shares from `activity_process_energy_profile.csv` rather than an invented one
+  - Carries the PV/battery/connection section: C12 caps PV at 2.47692 MW on a floorspace proxy and it supplies 1.86% of site electricity; the battery is **not** built, because β earns only against C11 and reinforcement is cheaper; capture pushes the works 1.00 MW past its 25 MW supply
+  - Reworked onto D13 (the co-firing kiln is three per-fuel units) and D15 (three emission carriers, disposal, the biogenic credit). §13.3 records nine open points, five of them since closed
+- [x] **T16 (P1, human: ~1 day / CC: ~30min)** — spec — Write a second worked example on a **food & drink** site, exercising the carrier mechanism
   - Surfaced by: cement has only `ICMCLK` and `ICM`, so no `LTH`/`STM`/`DRY`/`SPC`. A cement example is structurally blind to the carrier mechanism (spec §13)
   - Files: `docs/specs/2026-08-28-carb3-site-energy-system-worked-example-food-drink.md`
   - Verify: shows `IFDLTH`'s 8 fuel-variant technologies collapsing to 3 units; a 120 °C duty with boiler / CHP / heat pump / electric competing under C10; an `IFDDRY` reject-heat leg feeding a heat pump (B5); CHP producing heat **and** electricity into the carrier balance
   - **Depends on:** T8 (Group A + B taxonomy), since the collapse it displays must be the real one, **and T17** — the example asserts a 120 °C duty and a CHP default, neither of which exists in any table today
+  - **Done 2026-09-15.** Thirteen sections on the same skeleton as T10, premise `P-004417`, published as a fixture (`MF-23`). Every asserted figure recomputes; the process split runs on the **published** `Food Processing Centre` shares, and the gas side closes to +0.0003%
+  - All four verification items met, with one restated: **the collapse is cross-sector under D13** — 84 low-temperature-heat rows across eleven sectors to eight units, of which this dairy reaches seven, rather than the pre-D13 "eight rows to three units". Milestone M4's gate was updated to match ([notes/18](../notes/18_mvp_feature_prioritisation.md))
+  - The 120 °C competition, the heat pump refused at 200 °C, the `IFDDRY` reject-heat leg feeding a heat pump, and the CHP producing heat **and** electricity into the balance are all walked with arithmetic
+  - Two results the numbers produced rather than the plan anticipated: the 2050 export limit **sheds CHP rather than curtailing PV**, and §7.7's allocation puts the CHP's electricity at **282 gCO₂e/kWh** against a grid at 65, which is what kills the gas CHP by 2040
+  - **Still rests on T17 and T18 data that does not exist**: the duty families, the heat-grade bands and the default installed-unit table are asserted by the example, not read from a table
 - [ ] **T17 (P1, human: ~3 days / CC: ~90min)** — data + spec — Give every process a duty family and a heat grade
   - Surfaced by: the input-data audit ([notes/16](../notes/16_input_data_readiness.md)). The model decides what a site may build by walking `process → duty → eligible units`, and **only the first link exists**. No temperature or grade column exists in any of the ten CaRB3 reference files; the 376 register rows carry no duty family
   - Files: spec §3.3 (**done** — `activity_process_duty_profile`), `docs/notes/data/carb3_comit_process_crosswalk.csv`, `docs/notes/data/activity_process_duty_profile.csv`, `validate_carb3_data.py`

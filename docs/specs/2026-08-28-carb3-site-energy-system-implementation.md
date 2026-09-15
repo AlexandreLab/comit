@@ -19,7 +19,7 @@
 
 ## 1. Scope, inputs, conventions, and how to read this
 
-*Section last updated: 2026-09-08*
+*Section last updated: 2026-09-15*
 
 ### 1.1 What this document is
 
@@ -77,9 +77,9 @@ Label families in this document, and where each is defined:
 | `C1`–`C12` | Constraints | §5.5 |
 | `A1`–`A9` | Algorithms | §4 |
 | `S0`–`S9` | Pipeline stages | §2.1 |
-| `V1`–`V26` | Validation tests | §10 |
+| `V1`–`V30` | Validation tests | §10 |
 | `G1`–`G4` | Scale gates | §9 |
-| `D1`–`D12` | Design decisions | §1.6 |
+| `D1`–`D15` | Design decisions | §1.6 |
 | `PD1`–`PD2` | Programme decisions | the [overview](2026-08-28-carb3-site-energy-system-overview.md) |
 
 ### 1.5 Glossary
@@ -100,7 +100,7 @@ inter-premise coupling D2 forbids. "Hybrid unit" means co-located, one premise.
 
 ### 1.6 Design decisions
 
-Twelve decisions fix the shape of the model. Everything in §2–§13 is written inside them,
+Fifteen decisions fix the shape of the model. Everything in §2–§13 is written inside them,
 and each is cited by label wherever it constrains a choice.
 
 | # | Decision | What it buys | What it costs |
@@ -117,8 +117,11 @@ and each is cited by label wherever it constrains a choice.
 | **D10** | Tiered site intelligence — known site detail replaces activity defaults outright | Real sites modelled as themselves wherever evidence exists; the model improves as intelligence accumulates, without redesign | Mixed-evidence results; every output row must carry its evidence tier or the quality is invisible |
 | **D11** | Existing plant has an age — it retires when its life ends, and early replacement pays the residual value | Replacement timing becomes an economic result instead of an artefact; near-new plant stops being scrapped for free | A vintage assumption for every premise with no age data, and one more parameter (ξ, §5.3) to defend |
 | **D12** | Measured inputs are a time series; exactly one year is the **base year**, and only that year is read | History becomes available for reconciliation, trend evidence and audit without touching the annual LP or A4's back-solve | A base year must be named per premise, a substitution ladder is needed for carriers metered off it, and every history row is data nobody reads today |
+| **D13** | **One primary carrier per unit.** A unit's fuel is part of its identity: `boiler_gas` and `boiler_hydrogen` are two units, not one unit with two bindings | Capex, lifetime, efficiency, availability year and minimum scale become per-fuel attributes, which they physically are; `unit_eligibility` can cap one fuel without capping another; §10.2's carrier-equivalent configuration stops being a special setup and becomes how the library always works | The library roughly doubles, from ~40 units to ~98 before hybrids. The collapse across *sectors* — one boiler for a dairy and a paper mill — is untouched, and it is the larger saving |
+| **D15** | **Every emission is a carrier.** Combustion CO₂ joins process CO₂ on the balance, so emissions are produced by units, consumed by capture, and vented through disposal | Capture needs no special case — a train simply consumes a carrier; the carbon price attaches to what is actually vented; biomass zero-rating and net-negative capture fall out of the carrier set instead of an accounting rule; §7 becomes a readout of the balance rather than a parallel calculation | Three more balance nodes per period, and fuel CO₂ coefficients must be **derived** at build time from the scenario's factors rather than declared, because a factor may vary by period |
+| **D14** | **Emissions attach once, at the fuel. Any per-carrier figure is a reporting allocation that sums back to it** | A CHP's electricity can carry a defensible intensity without the same molecules being charged twice; the grid factor applies to imports only, so self-generation stops being counted as if it came off the grid | An allocation convention must be chosen and defended (§7.7), and two numbers now exist for one emission — accounted and allocated — which must never be added together |
 
-Four have the widest reach in this document:
+Five have the widest reach in this document:
 
 - **D2 — per-site independent solves.** No constraint may couple two premises. Anything
   needing cross-site information becomes a scenario input or a post-hoc comparison. This is
@@ -129,6 +132,8 @@ Four have the widest reach in this document:
   and every output row carries its evidence tier.
 - **D11 — plant has an age.** Ageing, early retirement and the stranding charge attach
   to units (C4).
+- **D13 — one primary carrier per unit.** A unit's fuel is unambiguous by construction, and
+  §3.5, §3.6, §4.1 and §10.2 all rest on it.
 
 ---
 
@@ -193,20 +198,20 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-09-08*
+*Section last updated: 2026-09-15*
 
-**Twenty-two entities.** Every one of them is defined here in full: fields, types, units,
-keys and validation rules. Four are supplied by the CaRB3 stock model, seven by the
-modelling team, two by scenario definition, one is derived at run time, six are optional
+**Twenty-four entities.** Every one of them is defined here in full: fields, types, units,
+keys and validation rules. Four are supplied by the CaRB3 stock model, eight by the
+modelling team, two by scenario definition, one is derived at run time, seven are optional
 per-premise intelligence, and two carry defaults and the offline archetype layer.
 
 | | Supplied by | Entities |
 |---|---|---|
 | §3.1–§3.1.3 | the CaRB3 stock model | `premise_record`, `premise_energy`, `premise_throughput`, `premise_connection` |
-| §3.2–§3.6 | the modelling team | `activity_process_register`, `activity_process_duty_profile`, `carrier`, `unit`, `unit_input_output` |
+| §3.2–§3.6 | the modelling team | `activity_process_register`, `activity_process_duty_profile`, `activity_process_energy_share`, `carrier`, `unit`, `unit_input_output` |
 | §3.7–§3.8 | scenario definition | `infrastructure_scenario`, `scenario_parameters` |
 | §3.9 | derived at run time (A2) | `process_duty` |
-| §3.10–§3.15 | optional per-premise intelligence (D10) | `premise_process_detail` and companions |
+| §3.10–§3.15 | optional per-premise intelligence (D10) | `premise_process_detail`, `premise_process_energy` and companions |
 | §3.16–§3.17 | defaults and the offline layer | `activity_default_unit`, `archetype_coefficient` |
 
 ### 3.1 `premise_record` — the premise itself
@@ -442,13 +447,79 @@ cheapest. This is the failure the data-migration plan flags as mode #6, and it f
 **Rule (inheritance).** A non-default process set need not restate every row; where a
 `(process_id, duty_family, grade_rank)` is absent it inherits the default set's value.
 
-**A duty is not a fuel share, and the two must not both be supplied.** This entity states
-which *duty* a process presents — a carrier at a grade. Which *fuel* serves that duty is
-decided by the carrier balance, so supplying a fuel split as well would over-determine the
-problem. The 490-row fuel split in
-[`../notes/data/activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv)
-is therefore a **parity target for V1b** — the thing the model's chosen fuel mix is compared
-against — and never an input.
+**A duty is not a fuel choice, and the two must not both be supplied.** This entity states
+which *duty* a process presents — a carrier at a grade. Which *unit*, on which fuel, serves
+that duty in a given period is decided by the carrier balance, so supplying a forward fuel
+split as well would over-determine the problem.
+
+**But how much energy each process takes is a different question, and it is an input.**
+§3.3.1 holds it. The distinction is between a marginal and a conditional, and conflating them
+is what left A2 with no way to size a premise's duties:
+
+| | Claim | Status |
+|---|---|---|
+| **Marginal** — §3.3.1 | Of this premise's gas, what share goes to the dryer | A demand-side fact about the site's layout. **An input** |
+| **Conditional over time** | In 2040, is that duty served by gas, hydrogen or a heat pump | What C8 decides. **V1b's parity target**, never an input |
+
+Reading the marginal over-determines nothing: at the base year each carrier's site total is
+pinned by `premise_energy` on both sides of the comparison anyway, because C8 forces import to
+equal consumption. What it fixes is the duty structure, which is what drives every later
+period.
+
+### 3.3.1 `activity_process_energy_share` — how much energy each process takes
+
+**The activity-level default share of a premise's metered energy, per process per vector.**
+Populated by
+[`../notes/data/activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv) —
+490 rows covering 359 of the register's 376 processes, with provenance per row.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
+| `process_set_id` | string | — | yes | PK part | → `activity_process_register` |
+| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `vector` | enum{electricity, gas, oil, coal, biomass, other} | — | yes | PK part | The grouping `premise_energy` (§3.1.1) carries on every row |
+| `energy_share` | real | fraction | yes | — | ∈ [0, 1]. Share of the premise's quantity **of this vector** taken by this process |
+| `share_low` | real | fraction | no | — | ≤ `energy_share` if present |
+| `share_high` | real | fraction | no | — | ≥ `energy_share` if present |
+| `evidence_tier` | enum{measured, engineering, published_sec, fallback} | — | yes | — | The D10 ladder |
+| `provenance` | string | — | yes | — | Citation |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried to output |
+
+**Rule (shares sum down the process column, per vector).** For each
+`(carb3_activity, process_set_id, vector)`, `energy_share` must sum to 1.00 ± 0.015. This is
+the opposite axis from §3.3's rule, which sums *across duties within* a process, and the two
+are independent checks.
+
+**Rule (keyed on vector, not carrier).** Which share of a site's gas the dryer takes does not
+depend on whether that gas is natural gas or biomethane. Keying on `vector` also keeps the
+table at hundreds of rows rather than thousands, and it is the same grouping §3.1.1 already
+requires every `premise_energy` row to carry.
+
+**Rule (a process consuming several sources gets several rows).** One row per
+`(process, vector)`. A cement kiln takes all of the coal, gas, biomass and waste fuel, a fifth
+of the oil and a fifth of the electricity — six rows. **104 of the 359 covered processes carry
+more than one vector**, so multi-source processes are the ordinary case and not an exception.
+
+**Rule (absence is zero, and that is safe here — unlike §3.1.1).** Because the shares close to
+1.00 per vector, a process with no row for a vector unambiguously takes none of it. There is
+no "not assessed" reading to confuse it with. **The corollary is that a coverage gap is
+silent**: seventeen register processes carry no row at all, and the model gives them zero
+energy. At `Cement Works` those are `clinker_cooling` and `site_services`, so a clinker cooler
+is assigned no electricity while §3.13 classes it `flat` with `duty_factor` 1.00. Closing the
+seventeen is reference-data work, and until it is done the `MOT` duties are understated and
+the covered processes correspondingly overstated.
+
+**Rule (renormalisation for absent processes).** Where a premise does not run one of the
+activity's processes — because `premise_process_detail` (§3.10) omits it, or
+`activity_process_register.is_optional` marks it absent — that process's share is removed and
+the remaining shares for that vector are renormalised to 1.00. A vector whose every consumer
+is absent renormalises to nothing and its quantity must be zero, or the premise is reported
+`energy_share_unallocated`.
+
+**This entity is also §4.1 tier 3's source.** The `activity_default` carrier mix that A4 falls
+back to when neither site knowledge nor division determines it is read here, and until now
+§4.1 named no table at all.
 
 ### 3.4 `carrier`
 
@@ -463,8 +534,11 @@ Anything that flows and balances: a fuel, electricity, hydrogen, CO₂, or heat 
 | `grade_rank` | integer | — | no | — | Required if `is_gradeable`. Higher serves lower |
 | `grade_label` | string | °C | no | — | Required if `is_gradeable`, e.g. `150-400C` |
 | `is_indirect` | boolean | — | yes | — | Emissions counted as indirect. **Config, not a hardcoded list** |
-| `emission_factor_source` | string | — | no | — | → `scenario_parameters` series |
+| `emission_factor_source` | string | — | no | — | → `scenario_parameters` series. Required on a `primary` carrier |
+| `biogenic_fraction` | real | fraction | no | — | ∈ [0, 1]. Share of the carrier's carbon that is biogenic. Required where > 0; absent reads as 0. Splits a fuel's derived CO₂ between the fossil and biogenic carriers (D15, §7.3) |
+| `carbon_charge` | enum{charged, zero_rated} | — | no | — | Set on `emission` carriers only. `zero_rated` is what makes biogenic CO₂ free to vent and a **credit** to capture (§7.3) |
 | `denominator_kind` | enum{energy, mass} | — | yes | — | D5 |
+| `may_dispose` | boolean | — | yes | — | Whether $d_{c,t}$ exists for this carrier (§5.2). **Derived from `carrier_kind`, not free**: true for `intermediate` and `emission`, false for `primary` and `product`. Stated as a column so the LP builder reads it rather than re-deriving it |
 
 **Grades are carriers, not an attribute of one.** `heat@60-150C` and `heat@150-400C` are two
 `carrier` rows with different `grade_rank`. This is what lets C8 balance them independently
@@ -474,6 +548,47 @@ and C10 order them, without a special case in either.
 consuming a `primary` carrier. A unit consuming an `intermediate` adds nothing, because the
 fuel was already charged upstream. Getting this wrong double-counts every boiler in the
 stock.
+
+**Three emission carriers, and the split is load-bearing (D15).** Emissions are produced,
+balanced, captured and vented like anything else that flows:
+
+| `carrier_id` | Origin | `carbon_charge` | Why separate |
+|---|---|---|---|
+| `co2_process` | Chemistry, against a mass denominator (D5) | `charged` | Cannot be touched by fuel switching, and §7.6 reconciles it against measured data separately |
+| `co2_fuel_fossil` | Combustion of fossil carbon | `charged` | The ordinary case |
+| `co2_fuel_biogenic` | Combustion of biogenic carbon | **`zero_rated`** | Vented it is free (§7.3); captured it is a **credit**, which is what makes bioenergy with capture net-negative rather than merely zero |
+
+A capture unit consumes these and produces `co2_captured`, which leaves the site through the
+CO₂ transport network under C9. Anything not captured leaves through $d_{c,t}$ (§5.2), and
+**that disposal is the emission event** — it is what the carbon price is charged on and what
+§7 reports.
+
+**A duty's carrier is a service, never a fuel.** If a motor duty's carrier were `electricity`,
+the motor would consume and produce the same carrier and C8's node at that carrier would be
+circular. Every duty family therefore resolves to a carrier that represents the *service*:
+
+| Duty family | Carrier | Kind |
+|---|---|---|
+| `LTH`, `HTH`, `STM`, `DRY`, `SPC` | graded heat, `heat@band` | intermediate, gradeable |
+| `MOT` | **`motive_power`** | intermediate, not gradeable |
+| `REF` | **`cooling`** | intermediate, not gradeable |
+| `OTH` | resolves to whichever of the above the underlying service is | — |
+
+Compressed air is a candidate for a carrier of its own rather than `motive_power`: it has real
+distribution losses and is storable, and motive power is neither. Deferred until the duty
+families are populated.
+
+**Two of the twelve families are not energy services and take no carrier.** `NEUOTH` is
+non-energy use — fuel consumed as feedstock, which presents no duty and must not be charged
+combustion emissions (§7.1). `HRS` is `IISHRS`, hot rolling, which is one of the fourteen
+**chemistry** nodes and is keyed per process, not per family. Both are listed among the twelve
+in the architecture document and neither belongs there.
+
+**The grade band set is not declared anywhere, and it decides eligibility.** `grade_rank` and
+`grade_label` are fields; the list of bands is reference data nobody owns. Where the lines are
+drawn decides which units are eligible for which duty — two bands let one heat pump serve an
+80 °C duty and a 120 °C one, four bands separate them. Owned by the duty-family and heat-grade
+data work.
 
 ### 3.5 `unit`
 
@@ -500,6 +615,7 @@ the unit's carrier bindings in §3.6.
 | `min_viable_scale` | real | capacity units | no | — | Screening threshold, applied in A2 — **never a binary** |
 | `load_shape_override` | string | — | no | → `process_load_shape` | **By exception only.** The shape belongs to the process (§3.13); a unit overrides it only where the device genuinely changes the draw |
 | `is_hybrid` | boolean | — | yes | — | If true, `unit_bill_of_materials` rows must exist |
+| `draws_ambient` | boolean | — | yes | — | True where the unit takes energy from ambient air, ground or water — outside the carrier set by §3.4. Exempts the unit from V2's energy-closure leg (§3.6) |
 | `abates_unit_id` | string | — | no | → `unit` | For abatement units: the unit whose output it captures |
 | `provenance` | enum{comit_reuse, bref, proxy} | — | yes | — | D6 |
 | `confidence` | enum{high, medium, low} | — | yes | — | D6 |
@@ -509,6 +625,23 @@ the unit's carrier bindings in §3.6.
 dairy and a paper mill alike. Chemistry (`ICMCLK`, `IHVC`, `IISPIR` and eleven more) is
 node-keyed, because a cement kiln is not a generic device. Sector specificity lives in
 `unit_eligibility`, not in the unit's identity.
+
+**Fuel is part of the identity, though — D13.** A unit is keyed
+`(family or node) × primary carrier`: `boiler_gas` and `boiler_hydrogen` are two units. Fuel
+was briefly an attribute reached through the carrier bindings of §3.6, and that leaked, because
+capex, `lifetime`, `availability_factor`, `earliest_year` and `min_viable_scale` all differ by
+fuel and a single row cannot carry two values for any of them. `unit_eligibility` is keyed on
+`unit_id`, so a shared unit could not be capped on one fuel without capping every fuel — a
+site with no solid-fuel handling could not be told it may build a gas boiler but not a biomass
+one.
+
+**What this costs, and what it does not.** Keying on family or node alone gives ~40 units;
+keying per fuel as well gives **~98** before hybrids. The collapse from 397 that matters is
+the one across *sectors* — 331 service rows become 55, because `IFDLTHNGA01` and its
+equivalents in fifteen other sectors are one `boiler_gas` — and D13 does not touch it. The
+`~95` floor this document's architecture already quoted is the same number. What changes is
+the maintainability claim: adding hydrogen firing is now one unit row per family that can burn
+it, roughly ten rows against the 52 hydrogen technology rows today, rather than one.
 
 **Abatement is a unit, not a cost differential against another unit.** A CCS train is a
 unit that consumes a CO₂ carrier produced by its host and names that host in
@@ -569,9 +702,63 @@ negative, produced positive.
 | `coefficient` | real | per output unit | yes | — | **Consumed negative, produced positive** |
 | `is_primary_output` | boolean | — | yes | — | Exactly one true per unit |
 | `is_reject` | boolean | — | yes | — | True marks recovered heat leaving the unit |
+| `is_fuel_input` | boolean | — | yes | — | **D13.** True on the one input row that is the unit's fuel. At most one true per unit; auxiliary inputs, primary ones included, are false |
 
 **Sign convention, restated because §7 depends on it.** Consumed carriers are negative,
 produced carriers positive. Process-emission carriers are produced, hence positive.
+
+**Rule (exactly one fuel input) — D13.** At most one input row carries
+`is_fuel_input = true`, and that carrier is the unit's fuel. `boiler_gas` names gas;
+`boiler_hydrogen` is a different unit. This is what makes a unit's fuel unambiguous, and what
+§4.1's back-solve, §7.1's attribution and §10.2's first condition all assume. Two rows flagged
+`is_fuel_input` is rejected at load with reason `unit_multi_fuel`.
+
+**The rule is about the *fuel*, not about primary carriers, and not about input rows.** A unit
+may draw any number of auxiliary inputs, primary ones included:
+
+| Unit | Inputs | Fuel input | Auxiliary inputs |
+|---|---|---|---|
+| `boiler_gas` | gas | gas | — |
+| `heat_pump_reject` | electricity, source heat below its `grade_in_max` | electricity | source heat (`intermediate`) |
+| `heat_pump_air` | electricity, ambient | electricity | ambient, which is no carrier at all (`draws_ambient`) |
+| `ccs_amine` | reboiler gas, auxiliary electricity, the host's CO₂ | gas | **electricity, which is `primary`**, and the CO₂ carriers |
+| `chp_gas_turbine` | gas → heat **and** electricity | gas | — |
+
+A capture train is the case that settles it: its reboiler burns gas and its pumps and fans
+draw grid electricity, and both are `primary` carriers. What must be unique is the carrier
+that gives the unit its identity, not the count of primary inputs — an earlier statement of
+this rule said one primary carrier and was wrong about every capture train in the library.
+
+A unit producing several carriers is unconstrained: one row carries `is_primary_output`, the
+rest are co-products (`chp_gas_turbine`'s electricity), reject heat (`is_reject`) or emissions
+(D15).
+
+**Rule (fuel CO₂ rows are derived, process CO₂ rows are declared) — D15.** A unit's emission
+coefficients are not all authored the same way, because the two have different natures:
+
+| Emission | Authored | Why |
+|---|---|---|
+| `co2_process` | **Declared** in this table | Stoichiometry. 525 kt CO₂ per Mt of clinker is chemistry, not a scenario assumption |
+| `co2_fuel_fossil`, `co2_fuel_biogenic` | **Derived by A6 at build time** | The emission factor is a `scenario_parameters` series and may vary by period, so a declared coefficient could not follow it |
+
+For every unit with an `is_fuel_input` row on carrier $c$ with factor $f_{c,t}$ and biogenic
+fraction $b_c$, A6 generates
+
+$$\iota_{u,\text{co2\_fuel\_fossil}} = |\iota_{u,c}|\, f_{c,t}\,(1 - b_c), \qquad \iota_{u,\text{co2\_fuel\_biogenic}} = |\iota_{u,c}|\, f_{c,t}\, b_c$$
+
+both positive, because emissions are produced. **The biogenic split happens here, before
+anything is captured**, which is what §7.3 requires and what makes capture of a co-fired
+stream net-negative rather than merely zero. Authoring these rows by hand instead would freeze
+one scenario's factors into the unit library.
+
+A unit consuming an `intermediate` carrier generates nothing: its heat was already charged to
+whatever made it.
+
+**Rule (ambient heat is not a carrier, and V2 exempts it).** An air-source heat pump draws
+roughly two-thirds of its output from ambient air, which does not flow between units and never
+balances, so it is outside §3.4 by construction. Such a unit's coefficients therefore do
+**not** sum to zero, and V2's round-trip must skip the energy-closure leg for any unit flagged
+`draws_ambient`. Without the exemption every air-source heat pump fails at load.
 
 **`is_reject` is what makes waste heat work.** A kiln's reject heat is a *positive*
 coefficient on a low-grade heat carrier. Without these rows every unit rejects zero, the
@@ -690,6 +877,53 @@ installed**, one row per cohort. A works running two lines of the same process i
 decades apart — a 1998 kiln line and a 2016 one — has one row here and two there. No
 interval on this table can express those two commissioning years, and averaging them is the
 thing D11 exists to stop.
+
+#### 3.10.1 `premise_process_energy` — sub-metered energy per process
+
+**Optional per-premise intelligence.** Where a site sub-meters a process — a dryer, a boiler
+house, a cold store — the reading is stated here and overrides §3.3.1's activity share for
+that process. Zero rows is the normal case and means "use the activity default". This is the
+D10 ladder applied to process size, and it is the reason §3.3.1 is a *default* rather than
+the answer.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_record` |
+| `process_id` | string | — | yes | PK part | → `activity_process_register`. Must be valid at the base year (§3.10) |
+| `carrier_id` | string | — | yes | PK part | → `carrier`. The carrier as sub-metered |
+| `quantity` | real | PJ/yr | yes | — | ≥ 0 |
+| `data_year` | integer | year | yes | PK part | The year this reading was taken. §3.1.1's base-year rule applies |
+| `data_status` | enum{measured, estimated, modelled} | — | yes | — | — |
+| `provenance` | string | — | yes | — | Citation: sub-meter reference, audit, operator disclosure |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried to output |
+
+**Rule (quantities, not shares).** Sub-metering arrives as a reading, and a share would have
+to be computed against the main meter by whoever supplies it. Stating the quantity keeps the
+discrepancy visible: if a site's sub-meters account for 80% of its metered gas, that 20% is
+evidence about the meters, not a rounding error to be normalised away.
+
+**Rule (keyed on carrier, while the default is keyed on vector).** A sub-meter reads a
+specific supply, and a site metering LPG separately from natural gas should be able to say so.
+The join to §3.3.1 is through `premise_energy.vector`, which §3.1.1 already requires to agree
+with the carrier's kind. Evidence therefore degrades cleanly: carrier-level where the site
+knows, vector-level where it does not.
+
+**Rule (partial coverage is the normal case).** A premise sub-metering one process is the
+expected shape, not an edge case. Sub-metered processes take their stated quantity; the
+**residual** of each vector — the premise's total for that vector, less everything sub-metered
+against it — is distributed over the remaining processes by §3.3.1's shares, renormalised over
+just those processes. This is §3.3.1's renormalisation rule extended from absent processes to
+unmetered ones.
+
+**Rule (the residual may not be negative).** If a vector's sub-metered quantities exceed the
+premise's total for that vector, the premise is **reported** `submeter_exceeds_meter` and the
+whole vector falls back to the activity default. Never a rejection: the sub-meters are
+evidence, and discarding the premise would discard them.
+
+**The evidence tier resolves per `(process, carrier)`, not per premise.** `sub_metered` where
+a row exists, `activity_default` for the residual, in the same solve — the pattern §3.15 uses
+for vintage, where a works may know its kiln's age and not its mills'. §8 carries it as
+`energy_evidence_tier`.
 
 ### 3.11 `premise_measured_emissions` — reported emissions, where they exist
 
@@ -992,13 +1226,13 @@ Nine algorithms run the pipeline of §2.1. A1–A9 map onto the stages S1–S9 o
 | # | Algorithm | Responsibility |
 |---|---|---|
 | A1 | Ingest and validate premise records | Accept a premise record and its companions, apply the load-scope validation of §10, reject with reasons. **Resolve the base year (D12), apply §3.1.1's substitution ladder, and report `duplicate_year_row`, `profile_year_unmatched` and `emissions_year_unmatched`** |
-| A2 | Expand premise to duties and candidate units | Resolve the process set, produce `process_duty` rows, and resolve the **candidate unit set** from `unit_eligibility` — including the `min_duty` screening that keeps minimum viable scale out of the LP. **Reads only the `premise_process_detail` rows valid at the base year (§3.10)** |
+| A2 | Expand premise to duties and candidate units | Resolve the process set, **size each process from §3.3.1's shares or §3.10.1's sub-meters**, produce `process_duty` rows, and resolve the **candidate unit set** from `unit_eligibility` — including the `min_duty` screening that keeps minimum viable scale out of the LP. **Reads only the `premise_process_detail` rows valid at the base year (§3.10)** |
 | A3 | Allocate premise energy onto carriers | Split metered energy across carriers. It does **not** allocate energy across processes: the carrier balance decides that. **Reads the base year only; history rows are carried to reporting untouched** |
 | A4 | Back-solve implied capacity, carrier mix and vintage | Turn metered energy into installed unit capacity, the mix of carriers each unit burns (§4.1), and plant age under D11. **Back-solves from the base year only, reads only base-year-valid process rows, and carries a substituted carrier vintage into the mix evidence** |
 | A5 | Apply the scenario | Attach prices, carbon price, infrastructure availability and the archetype coefficients ψ, β, χ, ε |
 | A6 | Build the per-premise problem | Declare variables over units and carrier flows, assemble C1–C12 and the objective of §5.4 |
 | A7 | Solve and extract | Solve, extract the pathway, and handle infeasibility by the relaxation ladder of §4.2 |
-| A8 | Assemble output tables | Produce the per-premise pathway rows, each carrying its evidence tier |
+| A8 | Assemble output tables | Produce the per-premise pathway rows, each carrying its evidence tier, **the disposal quantities of §5.2 and the §7.7 allocated intensities beside the accounted figures they derive from** |
 | A9 | Aggregate to GB and compare | Roll up across premises; compare against ECUK and the GHGI |
 
 ### 4.1 A4 — the carrier-mix rule
@@ -1012,7 +1246,7 @@ pinned from evidence rather than solved for, in the D10 pattern used everywhere 
 |---|---|---|
 | 1 — `site_known` | `premise_process_detail` names the unit and its carriers | Observed. Fully determined |
 | 2 — `carrier_bounded` | `premise_energy` gives site totals per carrier, and the premise runs one unit on that carrier | Determined by division |
-| 3 — `activity_default` | Neither | The activity-default mix, carried as an assumption |
+| 3 — `activity_default` | Neither | The activity-default mix of **§3.3.1**, carried as an assumption |
 
 Tiers are tried in order and exactly one resolves. Where several units share a carrier at
 tier 2, split by duty share and **record the split as an assumption** rather than presenting
@@ -1039,7 +1273,7 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-09-08*
+*Section last updated: 2026-09-15*
 
 **This section is authoritative.** Everything else serves it.
 
@@ -1082,6 +1316,7 @@ All continuous and non-negative. **The problem is a pure LP and must stay one.**
 | $m_{c,k,t}$ | Import of carrier $c$ at connection $k$ | PJ/yr |
 | $x_{c,k,t}$ | Export of carrier $c$ at connection $k$ | PJ/yr |
 | $w_{k,t}$ | Reinforcement purchased at connection $k$ | MW |
+| $d_{c,t}$ | **Disposal of carrier $c$** — heat rejected to atmosphere, CO₂ vented. Declared only where `carrier.may_dispose` (§3.4) | PJ/yr or Mt/yr |
 
 **Total activity is a defined expression, not a variable.**
 $z_{u,t} \equiv \sum_{q \in Q_u} z_{u,q,t} + z^{\circ}_{u,t}$, and it is what C2, C6, C7 and §7
@@ -1097,6 +1332,19 @@ label rules in §1.4 exist to prevent.
 
 **No binaries.** Minimum scale is handled by eligibility screening in A2 and by reporting,
 never by a fixed-charge binary. Any proposal to add one must be weighed against §9.
+
+**Disposal is a variable so that waste is a number.** Without it C8 has no sink: a carrier a
+unit produces and nothing consumes — a kiln's process CO₂ before capture exists, a dryer's
+reject heat before a heat pump is built — cannot balance, and V18 fails on a premise that is
+physically fine. Making it explicit rather than implicit means the quantity is reported: how
+much heat this site throws away, and how much CO₂ it vents, are output rows rather than
+residuals someone has to infer.
+
+**It is gated on `carrier_kind`, and the gate is the whole safety argument.** `intermediate`
+and `emission` carriers may be disposed of; `primary` and `product` may not. Disposal of a
+primary carrier would let the model import gas and dump it, and of a product would let it
+build a kiln and throw the clinker away. Neither is ever optimal, but neither should be
+expressible.
 
 ### 5.3 Parameters
 
@@ -1136,6 +1384,22 @@ $$Z^{\text{net}}_t = \sum_{k} \gamma_k\big(w_{k,t}\big)$$
 **$Z^{\text{exp}}$ enters with a negative sign, so the objective now has a genuinely
 negative term.** No implementation may assume cost components are non-negative. V6 already
 records this trap for emissions; it now applies to costs.
+
+**Carbon is charged on what is vented, not on what is burnt (D15).** Every emission is a
+carrier, so produced CO₂ must either be captured or disposed of, and the disposal variable is
+the emission event:
+
+$$Z^{\text{carbon}}_t = 10^{-3}\,\pi_t \Big( \underbrace{\sum_{c\,:\,\text{charged}} d_{c,t}}_{\text{vented}} \;-\; \underbrace{\sum_{c\,:\,\text{zero\_rated}}\;\sum_{u \in U^{\text{abate}}} \big|\iota_{u,c}\big|\, z_{u,t}}_{\text{biogenic captured}} \Big)$$
+
+with `charged` and `zero_rated` read from `carrier.carbon_charge` (§3.4). The first term is
+what leaves the stack; the second is the credit for biogenic carbon that did not, and it is
+the only negative emission the model can produce.
+
+**This is equivalent to charging fuel consumption less capture, and better behaved.** C8
+forces produced CO₂ to go somewhere, so venting cannot be avoided by not modelling it. What
+changes is that capture needs no term of its own — a train simply consumes the carrier and
+the charge falls — and that biomass zero-rating sits in the carrier set rather than in an
+accounting rule applied afterwards.
 
 **Carbon cost carries a $10^{-3}$ unit conversion.** Emission
 factors are kt/PJ and the carbon price is £/t.
@@ -1181,10 +1445,11 @@ premise:
 
 $$\sum_{u \in U} \Big( \mathbb{1}[c \neq c^{\star}_u]\, z_{u,t} \;+\; \mathbb{1}[c = c^{\star}_u]\, z^{\circ}_{u,t} \Big)\,\iota_{u,c}
 \;+\; \sum_{c'' :\, g(c'') > g(c)} h_{c'' \to c,t} \;-\; \sum_{c' :\, g(c') < g(c)} h_{c \to c',t}
-\;+\; \sum_{k \in \mathcal{K}} \big(m_{c,k,t} - x_{c,k,t}\big) \;=\; 0 \qquad \forall c \in \mathcal{C},\, t$$
+\;+\; \sum_{k \in \mathcal{K}} \big(m_{c,k,t} - x_{c,k,t}\big) \;-\; d_{c,t} \;=\; 0 \qquad \forall c \in \mathcal{C},\, t$$
 
-with $m_{c,k,t} = x_{c,k,t} = 0$ where the premise has no connection carrying $c$, and both
-cascade sums empty where $c$ is not gradeable. Every carrier balances, including
+with $m_{c,k,t} = x_{c,k,t} = 0$ where the premise has no connection carrying $c$, both
+cascade sums empty where $c$ is not gradeable, and $d_{c,t} = 0$ where
+`carrier.may_dispose` is false. Every carrier balances, including
 electricity: that is what makes onsite generation, CHP and export expressible at all.
 
 **Three things the form settles.** A unit's inputs, co-products and reject heat scale with
@@ -1264,20 +1529,30 @@ emissions cap and for minimum viable scale.
 
 ## 7. Emissions accounting
 
-*Section last updated: 2026-09-07*
+*Section last updated: 2026-09-15*
 
 Emissions have two sources: combustion of a fuel carrier, and process chemistry tied to
-physical throughput. Both are attributed to units, and the attribution rule below is what
-keeps a carrier chain from being counted twice.
+physical throughput. Under D15 both are **carriers**, so this section is a readout of the
+balance rather than a calculation beside it:
+
+$$\text{direct emissions}_t \;=\; \sum_{c\,:\,\text{charged}} d_{c,t} \;-\; \sum_{c\,:\,\text{zero\_rated}}\;\sum_{u \in U^{\text{abate}}} \big|\iota_{u,c}\big|\, z_{u,t}$$
+
+the same expression the objective charges (§5.4), which is what stops the reported total and
+the costed total from ever drifting apart. The rules below say how the carriers are produced
+and who they are attributed to; none of them is a second calculation.
 
 | # | Rule |
 |---|---|
-| 7.1 | **Two sources.** Fuel CO₂ is charged to the unit that **consumes the fuel carrier**, never to the unit that consumes the heat that fuel made. Process CO₂ is charged to the chemistry unit against its mass denominator (D5) |
-| 7.2 | **Non-CO₂ gases** are tracked separately and **CCS never abates them** |
-| 7.3 | **Biomass zero-rating is applied before capture**, so a biomass unit with CCS reports net-negative emissions rather than zero |
+| 7.1 | **Two sources, both carriers (D15).** Fuel CO₂ is **produced by** the unit that burns the fuel, never by the unit that consumes the heat that fuel made; its coefficient is derived in §3.6. Process CO₂ is produced by the chemistry unit against its mass denominator (D5) and is declared |
+| 7.2 | **Non-CO₂ gases** are tracked separately, are **not** carriers, and **CCS never abates them** |
+| 7.3 | **Biomass zero-rating is applied before capture** — the split into `co2_fuel_fossil` and `co2_fuel_biogenic` happens at production (§3.6), so capture of a co-fired stream takes both pro rata and the biogenic share returns a **credit**. Net-negative, not zero |
 | 7.4 | **Direct versus indirect** is a property of the carrier — `carrier.is_indirect` (§3.4) — not a list held in code |
 | 7.5 | **Reporting categories** are derived over units. Categories may overlap, and a unit may appear in more than one |
 | 7.6 | **Reconciliation, at the base year.** Reported totals reconcile against `premise_measured_emissions` (§3.11) **at the base year** wherever a row exists there. Other years are a reported trend and never a calibration target. A premise with rows but none at the base year is reported `emissions_year_unmatched` and not reconciled (§3.1.1) |
+| 7.7 | **Allocation is reporting, and never a second set of books (D14).** A per-carrier intensity — gCO₂e per kWh of CHP electricity — is derived by allocating a generating unit's fuel emissions across its outputs, and the allocation must sum back to that unit's fuel emissions exactly |
+| 7.8 | **An indirect carrier is charged on the import, not on consumption.** Where a premise generates some of its own supply, $\sum_u$ consumption exceeds $\sum_k m_{c,k,t}$, and the grid factor applies only to the second |
+| 7.9 | **Disposal is where an emission carrier leaves the site.** $d_{c,t}$ on an `emission` carrier is the venting event and is reported as such (§5.2) |
+| 7.10 | **Non-energy use is not combustion.** A `NEUOTH` feedstock carrier is consumed as material and carries no combustion emissions (§3.4) |
 
 **The rule that stops double-counting.** Emissions attach to the unit that consumes a
 **primary** carrier — gas, coal, biomass, grid electricity. A unit consuming an
@@ -1290,6 +1565,47 @@ trick.** A kiln's reject heat carries no fuel, so a heat pump drawing on it inhe
 emissions; the fuel that made it stays charged to the kiln. This is precisely why heat
 recovery abates, and it works only because the rule above is stated rather than assumed.
 V22 asserts all three legs.
+
+### 7.7 Per-carrier intensities, and why they are a separate layer (D14)
+
+A site that runs a CHP wants to know what its electricity is worth in gCO₂e per kWh, and so
+does anyone reading its output rows. The number is legitimate; taking it from a second
+emission factor is not.
+
+**The trap.** Attach a factor to CHP electricity while also charging the CHP's gas under §7.1
+and the same molecules are counted twice — once at the burner, once at the socket — and the
+site total inflates by whatever the CHP generated. The same error appears in reverse if a
+premise's self-generated electricity is charged the grid factor, which is what §7.8 closes.
+
+**The structure.** Two layers, and they must not be added together:
+
+| Layer | What it is | Sums to |
+|---|---|---|
+| **Accounted** (§7.1) | Emissions charged to the unit burning the fuel. One place, no allocation | The site's reported total. **This is the model's answer** |
+| **Allocated** (§7.7) | Each generating unit's accounted emissions divided across the carriers it produces | Exactly its accounted emissions, by construction |
+
+The allocation is therefore a view over the first layer and changes no total. It is what the
+objective does **not** read: $Z^{\text{carbon}}_t$ is computed on the accounted layer, so a
+change of allocation convention can never change a pathway.
+
+**The convention.** Three are defensible and the choice must be stated in the scenario rather
+than assumed:
+
+| Method | Rule | Note |
+|---|---|---|
+| **Avoided boiler** (CHPQA) | Heat takes the fuel a reference boiler would have burned; the remainder goes to power | The UK convention, and the easiest to defend to a reviewer. **Recommended default** |
+| Energy | Pro rata by output energy | Simplest; flatters power, because a kWh of electricity and a kWh of 90 °C water are not equivalent |
+| Exergy | Pro rata by output exergy | The most physically honest and the least familiar |
+
+**A premise's electricity then carries a weighted intensity**, not a single one: grid import at
+the scenario's grid series, CHP output at its allocated figure, PV at zero. Which source
+serves which load is not determined at annual resolution, so the convention is **pro rata by
+generation share** — anything finer is precision the model does not have, and stating it is
+what stops two implementations disagreeing.
+
+**Rule (the two layers are reported side by side and never summed).** An output row carrying
+an allocated intensity also carries the accounted figure it was derived from. V22 asserts the
+accounted total; a further leg asserts that every unit's allocation sums back to it.
 
 ---
 
@@ -1355,7 +1671,9 @@ configuration is defined here as precisely as §5.4 defines the pre-D11 cost bas
 **All five conditions hold together:**
 
 1. **One carrier per unit.** Every unit's carrier mix is pinned to a single primary carrier,
-   so a unit's identity determines its fuel.
+   so a unit's identity determines its fuel. **Automatic under D13** (§3.5, §3.6): this
+   stopped being a configuration step and became how the library is keyed, so the condition
+   now holds in every run rather than only in the comparison one.
 2. **No storage.** No unit with `is_storage`, and no hybrid unit.
 3. **No onsite generation.** No unit in $U^{\text{gen}}$.
 4. **C10, C11 and C12 inactive.** No grade cascade, no connection limit, no siting cap.
@@ -1420,6 +1738,10 @@ pass mark.
 | **V24** | load + premise | yes | One measured row per key at the base year or a recorded substitution; no duplicate `(key, year)`; the optional entities of §3.1.1's table report rather than reject |
 | **V25** | premise | yes | **History is never read.** Adding history rows at years both **before and after** the base year leaves every §5.3 parameter, every constraint coefficient, the solution, **and every reported reconciliation (§7.6)** identical to 1e-9 |
 | **V26** | premise | yes | Validity intervals per `(premise_id, process_id)` are disjoint, at least one row is valid at the base year, and A2, A4 and §3.15's cohort read touch no row outside it |
+| **V27** | load | yes | **Unit fuel identity (D13).** At most one input row per unit carries `is_fuel_input`; two is rejected `unit_multi_fuel`. Auxiliary primary inputs — a capture train's electricity — are permitted and are not counted. Units flagged `draws_ambient` are exempt from V2's energy-closure leg and from nothing else |
+| **V28** | load + premise | yes | **Process energy.** §3.3.1's `energy_share` sums to 1.00 ± 0.015 for every `(activity, set, vector)`; renormalisation over absent processes preserves that; a premise's sub-metered quantities never exceed its meter for a vector without being reported `submeter_exceeds_meter`; and `energy_evidence_tier` resolves per `(process, carrier)` |
+| **V29** | premise | yes | **Disposal and allocation.** $d_{c,t}$ exists only where `carrier.may_dispose`, and every non-zero disposal appears as an output row. Every generating unit's §7.7 allocated emissions sum to its §7.1 accounted emissions to 1e-6, and no reported total adds the two layers together |
+| **V30** | premise | yes | **Emissions close through the balance (D15).** Every emission carrier balances to 1e-6 like any other; §7's reported direct total equals the objective's $Z^{\text{carbon}}_t \div \pi_t \times 10^{3}$ exactly; a fuel's derived fossil and biogenic coefficients sum to its factor; and capture of a `zero_rated` carrier returns a **negative** contribution rather than zero |
 
 **V20's five legs.**
 
@@ -1475,6 +1797,14 @@ write. Its scope is the whole built problem, not just A3 and A4: the archetype m
   off-vintage carrier substitution ───▶ V24               premise
   history isolation from the model ───▶ V25               premise
   process validity intervals       ───▶ V26               premise
+  one primary carrier per unit     ───▶ V27               load
+  ambient heat exempt from closure ───▶ V27 + V2          load
+  process energy shares (§3.3.1)   ───▶ V28               load+premise
+  sub-metered process energy       ───▶ V28               premise
+  carrier disposal (§5.2)          ───▶ V29               premise
+  emissions allocation (§7.7)      ───▶ V29               premise
+  fuel CO2 as a carrier (D15)      ───▶ V30 + V18          premise
+  biogenic split before capture    ───▶ V30 + V5           premise
   §5.6 peak selects the base year  ───▶ (none, §5.6 unwritten)
   §1.4 label ranges match the spec ───▶ (none, checked by hand)
 ```
@@ -1500,6 +1830,10 @@ Widening a range is a manual step in the same commit as the label.
 | 8 | ε unset on a flexible-load hybrid, so `electrolyser_battery` is strictly dominated by a bare electrolyser and never built | V20 (a) | Load assertion, and ε is non-nullable on flexible-load hybrids (§3.17) |
 | 9 | Two years of the same carrier are averaged, or the later one silently wins, so the back-solve runs on a snapshot that never existed. Or a carrier metered on a different vintage is read as absent, and the site's baseline emissions fall | V24 + V25 | Load and premise assertions, plus §3.1.1's substitution ladder |
 | 10 | A premise that changed process route mid-history is back-solved as a blend of both routes | V26 | Premise assertion; A2 and A4 read only base-year-valid rows (§3.10) |
+| 11 | A carrier a unit produces and nothing consumes cannot balance, so a physically fine premise is infeasible — vented process CO₂ before capture exists, reject heat before a heat pump is built | V18 + V29 | $d_{c,t}$ (§5.2), gated on `carrier_kind`, and reported as a quantity rather than absorbed |
+| 12 | A shared multi-fuel unit carries one capex, one lifetime and one eligibility row for fuels that differ in all three, and `max_share` cannot cap one fuel without capping every fuel | V27 | Load assertion; D13 keys the unit per fuel (§3.5) |
+| 13 | A CHP's electricity is given its own emission factor on top of its fuel being charged, and the site total inflates by whatever it generated | V29 | §7.7's two layers; the objective reads only the accounted one |
+| 14 | A premise generating its own electricity is charged the grid factor on power that never came off the grid | V29 | §7.8 — an indirect carrier is charged on $m_{c,k,t}$, not on consumption |
 
 ---
 
@@ -1521,18 +1855,16 @@ Widening a range is a manual step in the same commit as the label.
 
 ## 13. Worked examples
 
-*Section last updated: 2026-09-02*
+*Section last updated: 2026-09-15*
 
-**Not yet written.** Two examples are planned and both are needed.
+Two examples, both written, each a document of its own because each is long enough to be one
+and because both are published as test fixtures. They share a thirteen-section structure so
+that the same step can be read side by side in either.
 
-- **A cement works** — one chemistry node at the top grade, a mass denominator (D5), tier-1
-  vintage, stranding and a CCS capture unit. It exercises the parity case: everything the
-  model must not get wrong.
-- **A food and drink site** — `IFDLTH`, `IFDSTM`, `IFDDRY`, `IFDREF` and `IFDMOT`. It
-  exercises the mechanism: eight fuel-variant rows collapsing to three units, a 120 °C duty
-  with boiler, CHP, heat pump and electric resistance competing under C10, a reject-heat leg
-  feeding a heat pump, CHP producing heat **and** electricity into the carrier balance, and
-  PV, a battery and a connection limit.
+| Example | What it exercises |
+|---|---|
+| [A cement works](2026-08-28-carb3-site-energy-system-worked-example-cement.md) | **The parity case.** One chemistry node at the top grade, a mass denominator (D5), two products, tier-1 vintage with a 2004 cohort, the stranding charge, a CCS train as an abatement unit inheriting its host's remaining life, a footprint-proxy area against C12, C11 breached by the capture train's auxiliary load, §7.6 reconciling to 1.96%, and §10.2's carrier-equivalent configuration, which is what V1b compares |
+| [A food and drink site](2026-08-28-carb3-site-energy-system-worked-example-food-drink.md) | **The mechanism case.** `IFDLTH`, `IFDSTM`, `IFDDRY`, `IFDREF` and `IFDMOT`: the cross-sector collapse — 84 low-temperature-heat rows across eleven sectors to eight units, of which this dairy reaches seven — a 120 °C duty with boiler, CHP, heat pump and electric resistance competing under C10, a heat pump refused at the 200 °C drying duty, a reject-heat leg from the dryer feeding a heat pump, an existing CHP made visible by §3.16 and producing heat **and** electricity into the carrier balance, PV bounded by C12 while the CHP is not, and surplus electricity exported below the import price |
 
 **Cement alone is not sufficient**, and the reason is structural rather than a matter of
 taste: cement carries exactly two process codes, `ICMCLK` and `ICM`. There is no `LTH`, no
@@ -1540,3 +1872,17 @@ taste: cement carries exactly two process codes, `ICMCLK` and `ICM`. There is no
 than by device, no low-grade duty exists to receive reject heat, and CHP appears only fused
 inside bundled capture rows. A worked example on a cement works would demonstrate everything
 except the mechanism this model exists for.
+
+**Neither example is sufficient alone, and the pair is deliberate.** Between them they cover
+both denominators of D5, both branches of §3.1.1's base-year rule (a base-year row, and a
+substitution from the nearest year), both branches of §7.6 (a reconciliation that runs, and
+one reported as `emissions_year_unmatched`), all three tiers of §4.1's carrier-mix ladder, and
+both areas of evidence for C12 (a measured survey and a floorspace proxy). The food and drink
+example is milestone M4's exit gate; the cement one is M2's.
+
+**Both documents carry an open-points table**, and five entries are shared between them:
+§3.3's treatment of `activity_process_energy_profile.csv` as a parity target rather than the
+input that sizes a premise's processes; the absence of any per-premise tier over it; C8's lack
+of a disposal route for a carrier nothing consumes; §7's attribution once electricity is
+generated on site; and the service carrier a `MOT` or `REF` duty needs. They are recorded
+there rather than closed there, and T23 owns the last three.

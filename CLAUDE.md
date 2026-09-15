@@ -38,7 +38,7 @@ COMIT-parity baseline specification".
 | `2026-08-28-…-overview.md` | Entry point: what the system is, why, `PD1`–`PD2`, boundaries |
 | `2026-08-28-…-architecture.md` | The design and its reasoning; the foundations it reuses |
 | `2026-08-28-…-data-migration.md` | The reference-data work list, 23 items in five groups |
-| `2026-08-28-…-delivery.md` | Files, 18 tasks, lanes, scope boundary, verification |
+| `2026-08-28-…-delivery.md` | Files, 23 tasks spanning T1–T24 (T11 and T12 combined), lanes, scope boundary, verification |
 | `archive/2026-08-19-…-implementation.md` | **The COMIT-parity baseline. Frozen.** Says what the R run's tables mean; §10.2's configuration is defined against it. Do not restructure it |
 | `archive/2026-08-19-…-vision.md` | The rationale behind `D1`–`D11`. The decisions themselves now live in the live spec §1.6, so nothing depends on this |
 | `archive/2026-08-19-…-worked-example.md` | One cement premise end to end, against the baseline |
@@ -96,9 +96,9 @@ knows the gloss.
 > `build_interface_docs.py:137`, and `interfaces.enabled` is `false` for
 > `site-energy-system` while §8 is unwritten, so it never runs for the live spec at all;
 > `build_spec_flow_diagram.py` never calls it. Even where it does run it checks family
-> *presence*, never range values. **Widening `D1`–`D11` or `V1`–`V23` in §1.4 is a manual
+> *presence*, never range values. **Widening `D1`–`D15` or `V1`–`V30` in §1.4 is a manual
 > step, in the same commit as the label.** Verified 2026-09-07 while adding D12 and
-> V24–V26. The `diagrams.domains` partition check described below *is* real; do not
+> V24–V26, and again 2026-09-15 while adding D13–D15 and V27–V30. The `diagrams.domains` partition check described below *is* real; do not
 > confuse the two.
 
 Python here is stdlib-only by necessity: **`pandas` is not installed.** Write validators
@@ -111,9 +111,9 @@ things:
 
 | Family | Means | Defined in |
 |---|---|---|
-| `D1`–`D11` | Design decisions | live spec §1.6 (the archived vision doc §6 carries the rationale) |
+| `D1`–`D15` | Design decisions | live spec §1.6 (the archived vision doc §6 carries the rationale for `D1`–`D11`) |
 | `C1`–`C12` | Constraints | live spec §5.5 |
-| `V1`–`V23` | Validation tests | live spec §10.3 |
+| `V1`–`V30` | Validation tests | live spec §10.3 |
 | `A1`–`A9` | Algorithms | live spec §4 |
 | `S0`–`S9` | Pipeline stages | live spec §2.1 |
 | `R1`–`R3` | Profile rules | archived baseline §3.3.3 |
@@ -123,7 +123,8 @@ things:
 **This repo has been bitten by collisions three times.** Pipeline stages were once numbered
 `C` alongside the constraints and had to be renamed `S`. The archived vision doc still uses
 `λ` for the stranding factor, which is `ξ` — `λ` is the §5.6 peak factor. And the programme
-decisions initially reused `D1`–`D3`, colliding with `D1`–`D11` in documents citing both.
+decisions initially reused `D1`–`D3`, colliding with the design decisions in documents
+citing both.
 
 **Never cite a label bare.** `C1`, `A7`, `V1b`, `T23`, `D11` mean nothing to a reader who
 has not memorised the tables, and that includes Alexandre reading a chat reply, a PR body
