@@ -65,8 +65,8 @@ manual check where the delivery document says the check is not automatable.
 | ID | Feature | MoSCoW | Why here | Spec anchor | Depends on | Verified by |
 |---|---|---|---|---|---|---|
 | MF-01 | Taxonomy split: `technology_category` into carrier, unit type, abatement; resolve `Standard_FF` and `Dry kiln`; derive the 12 service families and 14 chemistry nodes | Must | Every later table keys on it | migration A1–A3, A5; architecture "Unit spine" | T8 | `make data-check`; lineage table with one disposition per source row (MF-03) |
-| MF-02 | `carrier` table: 18 fuel carriers plus the graded heat carriers with cascade rank | Must | C8 and C10 have nothing to balance or cascade without it | §3.4; migration A4 | MF-01 | V4 at load |
-| MF-03 | Unit collapse: 293 fuel-variant technologies into units plus carrier bindings; 57 non-fuel technologies preserved; `grade_in`/`grade_out` on every unit and heat duty; a **lineage table** giving every one of the 397 source rows exactly one disposition (collapsed into unit X with binding Y, preserved as unit Z, or dropped with reason) | Must | The unit set the LP chooses from, and the mapping V1b compares through | §3.5, §3.6; migration B1–B3 | MF-01, MF-02 | `make data-check`; lineage table sums to 397 with zero unassigned rows; declared unit and binding counts match; `grade_rank` non-null wherever gradeable; V19 |
+| MF-02 | `carrier` table: 18 fuel carriers, the graded heat carriers with cascade rank, the **service carriers** a `MOT` or `REF` duty needs, and the **three emission carriers** of D15 (`co2_process`, `co2_fuel_fossil`, `co2_fuel_biogenic`) with their `carbon_charge` and `may_dispose` flags | Must | C8 and C10 have nothing to balance or cascade without it, and without the emission carriers §7 has nothing to read | §3.4; migration A4 | MF-01 | V4 at load; V30 |
+| MF-03 | Unit collapse **across sectors, keyed per fuel (D13)**: 340 fuel-variant technologies and 57 non-fuel ones resolve to units keyed `(duty family or chemistry node) × primary carrier`, so the eleven sectors' gas boilers become one `boiler_lt_gas`; `grade_in`/`grade_out` on every unit and heat duty; a **lineage table** giving every one of the 397 source rows exactly one disposition (resolved to unit X, preserved as unit Z, or dropped with reason) | Must | The unit set the LP chooses from, and the mapping V1b compares through | §3.5, §3.6, §1.6 D13; migration B1–B3 | MF-01, MF-02 | `make data-check`; lineage table sums to 397 with zero unassigned rows; declared unit count matches; **exactly one `is_fuel_input` row per unit (V27)**; `grade_rank` non-null wherever gradeable; V19 |
 | MF-04 | Duty family and heat grade per process, with the process-level CaRB3 ↔ COMIT crosswalk | Must | `process → duty → eligible units` is the chain the model walks and only the first link exists ([16](16_input_data_readiness.md)) | §3.3; T17 | MF-01 | `duty_share` sums to 1.00 ± 0.015; every row resolves to the register; `make data-check` |
 | MF-05 | Option → unit join replacing the activity-level crosswalk | Must | Options and technologies do not join today | migration C2; T9 | MF-03 | 130 used options resolve; the 12 optionless processes stay 12 |
 | MF-06 | `unit_eligibility` with `min_duty` screening thresholds | Must | Replaces the MILP binary; where sector specificity lives | §3.5.1; migration C8 | MF-03, MF-04 | V11; V19; A2 screening report |
@@ -82,6 +82,8 @@ manual check where the delivery document says the check is not automatable.
 | MF-16 | Biomethane as an infrastructure carrier with regional availability and tariff | Could | Availability scenario refinement | §3.7; migration D3 | — | C9 report |
 | MF-17 | Option library hygiene: `displaces` normalisation, `route_change` flag, exclusivity groups | Could | Reporting quality, not solve correctness | migration C1, C3, C4 | MF-05 | `make data-check` |
 | MF-71 | Available area, Should tier: GIS building footprint per premise replacing the floorspace proxy | Should | Better data where it exists, on the D10 pattern | §3.1.3; migration D1 | MF-09 | Area evidence tier moves from `proxy` to `measured` on covered premises |
+| MF-76 | **`activity_process_energy_share` (§3.3.1)** promoted from `activity_process_energy_profile.csv` to a reference entity: 490 rows keyed `(activity, set, process, vector)`, shares summing to 1.00 ±0.015 down the process column per vector, with the **17 register processes that carry no row** closed | Must | Nothing else says how much of a premise's metered energy each process takes, so A2 cannot size a duty without it. Also §4.1 tier 3's source, which previously named no table | §3.3, §3.3.1; A2 | MF-01 | `make data-check`; every `(activity, set, vector)` sums to 1.00 ±0.015; every register process resolves; V28 |
+| MF-81 | **`premise_process_energy` (§3.10.1)**: sub-metered energy per premise per process per carrier, overriding the activity share, with each vector's residual renormalised over the unmetered processes | Should | The D10 ladder applied to process size. The activity share is the fallback for sites with no data, not the answer for sites that have it | §3.10.1; D10 | MF-76 | V28's premise leg; `submeter_exceeds_meter` reported, never a rejection |
 
 ### Specification closure
 
@@ -127,6 +129,8 @@ manual check where the delivery document says the check is not automatable.
 | MF-44 | Objective terms capex, opex, fuel, carbon, infrastructure, export; annuitised capex; carbon unit conversion | Must | §5.4 as stated, export present even where zero | §5.4 | MF-31 | V6 |
 | MF-45 | Price wedge and lexicographic tie-break | Must | Removes most degeneracy | §5.5, §9.3 | MF-10 | V21 |
 | MF-74 | Determinism made real: the tie-break encoded as a second-objective solve over the optimal face, or a bounded perturbation shown not to move the primary optimum; HiGHS version, presolve, thread count and options pinned in the package | Must | A price wedge plus a sort key does not by itself make two runs agree | §9.3 | MF-45 | V10 on two machines |
+| MF-77 | **Carrier disposal and carbon charged on venting (D15)**: $d_{c,t}$ declared where `carrier.may_dispose`, gated on `carrier_kind` so `intermediate` and `emission` may be disposed of and `primary` and `product` may not; the disposal term in C8; the objective's carbon term read off disposal less biogenic capture | Must | Without it a carrier a unit produces and nothing consumes cannot balance, and V18 fails on a physically fine premise — vented process CO₂ before capture exists, reject heat before a heat pump is built. It also makes waste a reported quantity | §5.2, §5.4, §5.5 C8; D15 | MF-31 | V29; V18 on a premise with uncaptured CO₂ and unrecovered reject heat |
+| MF-78 | **Derived fuel-CO₂ coefficients in A6 (D15)**: for every unit with an `is_fuel_input` row, generate `co2_fuel_fossil` and `co2_fuel_biogenic` coefficients from the carrier's emission factor and `biogenic_fraction`. Process CO₂ stays declared | Must | The factor is a scenario series and may vary by period, so a declared coefficient could not follow it. The fossil/biogenic split happens here, **before** capture, which is what makes bioenergy with capture net-negative rather than zero | §3.4, §3.6; D15 | MF-02, MF-77 | V30; V5's biomass leg on a co-fired premise |
 | MF-46 | C4 in full: cohort vintage tiers, stranding charge, early-retirement variable | Should | Decided (D11), structurally cheap once C4 has algebra | §3.15, §5.3, C4 | MF-18, MF-43 | V17 |
 | MF-47 | C11 connection capacity per connection, the §5.6 peak rebuild, the reinforcement variable and its cost term | Should | Reads a field the MVP only collects; the connection assignment it needs is in MF-18 | §5.5 C11; §5.6 once MF-18 writes it | MF-18 | V16 |
 | MF-48 | Hybrid units on `evidence_tier = default` coefficients | Should | Exercises the hybrid mechanism before Tier A exists | §3.17; PD2 | MF-11 | V20 (b), (c), (d) |
@@ -141,13 +145,15 @@ manual check where the delivery document says the check is not automatable.
 | MF-52 | §7 rules 7.1–7.5: fuel charged to the consuming unit, process CO₂ to the chemistry unit, non-CO₂ tracked separately, biomass zero-rated before capture, direct/indirect by carrier | Must | Attribution is what changes under carriers; needed by M2's V22 | §7 | MF-39 | V5; V22 (a), (b) |
 | MF-53 | Evidence tiers on every output row: process set, carrier mix, archetype, area, year | Must | D10's cost: "or the quality is invisible"; S8 has no rows without it | D10; §8 | MF-20 | V23 |
 | MF-54 | §7.6 reconciliation against measured emissions at the base year, reported | Should | Calibration report; the base-year check in MF-59 is the Must form | §3.11, §7.6 | MF-49 | `emissions_year_unmatched` reported |
+| MF-79 | **§7.8 — an indirect carrier is charged on the import, not on consumption** | Must | A correctness fix, not a reporting one. Where a premise generates its own electricity, unit consumption exceeds import and the grid factor gets applied to power that never came off the grid — 30% of the food and drink premise's load | §7.4, §7.8; D14 | MF-39, MF-52 | V29; the base-year reconciliation of MF-59 on a premise with a CHP |
+| MF-80 | **§7.7 allocation layer**: each generating unit's accounted emissions divided across the carriers it produces, on the avoided-boiler convention, giving a per-source intensity for CHP electricity; reported beside the accounted figure and never added to it | Should | Changes no total and reads no objective, so it cannot move a pathway — but without it a site's CHP electricity has no defensible intensity and the reader cannot see why a gas CHP dies as the grid decarbonises | §7.7; D14 | MF-52, MF-53 | V29's allocation leg, **reported as not-run until this lands** |
 
 ### Validation tooling
 
 | ID | Feature | MoSCoW | Why here | Spec anchor | Depends on | Verified by |
 |---|---|---|---|---|---|---|
-| MF-55 | Load-scope tests V2, V4, V11, V19, V21; V20 (a) runs once any archetype row exists and is reported as not-run until then | Must | Run once when reference data is read; a vacuous pass is reported as such | §10.1, §10.3 | MF-01–MF-10 | Themselves |
-| MF-56 | Premise-scope tests V5, V6, V12, V18, V22 (a) (b), V23 | Must | Run on every solve | §10.3 | MF-31, MF-52, MF-53 | Themselves |
+| MF-55 | Load-scope tests V2, V4, V11, V19, V21, **V27 (one `is_fuel_input` per unit), V28's load leg (energy shares sum to 1.00 per vector)**; V20 (a) runs once any archetype row exists and is reported as not-run until then | Must | Run once when reference data is read; a vacuous pass is reported as such | §10.1, §10.3 | MF-01–MF-10 | Themselves |
+| MF-56 | Premise-scope tests V5, V6, V12, V18, V22 (a) (b), V23, **V28's premise leg, V29 and V30**; V29's allocation leg is reported as not-run until MF-80 lands | Must | Run on every solve | §10.3 | MF-31, MF-52, MF-53 | Themselves |
 | MF-57 | One R run with coupling switched off; its tables frozen as parquet with a manifest carrying the workbook hash, the R package commit, the solver version and the switches used | Must | The comparison point. Not ground truth, not kept runnable | §1.1; [08 §1](08_python_redesign_approach.md); [17](17_mvp_what_it_does.md) "Parity, defined" | COMIT solving with its coupling constraint functions switched off | Tables and manifest committed; coupled-off run is bounded and optimal |
 | MF-58 | V1b comparison on the 1,026 sites through the MF-03 lineage table: objective per site within 0.5 percent, energy per carrier per period within 1 percent, binding set not compared; every site outside tolerance listed with a reason | Must | The MVP's first exit | §10.2, §10.3 | MF-57, MF-35, MF-03 | V1b report |
 | MF-59 | Oracle-free correctness set, all Must in M2: analytical fixtures (the linopy proof-of-concept's 1425 objective plus one with a carrier balance, a graded duty and an export); post-solve constraint-row satisfaction from the built matrix; metamorphic relations (cost scaling, carbon-price monotonicity, dominant unit built wherever eligible); base-year reconciliation of back-solved energy and emissions against the premise record | Must | What decides who is wrong when the MVP and the R run disagree ([07 §2, §4, §5](07_high_level_testing_strategy.md)) | §7.6; note 07 | MF-31 | Each check is its own test |
@@ -219,12 +225,15 @@ one attributable.
 ### M1 — Reference data foundation
 
 - **Entry:** M0 exit.
-- **Scope:** MF-01 to MF-10; MF-55 (load-scope tests).
+- **Scope:** MF-01 to MF-10; **MF-76** (the process-energy-share entity); MF-55 (load-scope tests).
 - **Exit gate:** `make data-check` green; the lineage table assigns all 397 source rows
-  exactly one disposition and its unit and binding counts match the declared ones; every
+  exactly one disposition and its unit count matches the declared one, with **exactly one
+  `is_fuel_input` row per unit (V27)**; **every `(activity, set, vector)` energy share sums to
+  1.00 ±0.015 and every register process resolves to a row (V28's load leg)**; every
   gradeable duty carries a `grade_rank`; the option join resolves all 130 used options and
   leaves exactly 12 optionless processes; every premise in the fixtures carries an area and
-  its tier; V4, V11, V19, V21 pass at load and V20 (a) is reported as not-run.
+  its tier; V4, V11, V19, V21, **V27 and V28's load leg** pass at load, and V20 (a) is
+  reported as not-run.
 - **Verification:** `make data-check`; the package's load-scope test target; the lineage table
   committed beside the collapsed unit file.
 
@@ -232,13 +241,16 @@ one attributable.
 
 - **Entry:** M1 exit.
 - **Scope:** MF-26 to MF-34 for a single premise; MF-38, MF-39, MF-40, MF-43, MF-44, MF-45,
-  MF-74; MF-52, MF-53; MF-56, MF-59, MF-72, MF-73; MF-67; MF-68.
+  MF-74; **MF-77 and MF-78** (carrier disposal and the derived fuel-CO₂ coefficients);
+  MF-52, MF-53, **MF-79**; MF-56, MF-59, MF-72, MF-73; MF-67; MF-68.
 - **Exit gate:** the cement fixture from MF-22 runs through S1–S8 in the carrier-equivalent
   configuration and its objective and per-carrier energy match the fixture's expected tables
   within the MF-58 tolerances; V2, V6, V12, V18, V22 (a) (b), V23 pass; every MF-59 check is
   green, including the post-solve constraint-row check and the analytical fixtures; every
-  MF-72 and MF-73 test passes; V10 passes on two machines; G1 is measured and recorded with
-  its settings.
+  MF-72 and MF-73 test passes; **V29 and V30 pass — every emission carrier balances, what is
+  not captured appears as a disposal quantity, and §7's reported direct total equals the
+  objective's carbon term exactly**; V10 passes on two machines; G1 is measured and recorded
+  with its settings.
 - **Verification:** `make check`; the premise command-line entry point on the cement fixture;
   the fixtures' expected values in the test files.
 
@@ -260,16 +272,33 @@ one attributable.
 
 - **Entry:** M3 exit.
 - **Scope:** MF-08, MF-09, MF-13, MF-23, MF-41, MF-42.
-- **Exit gate:** on the food and drink fixture, eight fuel-variant rows collapse to three
-  units; a 120 °C duty has boiler, CHP, heat pump and electric resistance competing under C10
-  and the heat pump is absent from the drying duty's candidate set; the premise's existing
-  CHP from the default installed-unit table appears in the baseline with its electricity
-  co-product; the CHP produces heat and electricity into the balance and surplus electricity
-  exports below the import price; PV is bounded by the floorspace-proxy area and the CHP is
-  not; V19, V21, V22 (a) (b), V23 pass; every output row carries its evidence tiers.
+- **Exit gate**, on the food and drink fixture:
+  - **The collapse is cross-sector**: the **84** low-temperature-heat technology rows spread
+    across **eleven** sectors resolve to **eight** units, of which this dairy reaches seven.
+  - A 120 °C duty has boiler, CHP, heat pump and electric resistance competing under C10, and
+    both low-grade heat pumps are absent from the 200 °C drying duty's candidate set.
+  - The premise's existing CHP, asserted by the default installed-unit table, appears in the
+    baseline with its electricity co-product — and the meter, which nets it, is **not** read
+    as site consumption.
+  - The CHP produces heat **and** electricity into the carrier balance, and surplus
+    electricity exports below the import price.
+  - PV is bounded by the premise's available area and the CHP is not.
+  - Every emission carrier balances, and what is not captured appears as a **disposal**
+    quantity rather than an assumption (D15).
+  - V19, V21, V22 (a) (b), V23, **V29 and V30** pass; every output row carries its evidence
+    tiers.
 - **Verification:** the premise entry point on the T16 fixture; the fixture's expected
   tables against the solver's; the release-scope target. The reject-heat leg of T16 is
   **not** asserted here; it belongs to MF-12 in M6.
+
+> **Why the collapse line reads as it does.** It asserted *"eight fuel-variant rows collapse to
+> three units"* until D13 made fuel part of a unit's identity. Within one sector there is now
+> almost nothing to collapse — the dairy's eight low-temperature-heat rows become **seven**
+> units, because five combustion boilers that were one unit with five carrier bindings are five
+> units. The collapse was always mostly cross-sector and is larger there: 84 rows to eight
+> units is a factor of ten, against the three-to-one the within-sector reading gave. The
+> [food and drink worked example](../specs/2026-08-28-carb3-site-energy-system-worked-example-food-drink.md)
+> §3.3 walks both counts.
 
 ### M5 — Sample stock run
 
@@ -292,7 +321,7 @@ one attributable.
 
 - **Entry:** M5 exit. Items are independent of each other and can land in any order.
 - **Scope:** MF-11, MF-12, MF-14, MF-24, MF-46, MF-47, MF-48, MF-49, MF-54, MF-61, MF-62,
-  MF-71.
+  MF-71, **MF-80** (the §7.7 allocation layer) and **MF-81** (sub-metered process energy).
 - **Exit gate per item:** its named test passes and `make check` stays green.
 - **Decision taken at the end of M6:** measure G4 on a handful of archetypes and hybrid
   pairings. If the Tier A build fits the budget, MF-15, MF-36, MF-50 and MF-63 move from Could
@@ -343,12 +372,19 @@ as outside voice. Recorded so the reasoning is not lost.
 
 Recorded so they are fixed at source rather than copied forward.
 
-- The overview and CLAUDE.md say the design decisions are `D1`–`D11`; the implementation
-  specification §1.4 and §1.6 and the notes index say `D1`–`D12`. D12 is real and load-bearing.
-- CLAUDE.md says the delivery document has 18 tasks; the notes index says twenty-three; the
-  file has 23 checkbox entries spanning T1–T24 with T11 and T12 combined.
-- CLAUDE.md's label table says `V1`–`V23`; the specification declares `V1`–`V26`.
-- The overview cites `E2` as an example of the data-migration numbering; Group E has one item.
+- ~~The overview and CLAUDE.md say `D1`–`D11` against the specification's `D1`–`D12`.~~
+  **Resolved 2026-09-15**, and the range has since widened again: the specification declares
+  `D1`–`D15`, adding D13 (one primary carrier per unit), D14 (emissions attach once, at the
+  fuel) and D15 (every emission is a carrier). CLAUDE.md and the overview both match.
+- ~~CLAUDE.md says the delivery document has 18 tasks; the notes index says twenty-three.~~
+  **Resolved 2026-09-15** — CLAUDE.md now says 23, spanning T1–T24 with T11 and T12 combined,
+  which is what the file holds.
+- ~~CLAUDE.md's label table says `V1`–`V23` against the specification's `V1`–`V26`.~~
+  **Resolved 2026-09-15.** The specification now declares `V1`–`V30`, adding V27 (unit fuel
+  identity), V28 (process energy shares), V29 (disposal and allocation) and V30 (emissions
+  close through the balance). CLAUDE.md matches.
+- ~~The overview cites `E2` as an example of the data-migration numbering; Group E has one item.~~
+  **Resolved 2026-09-15** — the overview now cites `E1`.
 - The delivery document's task list runs T1–T10, T16–T19, T11–T15, T20–T24 with no headings at
   the jumps.
 - **Specification defects surfaced by the review**, to be closed by T23 (MF-18): activity has

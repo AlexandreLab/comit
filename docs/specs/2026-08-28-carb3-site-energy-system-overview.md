@@ -73,12 +73,12 @@ throughout.
 | Family | Means | Defined in |
 |---|---|---|
 | **PD1–PD2** | Programme decisions — the scope calls above | the table above |
-| **D1–D11** | Design decisions — per-site solves, exogenous infrastructure, plant vintage, evidence tiers | [implementation spec §1.6](2026-08-28-carb3-site-energy-system-implementation.md) |
+| **D1–D15** | Design decisions — per-site solves, exogenous infrastructure, plant vintage, evidence tiers, one fuel per unit, and emissions as carriers | [implementation spec §1.6](2026-08-28-carb3-site-energy-system-implementation.md) |
 
 So `D2` always means *per-site independent solves*, never this document's temporal-depth
 decision, which is `PD1`. Group letters in the
 [data migration](2026-08-28-carb3-site-energy-system-data-migration.md) document (`A1`,
-`D3`, `E2`) are a third, document-local numbering and are always written bold at the start
+`D3`, `E1`) are a third, document-local numbering and are always written bold at the start
 of a bullet.
 
 The implementation spec carries the same kind of note at its §1.4. Label collisions have

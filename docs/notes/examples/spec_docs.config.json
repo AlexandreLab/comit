@@ -170,14 +170,16 @@
               "activity_process_register",
               "premise_process_detail",
               "premise_process_vintage",
-              "process_load_shape"
+              "process_load_shape",
+              "premise_process_energy"
             ]
           },
           {
             "name": "Duties",
             "entities": [
               "activity_process_duty_profile",
-              "process_duty"
+              "process_duty",
+              "activity_process_energy_share"
             ]
           },
           {
