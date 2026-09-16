@@ -87,7 +87,7 @@ for review, not a settled answer — note 20 lists the places it bites.
 
 | Table | The gap | Where it is explained |
 |---|---|---|
-| `process_load_shape.csv` | `duty_factor` and `peak_to_mean` blank on all 371 rows: no published load profile survived the no-invention rule. The classification is the deliverable | `build/DONE_loadshape.md` |
+| `process_load_shape.csv` | `duty_factor` and `peak_to_mean` blank on all 371 rows: no published load profile survived the no-invention rule. The classification is the deliverable; §3.13 now makes both optional and §5.6 defaults each to 1.00 (mean load over operating hours, the floor of the peak), flagged as an assumption not data | `build/DONE_loadshape.md`, note 20 item 2 |
 | `unit.csv` | 15 units uncosted (thermal stores, digester, solar thermal, most hybrids); `min_viable_scale` blank throughout; 24 units now on published UK costs, 92 on COMIT reuse, 21 proxy | `build/DONE_units.md` §4 and §7 |
 | `unit_input_output.csv` | Capture trains other than `ccs_amine` have no coefficients; storage units cannot be expressed under the `(unit_id, carrier_id)` key | `build/DONE_units.md` G2, G8 |
 | `unit_eligibility.csv` | `min_duty` on 15 rows and `earliest_year` on 9, all from the worked examples; 1,851 of 2,612 rows are `proxy` | `build/DONE_eligibility.md` §4 |
