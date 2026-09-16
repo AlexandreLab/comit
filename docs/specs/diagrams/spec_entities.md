@@ -182,7 +182,7 @@ One row per table, in the order §3 defines them.
 | Units | `unit` | §3.5 | — | `unit_name`, `unit_class`, `spine`, `duty_family`, `capex`, `fixed_opex`, `lifetime`, `availability_factor`, `capacity_to_activity_factor`, `area_per_capacity`, `emissions_released`, `min_viable_scale`, `is_hybrid`, `draws_ambient`, `provenance`, `confidence` |
 |  | `unit_eligibility` | §3.5.1 | — | `min_duty`, `max_share`, `earliest_year`, `provenance` |
 |  | `unit_bill_of_materials` | §3.5.2 | — | `capacity_share`, `capex_share`, `component_lifetime`, `replacements_in_life` |
-|  | `unit_input_output` | §3.6 | — | `coefficient`, `is_primary_output`, `is_reject`, `is_fuel_input` |
+|  | `unit_input_output` | §3.6 | — | `coefficient` |
 |  | `activity_default_unit` | §3.16 | — | `default_share`, `sizing_basis`, `evidence_tier`, `provenance`, `confidence` |
 |  | `archetype_coefficient` | §3.17 | — | `psi`, `beta`, `chi`, `epsilon`, `evidence_tier`, `sizing_ratio` |
 | Measured profiles and emissions | `premise_operating_profile` | §3.12 | schedule and load shape | `operating_pattern`, `operating_hours_per_year`, `operating_days_per_week`, `shutdown_weeks`, `peak_electricity`, `peak_gas`, `load_factor_electricity`, `load_factor_gas`, `within_shift_peak_factor`, `profile_basis`, `provenance`, `confidence` |
@@ -378,10 +378,8 @@ erDiagram
     unit_input_output {
     string unit_id PK,FK "required"
     string carrier_id PK,FK "required"
+    enum role PK "required"
     real coefficient "required"
-    boolean is_primary_output "required"
-    boolean is_reject "required"
-    boolean is_fuel_input "required"
     }
     infrastructure_scenario {
     string scenario_id PK "required"

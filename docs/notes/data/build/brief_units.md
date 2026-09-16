@@ -1,5 +1,9 @@
 # Lane `units` — the unit library: `unit`, `unit_input_output`, `unit_bill_of_materials` (T9 core, T8 collapse)
 
+> **Dated record.** Written against the schema of September 2026, before §3.6's `role`
+> enum replaced the three booleans and widened the key. See the banner in
+> [`00_CONVENTIONS.md`](00_CONVENTIONS.md); the live gate is `make check`.
+
 Read `docs/notes/data/build/00_CONVENTIONS.md`, then spec **§3.5, §3.5.2, §3.6**, §1.6
 decisions D5, D6, D13, D15, and both worked examples' §1.11 tables **in full** — their unit
 rows are the seed and must be reproduced verbatim (IDs, classes, families, fuels).

@@ -19,7 +19,7 @@
 
 ## 1. Scope, inputs, conventions, and how to read this
 
-*Section last updated: 2026-09-15*
+*Section last updated: 2026-09-16*
 
 ### 1.1 What this document is
 
@@ -77,7 +77,7 @@ Label families in this document, and where each is defined:
 | `C1`–`C12` | Constraints | §5.5 |
 | `A1`–`A9` | Algorithms | §4 |
 | `S0`–`S9` | Pipeline stages | §2.1 |
-| `V1`–`V30` | Validation tests | §10 |
+| `V1`–`V31` | Validation tests | §10 |
 | `G1`–`G4` | Scale gates | §9 |
 | `D1`–`D15` | Design decisions | §1.6 |
 | `PD1`–`PD2` | Programme decisions | the [overview](2026-08-28-carb3-site-energy-system-overview.md) |
@@ -764,27 +764,58 @@ V20 (c) checks that against.
 
 ### 3.6 `unit_input_output`
 
-Coefficients per unit per carrier, per unit of the unit's output. This entity is what makes
-the carrier balance (C8) computable, and its **sign convention is load-bearing**: consumed
-negative, produced positive.
+Coefficients per unit per carrier per role, per unit of the unit's output. This entity is
+what makes the carrier balance (C8) computable, and its **sign convention is load-bearing**:
+consumed negative, produced positive.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `unit_id` | string | — | yes | PK part → `unit` | — |
 | `carrier_id` | string | — | yes | PK part → `carrier` | — |
-| `coefficient` | real | per output unit | yes | — | **Consumed negative, produced positive** |
-| `is_primary_output` | boolean | — | yes | — | Exactly one true per unit |
-| `is_reject` | boolean | — | yes | — | True marks recovered heat leaving the unit |
-| `is_fuel_input` | boolean | — | yes | — | **D13.** True on the one input row that is the unit's fuel. At most one true per unit; auxiliary inputs, primary ones included, are false |
+| `role` | enum{fuel_input, aux_input, emission_input, primary_output, coproduct, reject, emission} | — | yes | PK part | What the row *is*. Fixes the sign, and is what every rule below is phrased on (V31) |
+| `coefficient` | real | per output unit | yes | — | **Consumed negative, produced positive**, agreeing with `role` (V31) |
+
+**The seven roles.** Three consume and four produce, and nothing else is a row:
+
+| Role | Sign | Means |
+|---|---|---|
+| `fuel_input` | − | **D13.** The one input row that is the unit's fuel. At most one per unit |
+| `aux_input` | − | Any other consumed carrier: a capture train's electricity, a heat pump's source heat, a store's charge leg |
+| `emission_input` | − | An emission carrier the unit consumes — a capture train taking its host's CO₂, a top-gas-recycling furnace taking back its own |
+| `primary_output` | + | The carrier the unit exists to make. **Exactly one per unit** |
+| `coproduct` | + | Another produced carrier that is not reject heat: `chp_gas_turbine`'s electricity |
+| `reject` | + | Recovered heat leaving the unit |
+| `emission` | + | An emission carrier the unit produces. Process CO₂ declared, fuel CO₂ derived (D15) |
 
 **Sign convention, restated because §7 depends on it.** Consumed carriers are negative,
-produced carriers positive. Process-emission carriers are produced, hence positive.
+produced carriers positive. Process-emission carriers are produced, hence positive. The role
+and the sign must agree on every row, which is V31; a role is not a second opinion about the
+sign, it says *which* input or output the row is.
 
-**Rule (exactly one fuel input) — D13.** At most one input row carries
-`is_fuel_input = true`, and that carrier is the unit's fuel. `boiler_gas` names gas;
-`boiler_hydrogen` is a different unit. This is what makes a unit's fuel unambiguous, and what
-§4.1's back-solve, §7.1's attribution and §10.2's first condition all assume. Two rows flagged
-`is_fuel_input` is rejected at load with reason `unit_multi_fuel`.
+**Rule (a carrier appears once per role, not once per unit).** The key is the triple
+`(unit_id, carrier_id, role)`, so one unit may consume and produce the same carrier. Two real
+families need this and neither could be written down when the key was the pair:
+
+| Case | The two rows |
+|---|---|
+| **Storage** | A battery charges and discharges on `electricity`; a hot-water store on the same heat band. `aux_input` for the charge leg, `primary_output` for the discharge leg, and the round-trip loss is the difference between them |
+| **A capture train with a fired reboiler** | `ccs_amine` takes its host's `co2_fuel_fossil` at −0.35257 as `emission_input` and makes its own from the reboiler at +0.10659 as `emission` |
+
+Netting the two legs into one coefficient is **not** an alternative. It makes the unit load and
+destroys the number: a train that recirculates its flue gas and one that does not become the
+same row, and §7's arithmetic reads the reboiler's contribution separately. A store's
+round-trip efficiency disappears entirely.
+
+A store's charge leg is `aux_input` and not `fuel_input`, so D15 derives no emission rows
+against it. That is correct rather than convenient: `electricity` is an indirect carrier and
+§7.8 charges an indirect carrier on the import, not on consumption, so the round-trip loss is
+already paid for where it is imported.
+
+**Rule (exactly one fuel input) — D13.** At most one row carries `role = fuel_input`, and
+that carrier is the unit's fuel. `boiler_gas` names gas; `boiler_hydrogen` is a different
+unit. This is what makes a unit's fuel unambiguous, and what §4.1's back-solve, §7.1's
+attribution and §10.2's first condition all assume. Two `fuel_input` rows is rejected at load
+with reason `unit_multi_fuel`.
 
 **The rule is about the *fuel*, not about primary carriers, and not about input rows.** A unit
 may draw any number of auxiliary inputs, primary ones included:
@@ -794,7 +825,7 @@ may draw any number of auxiliary inputs, primary ones included:
 | `boiler_gas` | gas | gas | — |
 | `heat_pump_reject` | electricity, source heat below its `grade_in_max` | electricity | source heat (`intermediate`) |
 | `heat_pump_air` | electricity, ambient | electricity | ambient, which is no carrier at all (`draws_ambient`) |
-| `ccs_amine` | reboiler gas, auxiliary electricity, the host's CO₂ | gas | **electricity, which is `primary`**, and the CO₂ carriers |
+| `ccs_amine` | reboiler gas, auxiliary electricity, the host's CO₂ | gas | **electricity, which is `primary`** (`aux_input`), and the CO₂ carriers (`emission_input`) |
 | `chp_gas_turbine` | gas → heat **and** electricity | gas | — |
 
 A capture train is the case that settles it: its reboiler burns gas and its pumps and fans
@@ -802,9 +833,8 @@ draw grid electricity, and both are `primary` carriers. What must be unique is t
 that gives the unit its identity, not the count of primary inputs — an earlier statement of
 this rule said one primary carrier and was wrong about every capture train in the library.
 
-A unit producing several carriers is unconstrained: one row carries `is_primary_output`, the
-rest are co-products (`chp_gas_turbine`'s electricity), reject heat (`is_reject`) or emissions
-(D15).
+A unit producing several carriers is unconstrained: one row is `primary_output`, the rest are
+`coproduct` (`chp_gas_turbine`'s electricity), `reject` heat or `emission` (D15).
 
 **Rule (fuel CO₂ rows are derived, process CO₂ rows are declared) — D15.** A unit's emission
 coefficients are not all authored the same way, because the two have different natures:
@@ -814,13 +844,16 @@ coefficients are not all authored the same way, because the two have different n
 | `co2_process` | **Declared** in this table | Stoichiometry. 525 kt CO₂ per Mt of clinker is chemistry, not a scenario assumption |
 | `co2_fuel_fossil`, `co2_fuel_biogenic` | **Derived by A6 at build time** | The emission factor is a `scenario_parameters` series and may vary by period, so a declared coefficient could not follow it |
 
-For every unit with an `is_fuel_input` row on carrier $c$ with factor $f_{c,t}$ and biogenic
-fraction $b_c$, A6 generates
+For every unit with a `fuel_input` row on carrier $c$ with factor $f_{c,t}$ and biogenic
+fraction $b_c$, A6 generates, both at `role = emission`,
 
-$$\iota_{u,\text{co2\_fuel\_fossil}} = |\iota_{u,c}|\, f_{c,t}\,(1 - b_c), \qquad \iota_{u,\text{co2\_fuel\_biogenic}} = |\iota_{u,c}|\, f_{c,t}\, b_c$$
+$$\iota_{u,\text{co2\_fuel\_fossil},\,\text{emission}} = \big|\iota_{u,c,\,\text{fuel\_input}}\big|\, f_{c,t}\,(1 - b_c), \qquad \iota_{u,\text{co2\_fuel\_biogenic},\,\text{emission}} = \big|\iota_{u,c,\,\text{fuel\_input}}\big|\, f_{c,t}\, b_c$$
 
-both positive, because emissions are produced. **The biogenic split happens here, before
-anything is captured**, which is what §7.3 requires and what makes capture of a co-fired
+both positive, because emissions are produced. **A derived `emission` row never collides with
+a declared `emission_input` row on the same carrier**, which is what the role in the key buys:
+a fired capture train's own reboiler CO₂ and the host CO₂ it takes in are two rows, and before
+the role was in the key the second overwrote the first. **The biogenic split happens here,
+before anything is captured**, which is what §7.3 requires and what makes capture of a co-fired
 stream net-negative rather than merely zero. Authoring these rows by hand instead would freeze
 one scenario's factors into the unit library.
 
@@ -833,7 +866,7 @@ balances, so it is outside §3.4 by construction. Such a unit's coefficients the
 **not** sum to zero, and V2's round-trip must skip the energy-closure leg for any unit flagged
 `draws_ambient`. Without the exemption every air-source heat pump fails at load.
 
-**`is_reject` is what makes waste heat work.** A kiln's reject heat is a *positive*
+**`role = reject` is what makes waste heat work.** A kiln's reject heat is a *positive*
 coefficient on a low-grade heat carrier. Without these rows every unit rejects zero, the
 cascade has nothing to cascade, and the 28 `efficiency_heat_recovery` options in the library
 stay unmodellable. A reject carrier is `intermediate`, so it carries no emissions — its fuel
@@ -1381,7 +1414,7 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-09-15*
+*Section last updated: 2026-09-16*
 
 **This section is authoritative.** Everything else serves it.
 
@@ -1397,7 +1430,7 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 | $Q_u$ | Duties $u$ is eligible for, $Q_u = \{q : u \in U_q\}$. The transpose of $U_q$ |
 | $U^{\text{gen}}$ | Generator units, those with `unit_class` = generator |
 | $U^{\text{area}}$ | Area-bound units, those with `area_per_capacity` set (§3.5). Not $U^{\text{gen}}$: PV is in both; a CHP, an engine or a boiler house takes no area and is outside $U^{\text{area}}$ whatever its class |
-| $c^{\star}_u$ | Primary output carrier of $u$ — the one `is_primary_output` row of §3.6 |
+| $c^{\star}_u$ | Primary output carrier of $u$ — the one `role = primary_output` row of §3.6 |
 | $U^0$ | **Incumbent** units, those with existing capacity |
 | $\mathcal{C}$ | Carriers |
 | $\mathcal{C}^{\text{prim}}$ | Primary carriers. Emissions attach here and nowhere else |
@@ -1459,7 +1492,8 @@ expressible.
 | Symbol | From | Meaning |
 |---|---|---|
 | $D_{q,t}$ | `process_duty` | Duty quantity |
-| $\iota_{u,c}$ | `unit_input_output.coefficient` | Signed coefficient of $u$ for $c$ |
+| $\iota_{u,c,\theta}$ | `unit_input_output.coefficient` | Signed coefficient of $u$ for $c$ in role $\theta$. A unit may hold one row per role on a carrier, which is how a store and a fired capture train are written (§3.6) |
+| $\theta \in \Theta_{u,c}$ | `unit_input_output.role` | A §3.6 role, and the set of roles $u$ holds on $c$. **$\theta$, not $\rho$** — $\rho_u$ two rows below is the fraction not captured, and the two are unrelated |
 | $\kappa_u, \phi_u, L_u$ | `unit` | Capex, fixed opex, lifetime |
 | $\alpha_u, \gamma_u, \rho_u$ | `unit` | Availability, capacity→activity, fraction not captured |
 | $\psi_u, \beta_u, \chi_u, \varepsilon_u$ | `archetype_coefficient` | Tier A coefficients |
@@ -1497,7 +1531,7 @@ records this trap for emissions; it now applies to costs.
 carrier, so produced CO₂ must either be captured or disposed of, and the disposal variable is
 the emission event:
 
-$$Z^{\text{carbon}}_t = 10^{-3}\,\pi_t \Big( \underbrace{\sum_{c\,:\,\text{charged}} d_{c,t}}_{\text{vented}} \;-\; \underbrace{\sum_{c\,:\,\text{zero\_rated}}\;\sum_{u \in U^{\text{abate}}} \big|\iota_{u,c}\big|\, z_{u,t}}_{\text{biogenic captured}} \Big)$$
+$$Z^{\text{carbon}}_t = 10^{-3}\,\pi_t \Big( \underbrace{\sum_{c\,:\,\text{charged}} d_{c,t}}_{\text{vented}} \;-\; \underbrace{\sum_{c\,:\,\text{zero\_rated}}\;\sum_{u \in U^{\text{abate}}} \big|\iota_{u,c,\,\text{emission\_input}}\big|\, z_{u,t}}_{\text{biogenic captured}} \Big)$$
 
 with `charged` and `zero_rated` read from `carrier.carbon_charge` (§3.4). The first term is
 what leaves the stack; the second is the credit for biogenic carbon that did not, and it is
@@ -1551,7 +1585,7 @@ $\bar z_{u,t} = a_{u,t}\gamma_u\alpha_u$, not against installed capacity.
 **C8 — Carrier balance. This is the core change.** For every carrier at every period, at the
 premise:
 
-$$\sum_{u \in U} \Big( \mathbb{1}[c \neq c^{\star}_u]\, z_{u,t} \;+\; \mathbb{1}[c = c^{\star}_u]\, z^{\circ}_{u,t} \Big)\,\iota_{u,c}
+$$\sum_{u \in U} \;\sum_{\theta \,\in\, \Theta_{u,c}} \Big( \mathbb{1}[\theta \neq \texttt{primary\_output}]\, z_{u,t} \;+\; \mathbb{1}[\theta = \texttt{primary\_output}]\, z^{\circ}_{u,t} \Big)\,\iota_{u,c,\theta}
 \;+\; \sum_{c'' :\, g(c'') > g(c)} h_{c'' \to c,t} \;-\; \sum_{c' :\, g(c') < g(c)} h_{c \to c',t}
 \;+\; \sum_{k \in \mathcal{K}} \big(m_{c,k,t} - x_{c,k,t}\big) \;-\; d_{c,t} \;=\; 0 \qquad \forall c \in \mathcal{C},\, t$$
 
@@ -1564,7 +1598,11 @@ electricity: that is what makes onsite generation, CHP and export expressible at
 its *total* activity — a CHP makes electricity whether its heat went to a duty or to the
 steam node. Its primary output enters the balance only for the activity not dispatched to a
 duty, so the same PJ of heat cannot both satisfy a duty in C1 and feed another unit here;
-$\iota_{u,c^{\star}_u}$ is 1 per output unit by §3.6's definition. And $h$ is the cascade
+$\iota_{u,c^{\star}_u,\,\text{primary\_output}}$ is 1 per output unit by §3.6's definition.
+**The inner sum runs over roles, and the indicator is on the role rather than on the
+carrier** — $\Theta_{u,c}$ is the set of roles $u$ holds on $c$, usually one. Keying the
+sum on $c = c^{\star}_u$ instead would misread every store, whose charge row and discharge row
+sit on the same carrier and scale with different activity variables. And $h$ is the cascade
 the architecture calls a one-way ordering in the balance: heat may flow down a grade at no
 cost, never up, which is what lets a kiln's reject heat at one band be drawn by a heat pump
 whose input row sits at a lower one.
@@ -1621,7 +1659,8 @@ and land are one estate however many supplies serve it.
 per period, asserted at load (V21). Equal prices make building and importing exactly
 cost-equivalent, and the solver is then free to report either — two identical runs would
 disagree on onsite capacity. The deterministic tie-break is lexicographic over
-$(\texttt{unit\_id}, \texttt{carrier\_id})$.
+$(\texttt{unit\_id}, \texttt{carrier\_id}, \texttt{role})$ — the §3.6 key, which the pair
+stopped being once a store and a fired capture train could hold two rows on one carrier.
 
 ---
 
@@ -1637,13 +1676,13 @@ emissions cap and for minimum viable scale.
 
 ## 7. Emissions accounting
 
-*Section last updated: 2026-09-15*
+*Section last updated: 2026-09-16*
 
 Emissions have two sources: combustion of a fuel carrier, and process chemistry tied to
 physical throughput. Under D15 both are **carriers**, so this section is a readout of the
 balance rather than a calculation beside it:
 
-$$\text{direct emissions}_t \;=\; \sum_{c\,:\,\text{charged}} d_{c,t} \;-\; \sum_{c\,:\,\text{zero\_rated}}\;\sum_{u \in U^{\text{abate}}} \big|\iota_{u,c}\big|\, z_{u,t}$$
+$$\text{direct emissions}_t \;=\; \sum_{c\,:\,\text{charged}} d_{c,t} \;-\; \sum_{c\,:\,\text{zero\_rated}}\;\sum_{u \in U^{\text{abate}}} \big|\iota_{u,c,\,\text{emission\_input}}\big|\, z_{u,t}$$
 
 the same expression the objective charges (§5.4), which is what stops the reported total and
 the costed total from ever drifting apart. The rules below say how the carriers are produced
@@ -1756,7 +1795,10 @@ data build.
 ### 9.3 Determinism
 
 Two identical runs must produce identical results. The tie-break key is lexicographic over
-$(\texttt{unit\_id}, \texttt{carrier\_id})$, and the price-wedge rule of §5.5 removes the
+$(\texttt{unit\_id}, \texttt{carrier\_id}, \texttt{role})$ — §3.6's own key, and it takes the
+role because the pair alone does not order a store's two rows on one carrier, nor a fired
+capture train's. An unordered pair of rows is an unordered pair of columns in the LP, which is
+exactly what V10 forbids. The price-wedge rule of §5.5 removes the
 degeneracy that would otherwise let the solver report either of two equal-cost answers
 (V21).
 
@@ -1764,7 +1806,7 @@ degeneracy that would otherwise let the solver report either of two equal-cost a
 
 ## 10. Validation
 
-*Section last updated: 2026-09-08*
+*Section last updated: 2026-09-16*
 
 ### 10.1 Scopes
 
@@ -1782,7 +1824,7 @@ configuration is defined here as precisely as §5.4 defines the pre-D11 cost bas
    so a unit's identity determines its fuel. **Automatic under D13** (§3.5, §3.6): this
    stopped being a configuration step and became how the library is keyed, so the condition
    now holds in every run rather than only in the comparison one.
-2. **No storage.** No unit with `is_storage`, and no hybrid unit.
+2. **No storage.** No unit with `unit_class = storage`, and no hybrid unit.
 3. **No onsite generation.** No unit in $U^{\text{gen}}$.
 4. **C10, C11 and C12 inactive.** No grade cascade, no connection limit, no siting cap.
 5. **No export.** $x_{c,k,t} = 0$ for every carrier, connection and period, so the objective
@@ -1846,10 +1888,11 @@ pass mark.
 | **V24** | load + premise | yes | One measured row per key at the base year or a recorded substitution; no duplicate `(key, year)`; the optional entities of §3.1.1's table report rather than reject |
 | **V25** | premise | yes | **History is never read.** Adding history rows at years both **before and after** the base year leaves every §5.3 parameter, every constraint coefficient, the solution, **and every reported reconciliation (§7.6)** identical to 1e-9 |
 | **V26** | premise | yes | Validity intervals per `(premise_id, process_id)` are disjoint, at least one row is valid at the base year, and A2, A4 and §3.15's cohort read touch no row outside it |
-| **V27** | load | yes | **Unit fuel identity (D13).** At most one input row per unit carries `is_fuel_input`; two is rejected `unit_multi_fuel`. Auxiliary primary inputs — a capture train's electricity — are permitted and are not counted. Units flagged `draws_ambient` are exempt from V2's energy-closure leg and from nothing else |
+| **V27** | load | yes | **Unit fuel identity (D13).** At most one row per unit carries `role = fuel_input`; two is rejected `unit_multi_fuel`. Auxiliary primary inputs — a capture train's electricity — are permitted and are not counted. Units flagged `draws_ambient` are exempt from V2's energy-closure leg and from nothing else |
 | **V28** | load + premise | yes | **Process energy.** §3.3.1's `energy_share` sums to 1.00 ± 0.015 for every `(activity, set, vector)`; renormalisation over absent processes preserves that; a premise's sub-metered quantities never exceed its meter for a vector without being reported `submeter_exceeds_meter`; and `energy_evidence_tier` resolves per `(process, carrier)` |
 | **V29** | premise | yes | **Disposal and allocation.** $d_{c,t}$ exists only where `carrier.may_dispose`, and every non-zero disposal appears as an output row. Every generating unit's §7.7 allocated emissions sum to its §7.1 accounted emissions to 1e-6, and no reported total adds the two layers together |
 | **V30** | premise | yes | **Emissions close through the balance (D15).** Every emission carrier balances to 1e-6 like any other; §7's reported direct total equals the objective's $Z^{\text{carbon}}_t \div \pi_t \times 10^{3}$ exactly; a fuel's derived fossil and biogenic coefficients sum to its factor; and capture of a `zero_rated` carrier returns a **negative** contribution rather than zero |
+| **V31** | load | yes | **Role and sign agree (§3.6).** `(unit_id, carrier_id, role)` is unique; `fuel_input`, `aux_input` and `emission_input` carry a negative coefficient and `primary_output`, `coproduct`, `reject` and `emission` a positive one; `emission` and `emission_input` appear on an emission carrier and no other role does. Exactly one `primary_output` per unit with coefficients |
 
 **V20's five legs.**
 
@@ -1858,8 +1901,11 @@ pass mark.
   and capacity.
 - (c) Every hybrid unit's lifetime is levelised over its components — no component lifetime
   exceeds the unit's $L$ without a replacement charge inside the annuity.
-- (d) Every unit with `is_storage` and no hybrid parent has β set and ψ, χ, ε unset, since
-  standalone storage may only earn through C11.
+- (d) Every unit with `unit_class = storage` that is **named by no hybrid's bill of
+  materials** has β set and ψ, χ, ε unset, since standalone storage may only earn through
+  C11. "No hybrid parent" is a lookup against §3.5.2, not a flag: `battery_2h` is a
+  component of `pv_battery_2h` and is exempt, `thermal_store_steam` is a component of
+  nothing and is not.
 - (e) Across the hybrid units sharing a pairing, each coefficient is **concave in the sizing
   ratio**. This is what makes LP interpolation between them err on the safe side, and it
   needs at least three ratios per pairing to be meaningful.
@@ -1907,6 +1953,7 @@ write. Its scope is the whole built problem, not just A3 and A4: the archetype m
   process validity intervals       ───▶ V26               premise
   one primary carrier per unit     ───▶ V27               load
   ambient heat exempt from closure ───▶ V27 + V2          load
+  storage and fired capture trains ───▶ V31               load
   process energy shares (§3.3.1)   ───▶ V28               load+premise
   sub-metered process energy       ───▶ V28               premise
   carrier disposal (§5.2)          ───▶ V29               premise

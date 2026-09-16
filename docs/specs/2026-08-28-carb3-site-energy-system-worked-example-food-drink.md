@@ -386,50 +386,50 @@ a new unit be added without editing a mapping table.
 
 **Coefficients (§3.6), consumed negative, produced positive.** Per unit of the unit's output.
 
-| `unit_id` | `carrier_id` | `coefficient` | `is_primary_output` | `is_fuel_input` | Authored |
-|---|---|---|---|---|---|
-| `boiler_lt_gas` | `heat_100_150` | **+1.00000** | **yes** | no | declared |
-| `boiler_lt_gas` | `natural_gas` | −1.13636 | no | **yes** | declared *(η 0.88)* |
-| `boiler_lt_gas` | `co2_fuel_fossil` | **+63.74980** | no | no | **derived** — 1.13636 × 56.1 |
-| `boiler_lt_hydrogen` | `heat_100_150` | +1.00000 | **yes** | no | declared |
-| `boiler_lt_hydrogen` | `hydrogen` | −1.11111 | no | **yes** | declared *(η 0.90)* |
-| `boiler_lt_hydrogen` | `co2_fuel_fossil` | **+0.00000** | no | no | **derived** — 1.11111 × 0.0 |
-| `resistance_heater_lt` | `heat_100_150` | +1.00000 | **yes** | no | declared |
-| `resistance_heater_lt` | `electricity` | −1.02041 | no | **yes** | declared *(η 0.98)* |
-| `heat_pump_lt_air` | `heat_60_100` | +1.00000 | **yes** | no | declared |
-| `heat_pump_lt_air` | `electricity` | −0.35710 | no | **yes** | declared *(COP 2.80)* |
-| `heat_pump_lt_reject` | `heat_60_100` | +1.00000 | **yes** | no | declared |
-| `heat_pump_lt_reject` | `electricity` | −0.31250 | no | **yes** | declared *(COP 3.20)* |
-| `heat_pump_lt_reject` | `heat_lt60` | **−0.68750** | no | no | declared — **auxiliary, `intermediate`** |
-| `heat_pump_ht` | `heat_100_150` | +1.00000 | **yes** | no | declared |
-| `heat_pump_ht` | `electricity` | −0.47620 | no | **yes** | declared *(COP 2.10)* |
-| `heat_pump_ht` | `heat_60_100` | **−0.52380** | no | no | declared — auxiliary |
-| `chp_gas_turbine` | `heat_100_150` | **+1.00000** | **yes** | no | declared |
-| `chp_gas_turbine` | `natural_gas` | −2.22220 | no | **yes** | declared |
-| `chp_gas_turbine` | `electricity` | **+0.77780** | no | no | declared — **co-product** |
-| `chp_gas_turbine` | `co2_fuel_fossil` | **+124.66542** | no | no | **derived** — 2.22220 × 56.1 |
-| `chp_hydrogen_ccgt` | `heat_100_150` | +1.00000 | **yes** | no | declared |
-| `chp_hydrogen_ccgt` | `hydrogen` | −2.30000 | no | **yes** | declared |
-| `chp_hydrogen_ccgt` | `electricity` | **+0.95000** | no | no | declared — co-product |
-| `dryer_direct_gas` | `heat_150_400` | **+1.00000** | **yes** | no | declared |
-| `dryer_direct_gas` | `natural_gas` | −1.17650 | no | **yes** | declared *(η 0.85)* |
-| `dryer_direct_gas` | `heat_lt60` | **+0.12000** | no | no | declared — **reject** (`is_reject`) |
-| `dryer_direct_gas` | `co2_fuel_fossil` | **+66.00165** | no | no | **derived** — 1.17650 × 56.1 |
-| `dryer_electric` | `heat_150_400` | +1.00000 | **yes** | no | declared |
-| `dryer_electric` | `electricity` | −1.05260 | no | **yes** | declared *(η 0.95)* |
-| `dryer_electric` | `heat_lt60` | **+0.08000** | no | no | declared — reject |
-| `chiller_electric` | `cooling` | **+1.00000** | **yes** | no | declared |
-| `chiller_electric` | `electricity` | −0.33330 | no | **yes** | declared *(COP 3.00)* |
-| `motor_elec` | `motive_power` | **+1.00000** | **yes** | no | declared |
-| `motor_elec` | `electricity` | −1.00000 | no | **yes** | declared |
-| `pv_rooftop` | `electricity` | **+1.00000** | **yes** | no | declared |
+| `unit_id` | `carrier_id` | `coefficient` | `role` | Authored |
+|---|---|---|---|---|
+| `boiler_lt_gas` | `heat_100_150` | **+1.00000** | `primary_output` | declared |
+| `boiler_lt_gas` | `natural_gas` | −1.13636 | `fuel_input` | declared *(η 0.88)* |
+| `boiler_lt_gas` | `co2_fuel_fossil` | **+63.74980** | `emission` | **derived** — 1.13636 × 56.1 |
+| `boiler_lt_hydrogen` | `heat_100_150` | +1.00000 | `primary_output` | declared |
+| `boiler_lt_hydrogen` | `hydrogen` | −1.11111 | `fuel_input` | declared *(η 0.90)* |
+| `boiler_lt_hydrogen` | `co2_fuel_fossil` | **+0.00000** | `emission` | **derived** — 1.11111 × 0.0 |
+| `resistance_heater_lt` | `heat_100_150` | +1.00000 | `primary_output` | declared |
+| `resistance_heater_lt` | `electricity` | −1.02041 | `fuel_input` | declared *(η 0.98)* |
+| `heat_pump_lt_air` | `heat_60_100` | +1.00000 | `primary_output` | declared |
+| `heat_pump_lt_air` | `electricity` | −0.35710 | `fuel_input` | declared *(COP 2.80)* |
+| `heat_pump_lt_reject` | `heat_60_100` | +1.00000 | `primary_output` | declared |
+| `heat_pump_lt_reject` | `electricity` | −0.31250 | `fuel_input` | declared *(COP 3.20)* |
+| `heat_pump_lt_reject` | `heat_lt60` | **−0.68750** | `aux_input` | declared — `intermediate` |
+| `heat_pump_ht` | `heat_100_150` | +1.00000 | `primary_output` | declared |
+| `heat_pump_ht` | `electricity` | −0.47620 | `fuel_input` | declared *(COP 2.10)* |
+| `heat_pump_ht` | `heat_60_100` | **−0.52380** | `aux_input` | declared |
+| `chp_gas_turbine` | `heat_100_150` | **+1.00000** | `primary_output` | declared |
+| `chp_gas_turbine` | `natural_gas` | −2.22220 | `fuel_input` | declared |
+| `chp_gas_turbine` | `electricity` | **+0.77780** | `coproduct` | declared |
+| `chp_gas_turbine` | `co2_fuel_fossil` | **+124.66542** | `emission` | **derived** — 2.22220 × 56.1 |
+| `chp_hydrogen_ccgt` | `heat_100_150` | +1.00000 | `primary_output` | declared |
+| `chp_hydrogen_ccgt` | `hydrogen` | −2.30000 | `fuel_input` | declared |
+| `chp_hydrogen_ccgt` | `electricity` | **+0.95000** | `coproduct` | declared |
+| `dryer_direct_gas` | `heat_150_400` | **+1.00000** | `primary_output` | declared |
+| `dryer_direct_gas` | `natural_gas` | −1.17650 | `fuel_input` | declared *(η 0.85)* |
+| `dryer_direct_gas` | `heat_lt60` | **+0.12000** | `reject` | declared |
+| `dryer_direct_gas` | `co2_fuel_fossil` | **+66.00165** | `emission` | **derived** — 1.17650 × 56.1 |
+| `dryer_electric` | `heat_150_400` | +1.00000 | `primary_output` | declared |
+| `dryer_electric` | `electricity` | −1.05260 | `fuel_input` | declared *(η 0.95)* |
+| `dryer_electric` | `heat_lt60` | **+0.08000** | `reject` | declared |
+| `chiller_electric` | `cooling` | **+1.00000** | `primary_output` | declared |
+| `chiller_electric` | `electricity` | −0.33330 | `fuel_input` | declared *(COP 3.00)* |
+| `motor_elec` | `motive_power` | **+1.00000** | `primary_output` | declared |
+| `motor_elec` | `electricity` | −1.00000 | `fuel_input` | declared |
+| `pv_rooftop` | `electricity` | **+1.00000** | `primary_output` | declared |
 
 Five things this table carries that a fuel-variant technology list could not:
 
 - **A CHP's electricity is a positive coefficient on a second carrier**, not a property of the
   technology row. That single sign is what makes onsite generation, self-consumption and
   export expressible at all, and it is why §3.16 carries **no** electricity co-product field.
-- **`is_reject` marks the dryer's recovered heat**, a *positive* coefficient on the lowest
+- **`role = reject` marks the dryer's recovered heat**, a *positive* coefficient on the lowest
   grade. Without these rows every unit rejects zero and the cascade has nothing to cascade. A
   reject carrier is `intermediate`, so it carries no emissions — its fuel was charged to the
   dryer.
@@ -439,10 +439,10 @@ Five things this table carries that a fuel-variant technology list could not:
   library, and the hydrogen rows show why that matters — they are zero **in this scenario**,
   on its low-carbon production assumption, and a different scenario changes them without
   touching a unit.
-- **`is_fuel_input` picks out one carrier where several are consumed.** `heat_pump_lt_reject`
-  draws electricity *and* reject heat, and `heat_pump_ht` electricity *and* rank-2 heat; in
-  both the electricity is the fuel and the heat is an auxiliary `intermediate`. V27 counts the
-  flag, not the inputs.
+- **`role = fuel_input` picks out one carrier where several are consumed.**
+  `heat_pump_lt_reject` draws electricity *and* reject heat, and `heat_pump_ht` electricity
+  *and* rank-2 heat; in both the electricity is the fuel and the heat is an `aux_input` on an
+  `intermediate` carrier. V27 counts the role, not the inputs.
 - **The COP is declared against the lift, not flat.** `heat_pump_lt_air` at 2.80,
   `heat_pump_lt_reject` at 3.20 and `heat_pump_ht` at 2.10 are three numbers for three jobs.
   Today `IFDSTMHP01` (steam) carries the same `33.333` coefficient as `IFDLTHELCHP01`
@@ -1622,10 +1622,11 @@ Tests are the specification's, at §10.3. Scope is `load`, `premise` or `release
 | **V21** | load | §6.3 — the export price is strictly below the import price at all six periods, and §8.6 is where it earns its keep |
 | **V22** | premise | **all three legs** — §10.1 |
 | **V23** | load + premise | §5.2 — one tier resolves, `activity_default`, tiers were tried in order, and it appears on every output row |
-| **V27** | load | §1.11 — each of the five boilers, three dryers and three heat pumps carries exactly one `is_fuel_input` row; the heat pumps' source-heat inputs are auxiliary `intermediate` carriers and are not counted |
+| **V27** | load | §1.11 — each of the five boilers, three dryers and three heat pumps carries exactly one `fuel_input` row; the heat pumps' source-heat inputs are auxiliary `intermediate` carriers and are not counted |
 | **V28** | load + premise | §3.2 — the published `Food Processing Centre` shares sum to 1.00 per vector, all six register processes carry rows, and no renormalisation is needed |
 | **V29** | premise | §8.1, §8.1.1 — disposal exists only on `heat_lt60` and the two CO₂ carriers; the CHP's §7.7 allocation sums to its 4.18815 kt accounted figure exactly; the two layers are never added |
 | **V30** | premise | §8.1, §10.1 — emission carriers balance; §7's total equals the objective's carbon term ÷ π × 10³; hydrogen's derived coefficients are zero **in this scenario** and change with it, which is why §3.6 derives them rather than declaring them |
+| **V31** | load | §1.11 — no unit at this site consumes a carrier it also makes, so every `(unit, carrier)` pair here holds one role; each row's sign agrees with it, each of the eleven units has exactly one `primary_output`, the dryers' recovered heat is `reject` and the heat pumps' source heat is `aux_input` |
 | **V24** | load + premise | §1.2, §1.7 — one row per key at the base year; no duplicate `(key, year)`; the optional entities **report** rather than reject, and §1.7 exercises that branch |
 | **V25** | premise | §1.2, §10.2 — the 2022 and 2023 rows move nothing by more than 1e-9, including §7.6's reported reconciliation |
 | **V26** | premise | §1.5 — six disjoint intervals, all valid at 2024, and `A2`, `A4` and §3.15's cohort read touch no row outside them |
@@ -1673,7 +1674,7 @@ per period within 1%.
 
 **Solver settings**, pinned in the package so `V10` (determinism) can hold across machines:
 HiGHS, version pinned in `pyproject.toml`, presolve on, **single-threaded**, the lexicographic
-tie-break of §9.3 over `(unit_id, carrier_id)` applied as a second-objective solve over the
+tie-break of §9.3 over `(unit_id, carrier_id, role)` applied as a second-objective solve over the
 optimal face. The tie-break matters at this premise: §8.3 puts the incumbent CHP and the gas
 boiler within £0.44m per PJ of each other at 2035, and §8.6 puts the hydrogen CHP and the
 standing heat pump within £1.27m per PJ at 2050. Without the price wedge of §6.3 and this

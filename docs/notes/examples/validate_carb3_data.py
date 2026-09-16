@@ -386,8 +386,8 @@ SPEC_COLUMNS = {
         "draws_ambient", "abates_unit_id", "provenance", "confidence", "provenance_ref",
     ],
     "unit_input_output.csv": [
-        "unit_id", "carrier_id", "coefficient", "is_primary_output", "is_reject",
-        "is_fuel_input", "provenance", "confidence", "provenance_ref",
+        "unit_id", "carrier_id", "coefficient", "role",
+        "provenance", "confidence", "provenance_ref",
     ],
     "unit_bill_of_materials.csv": [
         "unit_id", "component_id", "capacity_share", "capex_share", "component_lifetime",
@@ -454,12 +454,15 @@ SPEC_ENUMS = {
     ("infrastructure_scenario.csv", "carrier"): {"hydrogen", "co2_transport", "grid_headroom"},
     ("activity_default_unit.csv", "sizing_basis"): {"duty_annual", "duty_peak", "throughput"},
     ("activity_default_unit.csv", "evidence_tier"): {"sector_statistic", "derived", "assumed"},
+    ("unit_input_output.csv", "role"): {
+        "fuel_input", "aux_input", "emission_input",
+        "primary_output", "coproduct", "reject", "emission",
+    },
 }
 BOOL_COLUMNS = {
     ("carrier.csv", "is_gradeable"), ("carrier.csv", "is_indirect"),
     ("carrier.csv", "may_dispose"), ("unit.csv", "is_hybrid"), ("unit.csv", "draws_ambient"),
-    ("unit_input_output.csv", "is_primary_output"), ("unit_input_output.csv", "is_reject"),
-    ("unit_input_output.csv", "is_fuel_input"), ("process_load_shape.csv", "runs_when_idle"),
+    ("process_load_shape.csv", "runs_when_idle"),
     ("infrastructure_scenario.csv", "available"),
     ("decarbonisation_options_library.csv", "route_change"),
 }
@@ -608,14 +611,22 @@ def check_process_crosswalk(xw: list[dict], reg: list[dict]) -> Result:
     return r
 
 
+# §3.6's role enum, split the two ways the checks below need it: by flow direction, which
+# fixes the sign of the coefficient, and by whether the row belongs on an emission carrier.
+INPUT_ROLES = {"fuel_input", "aux_input", "emission_input"}
+EMISSION_ROLES = {"emission", "emission_input"}
+
+
 def check_units(unit: list[dict], io: list[dict], bom: list[dict], car: list[dict],
                 reg: list[dict]) -> Result:
     """§3.5/§3.6: unique ids, fuel carriers resolve, exactly one primary output per
-    unit with coefficients, at most one fuel input (D13), hybrids carry a bill of
-    materials whose shares sum to one, chemistry units name a register process."""
+    unit with coefficients, at most one fuel input (D13), role and sign agree (V31),
+    hybrids carry a bill of materials whose shares sum to one, chemistry units name a
+    register process."""
     r = Result("units: identity, coefficients, bill of materials")
     ids: set[str] = set()
     carriers = {c["carrier_id"] for c in car}
+    emission_carriers = {c["carrier_id"] for c in car if c["carrier_kind"] == "emission"}
     reg_procs = {x["process_id"] for x in reg}
     hybrids: set[str] = set()
     for i, row in enumerate(unit, start=2):
@@ -652,20 +663,40 @@ def check_units(unit: list[dict], io: list[dict], bom: list[dict], car: list[dic
     io_units: set[str] = set()
     io_keys: set[tuple] = set()
     for i, row in enumerate(io, start=2):
-        u, c = row["unit_id"], row["carrier_id"]
+        u, c, role = row["unit_id"], row["carrier_id"], row["role"]
         if u not in ids:
             r.fail(f"unit_input_output row {i}: unit {u!r} unknown")
         if c not in carriers:
             r.fail(f"unit_input_output row {i}: carrier {c!r} unknown")
-        if (u, c) in io_keys:
-            r.fail(f"unit_input_output row {i}: duplicate ({u}, {c})")
-        io_keys.add((u, c))
+        # §3.6 keys on the triple, which is what lets a store hold a charge row and a
+        # discharge row on one carrier, and a fired capture train hold host CO2 in and
+        # reboiler CO2 out.  (u, c) alone would reject both.
+        if (u, c, role) in io_keys:
+            r.fail(f"unit_input_output row {i}: duplicate ({u}, {c}, {role})")
+        io_keys.add((u, c, role))
         io_units.add(u)
-        if _f(row["coefficient"]) is None:
+        # §3.6 marks role required, and check_spec_shape's enum guard skips a blank cell,
+        # so a blank has to be rejected here or it passes every leg below by vacuity.
+        if not role:
+            r.fail(f"unit_input_output row {i}: role blank (V31: required)")
+        coefficient = _f(row["coefficient"])
+        if coefficient is None:
             r.fail(f"unit_input_output row {i}: coefficient blank")
-        if row["is_primary_output"] == "TRUE":
+        elif role in INPUT_ROLES and coefficient >= 0:
+            r.fail(f"unit_input_output row {i}: role {role} with coefficient {coefficient}"
+                   " (V31: inputs are negative)")
+        elif role not in INPUT_ROLES and coefficient <= 0:
+            r.fail(f"unit_input_output row {i}: role {role} with coefficient {coefficient}"
+                   " (V31: outputs are positive)")
+        if role in EMISSION_ROLES and c not in emission_carriers:
+            r.fail(f"unit_input_output row {i}: role {role} on {c!r}, "
+                   "which is not an emission carrier (V31)")
+        if role not in EMISSION_ROLES and c in emission_carriers:
+            r.fail(f"unit_input_output row {i}: emission carrier {c!r} carries role "
+                   f"{role} (V31: use emission or emission_input)")
+        if role == "primary_output":
             primary[u] += 1
-        if row["is_fuel_input"] == "TRUE":
+        if role == "fuel_input":
             fuel[u] += 1
     for u in sorted(io_units):
         if primary[u] != 1:
