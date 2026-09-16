@@ -59,7 +59,7 @@ how to read a cell:
 | `unit.csv` | `fuel_carrier_id` | D13 (a unit is family-or-node × fuel): the fuel is part of the identity, and a column is easier to key on than the `is_fuel_input` row of §3.6 |
 | `unit.csv`, `unit_input_output.csv`, `unit_bill_of_materials.csv`, `unit_eligibility.csv` | `provenance_ref` | The spec's `provenance` column is an enum (`comit_reuse` / `bref` / `proxy`); the citation needs its own column |
 | `unit_eligibility.csv` | `notes` | The reason for a `max_share` or `earliest_year` |
-| `process_load_shape.csv` | `carb3_activity` | `process_id` is unique only within an activity (`site_services` appears at all 55), so §3.13's key is one column short |
+| `process_load_shape.csv` | `carb3_activity` | `process_id` is unique only within an activity (`site_services` appears at all 55). §3.13 now keys on the pair, so this is no longer an extra column (note 20 item 3) |
 | `scenario_parameters.csv` | `unit`, `provenance`, `confidence` | The spec's `value` is unitless; a series without its unit is unusable |
 | `infrastructure_scenario.csv` | `provenance` | Citation |
 | `decarbonisation_options_library.csv` | `displaces_carrier_ids`, `route_change`, `exclusivity_group` | Data-migration items C1, C3, C4 |

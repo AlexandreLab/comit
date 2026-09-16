@@ -881,7 +881,7 @@ per-premise intelligence that exists (D10).
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part → `premise_record` | — |
-| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `process_id` | string | — | yes | PK part | → `activity_process_register`, on the pair `(premise_record.carb3_activity, process_id)` |
 | `period` | integer | — | yes | PK part | Period index, not a calendar year |
 | `carrier_id` | string | — | yes | → `carrier` | What the duty is *for* |
 | `quantity` | real | PJ/yr or Mt/yr | yes | — | ≥ 0. Unit follows `carrier.denominator_kind` |
@@ -898,7 +898,7 @@ normal case and means "use the register".
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
-| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `process_id` | string | — | yes | PK part | → `activity_process_register`, on the pair `(premise_record.carb3_activity, process_id)` |
 | `valid_from_year` | integer | year | yes | PK part | The year this process started at the premise. ≤ `premise_record.data_year`. A future year is rejected with reason `process_change_in_future`: a *planned* change is not an observation |
 | `valid_to_year` | integer | year | no | — | The year it stopped. Absent ⇒ still running. ≥ `valid_from_year` if present |
 | `connection_id` | string | — | no | → `premise_connection` | **Optional.** Which electricity connection serves this process (§3.1.3). Absent ⇒ the default. This is what decides where electrified load lands |
@@ -1077,14 +1077,22 @@ electric. What a unit operation *does* determines when it draws power, so the sh
 declared once per process and inherited by every unit serving it. Units
 override it only by exception (`unit.load_shape_override`, §3.5).
 
+**Key rule.** A `process_id` is unique only within an activity: §3.2 keys the register on
+`(carb3_activity, process_id)`, and generic names such as `site_services` or
+`compressed_air` recur across activities. A reference to a process is therefore always the
+pair. The same process name may legitimately carry different shapes at different
+activities — `dewatering_pumping` is `flat` where it follows the line and `standing` where
+it drains a site — so the shape is declared per pair, one row for every register row.
+
 This is the decomposition that makes the peak question tractable. Declaring shapes per
 unit would multiply the data build by the fuel variants — 82 of 94 COMIT processes
 differ only by fuel — for information that does not vary along that axis.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
-| `shape_id` | string | — | yes | PK | — |
-| `process_id` | string | — | yes | → `activity_process_register` | The process this describes |
+| `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
+| `process_id` | string | — | yes | PK part | → `activity_process_register`, on the pair with `carb3_activity` — see the key rule below |
+| `shape_id` | string | — | yes | — | Surrogate label, `<activity>__<process>`; carries no information the key does not |
 | `shape_class` | enum{flat, throughput_following, batch_cyclic, intermittent, standing, seasonal} | — | yes | — | See below |
 | `duty_factor` | real | fraction | no | — | ∈ (0, 1]. Share of operating hours in which the process draws power. Blank ⇒ **1.00, the process runs whenever the site runs** — see the default rule below |
 | `peak_to_mean` | real | ratio | no | — | ≥ 1. Peak ÷ mean demand across the hours it is running. Blank ⇒ **1.00, no within-shift peakiness** — see the default rule below |
@@ -1152,7 +1160,7 @@ Only the base year is read (D12).
 | `connection_id` | string | — | no | PK part → `premise_connection` | Half-hourly data arrives per MPAN, so a multi-connection site has one series per connection. Absent ⇒ the default |
 | `profile_year` | integer | year | yes | PK part | The year the series was drawn from. One representative week per season **per year**; the model reads the base year, per §3.1.1 |
 | `vector` | enum{electricity, gas} | — | yes | PK part | The metered vectors only |
-| `process_id` | string | — | no | PK part | Present only where sub-metered; absent ⇒ whole site |
+| `process_id` | string | — | no | PK part | → `activity_process_register`, on the pair `(premise_record.carb3_activity, process_id)`. Present only where sub-metered; absent ⇒ whole site |
 | `season` | enum{annual, winter, summer, shoulder} | — | yes | PK part | `annual` ⇒ a single representative week |
 | `interval_index` | integer | — | yes | PK part | 1–336, Monday 00:00 to Sunday 23:30 |
 | `fraction_of_peak` | real | fraction | yes | — | ∈ [0, 1]. Normalised so the maximum across the week is 1 |
@@ -1195,7 +1203,7 @@ the first has two.
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
-| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `process_id` | string | — | yes | PK part | → `activity_process_register`, on the pair `(premise_record.carb3_activity, process_id)` |
 | `cohort_id` | string | — | yes | PK part | Stable within the premise-process. `1`, `2`, … is sufficient |
 | `unit_id` | string | — | no | → `unit` | The unit this cohort is. Absent ⇒ whatever A4 resolves for the process |
 | `commissioned_year` | integer | year | yes | — | ≤ `premise_record.data_year`. Rejected with reason `vintage_in_future` otherwise |

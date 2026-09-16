@@ -2,13 +2,13 @@
 
 Generated from [the implementation specification](../2026-08-28-carb3-site-energy-system-implementation.md) by `docs/notes/examples/build_spec_flow_diagram.py`. Do not edit by hand — regenerate.
 
-The 24 entities of §3 and the 44 relationships between them, read straight out of the field tables: the Key column supplies the primary keys, and an arrow to a table name in either the Key or the Validation column supplies the foreign keys. Nothing here is maintained by hand, so a foreign key added to the spec appears on the next regeneration and one removed disappears.
+The 24 entities of §3 and the 45 relationships between them, read straight out of the field tables: the Key column supplies the primary keys, and an arrow to a table name in either the Key or the Validation column supplies the foreign keys. Nothing here is maintained by hand, so a foreign key added to the spec appears on the next regeneration and one removed disappears.
 
 ## How the tables relate
 
 Read `A ||--o{ B` as *one A, many B*. `|{` on the child end marks an **identifying** relationship — the foreign key is part of B's own primary key, so a B cannot exist without its A. `|o` on the parent end marks a foreign key the child may leave unset.
 
-A composite foreign key is drawn once, with its columns merged onto the label: 55 foreign-key columns become 44 arrows.
+A composite foreign key is drawn once, with its columns merged onto the label: 57 foreign-key columns become 45 arrows.
 
 ```mermaid
 erDiagram
@@ -46,9 +46,10 @@ erDiagram
     premise_record ||--|{ premise_measured_emissions : "premise_id"
     premise_record ||--|{ premise_operating_profile : "premise_id"
     premise_connection |o--|{ premise_operating_profile : "connection_id"
-    activity_process_register ||--o{ process_load_shape : "process_id"
+    activity_process_register ||--|{ process_load_shape : "carb3_activity, process_id"
     premise_record ||--|{ premise_weekly_profile : "premise_id"
     premise_connection |o--|{ premise_weekly_profile : "connection_id"
+    activity_process_register |o--|{ premise_weekly_profile : "process_id"
     premise_record ||--|{ premise_process_vintage : "premise_id"
     activity_process_register ||--|{ premise_process_vintage : "process_id"
     unit |o--o{ premise_process_vintage : "unit_id"
@@ -146,9 +147,10 @@ flowchart LR
     premise_measured_emissions -->|premise_id| premise_record
     premise_operating_profile -->|premise_id| premise_record
     premise_operating_profile -->|connection_id| premise_connection
-    process_load_shape -->|process_id| activity_process_register
+    process_load_shape -->|carb3_activity, process_id| activity_process_register
     premise_weekly_profile -->|premise_id| premise_record
     premise_weekly_profile -->|connection_id| premise_connection
+    premise_weekly_profile -->|process_id| activity_process_register
     premise_process_vintage -->|premise_id| premise_record
     premise_process_vintage -->|process_id| activity_process_register
     premise_process_vintage -->|unit_id| unit
@@ -171,7 +173,7 @@ One row per table, in the order §3 defines them.
 | Processes | `activity_process_register` | §3.2 | activity → processes | `set_name`, `is_default`, `process_name`, `is_optional`, `provenance` |
 |  | `premise_process_detail` | §3.10 | known site processes and capacity | `valid_to_year`, `known_capacity`, `provenance`, `confidence` |
 |  | `premise_process_vintage` | §3.15 | when the plant was installed (D11) | `commissioned_year`, `capacity_share`, `provenance`, `confidence` |
-|  | `process_load_shape` | §3.13 | how a process presents its demand | `shape_class`, `duty_factor`, `peak_to_mean`, `runs_when_idle`, `seasonality`, `provenance`, `confidence` |
+|  | `process_load_shape` | §3.13 | how a process presents its demand | `shape_id`, `shape_class`, `duty_factor`, `peak_to_mean`, `runs_when_idle`, `seasonality`, `provenance`, `confidence` |
 |  | `premise_process_energy` | §3.10.1 | sub-metered energy per process | `quantity`, `data_status`, `provenance`, `confidence` |
 | Duties | `activity_process_duty_profile` | §3.3 | — | `duty_share`, `share_low`, `share_high`, `evidence_tier`, `provenance`, `confidence` |
 |  | `process_duty` | §3.9 | — | `quantity`, `evidence_tier` |
@@ -230,9 +232,10 @@ erDiagram
     premise_record ||--|{ premise_measured_emissions : "premise_id"
     premise_record ||--|{ premise_operating_profile : "premise_id"
     premise_connection |o--|{ premise_operating_profile : "connection_id"
-    activity_process_register ||--o{ process_load_shape : "process_id"
+    activity_process_register ||--|{ process_load_shape : "carb3_activity, process_id"
     premise_record ||--|{ premise_weekly_profile : "premise_id"
     premise_connection |o--|{ premise_weekly_profile : "connection_id"
+    activity_process_register |o--|{ premise_weekly_profile : "process_id"
     premise_record ||--|{ premise_process_vintage : "premise_id"
     activity_process_register ||--|{ premise_process_vintage : "process_id"
     unit |o--o{ premise_process_vintage : "unit_id"
@@ -453,8 +456,9 @@ erDiagram
     enum confidence "required"
     }
     process_load_shape {
-    string shape_id PK "required"
-    string process_id FK "required"
+    string carb3_activity PK,FK "required"
+    string process_id PK,FK "required"
+    string shape_id "required"
     enum shape_class "required"
     real duty_factor "optional"
     real peak_to_mean "optional"
@@ -468,7 +472,7 @@ erDiagram
     string connection_id PK,FK "optional"
     integer profile_year PK "required"
     enum vector PK "required"
-    string process_id PK "optional"
+    string process_id PK,FK "optional"
     enum season PK "required"
     integer interval_index PK "required"
     real fraction_of_peak "required"

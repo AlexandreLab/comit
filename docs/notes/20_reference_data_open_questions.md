@@ -8,7 +8,7 @@ what has to change to answer them, so they can be worked through in one sitting.
 names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
-2026-09-15 and item 2 on 2026-09-16; each carries the decision inline, with the work items 1
+2026-09-15 and items 2 and 3 on 2026-09-16; each carries the decision inline, with the work items 1
 and 36 leave behind in items 1a and 1b. The rest are undecided.
 
 ## A. Questions that change the specification
@@ -166,6 +166,16 @@ These are the ones with a consequence outside the reference data.
 3. **§3.13's and §3.14's `process_id` foreign key is one column short.** `process_id` is unique
    only within an activity. The table carries `carb3_activity` as an extra key; the spec should
    say so. *`DONE_loadshape.md`, Q4.*
+
+   **Answered 2026-09-16, in the live spec.** The spec now says what the table and the
+   validator already do. §3.13 keys on `(carb3_activity, process_id)`, references the register
+   on the pair, and demotes `shape_id` to a surrogate; a key rule there records why the pair is
+   needed (`dewatering_pumping` is `flat` at one activity and `standing` at another). §3.14,
+   §3.9, §3.10 and §3.15, which had the same bare `process_id → activity_process_register`,
+   now resolve through the premise's own `carb3_activity`. No data or validator change. The
+   two options not taken: making `process_id` globally unique, which renames 141 register rows
+   and everything citing them; and one shape row per name, which `dewatering_pumping` and the
+   coming `site_services` split both break.
 4. **`unit_input_output`'s `(unit_id, carrier_id)` key blocks two real cases**: every storage
    unit (consumes and produces the same carrier) and `ccs_amine`'s reboiler CO₂, which the cement
    example already flags. A `flow_direction` or `role` column in the key fixes both.
