@@ -198,7 +198,7 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-09-15*
+*Section last updated: 2026-09-16*
 
 **Twenty-four entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, eight by the
@@ -412,6 +412,59 @@ cannot be modelled.
 **Rule.** `process_set_id` must be valid *for the premise's activity*. A set belonging to
 a different activity is rejected on ingest with reason `invalid_process_set`.
 
+**What a process is.** A process is **one unit of demand**: equipment whose duties rise and
+fall together because the same thing drives them. It is not a room, not a cost centre and not
+a fuel. A paper machine's dryer section is one process because its steam and its drive power
+both follow tonnes of paper; a site-overheads bundle is not, because its space heating follows
+the weather and its small power does not.
+
+**Drawing more than one vector is a flag, not a verdict.** §3.3.1 keys energy share on
+`(process, vector)`, so a process taking both gas and electricity is visible in the data. That
+alone says nothing about whether it is one process. Each such process resolves to exactly one
+of three cases:
+
+| Case | What is true | What the register does | Where the vector split is expressed |
+|---|---|---|---|
+| **Coupled** | Two duties, one driver. Steam and drive power on a paper machine; evaporator steam and vacuum pumps on a salt works | **One process.** One §3.3 row per duty | §3.3 `duty_share`, from a **sourced technical ratio** |
+| **Uncoupled** | Two duties, different drivers. Space heating against small power; cleanroom reheat against fan power | **Split into separate processes**, one per driver | Not expressed anywhere — each part has one duty at 1.00 |
+| **Alternative technologies** | **One** duty, served two ways. Oxy-fuel and plasma both cutting steel | **One process, one §3.3 row at 1.00** | §3.16 `activity_default_unit.default_share`, across the eligible units |
+
+**The test is the driver, and §3.13 already names the drivers.** Two candidate duties are
+coupled when they would carry the same `shape_class` and the same `seasonality`. Different
+classes mean different drivers, so the duties cannot share a single annual share and the
+process must be split — a `seasonal` reheat duty and a `standing` fan duty in one process
+force one §3.13 row to describe both, and it can only be wrong about one of them.
+
+**Splitting must fall on the coupling boundary, or it moves the invention rather than removing
+it.** Splitting a site-overheads bundle into a heating process and an electrical process needs
+no new evidence, because §3.3.1's existing vector shares already size both halves. Splitting
+the electrical half further into lighting, small power and compressed air does need evidence,
+because nothing in the input data distinguishes them. Split to the point where each part has
+one driver and stop.
+
+**Rule (a split process needs a crosswalk target).** Splitting changes `process_id`, which is
+the key of §3.3, §3.3.1, §3.9, §3.10, §3.13, §3.16, `unit_eligibility` and the COMIT
+crosswalk. The last is the binding one: V1b compares against COMIT's process commodities, and
+several sectors have no node for a separated duty — `IFD`, `INF` and `IIS` carry no space-heat
+commodity at all. A split whose parts cannot both be crosswalked must either map both parts to
+the original node or be recorded as a known V1b divergence.
+
+**The vector count is a flag, and it is blind in one direction.** It finds a process whose
+duties sit on *different* fuels. It cannot find a process whose second duty sits on **the same
+fuel** — one gas supply feeding both an 85 °C steriliser and a 45 °C washdown, or both a
+pasteuriser at band 2 and a UHT plant at band 3. Nothing in the input data distinguishes those,
+so no mechanical test will ever raise them; only someone reading the process description will.
+**Five such processes are known and listed** in
+[notes/20](../notes/20_reference_data_open_questions.md) item 1b. A process whose §3.3 rows
+carry a single duty family at 1.00 is therefore *unexamined*, not *confirmed simple*.
+
+> **Nothing validates this classification today.** There is no `coupling` field on the
+> register and no check that a multi-vector process has been examined. Adding one is the
+> obvious enforcement point and is open — see
+> [notes/20](../notes/20_reference_data_open_questions.md). Until then the classification
+> lives in each row's `provenance`, and a process that was never examined looks exactly like
+> one that was.
+
 ### 3.3 `activity_process_duty_profile`
 
 **The default duty of each process, per activity.** The activity-level default that A2
@@ -446,6 +499,26 @@ cheapest. This is the failure the data-migration plan flags as mode #6, and it f
 
 **Rule (inheritance).** A non-default process set need not restate every row; where a
 `(process_id, duty_family, grade_rank)` is absent it inherits the default set's value.
+
+**Rule (a multi-duty share is a technical ratio, never the process's fuel mix).** §3.2 admits
+more than one duty on a process only where the duties are *coupled* — one driver, two
+services. Their `duty_share` is then a technical coefficient of that operation, and it must
+come from a source that measures the operation: steam and drive power per tonne of paper, say.
+It must **not** be back-derived by renormalising the process's own vector shares from §3.3.1.
+That restates the energy split as though it were a duty fact, makes the duty structure follow
+the activity-average fuel mix at every premise, and can never be tiered above `fallback`. It
+is also the failure this table is most exposed to, because the arithmetic is available and
+looks plausible: **twenty-two rows of the current reference build do exactly this** — see
+[notes/20](../notes/20_reference_data_open_questions.md).
+
+**Where two technologies serve one duty, they do not become two duties.** Oxy-fuel and plasma
+both cut steel; the choice between them is a unit choice, and its share belongs in §3.16. The
+failure mode is filing the electric variant under `MOT` because its vector is electricity,
+which leaves the thermal duty correctly *typed* but **undersized**, and the motive duty
+overstated by the same amount. It is quieter than a missing duty — C10's cascade still sees a
+duty at the right grade, so nothing fails — and the error surfaces only as a site that
+electrifies too little heat. A process of this shape is where the temptation to key §3.3 on
+`vector` does the most damage: it would make the misfiling systematic rather than accidental.
 
 **A duty is not a fuel choice, and the two must not both be supplied.** This entity states
 which *duty* a process presents — a carrier at a grade. Which *unit*, on which fuel, serves
@@ -1013,8 +1086,8 @@ differ only by fuel — for information that does not vary along that axis.
 | `shape_id` | string | — | yes | PK | — |
 | `process_id` | string | — | yes | → `activity_process_register` | The process this describes |
 | `shape_class` | enum{flat, throughput_following, batch_cyclic, intermittent, standing, seasonal} | — | yes | — | See below |
-| `duty_factor` | real | fraction | yes | — | ∈ (0, 1]. Share of operating hours in which the process draws power |
-| `peak_to_mean` | real | ratio | yes | — | ≥ 1. Peak ÷ mean demand across the hours it is running |
+| `duty_factor` | real | fraction | no | — | ∈ (0, 1]. Share of operating hours in which the process draws power. Blank ⇒ **1.00, the process runs whenever the site runs** — see the default rule below |
+| `peak_to_mean` | real | ratio | no | — | ≥ 1. Peak ÷ mean demand across the hours it is running. Blank ⇒ **1.00, no within-shift peakiness** — see the default rule below |
 | `runs_when_idle` | boolean | — | yes | — | True ⇒ draws power outside the site's operating hours |
 | `seasonality` | enum{none, winter_weighted, summer_weighted, campaign} | — | yes | — | Drives whether the annual peak falls outside a representative week |
 | `provenance` | string | — | yes | — | Citation |
@@ -1032,6 +1105,33 @@ differ only by fuel — for information that does not vary along that axis.
 | `seasonal` | Weather- or campaign-driven | varies | varies | Space heating, seasonal processing campaigns |
 
 Values are indicative of the shape's character, not defaults to be adopted unexamined.
+
+**Rule (the two magnitudes default, and the default is not data).** `shape_class`,
+`runs_when_idle` and `seasonality` are what the reference build can source; `duty_factor`
+and `peak_to_mean` are what it mostly cannot, because no published load profile survives
+the no-invention rule for most process types. A blank on either is therefore legitimate
+and means *shape known, magnitude not*. Where blank, §5.6 (the peak method) uses:
+
+| Field | Default | What it assumes |
+|---|---|---|
+| `duty_factor` | 1.00 | The process draws power for the whole of the site's operating hours — its schedule is the plant's schedule (§3.12's `shifts_per_day`, `days_per_week`, `weeks_per_year`), and `runs_when_idle` says whether it also draws outside them |
+| `peak_to_mean` | 1.00 | The draw is flat across those hours |
+
+Together the defaults rebuild the peak as the **mean load over operating hours**, which
+is the **floor** of the true peak: every real process is at least this peaky, and most are
+peakier. The default therefore never overstates a connection requirement and may understate
+one, so C11 (the connection-capacity constraint) is lenient under it. Three consequences
+are binding:
+
+- The default is a **modelling assumption chosen for conservatism, informed by no data**.
+  It is not to be written into `process_load_shape` as a value; a `1.00` in the table means
+  a source said so. The table's blank and the method's 1.00 are different facts.
+- The class table's indicative ranges are **not** the fallback. Reading `batch_cyclic` as
+  "2–4" would invent a number the rule above forbids; the defaults are the same for every
+  class.
+- Any peak built from a defaulted row is reported as such (§8's output carries the flag),
+  so a connection sizing from defaults is never mistaken for one from measured shape.
+  Where §3.14 supplies a measured week, it wins and the defaults are not consulted.
 
 **Rule.** `standing` processes must have `runs_when_idle = true`; every other class must
 have it false unless a citation says otherwise. This distinction is what makes a

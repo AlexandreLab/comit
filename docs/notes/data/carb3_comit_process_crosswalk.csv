@@ -1,0 +1,377 @@
+carb3_activity,process_set_id,process_id,comit_process_code,match_kind,notes
+Abattoir / Slaughter House,default,refrigeration_chilling,IFDREF,direct,REF maps to the food and drink refrigeration node.
+Abattoir / Slaughter House,default,slaughter_line_processing,IFDMOT,direct,Motor drive.
+Abattoir / Slaughter House,default,hot_water_sterilisation_cleaning,IFDLTH,direct,Low temperature heat.
+Abattoir / Slaughter House,default,scalding_singeing,IFDLTH,direct,Scald tank is low temperature heat; singeing has no COMIT node.
+Abattoir / Slaughter House,default,compressed_air,IFDMOT,direct,Motor drive.
+Abattoir / Slaughter House,default,site_services,IFDLTH,analogue,COMIT food and drink has no SPC code; IFDLTH is the nearest low-grade heat node.
+Aggregate/Mineral Processing Plant / Depot,default,crushing,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Aggregate/Mineral Processing Plant / Depot,default,screening,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Aggregate/Mineral Processing Plant / Depot,default,conveying,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Aggregate/Mineral Processing Plant / Depot,default,washing_classification,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Aggregate/Mineral Processing Plant / Depot,default,mobile_plant,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Aggregate/Mineral Processing Plant / Depot,default,site_services,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Aircraft works,default,machine_drive,IVHMOT,direct,Motor drive for the vehicles sector.
+Aircraft works,default,process_heating,IVHHTH,analogue,Vehicles has no PHEAT code; IVHHTH is the sector process-heat node.
+Aircraft works,default,process_cooling,IVHOTH,analogue,COMIT vehicles has no refrigeration code; IVHOTH absorbs it.
+Aircraft works,default,surface_treatment,IVHLTH,direct,Low temperature heat.
+Aircraft works,default,other_process,IVHOTH,direct,Other energy services for the vehicles sector.
+Aircraft works,default,steam_hot_water,IVHSTM,direct,Low-temperature steam/heat.
+Aircraft works,default,site_services,IVHMOT,direct,Motor drive; lighting and clean-room AHU fans.
+Aircraft works,default,space_heating,IVHSPC,direct,Low temperature space heat.
+Aluminium Smelting Works,default,alumina_materials_handling,INFMOT,direct,Motor drive for non-ferrous metals.
+Aluminium Smelting Works,default,electrolysis_potlines,INFHTH,direct,"carb3_comit_crosswalk.csv: ""COMIT has no electrolytic-cell representation; smelting is a heat/electricity load""."
+Aluminium Smelting Works,default,anode_production_baking,INFHTH,direct,High temperature heat for non-ferrous metals.
+Aluminium Smelting Works,default,cast_house,INFHTH,direct,High temperature heat for non-ferrous metals.
+Aluminium Smelting Works,default,site_services,INFOTH,analogue,COMIT non-ferrous has no SPC code; INFOTH absorbs site overheads.
+Artificial Fibre Works,default,polymer_melt_extrusion,IHVC,analogue,carb3_comit_crosswalk.csv maps this activity to High-value chemicals; extrusion is the fibre-making node.
+Artificial Fibre Works,default,chip_drying,ICHDRY,direct,Drying / separation services for chemicals.
+Artificial Fibre Works,default,spinning_quench_winding,ICHMOT,direct,Motor drive for chemicals.
+Artificial Fibre Works,default,drawing_texturing,ICHHTH,analogue,Chemicals has no PHEAT code; ICHHTH is the sector process-heat node.
+Artificial Fibre Works,default,spinning_hvac,ICHREF,direct,Refrigeration for chemicals.
+Artificial Fibre Works,default,compressed_air,ICHMOT,direct,Motor drive.
+Artificial Fibre Works,default,site_services,ICHSPC,direct,Low temperature space heat for chemicals.
+Asphalt Plant,default,cold_feed_conveying,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Asphalt Plant,default,aggregate_drying_heating,ICNOTH,analogue,"COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector. carb3_comit_crosswalk.csv: ""Aggregate drying not modelled separately""."
+Asphalt Plant,default,screening_mixing,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Asphalt Plant,default,bitumen_storage_heating,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Asphalt Plant,default,exhaust_baghouse,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Asphalt Plant,default,loadout_storage,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Asphalt Plant,default,mobile_plant,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Asphalt Plant,default,site_services,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Beet Sugar Factory,default,beet_reception_preparation,IFDMOT,direct,Motor drive.
+Beet Sugar Factory,default,extraction_diffusion,IFDLTH,direct,Low temperature heat.
+Beet Sugar Factory,default,lime_kiln,ILMCLK,analogue,Cross-sector: a lime kiln inside a food and drink premise. COMIT food and drink has no calcination node; ILMCLK is the lime-sector calcination node.
+Beet Sugar Factory,default,evaporation,IFDSTM,direct,Low-temperature steam/heat.
+Beet Sugar Factory,default,crystallisation_sugar_house,IFDSTM,direct,Low-temperature steam/heat.
+Beet Sugar Factory,default,pulp_pressing_drying,IFDDRY,direct,Drying / separation services.
+Beet Sugar Factory,default,site_services,IFDLTH,analogue,COMIT food and drink has no SPC code.
+Brewery,default,brewhouse,IFDSTM,direct,Low-temperature steam/heat.
+Brewery,default,packaging,IFDLTH,direct,Low temperature heat.
+Brewery,default,refrigeration,IFDREF,direct,Refrigeration.
+Brewery,default,compressed_air,IFDMOT,direct,Motor drive.
+Brewery,default,cip_utilities,IFDLTH,direct,Low temperature heat.
+Brewery,default,site_services,IFDLTH,analogue,COMIT food and drink has no SPC code.
+Brickworks / clay tile/pipe works,default,clay_preparation,ICRMOT,direct,Motor drive for ceramics.
+Brickworks / clay tile/pipe works,default,shaping_extrusion,ICRMOT,direct,Motor drive for ceramics.
+Brickworks / clay tile/pipe works,default,drying,ICRDRY,direct,Drying / separation services for ceramics.
+Brickworks / clay tile/pipe works,default,setting_handling,ICRMOT,direct,Motor drive for ceramics.
+Brickworks / clay tile/pipe works,default,kiln_firing,ICRHTH,direct,"carb3_comit_crosswalk.csv: ""Firing maps to high-temperature heat""."
+Brickworks / clay tile/pipe works,default,site_services,ICRSPC,direct,Low temperature space heat for ceramics.
+Brickworks / clay tile/pipe works,default,clay_extraction_mobile_plant,ICRMOT,analogue,Clay-pit NRMM has no COMIT node; ICRMOT is the nearest shaft-work node in the sector.
+Cement Tile Works,default,batching_mixing,,none,"COMIT cement has only ICM (a sector-root demand commodity, not mappable) and ICMCLK (clinker). This process has no COMIT node; carb3_comit_crosswalk.csv records ""Forming/curing have no analogue""."
+Cement Tile Works,default,extrusion_pressing,,none,"COMIT cement has only ICM (a sector-root demand commodity, not mappable) and ICMCLK (clinker). This process has no COMIT node; carb3_comit_crosswalk.csv records ""Forming/curing have no analogue""."
+Cement Tile Works,default,curing_chambers,,none,"COMIT cement has only ICM (a sector-root demand commodity, not mappable) and ICMCLK (clinker). This process has no COMIT node; carb3_comit_crosswalk.csv records ""Forming/curing have no analogue""."
+Cement Tile Works,default,coating_finishing,,none,"COMIT cement has only ICM (a sector-root demand commodity, not mappable) and ICMCLK (clinker). This process has no COMIT node; carb3_comit_crosswalk.csv records ""Forming/curing have no analogue""."
+Cement Tile Works,default,depalletting_packaging,,none,"COMIT cement has only ICM (a sector-root demand commodity, not mappable) and ICMCLK (clinker). This process has no COMIT node; carb3_comit_crosswalk.csv records ""Forming/curing have no analogue""."
+Cement Tile Works,default,mobile_plant,,none,"COMIT cement has only ICM (a sector-root demand commodity, not mappable) and ICMCLK (clinker). This process has no COMIT node; carb3_comit_crosswalk.csv records ""Forming/curing have no analogue""."
+Cement Tile Works,default,site_services,,none,"COMIT cement has only ICM (a sector-root demand commodity, not mappable) and ICMCLK (clinker). This process has no COMIT node; carb3_comit_crosswalk.csv records ""Forming/curing have no analogue""."
+Cement Works,default,quarrying_crushing,,none,"COMIT cement has only ICM (sector-root, not mappable) and ICMCLK (clinker). This process has no COMIT node of its own."
+Cement Works,default,raw_grinding_blending,,none,"COMIT cement has only ICM (sector-root, not mappable) and ICMCLK (clinker). This process has no COMIT node of its own."
+Cement Works,default,raw_meal_homogenisation,,none,"COMIT cement has only ICM (sector-root, not mappable) and ICMCLK (clinker). This process has no COMIT node of its own."
+Cement Works,default,kiln_pyroprocessing,ICMCLK,direct,"carb3_comit_crosswalk.csv: ""Calcination maps to Clinker""."
+Cement Works,default,clinker_cooling,,none,"COMIT cement has only ICM (sector-root, not mappable) and ICMCLK (clinker). This process has no COMIT node of its own."
+Cement Works,default,cement_grinding,,none,"COMIT cement has only ICM (sector-root, not mappable) and ICMCLK (clinker). This process has no COMIT node of its own. carb3_comit_crosswalk.csv maps milling to ""Cement"", which is the ICM root and therefore not mappable under the sector-root rule."
+Cement Works,default,packing_dispatch,,none,"COMIT cement has only ICM (sector-root, not mappable) and ICMCLK (clinker). This process has no COMIT node of its own."
+Cement Works,default,site_services,,none,"COMIT cement has only ICM (sector-root, not mappable) and ICMCLK (clinker). This process has no COMIT node of its own."
+Cement Works,default,quarry_mobile_plant,,none,"COMIT cement has only ICM (sector-root, not mappable) and ICMCLK (clinker). This process has no COMIT node of its own."
+Chemical Works,default,reaction_heating,ICHHTH,direct,High temperature heat for the other chemicals subsector.
+Chemical Works,default,distillation_separation,ICHSTM,direct,Low-temperature steam/heat for chemicals.
+Chemical Works,default,drying,ICHDRY,direct,Drying / separation services for chemicals.
+Chemical Works,default,utilities_steam,ICHSTM,direct,Low-temperature steam/heat for chemicals.
+Chemical Works,default,process_machine_drives,ICHMOT,direct,Motor drive for chemicals.
+Chemical Works,default,refrigeration,ICHREF,direct,Refrigeration for chemicals.
+Chemical Works,default,electrochemical_processes,ICHOTH,direct,Other energy services for the other chemicals subsector.
+Chemical Works,default,site_services,ICHSPC,direct,Low temperature space heat for chemicals.
+Coking and Carbonising Plant,default,coal_handling_preparation,,none,"COMIT iron and steel has only mass nodes (IISPIR, IISSNT, IISLST, IISHRS) plus IISLTH; there is no motor-drive or other-services code in the sector, so this shaft-work process has no COMIT node."
+Coking and Carbonising Plant,default,oven_battery_carbonisation,IISPIR,analogue,"carb3_comit_crosswalk.csv: ""Coke feeds the blast-furnace chain in COMIT""; COMIT has no coke node, so the pig-iron node stands in."
+Coking and Carbonising Plant,default,coke_quenching_handling,,none,"COMIT iron and steel has only mass nodes (IISPIR, IISSNT, IISLST, IISHRS) plus IISLTH; there is no motor-drive or other-services code in the sector, so this shaft-work process has no COMIT node."
+Coking and Carbonising Plant,default,byproduct_plant,,none,"COMIT iron and steel has only mass nodes (IISPIR, IISSNT, IISLST, IISHRS) plus IISLTH; there is no motor-drive or other-services code in the sector, so this shaft-work process has no COMIT node."
+Coking and Carbonising Plant,default,site_services,IISLTH,analogue,Low-temperature steam/heat from CHP/boilers is the nearest iron and steel node for a space-heat duty.
+Concrete Block Works,default,aggregate_handling,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete Block Works,default,batching_mixing,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete Block Works,default,block_machine_pressing,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete Block Works,default,curing_kilns,ICNOTH,analogue,"COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector. carb3_comit_crosswalk.csv: ""Curing has no COMIT analogue""."
+Concrete Block Works,default,cubing_packaging,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete Block Works,default,mobile_plant,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete Block Works,default,site_services,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete Product Works,default,batching_mixing,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete Product Works,default,forming_casting_vibration,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete Product Works,default,curing,ICNOTH,analogue,"COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector. carb3_comit_crosswalk.csv: ""Curing has no COMIT analogue""."
+Concrete Product Works,default,stripping_handling_cranes,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete Product Works,default,mobile_plant_trucks,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete Product Works,default,site_services,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete batching plant,default,aggregate_handling_conveying,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete batching plant,default,batching_mixing,ICNOTH,analogue,"COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector. carb3_comit_crosswalk.csv: ""COMIT has no batching/mixing unit operations""."
+Concrete batching plant,default,water_supply_pumping,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete batching plant,default,water_aggregate_heating,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete batching plant,default,dust_extraction,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete batching plant,default,mobile_plant_trucks,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Concrete batching plant,default,site_services,ICNOTH,analogue,COMIT models construction as energy services only; ICNOTH is the sole non-root code in the sector.
+Creamery,default,heat_treatment_pasteurisation,IFDLTH,direct,"carb3_comit_crosswalk.csv: ""Pasteurisation maps to low-temperature heat""."
+Creamery,default,evaporation_drying,IFDDRY,direct,Drying / separation services.
+Creamery,default,cip_hot_water,IFDLTH,direct,Low temperature heat.
+Creamery,default,refrigeration,IFDREF,direct,Refrigeration.
+Creamery,default,processing_machinery_pumping,IFDMOT,direct,Motor drive.
+Creamery,default,compressed_air,IFDMOT,direct,Motor drive.
+Creamery,default,site_services,IFDLTH,analogue,COMIT food and drink has no SPC code.
+Distillery,default,milling_mashing,IFDLTH,direct,"carb3_comit_crosswalk.csv: ""Distillation maps to heat demand""; mashing is the low-temperature end."
+Distillery,default,distillation,IFDSTM,direct,Low-temperature steam/heat from CHP.
+Distillery,default,coproduct_evaporation,IFDSTM,direct,Low-temperature steam/heat from CHP.
+Distillery,default,process_pumps_motors,IFDMOT,direct,Motor drive.
+Distillery,default,cooling_systems,IFDREF,direct,Refrigeration.
+Distillery,default,compressed_air,IFDMOT,direct,Motor drive.
+Distillery,default,site_services,IFDLTH,analogue,COMIT food and drink has no SPC code.
+Distillery,grain_distillery,grain_intake_milling,IFDMOT,direct,Motor drive.
+Distillery,grain_distillery,cooking_conversion,IFDSTM,direct,Low-temperature steam/heat from CHP.
+Distillery,grain_distillery,continuous_distillation,IFDSTM,direct,Low-temperature steam/heat from CHP.
+Distillery,grain_distillery,coproduct_evaporation_drying,IFDDRY,direct,Drying / separation services.
+Distillery,grain_distillery,site_services,IFDLTH,analogue,COMIT food and drink has no SPC code.
+Effluent Minewater Treatment Plant,default,minewater_pumping,,none,"carb3_comit_crosswalk.csv: ""Water treatment. Not represented; candidate Water & sewerage sector (note 11)"". This activity has no COMIT sector at all."
+Effluent Minewater Treatment Plant,default,aeration_treatment,,none,"carb3_comit_crosswalk.csv: ""Water treatment. Not represented; candidate Water & sewerage sector (note 11)"". This activity has no COMIT sector at all."
+Effluent Minewater Treatment Plant,default,dosing_sludge_handling,,none,"carb3_comit_crosswalk.csv: ""Water treatment. Not represented; candidate Water & sewerage sector (note 11)"". This activity has no COMIT sector at all."
+Effluent Minewater Treatment Plant,default,site_services,,none,"carb3_comit_crosswalk.csv: ""Water treatment. Not represented; candidate Water & sewerage sector (note 11)"". This activity has no COMIT sector at all."
+Exhaust and tyre centre,default,workshop_equipment,,none,"carb3_comit_crosswalk.csv: ""Servicing. Out of COMIT scope"". This activity has no COMIT sector."
+Exhaust and tyre centre,default,site_services,,none,"carb3_comit_crosswalk.csv: ""Servicing. Out of COMIT scope"". This activity has no COMIT sector."
+Exhaust and tyre centre,default,space_heating,,none,"carb3_comit_crosswalk.csv: ""Servicing. Out of COMIT scope"". This activity has no COMIT sector."
+Exhaust and tyre centre,default,water_heating,,none,"carb3_comit_crosswalk.csv: ""Servicing. Out of COMIT scope"". This activity has no COMIT sector."
+Factory,default,machine_drive,IMEMOT,direct,Motor drive for mechanical engineering.
+Factory,default,process_heating,IMEHTH,analogue,Mechanical engineering has no PHEAT code; IMEHTH is the sector process-heat node.
+Factory,default,process_cooling,IMEOTH,analogue,COMIT mechanical engineering has no refrigeration code; IMEOTH absorbs it.
+Factory,default,other_process,IMEOTH,direct,Other energy services for mechanical engineering.
+Factory,default,steam_hot_water,IMELTH,analogue,COMIT mechanical engineering has no STM code; IMELTH is the nearest heat node.
+Factory,default,site_services,IMEMOT,direct,"Motor drive; lighting, AHUs and office ICT."
+Factory,default,space_heating,IMESPC,direct,Low temperature space heat.
+Flour Mill,default,wheat_cleaning_conditioning,IFDMOT,direct,"carb3_comit_crosswalk.csv: ""Cleaning/milling are motor-drive loads in COMIT""."
+Flour Mill,default,grinding_roller_mills,IFDMOT,direct,Motor drive.
+Flour Mill,default,pneumatic_conveying_aspiration,IFDMOT,direct,Motor drive.
+Flour Mill,default,sifting_purification,IFDMOT,direct,Motor drive.
+Flour Mill,default,flour_packing_handling,IFDMOT,direct,Motor drive.
+Flour Mill,default,compressed_air,IFDMOT,direct,Motor drive.
+Flour Mill,default,site_services,IFDLTH,analogue,COMIT food and drink has no SPC code.
+Food Processing Centre,default,boiler_steam_hot_water,IFDSTM,direct,The larger of the two duties on this process (0.53820) is the steam duty.
+Food Processing Centre,default,direct_heating,IFDDRY,direct,Drying / separation services.
+Food Processing Centre,default,refrigeration,IFDREF,direct,Refrigeration.
+Food Processing Centre,default,machinery_motors,IFDMOT,direct,Motor drive.
+Food Processing Centre,default,compressed_air,IFDMOT,direct,Motor drive.
+Food Processing Centre,default,site_services,IFDLTH,analogue,COMIT food and drink has no SPC code.
+Foundry,default,charge_handling,,none,"carb3_comit_crosswalk.csv: ""Shared between two COMIT sectors depending on metal"". COMIT iron and steel has only mass nodes plus IISLTH, so this shaft-work process has no node."
+Foundry,default,melting_holding,IISLST,analogue,"carb3_comit_crosswalk.csv names ""Liquid steel"" as the analogue; COMIT has no foundry melting node."
+Foundry,default,mould_making,,none,"carb3_comit_crosswalk.csv: ""Shared between two COMIT sectors depending on metal"". COMIT iron and steel has only mass nodes plus IISLTH, so this shaft-work process has no node."
+Foundry,default,core_making,,none,"carb3_comit_crosswalk.csv: ""Shared between two COMIT sectors depending on metal"". COMIT iron and steel has only mass nodes plus IISLTH, so this shaft-work process has no node."
+Foundry,default,pouring_casting,,none,"carb3_comit_crosswalk.csv: ""Shared between two COMIT sectors depending on metal"". COMIT iron and steel has only mass nodes plus IISLTH, so this shaft-work process has no node."
+Foundry,default,shakeout_sand_reclamation,,none,"carb3_comit_crosswalk.csv: ""Shared between two COMIT sectors depending on metal"". COMIT iron and steel has only mass nodes plus IISLTH, so this shaft-work process has no node."
+Foundry,default,heat_treatment,,none,"carb3_comit_crosswalk.csv: ""Shared between two COMIT sectors depending on metal"". COMIT iron and steel has only mass nodes plus IISLTH, so this shaft-work process has no node."
+Foundry,default,fettling_finishing,,none,"carb3_comit_crosswalk.csv: ""Shared between two COMIT sectors depending on metal"". COMIT iron and steel has only mass nodes plus IISLTH, so this shaft-work process has no node."
+Foundry,default,fume_extraction,,none,"carb3_comit_crosswalk.csv: ""Shared between two COMIT sectors depending on metal"". COMIT iron and steel has only mass nodes plus IISLTH, so this shaft-work process has no node."
+Foundry,default,site_services,IISLTH,analogue,Low-temperature steam/heat from CHP/boilers is the nearest iron and steel node for a space-heat duty.
+Industrial Minerals NEC,default,quarrying_crushing_screening,,none,"COMIT lime has only ILM (sector-root, not mappable) and ILMCLK (calcination). This process has no COMIT node."
+Industrial Minerals NEC,default,kiln_calcination,ILMCLK,direct,Lime calcination is the one COMIT node this activity maps to.
+Industrial Minerals NEC,default,lime_grinding_milling,,none,"COMIT lime has only ILM (sector-root, not mappable) and ILMCLK (calcination). This process has no COMIT node."
+Industrial Minerals NEC,default,hydration,,none,"COMIT lime has only ILM (sector-root, not mappable) and ILMCLK (calcination). This process has no COMIT node."
+Industrial Minerals NEC,default,packing_dispatch,,none,"COMIT lime has only ILM (sector-root, not mappable) and ILMCLK (calcination). This process has no COMIT node."
+Industrial Minerals NEC,default,site_services,,none,"COMIT lime has only ILM (sector-root, not mappable) and ILMCLK (calcination). This process has no COMIT node."
+Industrial NEC,default,machine_drive,IOIMOT,direct,Motor drive for the other industries sector.
+Industrial NEC,default,process_heating,IOILTH,analogue,COMIT other industries has no PHEAT or HTH code; IOILTH is the nearest heat node.
+Industrial NEC,default,process_cooling,IOIOTH,analogue,COMIT other industries has no refrigeration code; IOIOTH absorbs it.
+Industrial NEC,default,other_process,IOIOTH,direct,Other energy services for the other industries sector.
+Industrial NEC,default,steam_hot_water,IOISTM,direct,Low-temperature steam/heat from CHP.
+Industrial NEC,default,site_services,IOIMOT,direct,"Motor drive; lighting, ventilation and offices."
+Industrial NEC,default,space_heating,IOISPC,direct,Low temperature space heat.
+Iron and/or Steel Works,eaf,scrap_handling_preparation,,none,"COMIT iron and steel has only mass nodes (IISPIR, IISSNT, IISLST, IISHRS) plus IISLTH; there is no motor-drive or other-services code in the sector, so this shaft-work process has no COMIT node."
+Iron and/or Steel Works,eaf,eaf_melting,IISLST,direct,Liquid steel.
+Iron and/or Steel Works,eaf,secondary_metallurgy,IISLST,analogue,COMIT has no secondary metallurgy node; it sits inside the liquid steel node.
+Iron and/or Steel Works,eaf,fume_extraction_auxiliaries,,none,"COMIT iron and steel has only mass nodes (IISPIR, IISSNT, IISLST, IISHRS) plus IISLTH; there is no motor-drive or other-services code in the sector, so this shaft-work process has no COMIT node."
+Iron and/or Steel Works,eaf,continuous_casting,IISHRS,analogue,COMIT has no casting node; casting sits between liquid steel and hot rolled steel.
+Iron and/or Steel Works,eaf,reheat_furnaces,IISHRS,analogue,Reheating serves hot rolling; COMIT has no separate reheat node.
+Iron and/or Steel Works,eaf,hot_rolling_mill,IISHRS,direct,Hot rolled steel.
+Iron and/or Steel Works,eaf,site_services,IISLTH,analogue,Low-temperature steam/heat from CHP/boilers is the nearest node for a space-heat duty.
+Iron and/or Steel Works,bf_bof,coke_ovens,IISPIR,analogue,COMIT has no coke node; coke feeds the pig-iron chain.
+Iron and/or Steel Works,bf_bof,sinter_plant,IISSNT,direct,Sinter.
+Iron and/or Steel Works,bf_bof,blast_furnace_ironmaking,IISPIR,direct,Pig iron.
+Iron and/or Steel Works,bf_bof,bof_steelmaking,IISLST,direct,Liquid steel.
+Iron and/or Steel Works,bf_bof,secondary_metallurgy,IISLST,analogue,COMIT has no secondary metallurgy node.
+Iron and/or Steel Works,bf_bof,continuous_casting,IISHRS,analogue,COMIT has no casting node.
+Iron and/or Steel Works,bf_bof,reheat_furnaces,IISHRS,analogue,Reheating serves hot rolling.
+Iron and/or Steel Works,bf_bof,hot_rolling,IISHRS,direct,Hot rolled steel.
+Iron and/or Steel Works,bf_bof,site_services,IISLTH,analogue,Low-temperature steam/heat from CHP/boilers.
+Laboratory,default,hvac_ventilation,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Laboratory,default,lab_equipment,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Laboratory,default,lighting,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Laboratory,default,space_water_heating,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+"Large industrial (> 20,000 m2) NEC",default,machine_drive,IOIMOT,direct,Motor drive for the other industries sector
+"Large industrial (> 20,000 m2) NEC",default,process_heating,IOIDRY,analogue,COMIT's Other sector has no high-temperature-heat code; IOIDRY (drying/separation services) is the nearest process code. Never mapped to the IOI root
+"Large industrial (> 20,000 m2) NEC",default,process_cooling,IOIOTH,analogue,COMIT Other has no refrigeration code; folded into other energy services
+"Large industrial (> 20,000 m2) NEC",default,other_process,IOIOTH,direct,Other energy services for the other industries sector
+"Large industrial (> 20,000 m2) NEC",default,steam_hot_water,IOISTM,direct,Low-temperature steam/heat from CHP for the other industries sector
+"Large industrial (> 20,000 m2) NEC",default,site_services,IOIMOT,analogue,"Site-services bundle is predominantly motor drive (fans, pumps, lighting boards)"
+"Large industrial (> 20,000 m2) NEC",default,space_heating,IOISPC,direct,Low temperature space heat for the other industries sector
+Maltings - Non Trad,default,steeping,IFDMOT,direct,Motor drive for the food and drink sector
+Maltings - Non Trad,default,germination_vessels,IFDMOT,direct,Motor drive for the food and drink sector
+Maltings - Non Trad,default,kilning_heat,IFDDRY,direct,Drying / Separation services for the food and drink sector; carb3_comit_crosswalk.csv records kilning maps to drying
+Maltings - Non Trad,default,kiln_fans,IFDMOT,direct,Motor drive for the food and drink sector
+Maltings - Non Trad,default,refrigeration_attemperation,IFDREF,direct,Refrigeration for the food and drink sector
+Maltings - Non Trad,default,grain_handling_dressing,IFDMOT,direct,Motor drive for the food and drink sector
+Maltings - Non Trad,default,site_services,IFDOTH,analogue,COMIT's Food & drink sector has no space-heat (SPC) code; site overheads fold into other energy services
+Maltings - Trad,default,steeping,IFDMOT,direct,Motor drive for the food and drink sector
+Maltings - Trad,default,floor_germination_turning,IFDMOT,direct,Motor drive for the food and drink sector
+Maltings - Trad,default,kilning_heat,IFDDRY,direct,Drying / Separation services for the food and drink sector; carb3_comit_crosswalk.csv records kilning maps to drying
+Maltings - Trad,default,kiln_fans,IFDMOT,direct,Motor drive for the food and drink sector
+Maltings - Trad,default,grain_handling_dressing,IFDMOT,direct,Motor drive for the food and drink sector
+Maltings - Trad,default,site_services,IFDOTH,analogue,COMIT's Food & drink sector has no space-heat (SPC) code; site overheads fold into other energy services
+Mill,default,milling_grinding,,none,"carb3_comit_crosswalk.csv records coverage=ambiguous: 'Generic label; could be flour, paper, textile or metal. Not resolvable from CaRB3 alone.' Candidate codes would be IOI*/IFD* once the mill type is known"
+Mill,default,process_heating_drying,,none,"carb3_comit_crosswalk.csv records coverage=ambiguous: 'Generic label; could be flour, paper, textile or metal. Not resolvable from CaRB3 alone.' Candidate codes would be IOI*/IFD* once the mill type is known"
+Mill,default,process_cooling,,none,"carb3_comit_crosswalk.csv records coverage=ambiguous: 'Generic label; could be flour, paper, textile or metal. Not resolvable from CaRB3 alone.' Candidate codes would be IOI*/IFD* once the mill type is known"
+Mill,default,other_process,,none,"carb3_comit_crosswalk.csv records coverage=ambiguous: 'Generic label; could be flour, paper, textile or metal. Not resolvable from CaRB3 alone.' Candidate codes would be IOI*/IFD* once the mill type is known"
+Mill,default,steam_hot_water,,none,"carb3_comit_crosswalk.csv records coverage=ambiguous: 'Generic label; could be flour, paper, textile or metal. Not resolvable from CaRB3 alone.' Candidate codes would be IOI*/IFD* once the mill type is known"
+Mill,default,site_services,,none,"carb3_comit_crosswalk.csv records coverage=ambiguous: 'Generic label; could be flour, paper, textile or metal. Not resolvable from CaRB3 alone.' Candidate codes would be IOI*/IFD* once the mill type is known"
+Mill,default,space_heating,,none,"carb3_comit_crosswalk.csv records coverage=ambiguous: 'Generic label; could be flour, paper, textile or metal. Not resolvable from CaRB3 alone.' Candidate codes would be IOI*/IFD* once the mill type is known"
+Mineral Production - Brine,default,brine_well_pumping,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Brine,default,brine_purification,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Brine,default,vacuum_evaporation,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Brine,default,centrifuging,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Brine,default,drying_grading,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Brine,default,site_services,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Coal,default,coal_preparation,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Coal,default,ventilation,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Coal,default,materials_handling_conveyors,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Coal,default,crushing,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Coal,default,haulage_mobile_plant,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Coal,default,digging_loading,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Coal,default,drilling,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Gas,default,gas_compression,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Gas,default,power_generation,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Gas,default,process_heating_regeneration,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Gas,default,site_services,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Inert,default,materials_handling_loaders,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: waste sorting/crushing folded into COMIT's Other sector
+Mineral Production - Inert,default,internal_haulage,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: waste sorting/crushing folded into COMIT's Other sector
+Mineral Production - Inert,default,crushing,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: waste sorting/crushing folded into COMIT's Other sector
+Mineral Production - Inert,default,screening,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: waste sorting/crushing folded into COMIT's Other sector
+Mineral Production - Inert,default,mobile_crushing_screening,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: waste sorting/crushing folded into COMIT's Other sector
+Mineral Production - Inert,default,site_services,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: waste sorting/crushing folded into COMIT's Other sector
+Mineral Production - Oil,default,artificial_lift,,none,carb3_comit_crosswalk.csv records coverage=partial: 'Extraction itself not modelled; refining is.' No COMIT process code represents upstream oil production
+Mineral Production - Oil,default,water_injection,,none,carb3_comit_crosswalk.csv records coverage=partial: 'Extraction itself not modelled; refining is.' No COMIT process code represents upstream oil production
+Mineral Production - Oil,default,processing_separation_export,,none,carb3_comit_crosswalk.csv records coverage=partial: 'Extraction itself not modelled; refining is.' No COMIT process code represents upstream oil production
+Mineral Production - Oil,default,site_services,,none,carb3_comit_crosswalk.csv records coverage=partial: 'Extraction itself not modelled; refining is.' No COMIT process code represents upstream oil production
+Mineral Production - Other Mineral Category,default,drilling,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Other Mineral Category,default,extraction_loading,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Other Mineral Category,default,haulage,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Other Mineral Category,default,crushing,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Other Mineral Category,default,screening,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Other Mineral Category,default,conveying,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Other Mineral Category,default,dewatering_pumping,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Other Mineral Category,default,site_services,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Mineral Production - Putrescible,default,reception_depackaging_shredding,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: composting/AD folded into COMIT's Other sector; a Waste & recycling sector is a candidate (note 11)
+Mineral Production - Putrescible,default,digester_mixing_pumping,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: composting/AD folded into COMIT's Other sector; a Waste & recycling sector is a candidate (note 11)
+Mineral Production - Putrescible,default,pasteurisation_digester_heating,IOILTH,analogue,Low temperature heat for the other industries sector
+Mineral Production - Putrescible,default,digestate_processing,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: composting/AD folded into COMIT's Other sector; a Waste & recycling sector is a candidate (note 11)
+Mineral Production - Putrescible,default,aeration_odour_control,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: composting/AD folded into COMIT's Other sector; a Waste & recycling sector is a candidate (note 11)
+Mineral Production - Putrescible,default,windrow_turning,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: composting/AD folded into COMIT's Other sector; a Waste & recycling sector is a candidate (note 11)
+Mineral Production - Putrescible,default,screening_refining,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: composting/AD folded into COMIT's Other sector; a Waste & recycling sector is a candidate (note 11)
+Mineral Production - Putrescible,default,mobile_plant,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: composting/AD folded into COMIT's Other sector; a Waste & recycling sector is a candidate (note 11)
+Mineral Production - Putrescible,default,site_services,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: composting/AD folded into COMIT's Other sector; a Waste & recycling sector is a candidate (note 11)
+"Mineral Production - Rock, Sand, Clay etc.",default,drilling,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+"Mineral Production - Rock, Sand, Clay etc.",default,extraction_loading,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+"Mineral Production - Rock, Sand, Clay etc.",default,haulage,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+"Mineral Production - Rock, Sand, Clay etc.",default,crushing,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+"Mineral Production - Rock, Sand, Clay etc.",default,screening,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+"Mineral Production - Rock, Sand, Clay etc.",default,conveying,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+"Mineral Production - Rock, Sand, Clay etc.",default,washing_classification,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+"Mineral Production - Rock, Sand, Clay etc.",default,dewatering_pumping,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+"Mineral Production - Rock, Sand, Clay etc.",default,site_services,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Motor Vehicle Works,default,paint_shop,IVHHTH,analogue,COMIT's Vehicles sector has no drying code; the bake oven maps to high temperature heat
+Motor Vehicle Works,default,welding,IVHOTH,direct,Other energy services for the vehicles sector
+Motor Vehicle Works,default,compressed_air,IVHMOT,direct,Motor drive for the vehicles sector
+Motor Vehicle Works,default,materials_handling,IVHMOT,direct,Motor drive for the vehicles sector
+Motor Vehicle Works,default,metal_forming,IVHMOT,direct,Motor drive for the vehicles sector
+Motor Vehicle Works,default,steam_hot_water,IVHSTM,direct,Low-temperature steam/heat from CHP for the vehicles sector
+Motor Vehicle Works,default,site_services,IVHMOT,analogue,Site-services bundle is predominantly motor drive
+Motor Vehicle Works,default,space_heating,IVHSPC,direct,Low temperature space heat for the vehicles sector
+Newspaper print works,default,prepress_platemaking,IPROTH,direct,Other energy services for the printing subsector
+Newspaper print works,default,press_drives,IPRMOT,direct,Motor drive for the printing subsector
+Newspaper print works,default,press_auxiliaries,IPRMOT,direct,Motor drive for the printing subsector
+Newspaper print works,default,mailroom_finishing,IPRMOT,direct,Motor drive for the printing subsector
+Newspaper print works,default,site_services,IPRSPC,analogue,Low temperature space heat for the printing subsector; the bundle also carries motor drive (IPRMOT)
+"Oil refinery, gas processing etc",default,crude_vacuum_distillation,PCHPHEAT,analogue,COMIT has only PRCOIL (petroleum products) and PCHPHEAT (process heat) for refineries; carb3_comit_crosswalk.csv records 'no distillation/cracking split'. Crude and vacuum distillation
+"Oil refinery, gas processing etc",default,hydrotreating,PCHPHEAT,analogue,COMIT has only PRCOIL (petroleum products) and PCHPHEAT (process heat) for refineries; carb3_comit_crosswalk.csv records 'no distillation/cracking split'. Hydrotreating/hydroprocessing
+"Oil refinery, gas processing etc",default,catalytic_reforming,PCHPHEAT,analogue,COMIT has only PRCOIL (petroleum products) and PCHPHEAT (process heat) for refineries; carb3_comit_crosswalk.csv records 'no distillation/cracking split'. Catalytic reforming
+"Oil refinery, gas processing etc",default,hydrogen_production,PCHPHEAT,analogue,COMIT has only PRCOIL (petroleum products) and PCHPHEAT (process heat) for refineries; carb3_comit_crosswalk.csv records 'no distillation/cracking split'. Hydrogen production (SMR)
+"Oil refinery, gas processing etc",default,hydrocracking,PCHPHEAT,analogue,COMIT has only PRCOIL (petroleum products) and PCHPHEAT (process heat) for refineries; carb3_comit_crosswalk.csv records 'no distillation/cracking split'. Hydrocracking
+"Oil refinery, gas processing etc",default,fcc,PCHPHEAT,analogue,COMIT has only PRCOIL (petroleum products) and PCHPHEAT (process heat) for refineries; carb3_comit_crosswalk.csv records 'no distillation/cracking split'. Fluid catalytic cracking
+"Oil refinery, gas processing etc",default,alkylation,PCHPHEAT,analogue,COMIT has only PRCOIL (petroleum products) and PCHPHEAT (process heat) for refineries; carb3_comit_crosswalk.csv records 'no distillation/cracking split'. Alkylation
+"Oil refinery, gas processing etc",default,other_units,PCHPHEAT,analogue,"COMIT has only PRCOIL (petroleum products) and PCHPHEAT (process heat) for refineries; carb3_comit_crosswalk.csv records 'no distillation/cracking split'. Other process units (isomerisation, visbreaking, coking and minor units)"
+"Oil refinery, gas processing etc",default,utilities_steam,PCHPHEAT,analogue,"COMIT has only PRCOIL (petroleum products) and PCHPHEAT (process heat) for refineries; carb3_comit_crosswalk.csv records 'no distillation/cracking split'. Utilities: steam boilers, cogeneration, cooling water and air"
+"Oil refinery, gas processing etc",default,site_services,,none,Site overheads have no COMIT refinery process code
+Paper Mill,default,stock_preparation,IPPPBP,direct,Paper before pressing (intermediate product)
+Paper Mill,default,paper_machine_wet_end,IPPPBD,direct,Paper before drying (intermediate product)
+Paper Mill,default,paper_machine_drying,IPPBPA,direct,Basic paper (intermediate product) - the dryer section is the step that produces it
+Paper Mill,default,effluent_water_services,,none,"COMIT's paper chain is product-based (IPPPBP, IPPPBD, IPPBPA, IPP); water and effluent services have no analogue"
+Paper Mill,default,site_services,IPPLTH,analogue,Low-temperature steam/heat from CHP/boilers for the paper sector
+Post Office Sorting Centre,default,sortation_machinery,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Post Office Sorting Centre,default,materials_handling,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Post Office Sorting Centre,default,site_services,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Post Office Sorting Centre,default,space_heating,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Post Office Sorting Centre,default,water_heating,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Pottery,default,raw_material_preparation,ICRMOT,direct,Motor drive for the ceramics sector
+Pottery,default,forming,ICRMOT,direct,Motor drive for the ceramics sector
+Pottery,default,drying,ICRDRY,direct,Drying / Separation services for the ceramics sector
+Pottery,default,biscuit_firing,ICRHTH,direct,High temperature heat for the ceramics sector
+Pottery,default,glazing_decoration,ICRMOT,direct,Motor drive for the ceramics sector
+Pottery,default,glost_decoration_firing,ICRHTH,direct,High temperature heat for the ceramics sector
+Pottery,default,site_services,ICRMOT,analogue,Site-services bundle is predominantly motor drive; COMIT Ceramics also has ICRSPC for its space-heat part
+Provender Mill,default,grinding,IFDMOT,direct,Motor drive for the food and drink sector; carb3_comit_crosswalk.csv records grinding/pelleting collapse into motor drive
+Provender Mill,default,mixing_batching,IFDMOT,direct,Motor drive for the food and drink sector; carb3_comit_crosswalk.csv records grinding/pelleting collapse into motor drive
+Provender Mill,default,pelleting_press,IFDMOT,direct,Motor drive for the food and drink sector; carb3_comit_crosswalk.csv records grinding/pelleting collapse into motor drive
+Provender Mill,default,steam_conditioning,IFDSTM,direct,Low-temperature steam/heat from CHP for the food and drink sector
+Provender Mill,default,material_handling,IFDMOT,direct,Motor drive for the food and drink sector; carb3_comit_crosswalk.csv records grinding/pelleting collapse into motor drive
+Provender Mill,default,compressed_air,IFDMOT,direct,Motor drive for the food and drink sector; carb3_comit_crosswalk.csv records grinding/pelleting collapse into motor drive
+Provender Mill,default,site_services,IFDOTH,analogue,COMIT's Food & drink sector has no space-heat (SPC) code; site overheads fold into other energy services
+Pumping Mines,default,dewatering_pumping,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Pumping Mines,default,ventilation,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Pumping Mines,default,site_services,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
+Scrap Metal/Breakers Yard,default,material_handling,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: folded into COMIT's Other sector via the NAEI waste sector. Motor drive for the other industries sector
+Scrap Metal/Breakers Yard,default,shredding_separation,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: folded into COMIT's Other sector via the NAEI waste sector. Motor drive for the other industries sector
+Scrap Metal/Breakers Yard,default,shearing_baling,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: folded into COMIT's Other sector via the NAEI waste sector. Motor drive for the other industries sector
+Scrap Metal/Breakers Yard,default,torch_cutting,IOIOTH,analogue,"carb3_comit_crosswalk.csv records coverage=gap: folded into COMIT's Other sector via the NAEI waste sector. COMIT Other has no high-temperature-heat code, so torch cutting falls to other energy services"
+Scrap Metal/Breakers Yard,default,site_services,IOISPC,analogue,carb3_comit_crosswalk.csv records coverage=gap: folded into COMIT's Other sector via the NAEI waste sector. Low temperature space heat for the other industries sector
+"Shipbuilding/ repair, boatyard",default,steel_prep_cutting,IVHHTH,analogue,carb3_comit_crosswalk.csv records 'No hull-fabrication or surface-prep processes in COMIT'; mapped to the Vehicles sector's high-temperature heat
+"Shipbuilding/ repair, boatyard",default,welding_fabrication,IVHOTH,analogue,Other energy services for the vehicles sector
+"Shipbuilding/ repair, boatyard",default,machining_outfitting,IVHMOT,analogue,Motor drive for the vehicles sector
+"Shipbuilding/ repair, boatyard",default,surface_prep_blasting,IVHMOT,analogue,Motor drive for the vehicles sector
+"Shipbuilding/ repair, boatyard",default,painting_coating,IVHLTH,analogue,Low temperature heat for the vehicles sector
+"Shipbuilding/ repair, boatyard",default,cranes_material_handling,IVHMOT,analogue,Motor drive for the vehicles sector
+"Shipbuilding/ repair, boatyard",default,dry_dock_services,IVHMOT,analogue,Motor drive for the vehicles sector
+"Shipbuilding/ repair, boatyard",default,site_services,IVHSPC,analogue,Low temperature space heat for the vehicles sector
+Tannery,default,process_float_heating,ITXLTH,direct,Low temperature heat for the textiles sector
+Tannery,default,leather_drying,ITXDRY,direct,Drying / Separation services for the textiles sector
+Tannery,default,process_drums_machinery,ITXMOT,direct,Motor drive for the textiles sector
+Tannery,default,finishing,ITXMOT,direct,Motor drive for the textiles sector
+Tannery,default,compressed_air,ITXMOT,direct,Motor drive for the textiles sector
+Tannery,default,effluent_treatment,ITXMOT,direct,Motor drive for the textiles sector
+Tannery,default,site_services,ITXSPC,analogue,Low temperature space heat for the textiles sector; the bundle also carries motor drive (ITXMOT)
+Vehicle repair workshop / garage,default,workshop_equipment,,none,carb3_comit_crosswalk.csv records coverage=absent: 'Servicing not manufacturing. Out of COMIT scope.'
+Vehicle repair workshop / garage,default,site_services,,none,carb3_comit_crosswalk.csv records coverage=absent: 'Servicing not manufacturing. Out of COMIT scope.'
+Vehicle repair workshop / garage,default,space_heating,,none,carb3_comit_crosswalk.csv records coverage=absent: 'Servicing not manufacturing. Out of COMIT scope.'
+Vehicle repair workshop / garage,default,water_heating,,none,carb3_comit_crosswalk.csv records coverage=absent: 'Servicing not manufacturing. Out of COMIT scope.'
+Wafer Fabrication,default,process_tools,IEEOTH,direct,Other energy services for the electrical engineering sector
+Wafer Fabrication,default,cleanroom_hvac,IEEMOT,direct,Motor drive for the electrical engineering sector
+Wafer Fabrication,default,chilled_water_plant,IEEOTH,analogue,COMIT Electrical engineering has no refrigeration code; folded into other energy services
+Wafer Fabrication,default,ultrapure_water,IEEMOT,direct,Motor drive for the electrical engineering sector
+Wafer Fabrication,default,bulk_gases_cda,IEEMOT,direct,Motor drive for the electrical engineering sector
+Wafer Fabrication,default,exhaust_abatement,IEEHTH,analogue,High temperature heat for the electrical engineering sector
+Wafer Fabrication,default,site_services,IEEMOT,direct,Motor drive for the electrical engineering sector
+Works,default,machine_drive,IOIMOT,direct,Motor drive for the other industries sector
+Works,default,process_heating,IOIDRY,analogue,COMIT's Other sector has no high-temperature-heat code; IOIDRY (drying/separation services) is the nearest process code
+Works,default,surface_treatment,IOILTH,direct,Low temperature heat for the other industries sector
+Works,default,process_cooling,IOIOTH,analogue,COMIT Other has no refrigeration code; folded into other energy services
+Works,default,other_process,IOIOTH,direct,Other energy services for the other industries sector
+Works,default,steam_hot_water,IOISTM,direct,Low-temperature steam/heat from CHP for the other industries sector
+Works,default,site_services,IOIMOT,analogue,Site-services bundle is predominantly motor drive
+Works,default,space_heating,IOISPC,direct,Low temperature space heat for the other industries sector
+Workshop,default,machining_metalworking,IMEMOT,direct,"carb3_comit_crosswalk.csv records comit_sector=Mechanical engineering, coverage=generic, 'Energy services only'. Motor drive for the mechanical engineering sector"
+Workshop,default,process_heating,IMEHTH,direct,"carb3_comit_crosswalk.csv records comit_sector=Mechanical engineering, coverage=generic, 'Energy services only'. High temperature heat for the mechanical engineering sector"
+Workshop,default,process_cooling,IMEOTH,analogue,"carb3_comit_crosswalk.csv records comit_sector=Mechanical engineering, coverage=generic, 'Energy services only'. COMIT Mechanical engineering has no refrigeration code; folded into other energy services"
+Workshop,default,other_process,IMEOTH,direct,"carb3_comit_crosswalk.csv records comit_sector=Mechanical engineering, coverage=generic, 'Energy services only'. Other energy services for the mechanical engineering sector"
+Workshop,default,site_services,IMEMOT,analogue,"carb3_comit_crosswalk.csv records comit_sector=Mechanical engineering, coverage=generic, 'Energy services only'. Site-services bundle is predominantly motor drive"
+Workshop,default,space_heating,IMESPC,direct,"carb3_comit_crosswalk.csv records comit_sector=Mechanical engineering, coverage=generic, 'Energy services only'. Low temperature space heat for the mechanical engineering sector"
+Workshop,default,water_heating,IMELTH,direct,"carb3_comit_crosswalk.csv records comit_sector=Mechanical engineering, coverage=generic, 'Energy services only'. Low temperature heat for the mechanical engineering sector"

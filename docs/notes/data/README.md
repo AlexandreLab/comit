@@ -11,6 +11,7 @@ them from the workbook each time.
 | `carb3_factory_processes.json` | [15_carb3_process_comparison.md](../15_carb3_process_comparison.md) | *(supplied verbatim — not generated)* |
 | `comit_sector_processes.json` · `.csv` | [15_carb3_process_comparison.md](../15_carb3_process_comparison.md) | [`../examples/build_comit_process_taxonomy.R`](../examples/build_comit_process_taxonomy.R) |
 | `carb3_comit_crosswalk.csv` | [15_carb3_process_comparison.md](../15_carb3_process_comparison.md) | *(curated by hand — not generated)* |
+| the thirteen §3 tables — `carrier.csv`, `activity_process_duty_profile.csv`, `carb3_comit_process_crosswalk.csv`, `unit.csv`, `unit_input_output.csv`, `unit_bill_of_materials.csv`, `unit_eligibility.csv`, `decarbonisation_option_unit.csv`, `comit_technology_lineage.csv`, `process_load_shape.csv`, `scenario_parameters.csv`, `infrastructure_scenario.csv`, `activity_default_unit.csv` | [README_spec_tables.md](README_spec_tables.md), [20_reference_data_open_questions.md](../20_reference_data_open_questions.md) | *(researched by lane; reports and generators in [`build/`](build/))* |
 
 ---
 
