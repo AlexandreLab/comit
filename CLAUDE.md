@@ -96,9 +96,11 @@ knows the gloss.
 > `build_interface_docs.py:137`, and `interfaces.enabled` is `false` for
 > `site-energy-system` while §8 is unwritten, so it never runs for the live spec at all;
 > `build_spec_flow_diagram.py` never calls it. Even where it does run it checks family
-> *presence*, never range values. **Widening `D1`–`D15` or `V1`–`V30` in §1.4 is a manual
+> *presence*, never range values. **Widening `D1`–`D15` or `V1`–`V31` in §1.4 is a manual
 > step, in the same commit as the label.** Verified 2026-09-07 while adding D12 and
-> V24–V26, and again 2026-09-15 while adding D13–D15 and V27–V30. The `diagrams.domains` partition check described below *is* real; do not
+> V24–V26, again 2026-09-15 while adding D13–D15 and V27–V30, and again 2026-09-16 while
+> adding V31 — where the table at the foot of this file was widened and this sentence was
+> not, in the same commit, which is the failure it describes. The `diagrams.domains` partition check described below *is* real; do not
 > confuse the two.
 
 Python here is stdlib-only by necessity: **`pandas` is not installed.** Write validators
@@ -113,7 +115,7 @@ things:
 |---|---|---|
 | `D1`–`D15` | Design decisions | live spec §1.6 (the archived vision doc §6 carries the rationale for `D1`–`D11`) |
 | `C1`–`C12` | Constraints | live spec §5.5 |
-| `V1`–`V30` | Validation tests | live spec §10.3 |
+| `V1`–`V31` | Validation tests | live spec §10.3 |
 | `A1`–`A9` | Algorithms | live spec §4 |
 | `S0`–`S9` | Pipeline stages | live spec §2.1 |
 | `R1`–`R3` | Profile rules | archived baseline §3.3.3 |
@@ -155,6 +157,24 @@ at the archived baseline's §6, lines 2126–2127.
 - **Read the file that actually bites.** `fct_constraints_existing_capacity.R` carries a
   comment saying it is not in use; the same decay is applied unconditionally inside
   `fct_constraints_capacity_transfer.R`. Comparing against the wrong one wastes a day.
+- **Price a schema change before recommending against it.** A comparison of options was
+  offered with one ranked "a larger edit" on intuition alone. Measured afterwards, the
+  edit was 11 spec mentions, 5 in each worked example, 6 validator lines and a 446-row
+  migration that was fully mechanical — so the objection was wrong. `grep -c` the field
+  name across `docs/specs/`, `docs/notes/examples/` and the CSV, and check whether the
+  generated documents are even enabled for that spec, **before** writing "larger" or
+  "cheaper" about any option.
+- **Changing a key means grepping for everyone who quotes the key.** Widening §3.6 to
+  `(unit_id, carrier_id, role)` left four places still naming the pair: §9.3's determinism
+  tie-break and its two worked-example quotes — where a no-longer-total order silently
+  voids V10 (determinism) — the `README_spec_tables.md` known-gaps row, and five
+  `unit_input_output.csv` provenance strings. `grep -rn "unit_id, carrier_id)"` found all
+  of them in one command, *after* the review. Run it first: a key is cited in prose, in
+  data provenance and in the tie-break, not only in the field table.
+- **The grep-before-you-introduce rule covers math symbols, not just labels.** `\rho` was
+  used as a role index two rows above `$\rho_u$`, "fraction not captured" — the λ/ξ
+  collision again, in the same document. Renamed to `\theta` with a disambiguation note.
+  Before any new subscript or Greek letter, `grep -c '\\<letter>'` the spec.
 
 ## Data caveats worth knowing before quoting a number
 

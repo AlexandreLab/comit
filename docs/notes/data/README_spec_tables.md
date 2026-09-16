@@ -56,7 +56,7 @@ how to read a cell:
 | `carrier.csv` | `vector` | The §3.1.1 consistency hook: `premise_energy.vector` must agree with the carrier, and the spec names no column to check it against |
 | `carrier.csv` | `comit_commodity` | The COMIT commodity codes the carrier collapses, for the lineage |
 | `carrier.csv` | `provenance` | Citation |
-| `unit.csv` | `fuel_carrier_id` | D13 (a unit is family-or-node × fuel): the fuel is part of the identity, and a column is easier to key on than the `is_fuel_input` row of §3.6 |
+| `unit.csv` | `fuel_carrier_id` | D13 (a unit is family-or-node × fuel): the fuel is part of the identity, and a column is easier to key on than the `role = fuel_input` row of §3.6 |
 | `unit.csv`, `unit_input_output.csv`, `unit_bill_of_materials.csv`, `unit_eligibility.csv` | `provenance_ref` | The spec's `provenance` column is an enum (`comit_reuse` / `bref` / `proxy`); the citation needs its own column |
 | `unit_eligibility.csv` | `notes` | The reason for a `max_share` or `earliest_year` |
 | `process_load_shape.csv` | `carb3_activity` | `process_id` is unique only within an activity (`site_services` appears at all 55). §3.13 now keys on the pair, so this is no longer an extra column (note 20 item 3) |
@@ -89,7 +89,7 @@ for review, not a settled answer — note 20 lists the places it bites.
 |---|---|---|
 | `process_load_shape.csv` | `duty_factor` and `peak_to_mean` blank on all 371 rows: no published load profile survived the no-invention rule. The classification is the deliverable; §3.13 now makes both optional and §5.6 defaults each to 1.00 (mean load over operating hours, the floor of the peak), flagged as an assumption not data | `build/DONE_loadshape.md`, note 20 item 2 |
 | `unit.csv` | 15 units uncosted (thermal stores, digester, solar thermal, most hybrids); `min_viable_scale` blank throughout; 24 units now on published UK costs, 92 on COMIT reuse, 21 proxy | `build/DONE_units.md` §4 and §7 |
-| `unit_input_output.csv` | Capture trains other than `ccs_amine` have no coefficients; storage units cannot be expressed under the `(unit_id, carrier_id)` key | `build/DONE_units.md` G2, G8 |
+| `unit_input_output.csv` | Capture trains other than `ccs_amine` have no coefficients; the four standalone storage units have none either, for want of a published round-trip efficiency — they are now *expressible*, since §3.6 keys on `(unit_id, carrier_id, role)` (note 20 item 4), but not yet written | `build/DONE_units.md` G2, G8 |
 | `unit_eligibility.csv` | `min_duty` on 15 rows and `earliest_year` on 9, all from the worked examples; 1,851 of 2,612 rows are `proxy` | `build/DONE_eligibility.md` §4 |
 | `activity_process_duty_profile.csv` | 151 of 427 rows are `fallback`; no row is `measured` or `high` | the two duty reports |
 | `activity_default_unit.csv` | 367 of 455 rows are `assumed`; the CHP shares on 17 rows are the `sector_statistic` content | `build/DONE_default_unit.md` |

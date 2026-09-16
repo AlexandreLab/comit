@@ -1,5 +1,9 @@
 # DONE — lane `units`
 
+> **Dated record.** Written against the schema of September 2026, before §3.6's `role`
+> enum replaced the three booleans and widened the key. See the banner in
+> [`00_CONVENTIONS.md`](00_CONVENTIONS.md); the live gate is `make check`.
+
 Files written (and nothing else):
 
 | File | Rows |

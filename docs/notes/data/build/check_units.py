@@ -8,8 +8,8 @@ Blocking checks, in the order the brief names them:
   1  unit_id unique
   2  every worked-example unit present
   3  every carrier_id resolves to carrier.csv or the product staging file
-  4  exactly one is_primary_output per unit that has coefficients
-  5  at most one is_fuel_input per unit  (§3.6; two is rejected at load as `unit_multi_fuel`)
+  4  exactly one role=primary_output per unit that has coefficients
+  5  at most one role=fuel_input per unit  (§3.6; two is rejected at load as `unit_multi_fuel`)
   6  bill-of-materials capacity_share sums to 1 per hybrid, and every hybrid has rows
   7  every [REF_ID] resolves to references.csv or references_units.csv
 plus structural checks: enums, booleans, foreign keys, no `NA`/`n/a`/`-`/`?` placeholders,
@@ -75,13 +75,13 @@ bad = sorted({r["fuel_carrier_id"] for r in units if r["fuel_carrier_id"] and r[
 if bad: fail.append("3  unit.fuel_carrier_id does not resolve: %s" % bad)
 
 # 4, 5 ----------------------------------------------------------------------
-prim = collections.Counter(r["unit_id"] for r in io if r["is_primary_output"] == "TRUE")
-fuel = collections.Counter(r["unit_id"] for r in io if r["is_fuel_input"] == "TRUE")
+prim = collections.Counter(r["unit_id"] for r in io if r["role"] == "primary_output")
+fuel = collections.Counter(r["unit_id"] for r in io if r["role"] == "fuel_input")
 with_io = {r["unit_id"] for r in io}
 bad = sorted(u for u in with_io if prim[u] != 1)
-if bad: fail.append("4  not exactly one is_primary_output: %s" % [(u, prim[u]) for u in bad])
+if bad: fail.append("4  not exactly one primary_output: %s" % [(u, prim[u]) for u in bad])
 bad = sorted(u for u in with_io if fuel[u] > 1)
-if bad: fail.append("5  more than one is_fuel_input (load would reject as unit_multi_fuel): %s" % bad)
+if bad: fail.append("5  more than one fuel_input (load would reject as unit_multi_fuel): %s" % bad)
 
 # 6 -------------------------------------------------------------------------
 hybrids = {r["unit_id"] for r in units if r["is_hybrid"] == "TRUE"}
@@ -139,17 +139,19 @@ for r in units:
     if er and not (0 <= float(er) <= 1):
         fail.append("range %s.emissions_released = %s, not in [0, 1]" % (r["unit_id"], er))
 
+ROLES = {"fuel_input", "aux_input", "emission_input",
+         "primary_output", "coproduct", "reject", "emission"}
 for r in io:
-    for f in ("is_primary_output", "is_reject", "is_fuel_input"):
-        if r[f] not in ("TRUE", "FALSE"):
-            fail.append("bool  %s/%s.%s = %r" % (r["unit_id"], r["carrier_id"], f, r[f]))
+    if r["role"] not in ROLES:
+        fail.append("enum  %s/%s.role = %r" % (r["unit_id"], r["carrier_id"], r["role"]))
     if r["unit_id"] not in set(UNIT_IDS):
         fail.append("fk    unit_input_output row for unknown unit %s" % r["unit_id"])
 
-# 3.6 primary key is (unit_id, carrier_id)
-k = collections.Counter((r["unit_id"], r["carrier_id"]) for r in io)
+# 3.6 primary key is (unit_id, carrier_id, role) — the role is what lets a store and a
+# fired capture train hold two rows on one carrier
+k = collections.Counter((r["unit_id"], r["carrier_id"], r["role"]) for r in io)
 bad = [x for x, n in k.items() if n > 1]
-if bad: fail.append("pk    (unit_id, carrier_id) appears twice: %s" % bad)
+if bad: fail.append("pk    (unit_id, carrier_id, role) appears twice: %s" % bad)
 
 # D15: co2_fuel_* is derived by A6, never authored on a producing unit
 bad = [(r["unit_id"], r["carrier_id"]) for r in io
@@ -164,7 +166,7 @@ for r in units:
 by_unit = collections.defaultdict(list)
 for r in io: by_unit[r["unit_id"]].append(r)
 for u, rs in by_unit.items():
-    p = [r for r in rs if r["is_primary_output"] == "TRUE"]
+    p = [r for r in rs if r["role"] == "primary_output"]
     if p and abs(float(p[0]["coefficient"]) - 1.0) > 1e-6:
         warn.append("V2    %s primary output is %s, not +1.00000" % (u, p[0]["coefficient"]))
 

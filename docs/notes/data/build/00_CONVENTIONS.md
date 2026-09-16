@@ -1,5 +1,24 @@
 # Conventions for every research lane (read first, follow exactly)
 
+> **These briefs and reports are a dated record of a build, not current documentation.**
+> They describe the schema as it stood while the lanes ran, in September 2026, and they are
+> deliberately not rewritten when the spec moves — editing a brief makes it describe an
+> instruction nobody gave, and the report's account of following it stops being evidence.
+> Two drifts are known:
+>
+> - **§3.6 replaced `is_primary_output`, `is_reject` and `is_fuel_input` with one `role`
+>   enum on 2026-09-16, and keys on `(unit_id, carrier_id, role)`** (note 20 item 4).
+>   `brief_units.md` and `DONE_units.md` still speak of the booleans and the pair key.
+> - **Five of the eight `check_*.py` scripts here no longer run.** `check_carriers`,
+>   `check_duty_a`, `check_duty_b`, `check_eligibility` and `check_units` read lane staging
+>   files that were removed when `_staging` was renamed `build`, and fail with
+>   `FileNotFoundError`. `check_default_unit`, `check_lineage` and `check_loadshape` still
+>   pass. `DONE_units.md` says its script "passes all blocking checks"; that stopped being
+>   true at the rename, not at the schema change.
+>
+> **The live gate is `make check`** — `validate_carb3_data.py` covers everything these
+> scripts did, plus V31. Verified 2026-09-16.
+
 You are one of several parallel research agents building the CaRB3 site energy system
 reference data in `docs/notes/data/`. The target schema is **§3 of
 `docs/specs/2026-08-28-carb3-site-energy-system-implementation.md`** — read your entity's

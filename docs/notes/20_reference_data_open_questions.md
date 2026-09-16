@@ -8,8 +8,9 @@ what has to change to answer them, so they can be worked through in one sitting.
 names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
-2026-09-15 and items 2 and 3 on 2026-09-16; each carries the decision inline, with the work items 1
-and 36 leave behind in items 1a and 1b. The rest are undecided.
+2026-09-15 and items 2, 3, 4 and 43 on 2026-09-16; each carries the decision inline, with the
+work items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in
+items 44 and 45. The rest are undecided.
 
 ## A. Questions that change the specification
 
@@ -180,6 +181,37 @@ These are the ones with a consequence outside the reference data.
    unit (consumes and produces the same carrier) and `ccs_amine`'s reboiler CO₂, which the cement
    example already flags. A `flow_direction` or `role` column in the key fixes both.
    *`DONE_units.md`, Q3 and G8.*
+
+   **Answered 2026-09-16, in §3.6 of the live spec.** The key is now
+   `(unit_id, carrier_id, role)`, and `role` replaces the three booleans
+   `is_primary_output`, `is_reject` and `is_fuel_input` with one seven-value enum:
+   `fuel_input`, `aux_input` and `emission_input` consume, `primary_output`, `coproduct`,
+   `reject` and `emission` produce. `ccs_amine` now holds `co2_fuel_fossil` twice — the kiln's
+   at −0.35257 as `emission_input` and its reboiler's at +0.10659 as `emission` — so the cement
+   example's ⚠ is closed and its §13 item 10 with it. A store's charge leg is `aux_input` and
+   its discharge leg `primary_output`.
+
+   **The role rather than a bare `flow_direction`, because the direction was already in the
+   sign.** What was *not* written down anywhere was whether an unflagged positive row was a
+   co-product or a declared emission, and whether an unflagged negative one was an auxiliary
+   input or captured CO₂; both were being inferred at read time from `(sign, carrier_kind)`,
+   which is the same implicit derivation that produced the defect. V31 now checks that the
+   role, the sign and the carrier kind agree, and that the triple is unique.
+
+   **The 446 existing rows were migrated mechanically** by
+   [`migrate_io_roles.py`](examples/migrate_io_roles.py), committed so the classification is
+   auditable rather than asserted: 100 `fuel_input`, 115 `aux_input`, 4 `emission_input`, 111
+   `primary_output`, 23 `coproduct`, 59 `reject`, 34 `emission`. The three booleans were
+   mutually exclusive on every row and agreed with the sign on every row, so only the two
+   unflagged buckets needed a discriminator, and `carrier_kind` supplied it.
+
+   **What this does not do is make storage modellable.** The four standalone storage units
+   (`battery_2h`, `battery_4h`, `thermal_store_hot_water`, `thermal_store_steam`) can now be
+   written down, and still have no coefficients, because no published round-trip efficiency was
+   found for the two thermal ones — that is item G7/G8 of `DONE_units.md` and is unchanged.
+   PD2 (storage earns through hybrid units and through β) is also unchanged: β, the firm-capacity
+   contribution in C11 (the connection-capacity constraint), is still the only way a standalone
+   battery is worth building.
 5. **Which host does a capture train name in `abates_unit_id` once D13 (a unit is family-or-node
    × fuel) has split the host into three?** Eleven of thirteen abatement units are blank. Making
    it a `process_id` matches how the cement example reasons. *`DONE_units.md`, Q2 and G3.*
@@ -313,3 +345,52 @@ These are the ones with a consequence outside the reference data.
     retrofit lineage cannot be derived from it. *`DONE_lineage.md`, §10.*
 42. **`compressed_air`: §3.13's example list says `standing`, the food-and-drink example says
     `throughput_following`.** The table follows the example. *`DONE_loadshape.md`, Q2.*
+43. **§10.2 and V20 (d) cite a `unit.is_storage` field that does not exist.** §3.5 carries
+    `unit_class`, an enum whose values include `storage`, and `unit.csv` follows §3.5. Found
+    2026-09-16 while doing item 4; nothing checks it.
+
+    **Answered 2026-09-16, in §10.2 and V20 (d).** No new field. `unit_class = storage` is
+    enough, because the other half of V20 (d) — "and no hybrid parent" — is a lookup against
+    §3.5.2's bill of materials rather than a flag: `battery_2h`, `battery_4h` and
+    `thermal_store_hot_water` are each named as a component of a hybrid and are exempt;
+    `thermal_store_steam` is named by nothing and is the one unit V20 (d) actually binds
+    today. A boolean would have had to be kept in step with the BOM by hand.
+44. **Five `unit_input_output` rows net a fuel against a feedstock, or against a
+    by-product, because the pair key left nowhere else to put the second term.** Each cites
+    two COMIT rows falling on one CaRB3 carrier. **The arithmetic is correct** — every stored
+    coefficient is the sum of its two source rows, checked against the workbook's
+    `technology_input_output` sheet on 2026-09-16. What is wrong is what the sum *means*:
+
+    | Row | Unit | CaRB3 carrier | COMIT rows summed | Stored |
+    |---|---|---|---|---|
+    | 248 | `steam_cracker_naphtha` | `petroleum_products_misc` | `INDNEUMSC` −90.72712 **feedstock** + `ICHPRO` **+5.05350** by-product | −85.67362 |
+    | 256 | `steam_cracker_byproduct` | `petroleum_products_misc` | `INDNEUMSC` −19.81751 **feedstock** + `ICHPRO` **+3.93479** by-product | −15.88272 |
+    | 273 | `steam_cracker_hydrogen` | `petroleum_products_misc` | `INDNEUMSC` −19.81751 **feedstock** + `ICHPRO` **+3.09015** by-product | −16.72736 |
+    | 259 | `steam_cracker_byproduct` | `light_fuel_oil` | `INDLFO` −1.34181 fuel + `INDNEULFO` −2.28798 **feedstock** | −3.62979 |
+    | 276 | `ammonia_smr_gas` | `natural_gas` | `IND_NGABOM` −9.95842 fuel + `INDNEUNGA` −33.99590 **feedstock** | −43.95432 |
+
+    **Two distinct problems, and item 4 has already fixed one of them.** On rows 248, 256 and
+    273 a *positive* by-product (`ICHPRO`, process by-products burned in CHP) is netted
+    against a negative input — a carrier the unit both consumes and produces, which is
+    exactly the case §3.6's `(unit_id, carrier_id, role)` key now holds as two rows. Writing
+    them separately makes `steam_cracker_naphtha`'s 5.05 PJ of by-product visible to C8
+    instead of buried in a feedstock number.
+
+    **The other half needs a carrier that does not exist.** All five fold a `NEU`
+    (non-energy use) **feedstock** into a fuel coefficient, because §3.4 has no feedstock
+    carrier — which is item 22's eighth missing carrier and item 38's `NEUOTH` question. Until
+    that exists the netting is unavoidable, and `ammonia_smr_gas` reads as burning 43.95 PJ of
+    gas when 34.00 of it is never burnt at all. **That matters for §7**: a feedstock's carbon
+    is embodied in the product, not released at the stack, so attributing it as fuel CO₂
+    overstates the unit's direct emissions.
+
+    **The provenance wording is also misleading** and should be fixed whenever the rows are:
+    the bracket reads `(-43.95432 + -33.9959)`, which is the *result* and the second term, not
+    the two terms. It also still cites the pair key as its reason. *`DONE_units.md`; the COMIT
+    workbook sheet `technology_input_output`.*
+45. **Two `unit_bill_of_materials.component_id` values resolve to nothing.** `pv` and
+    `battery_8h` are named as components of the `pv_battery_*` hybrids, and `unit.csv` has
+    `pv_rooftop` and no `battery_8h` at all. §3.5.2's component reference is not checked by
+    `make data-check`, which is why it passes. It bites V20 (d) directly: that test asks
+    whether a storage unit is named by a hybrid, and one of the three that are is named under
+    an id that does not exist. Found 2026-09-16 while answering item 43. *This note.*
