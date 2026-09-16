@@ -103,18 +103,52 @@ These are the ones with a consequence outside the reference data.
    A `vector` key column would have made "all electricity is `MOT`" the *rule* rather than an
    accident, entrenching the misfiling instead of exposing it.
 
-1b. **Lane `duty_a` answered the same problem by dropping the second duty instead of splitting
-   it**, writing the dominant duty at 1.00 and naming the omitted one in `provenance` only.
-   **Eight processes**, and neither the `site_services` split nor the §3.2 rule reaches them:
-   Abattoir `scalding_singeing` (the >1000 °C singeing flame), Abattoir
-   `hot_water_sterilisation_cleaning` (the 45 °C washdown), Creamery
-   `heat_treatment_pasteurisation` (UHT at 120–140 °C), Creamery `evaporation_drying` (the
-   evaporator's band-3 steam), Beet Sugar `crystallisation_sugar_house` (centrifugal `MOT` and
-   granulator `DRY`), Foundry `shakeout_sand_reclamation` (thermal sand reclamation — a real
-   gas duty, 0.05 of the activity's gas), Artificial Fibre `drawing_texturing` (the draw-frame
-   drive), and Aircraft/Factory/Industrial NEC `other_process` (the gas component). **A missing
-   duty is worse than a wrong share**: a bad number is visible to C10, an absent one is not.
+1b. **Five duties that no rule can find: a second duty on the *same* fuel.** Lane `duty_a` met
+   the same problem as item 1a and answered it differently — it wrote the dominant duty at 1.00
+   and named the omitted one in `provenance` only. **Eight processes.** They are not one group:
+
+   **Three are multi-vector, so the §3.2 rule does flag them.** They simply have not been
+   reworked yet, and doing so is ordinary item-1a work:
+
+   | Process | Vectors | Duty written | What is missing |
+   |---|---|---|---|
+   | Beet Sugar `crystallisation_sugar_house` | elec 0.25, gas 0.15 | `STM` 1.00 | centrifugal `MOT` and granulator `DRY` — the entire electric side |
+   | Foundry `shakeout_sand_reclamation` | elec 0.04, gas 0.05 | `MOT` 1.00 | thermal sand reclamation — the entire gas side |
+   | Aircraft works / Factory / Industrial NEC `other_process` | elec, gas | `OTH` 1.00 | the gas component (three activities) |
+
+   **Five are single-vector, and nothing mechanical will ever find them.** The missing duty draws
+   **the same fuel** as the one that was written — a different grade, or a different family, off
+   one gas supply. The vector count cannot see it, because there is only one vector:
+
+   | Process | Vector | Duty written | What is missing |
+   |---|---|---|---|
+   | Abattoir `scalding_singeing` | *(no energy-profile row at all)* | `LTH` band 2 | singeing, a direct flame above 1000 °C |
+   | Abattoir `hot_water_sterilisation_cleaning` | gas only | `LTH` band 2 | the 45 °C washdown — band 1, same family, same boiler |
+   | Creamery `heat_treatment_pasteurisation` | gas only | `LTH` band 2 | UHT at 120–140 °C — band 3, same family, same fuel |
+   | Creamery `evaporation_drying` | gas only | `DRY` band 4 | the falling-film evaporator's own band-3 steam |
+   | Artificial Fibre `drawing_texturing` | elec only | `PHEAT` band 4 | the draw-frame machine drive |
+
+   **This is the standing limitation of the §3.2 rule, and §3.2 now says so.** A process showing
+   one duty family at 1.00 is *unexamined*, not *confirmed simple*. Finding these needs someone
+   reading process descriptions, not a validator. **A missing duty is worse than a wrong share**:
+   a bad number is visible to C10 (the grade cascade), an absent one is not.
    *`DONE_duty_a.md`, "Gaps".*
+
+1c. **The `coupling` field — six things to decide before it can be built.** §3.2 defines the
+   three cases (coupled, uncoupled, alternative technologies) but carries no field holding the
+   answer, so an unexamined process is indistinguishable from a classified one.
+
+   | # | Decision | Note |
+   |---|---|---|
+   | 1 | **Scope** | Required only where §3.3.1 gives the process more than one vector — about **104 of 359 covered processes**, not all 376 register rows |
+   | 2 | **Enum** | `coupled` / `uncoupled` / `alternative_technologies`, and whether to add `unexamined` so a backfill can be honest about what nobody has looked at |
+   | 3 | **Blocking or advisory** | Does an unclassified multi-vector process fail `make data-check`? Blocking is the point of the field, and it means ~104 rows must be classified before the table ships |
+   | 4 | **What the validator asserts** | The checks fall out of the enum: `uncoupled` ⇒ exactly one duty row; `alternative_technologies` ⇒ one duty row **and** more than one §3.16 row; `coupled` ⇒ more than one duty row, none tiered `fallback` once a ratio is sourced |
+   | 5 | **Where it lives** | §3.2, not §3.3 — it is a property of the process, not of a duty |
+   | 6 | **Who backfills** | ~104 rows is a lane, not an afternoon |
+
+   It cannot catch the five single-vector cases in 1b either way; nothing can.
+
 2. **§3.13 marked `duty_factor` and `peak_to_mean` required, and all 371 rows are blank.** No
    published load profile met the no-invention rule. *`DONE_loadshape.md`, Q1 and Q3.*
 
@@ -232,9 +266,32 @@ These are the ones with a consequence outside the reference data.
     14 of `duty_b`'s 31 — *not* "20 of 31 in one lane", which mixed the two). It needs no new
     evidence, because §3.3.1's existing vector shares already size both halves; splitting the
     electrical half further, into lighting, small power and compressed air, would need evidence
-    nobody publishes. The crosswalk is the open part: `IFD`, `INF` and `IIS` carry no space-heat
-    commodity, so a separated heating process has no COMIT node and V1b needs a mapping rule.
-    See item 1a for the eight processes this does *not* reach. *Both duty reports.*
+    nobody publishes. See items 1a and 1b for what this does *not* reach. *Both duty reports.*
+
+    **The crosswalk is the only open part, and it is smaller than it looked.** COMIT's process
+    commodities are `sector × duty × fuel`, so a space-heat node exists as `ICHSPC`, `ICRSPC`,
+    `IEESPC`, `IMESPC`, `IOISPC`, `IPRSPC`, `ITXSPC`, `IVHSPC` — and **not** in `IFD` (food and
+    drink), `INF` (non-ferrous), `IIS` (iron and steel) or `IPP` (paper). A separated space-heating
+    process in a creamery therefore has no node to map to.
+
+    **But space heating is not sector-specific, and COMIT's own data says so.** Every `SPC` node
+    in every sector holds the same list of ordinary building-heating plant — gas boiler, electric
+    boiler, hydrogen boiler, biomass boiler, heat pump, LPG, coal, and heat taken from site CHP.
+    Nothing in any of them depends on what the building makes. Which subset a sector happens to
+    carry varies arbitrarily (five rows in `ICR`, eight in `IOI`) and the naming is inconsistent
+    (`IPR` says "Low-temperature heat space"), which reads as an artefact of how the workbook was
+    assembled rather than a claim about the sectors. CaRB3 has already taken the same view:
+    `unit.csv` holds `resistance_heater_spc`, `heat_pump_spc_air` and `heat_exchanger_spc_steam`
+    with **no sector index at all**. What genuinely varies by sector is *how much* space heat a
+    site needs — shed size, shift pattern — and that is demand, which CaRB3 holds in §3.3 and
+    §3.3.1, not technology.
+
+    **So the missing `IFD`/`INF`/`IIS`/`IPP` nodes are a gap in COMIT, not a statement that those
+    sectors have no space heating.** Three ways to close it, cheapest first: map the separated
+    process to the sector's `LTH` node and record a V1b divergence, which is what lane `duty_a`
+    already does as a named analogue; leave the heating duty on the combined process for those
+    four sectors only, splitting everywhere else; or add `SPC` nodes to the four sectors, which is
+    a change to COMIT itself and not to CaRB3.
 37. **`Mineral Production - Gas / power_generation` is a conversion unit, not a demand**, and
     should arguably leave the register. *`DONE_duty_b.md`, Q4.*
 38. **SMR feedstock at oil refineries needs a `NEUOTH` row with a published feedstock/fuel

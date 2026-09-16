@@ -449,6 +449,15 @@ several sectors have no node for a separated duty — `IFD`, `INF` and `IIS` car
 commodity at all. A split whose parts cannot both be crosswalked must either map both parts to
 the original node or be recorded as a known V1b divergence.
 
+**The vector count is a flag, and it is blind in one direction.** It finds a process whose
+duties sit on *different* fuels. It cannot find a process whose second duty sits on **the same
+fuel** — one gas supply feeding both an 85 °C steriliser and a 45 °C washdown, or both a
+pasteuriser at band 2 and a UHT plant at band 3. Nothing in the input data distinguishes those,
+so no mechanical test will ever raise them; only someone reading the process description will.
+**Five such processes are known and listed** in
+[notes/20](../notes/20_reference_data_open_questions.md) item 1b. A process whose §3.3 rows
+carry a single duty family at 1.00 is therefore *unexamined*, not *confirmed simple*.
+
 > **Nothing validates this classification today.** There is no `coupling` field on the
 > register and no check that a multi-vector process has been examined. Adding one is the
 > obvious enforcement point and is open — see
