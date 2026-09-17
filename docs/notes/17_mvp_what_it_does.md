@@ -113,7 +113,7 @@ five conditions hold together:
 
 1. **One carrier per unit.** Every unit's carrier mix is pinned to one primary carrier, so a
    unit's identity determines its fuel.
-2. **No storage.** No unit with `is_storage`, and no hybrid unit.
+2. **No storage.** No unit with `unit_class = storage`, and no hybrid unit.
 3. **No onsite generation.** No unit in the generation set.
 4. **C10, C11 and C12 inactive.** No grade cascade, no connection limit, no siting cap.
 5. **No export.** Export is zero for every carrier, connection and period, so the objective
@@ -266,9 +266,9 @@ wrong** rather than the new mechanism, which is why it is the parity site.
 - **The duty is a mass**, 0.85 Mt of clinker in the archived example, not an energy quantity
   (D5), and the emissions factor is kilotonnes of CO₂ per megatonne of product.
 - **The kiln is a chemistry unit**, node-keyed on `ICMCLK`, not a member of a duty family.
-- **A CCS train is a separate unit.** It consumes the kiln's CO₂ carrier, names the kiln in
-  `abates_unit_id`, inherits the kiln's remaining life and strands nothing while the kiln
-  stands (§3.5, C4, V17).
+- **A CCS train is a separate unit.** It consumes the kiln's CO₂ carriers, names its host
+  kiln units one row each in `unit_abatement_host` (§3.5.3), inherits the earliest remaining
+  life among them and strands nothing while any host stands (C4, V17).
 - **Run in the carrier-equivalent configuration**, one carrier per unit, no generation, no
   export, no cascade, the cement works' problem is duty satisfaction plus fuel prices, and V1b
   compares its objective and per-carrier energy with the R run's.

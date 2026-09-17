@@ -3,8 +3,9 @@
 **Date:** 2026-09-15 · **Status:** Draft v0.1 for review · **Spec:** §3 of
 `docs/specs/2026-08-28-carb3-site-energy-system-implementation.md`
 
-Thirteen tables populating the live specification's data model, built in one pass by eight
-parallel research lanes against the briefs in [`build/`](build/). Every lane's report
+Fourteen tables populating the live specification's data model. Thirteen were built in one
+pass by eight parallel research lanes against the briefs in [`build/`](build/);
+`unit_abatement_host.csv` was added on 2026-09-17 when §3.5.3 replaced `unit.abates_unit_id`. Every lane's report
 (`build/DONE_<lane>.md`) records row counts, coverage per column, every judgement call, the
 gaps and why each is a gap, and the questions it could not settle. **Read the report before
 quoting a number from its table.** The questions are consolidated in
@@ -27,6 +28,7 @@ the spec calls `activity_process_energy_share`.
 | `unit_input_output.csv` | §3.6 `unit_input_output` | 446 | lane `units` | same |
 | `unit_bill_of_materials.csv` | §3.5.2 `unit_bill_of_materials` | 24 | lane `units` | same |
 | `unit_eligibility.csv` | §3.5.1 `unit_eligibility` | 2,612 | lane `eligibility` | `build/DONE_eligibility.md` |
+| `unit_abatement_host.csv` | §3.5.3 `unit_abatement_host` | 37 | lane `units`, 2026-09-17 | `build/DONE_units.md` §8 |
 | `decarbonisation_option_unit.csv` | the option→unit join (data-migration item C2) | 163 | lane `eligibility` | same |
 | `comit_technology_lineage.csv` | the 397-row reconciliation V1b reads (data-migration item B1) | 397 | lane `lineage` | `build/DONE_lineage.md` |
 | `process_load_shape.csv` | §3.13 `process_load_shape` | 371 | lane `loadshape` | `build/DONE_loadshape.md` |
@@ -89,6 +91,7 @@ for review, not a settled answer — note 20 lists the places it bites.
 |---|---|---|
 | `process_load_shape.csv` | `duty_factor` and `peak_to_mean` blank on all 371 rows: no published load profile survived the no-invention rule. The classification is the deliverable; §3.13 now makes both optional and §5.6 defaults each to 1.00 (mean load over operating hours, the floor of the peak), flagged as an assumption not data | `build/DONE_loadshape.md`, note 20 item 2 |
 | `unit.csv` | 15 units uncosted (thermal stores, digester, solar thermal, most hybrids); `min_viable_scale` blank throughout; 24 units now on published UK costs, 92 on COMIT reuse, 21 proxy | `build/DONE_units.md` §4 and §7 |
+| `unit.csv` | ~~`abates_unit_id` blank on 11 of 13 abatement units~~ — **closed 2026-09-17.** The column is gone; `unit_abatement_host.csv` carries one row per (train, host) pair, 37 rows over all 13 trains, none blank, and V33 (b) is blocking | `build/DONE_units.md` §8, note 20 item 5 |
 | `unit_input_output.csv` | Capture trains other than `ccs_amine` have no coefficients; the four standalone storage units have none either, for want of a published round-trip efficiency — they are now *expressible*, since §3.6 keys on `(unit_id, carrier_id, role)` (note 20 item 4), but not yet written | `build/DONE_units.md` G2, G8 |
 | `unit_eligibility.csv` | `min_duty` on 15 rows and `earliest_year` on 9, all from the worked examples; 1,851 of 2,612 rows are `proxy` | `build/DONE_eligibility.md` §4 |
 | `activity_process_duty_profile.csv` | 151 of 427 rows are `fallback`; no row is `measured` or `high` | the two duty reports |
@@ -100,4 +103,4 @@ for review, not a settled answer — note 20 lists the places it bites.
 
 `build/build_*.py` and `build/check_*.py` are the lanes' own generators and checks, kept as a
 record of how each table was assembled; each ran clean at the time it was written. The
-authoritative check is `make data-check`, which now covers all thirteen tables.
+authoritative check is `make data-check`, which now covers all fourteen tables.

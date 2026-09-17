@@ -35,6 +35,7 @@ flowchart LR
     PT["premise_throughput §3.1.2"]
     PC["premise_connection §3.1.3"]
     PD["premise_process_detail §3.10"]
+    PU["premise_process_unit §3.10.2"]
     PV["premise_process_vintage §3.15"]
     PM["premise_measured_emissions §3.11"]
     PO["premise_operating_profile §3.12"]
@@ -45,6 +46,7 @@ flowchart LR
     RC["carrier §3.4"]
     RU["unit §3.5"]
     RE["unit_eligibility §3.5.1"]
+    RH["unit_abatement_host §3.5.3"]
     RK["unit_carrier_coefficient §3.6"]
     RD["process_duty §3.9"]
     RS["activity_process_energy_share §3.3.1"]
@@ -96,8 +98,9 @@ flowchart TB
     PE["<b>premise_energy</b> §3.1.1 — 5 carriers<br/>coal 2.10000 · gas 0.31000 · elec 0.42000<br/>waste_derived_fuel 1.55000 from 2023 ⇒ substituted<br/>fuel_oil 0.00000 not_consumed<br/>solid_biomass absent ⇒ coverage incomplete<br/><b>total 4.38000 PJ/yr</b>"]
     PT["<b>premise_throughput</b> §3.1.2 — mass denominator<br/>clinker 0.85000 Mt/yr<br/>cement 1.13000 Mt/yr"]
     PC["<b>premise_connection</b> §3.1.3 — 2 rows<br/>C-01 electricity 25 MW imp / <b>0 MW exp</b> / 33 kV<br/>C-02 natural_gas 12 MW imp"]
-    PD["<b>premise_process_detail</b> §3.10 — 9 rows<br/>kiln_pyroprocessing 2004– , known_capacity 0.95 Mt/yr<br/>the other 8 processes from 1957<br/>process_evidence_tier = site_known"]
-    PV["<b>premise_process_vintage</b> §3.15 — 3 cohorts, all 2004<br/>kiln_dry_coal 0.53030<br/>kiln_dry_wdf 0.39141<br/>kiln_dry_gas 0.07829"]
+    PD["<b>premise_process_detail</b> §3.10 — 9 rows, <b>no unit_id</b><br/>kiln_pyroprocessing 2004– , known_capacity 0.95 Mt/yr (the line)<br/>the other 8 processes from 1957<br/>process_evidence_tier = site_known"]
+    PU["<b>premise_process_unit</b> §3.10.2 — 4 rows<br/>2004 line → kiln_dry_coal · kiln_dry_wdf · kiln_dry_gas<br/>1957–2003 line → kiln_wet_ICMCLK<br/>capacity_share blank ⇒ A4 splits 0.95 on the §5.2 mix"]
+    PV["<b>premise_process_vintage</b> §3.15 — 3 cohorts, all 2004<br/>kiln_dry_coal 0.530303<br/>kiln_dry_wdf 0.391414<br/>kiln_dry_gas 0.078283"]
     PM["<b>premise_measured_emissions</b> §3.11<br/>2024 combustion 291 + process 452 = <b>743 kt</b><br/>base-year row present ⇒ §7.6 runs"]
     PO["<b>premise_operating_profile</b> §3.12<br/>continuous, 8,400 h/yr, 3 shutdown weeks<br/>peak_electricity 16.2 MW, load factor 0.82<br/>within_shift_peak_factor 1.17"]
     PL["<b>process_load_shape</b> §3.13 — 8 rows<br/>kiln flat 1.00 · packing intermittent 0.35<br/>2 standing rows run when idle"]
@@ -105,8 +108,9 @@ flowchart TB
 
   subgraph REF["Reference data this premise reaches"]
     direction TB
-    RC["<b>carrier</b> §3.4 — 12 rows, <b>none gradeable</b><br/>coal, natural_gas, waste_derived_fuel, fuel_oil, electricity<br/>motive_power · clinker, cement (mass)<br/><b>co2_process, co2_fuel_fossil charged</b><br/><b>co2_fuel_biogenic zero_rated</b> · co2_captured"]
-    RU["<b>unit</b> §3.5 — 15 rows, fuel in the identity (D13)<br/>kiln_dry_coal 260 £m/(Mt/yr), L 40, α 0.90<br/>kiln_dry_gas 252 · kiln_dry_wdf 274<br/>ccs_amine 190, L 25 · pv_rooftop 0.62 £m/MW, α 0.10<br/>battery_2h 0.58 £m/MW, L 15"]
+    RC["<b>carrier</b> §3.4 — 13 rows, <b>one gradeable: heat_lt60</b><br/>coal, natural_gas, waste_derived_fuel, fuel_oil, electricity<br/>motive_power, heat_lt60 · clinker (internal), cement (mass)<br/><b>co2_process, co2_fuel_fossil charged</b><br/><b>co2_fuel_biogenic zero_rated</b> · co2_captured"]
+    RU["<b>unit</b> §3.5 — 15 rows, fuel in the identity (D13)<br/><b>no abates_unit_id</b><br/>kiln_dry_coal 260 £m/(Mt/yr), L 40, α 0.90<br/>kiln_dry_gas 252 · kiln_dry_wdf 274<br/>ccs_amine 190, L 25 · pv_rooftop 0.62 £m/MW, α 0.10<br/>battery_2h 0.58 £m/MW, L 15"]
+    RH["<b>unit_abatement_host</b> §3.5.3 — 12 rows<br/>4 capture trains × the 3 dry kiln units<br/>life = <b>earliest</b> over the hosts, all 2004 here"]
     RK["<b>unit_carrier_coefficient</b> §3.6<br/>kiln_dry_coal: clinker +1.00000, coal −4.60000,<br/>electricity −0.10871, co2_process +0.52500,<br/>co2_fuel_fossil +435.16000 <i>derived</i><br/>kiln_dry_wdf splits 92.0 kt/PJ into<br/>+206.98712 fossil and +216.21288 biogenic"]
     RE["<b>unit_eligibility</b> §3.5.1<br/>min_duty 0.15 Mt/yr on the three kilns<br/>kiln_calcium_looping_coal 1.20 &gt; 0.85 ⇒ <b>screened out</b><br/>ccs_amine earliest_year 2035<br/>kiln_dry_wdf max_share 0.55"]
     RA["<b>activity_default_unit</b> §3.16<br/>kiln 0.53 / 0.39 / 0.08 across the three fuels<br/>grinder_mixer_elec 1.00 · motor_elec 1.00"]
@@ -116,12 +120,12 @@ flowchart TB
   subgraph SCEN["Scenario central, cluster humber"]
     direction TB
     SI["<b>infrastructure_scenario</b> §3.7<br/><b>co2_transport false → true at 2035</b>, £18.00m/Mt<br/>hydrogen <b>false throughout</b><br/>grid_headroom true throughout"]
-    SP["<b>scenario_parameters</b> §3.8, £m per PJ<br/>coal 2.60→3.10 · gas 7.10→8.80<br/>waste_derived_fuel 1.00→1.50 · elec 32.00→23.50<br/>carbon £90→£275/t · elec factor 18.0→3.0 kt/PJ<br/>process CO₂ 525 kt per Mt clinker"]
+    SP["<b>scenario_parameters</b> §3.8, £m per PJ<br/>coal 2.60→3.10 · gas 7.10→8.80<br/>waste_derived_fuel 1.00→1.50 · elec 32.00→23.50<br/>carbon £90→£275/t · elec factor 18.0→3.0 kt/PJ<br/>waste_derived_fuel factor <b>92.0 gross</b>, split by biogenic_fraction 0.5109"]
   end
 
-  DUTY["<b>process_duty</b> §3.9 — 8 duties<br/>ICMCLK clinker <b>0.85000 Mt/yr</b><br/>ICM cement <b>1.13000 Mt/yr</b><br/>MOT motive_power <b>0.16800 PJ/yr</b> over 6 processes"]
-  CAP["<b>A4 back-solved capacity</b><br/>kiln_dry_coal 0.503785 Mt/yr<br/>kiln_dry_wdf 0.371843 · kiln_dry_gas 0.074369<br/>sum 0.949997 = the permit kiln, utilisation 0.89474<br/>grinder 1.228261 Mt/yr · motor 0.176842 PJ/yr<br/>mix_evidence_tier = <b>carrier_bounded</b>"]
-  LP["<b>A6 the LP</b><br/>11 units × 6 periods, 8 duties, 12 carriers, 2 connections<br/>kiln_calcium_looping_coal screened out, hydrogen units absent<br/>C10 cascade: <b>0 rows</b> — nothing gradeable<br/>C11 binds at C-01 from 2035 · C12 binds on PV"]
+  DUTY["<b>process_duty</b> §3.9 — 7 duties, no duty_family column<br/>cement_grinding → cement <b>1.13000 Mt/yr</b><br/>motive_power <b>0.16800 PJ/yr</b> over 6 processes<br/><b>kiln_pyroprocessing has no duty</b> — clinker is internal (D16)"]
+  CAP["<b>A4 back-solved capacity</b><br/>kiln_dry_coal 0.503788 Mt/yr<br/>kiln_dry_wdf 0.371843 · kiln_dry_gas 0.074369<br/>sum 0.950000 = the permit kiln, utilisation 0.89474<br/>grinder 1.228261 Mt/yr · motor 0.176842 PJ/yr<br/>mix_evidence_tier = <b>carrier_bounded</b>"]
+  LP["<b>A6 the LP</b><br/>14 units × 6 periods, 7 duties, 13 carriers, 2 connections<br/>C1 duty satisfaction: 7 × 6 = <b>42</b> rows<br/>kiln_calcium_looping_coal screened out, hydrogen units absent<br/>C10 cascade: <b>0 rows</b> — one gradeable carrier (heat_lt60), no pair to flow between<br/>C11 binds at C-01 from 2035 · C12 binds on PV"]
 
   PREM --> DUTY
   REF --> DUTY
@@ -137,26 +141,25 @@ this is the back-solved baseline at 2025 prices.
 
 ```mermaid
 flowchart LR
-  IC["import coal<br/><b>2.073478 PJ</b>"]
-  IG["import natural_gas<br/><b>0.306075 PJ</b>"]
-  IW["import waste_derived_fuel<br/><b>1.530415 PJ</b>"]
+  IC["import coal<br/><b>2.073485 PJ</b>"]
+  IG["import natural_gas<br/><b>0.306086 PJ</b>"]
+  IW["import waste_derived_fuel<br/><b>1.530429 PJ</b>"]
   IE["import electricity<br/><b>0.420004 PJ</b><br/>metered 0.420000, +0.001%"]
 
-  KC["kiln_dry_coal<br/>0.450756 Mt clinker"]
-  KW["kiln_dry_wdf<br/>0.332699 Mt clinker"]
-  KG["kiln_dry_gas<br/>0.066538 Mt clinker"]
+  KC["kiln_dry_coal<br/>0.450758 Mt clinker"]
+  KW["kiln_dry_wdf<br/>0.332702 Mt clinker"]
+  KG["kiln_dry_gas<br/>0.066540 Mt clinker"]
   GR["grinder_mixer_elec<br/>1.130000 Mt cement"]
   MO["motor_elec<br/>0.168000 PJ"]
 
-  DCLK["duty ICMCLK<br/><b>0.85000 Mt clinker</b>"]
-  DCEM["duty ICM<br/><b>1.13000 Mt cement</b>"]
-  DMOT["duty MOT × 6<br/><b>0.16800 PJ motive_power</b>"]
+  DCEM["duty cement_grinding<br/><b>1.13000 Mt cement</b>"]
+  DMOT["duty × 6 electric processes<br/><b>0.16800 PJ motive_power</b>"]
 
-  CLK["carrier clinker<br/>⚠ <b>node does not close</b><br/>grinder draws −0.850000 and<br/>the kilns dispatched to the duty"]
+  CLK["carrier clinker<br/><b>node closes</b> — internal carrier (D16)<br/>kilns release +0.850000 via z°<br/>grinder draws −0.850000 = 1.130000 × 0.752212"]
 
   DP["dispose co2_process<br/><b>446.25000 kt</b> · charged"]
-  DF["dispose co2_fuel_fossil<br/><b>282.18622 kt</b> · charged<br/>coal 196.15102 + gas 17.17081 + wdf 68.86439"]
-  DB["dispose co2_fuel_biogenic<br/><b>71.93379 kt</b> · <b>zero_rated, £0</b>"]
+  DF["dispose co2_fuel_fossil<br/><b>282.18812 kt</b> · charged<br/>coal 196.15167 + gas 17.17142 + wdf 68.86503"]
+  DB["dispose co2_fuel_biogenic<br/><b>71.93446 kt</b> · <b>zero_rated, £0</b>"]
 
   IC --> KC
   IG --> KG
@@ -167,12 +170,12 @@ flowchart LR
   IE --> GR
   IE --> MO
 
-  KC --> DCLK
-  KW --> DCLK
-  KG --> DCLK
+  KC --> CLK
+  KW --> CLK
+  KG --> CLK
   GR --> DCEM
   MO --> DMOT
-  GR -.->|"needs 0.850000 Mt"| CLK
+  CLK -->|"0.850000 Mt"| GR
 
   KC --> DP
   KW --> DP
@@ -186,23 +189,23 @@ flowchart LR
 | Term, 2025 undiscounted | £m |
 |---|---|
 | $Z^{\text{capex}}$ — C5 forbids building at $t_0$ | 0.00000 |
-| $Z^{\text{opex}}$ — kilns 7.60000, grinder 1.84239, motor 0.06189 | 9.50428 |
-| $Z^{\text{fuel}}$ — coal 5.39104, gas 2.17313, WDF 1.53042, elec 13.44013 | 22.53472 |
-| $Z^{\text{carbon}}$ — **on disposal**, 728.43622 kt × £90/t | 65.55926 |
+| $Z^{\text{opex}}$ — kilns 4.03030 + 3.38377 + 0.56520 = 7.97928 (each unit's own rate), grinder 1.84239, motor 0.06189 | 9.88356 |
+| $Z^{\text{fuel}}$ — coal 5.39106, gas 2.17321, WDF 1.53043, elec 13.44013 | 22.53483 |
+| $Z^{\text{carbon}}$ — **on disposal**, 728.43812 kt × £90/t | 65.55943 |
 | $Z^{\text{infra}}$, $Z^{\text{net}}$, $Z^{\text{exp}}$, $Z^{\text{strand}}$ | 0.00000 |
-| **Total** | **£97.59826m** |
+| **Total** | **£97.97782m** |
 
-Direct emissions **728.43622 kt**, against a measured 743 kt — §7.6 reconciles to **1.96%**,
+Direct emissions **728.43812 kt**, against a measured 743 kt — §7.6 reconciles to **1.96%**,
 reported and not corrected. Indirect, reported and not charged: 0.420004 × 18.0 = **7.56007 kt**.
 
 ### 2.2 The pathway
 
 ```mermaid
 flowchart LR
-  T25["<b>2025</b><br/>three kilns standing 0.94999 Mt/yr<br/>PV 0 · capture 0<br/><b>728.44 kt charged</b>"]
+  T25["<b>2025</b><br/>three kilns standing 0.950000 Mt/yr<br/>PV 0 · capture 0<br/><b>728.44 kt charged</b>"]
   T30["<b>2030</b><br/>PV built to the C12 cap<br/><b>2.47692 MW</b> = 16,100 ÷ 6,500<br/>output 0.00781 PJ/yr = 1.86% of site electricity<br/>net +£0.11574m/yr<br/><b>728.44 kt</b>"]
   T35["<b>2035</b><br/>CO₂ transport arrives · ccs_amine built<br/>0.80037 Mt/yr, 90% capture<br/>capex over the <b>host's 9 years</b>, not 25<br/>net +£47.85m/yr · C11 breached by 1.00 MW<br/><b>84.88 kt charged</b>, biogenic −64.74 credited"]
-  T40["<b>2040</b><br/>unchanged<br/>kiln write-off still falls £30.875m a period<br/><b>84.88 kt</b>"]
+  T40["<b>2040</b><br/>unchanged<br/>kiln write-off still falls £31.4514m a period<br/><b>84.88 kt</b>"]
   T45["<b>2045</b><br/>kiln cohort dies · rebuilt at <b>0.94444 Mt/yr</b><br/>new capture train, host expiry under C3<br/>stranded value <b>£0</b> — never scrapped early<br/><b>84.88 kt</b>"]
   T50["<b>2050</b><br/>unchanged<br/><b>84.88 kt</b>"]
 
@@ -249,7 +252,7 @@ flowchart TB
   subgraph SCEN["Scenario central, cluster mersey"]
     direction TB
     SI["<b>infrastructure_scenario</b> §3.7<br/><b>hydrogen false → true at 2035</b>, £0.90m/PJ<br/>co2_transport <b>false throughout</b><br/>grid_headroom true throughout"]
-    SP["<b>scenario_parameters</b> §3.8, £m per PJ<br/>gas 7.10→8.80 · elec 32.00→23.50<br/>hydrogen <b>19.50→11.00</b> from 2035<br/>biomass 15.00→19.00 · export elec 19.00→13.50<br/>carbon £90→£275/t · elec factor 18.0→3.0 kt/PJ<br/>hydrogen factor <b>0.0</b> — a scenario assumption"]
+    SP["<b>scenario_parameters</b> §3.8, £m per PJ<br/>gas 7.10→8.80 · elec 32.00→23.50<br/>hydrogen <b>19.50→11.00</b> from 2035<br/>biomass 15.00→19.00 · export elec 19.00→13.50<br/>carbon £90→£275/t · elec factor 18.0→3.0 kt/PJ<br/>hydrogen factor <b>0.0</b> — a scenario assumption<br/>biomass factor <b>97.22 gross</b>, biogenic_fraction 1"]
   end
 
   DUTY["<b>process_duty</b> §3.9 — 6 duties, 4 of them graded heat<br/>LTH heat_60_100 r2 <b>0.075587 PJ/yr</b><br/>STM heat_100_150 r3 <b>0.055992 PJ/yr</b><br/>DRY heat_150_400 r4 <b>0.079050 PJ/yr</b><br/>SPC heat_60_100 r2 <b>0.018480 PJ/yr</b><br/>REF cooling <b>0.064598</b> · MOT motive_power <b>0.064598</b>"]
@@ -285,7 +288,7 @@ flowchart LR
 
   DV["dispose heat_lt60<br/><b>0.009486 PJ vented</b><br/>nothing consumes reject heat in 2025"]
   DF["dispose co2_fuel_fossil<br/><b>16.83005 kt</b> · charged<br/>boiler 7.42461 + CHP 4.18814 + dryer 5.21730"]
-  DB["dispose co2_fuel_biogenic<br/><b>0 kt</b> — declared, nothing burnt"]
+  DB["dispose co2_fuel_biogenic<br/><b>0 kt</b> — declared, no biomass unit built<br/>solid_biomass factor is <b>97.22 gross</b>, not zero"]
 
   IG --> BO
   IG --> CH
@@ -366,9 +369,9 @@ pair. This is that table.
 | Onsite generation | PV only, 1.86% of electricity | PV **and** an existing CHP, 30% of load |
 | `export_capacity` | **0 MW** — $Z^{\text{exp}}$ present and identically zero | **2 MW** — binds at 2050 and sheds CHP |
 | C11 connection | **breached** at 2035, −1.00 MW | **slack** on the chosen pathway, −4.50 MW on the all-electric counterfactual |
-| `D11` stranding weight | kiln carries **£117m** at $t_0$ — dominates | boiler house **under £1.1m** — prices delay in fractions |
+| `D11` stranding weight | the three kiln units carry **£119.5m** at $t_0$ — dominates | boiler house **under £1.1m** — prices delay in fractions |
 | Direct emissions, 2025 → 2050 | **728.44 → 84.88 kt** | **16.83 → 0 kt** |
-| Base-year annual cost | **£97.59826m** | **£5.69739m** |
+| Base-year annual cost | **£97.97782m** | **£5.69739m** |
 
 Neither example exercises both branches of any row. That is the design: the pair is the
 fixture, not either document alone.
@@ -377,10 +380,6 @@ fixture, not either document alone.
 
 ## 5. What the diagrams cannot show
 
-- **The `clinker` node does not close** in the cement example, and the diagram in §2.1 marks
-  it rather than hiding it. §5.2 and C1 (duty satisfaction) admit no way for a product carrier
-  to reach a downstream unit *and* satisfy a duty without counting the same 0.85 Mt twice. The
-  worked example's §13.3 records both plausible resolutions; the choice is a design decision.
 - **`ccs_amine` needs two coefficients on `co2_fuel_fossil`** — one declared for what it
   captures, one derived from its reboiler gas — and §3.6's primary key has room for one. The
   diagram shows a single edge; the specification gap is real and recorded.

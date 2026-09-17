@@ -3,8 +3,9 @@
 **The parity case.** One premise carried end to end through the nine algorithms `A1`–`A9`
 (§4), exercising the mass denominator (`D5`, hybrid denominators), tier-1 plant vintage
 (`D11`, existing plant has an age), the stranding charge, a CCS train as an abatement unit,
-and — in §10 — the carrier-equivalent configuration that `V1b` (reproduce the R run's
-objective and per-carrier energy) compares against.
+`D16` (internal products are carriers, not duties) on the clinker this works grinds itself,
+and the carrier-equivalent configuration of the specification's §10.2, which `V1b`
+(reproduce the R run's objective and per-carrier energy) compares against.
 
 Section references without a document name are to the
 [implementation specification](2026-08-28-carb3-site-energy-system-implementation.md).
@@ -19,8 +20,9 @@ Intermediate arithmetic is carried at six significant figures and quoted at five
 
 **This example cannot show the carrier mechanism**, and that is structural rather than a
 matter of taste: `Cement Works` resolves to exactly two COMIT process commodities, `ICMCLK`
-(clinker) and `ICM` (cement), so there is no `LTH` (low-temperature heat), no `STM` (steam),
-no `DRY` (drying) and no `SPC` (space heating). Nothing cascades, the kiln's candidates
+(clinker) and `ICM` (cement), and its processes present only two duty families, `HTH` on the
+kiln and `MOT` on everything else — so there is no `LTH` (low-temperature heat), no `STM`
+(steam), no `DRY` (drying) and no `SPC` (space heating). Nothing cascades, the kiln's candidates
 differ by *fuel* rather than by device, and CHP appears only fused inside bundled capture
 rows. The mechanism is demonstrated on the
 [food and drink premise](2026-08-28-carb3-site-energy-system-worked-example-food-drink.md)
@@ -105,11 +107,17 @@ coefficient, no solution value and no reported reconciliation by more than 1e-9.
 | `cement` | 1.11000 | measured | 2023 | history |
 | `cement` | **1.13000** | measured | **2024** | **base year** |
 
-Required, because `Cement Works` carries two mass-denominated processes under `D5` (hybrid
-denominators); `A1` rejects the premise with reason `missing_throughput` otherwise. Two
-products in one premise is the case the previous single `throughput_quantity` column could
-not express, and cement is the ordinary case for it: clinker is made, then ground and blended
-into cement at a clinker factor of 0.85 / 1.13 = **0.75221**.
+**The `cement` row is the duty; the `clinker` row is evidence.** `cement` is a product this
+works sells, so under `D5` (hybrid denominators) it carries a mass-denominated duty and needs
+a quantity: `A1` rejects the premise with reason `missing_throughput` if the **cement** row is
+absent. `clinker` is different. Under `D16` (internal products are carriers, not duties) it is
+internal to this site — made here, ground here, never sold — so it has no `process_duty` row
+at all (§3.2) and the reject does not apply to it. Its throughput row is still required
+reading: `A4` cross-checks the kilns' back-solved output against it (§5.1) and §10.2's
+reconciliation reports it. Two products in one premise is the case the previous single
+`throughput_quantity` column could not express, and cement is the ordinary case for it:
+clinker is made, then ground and blended into cement at a clinker factor of
+0.85 / 1.13 = **0.752212**.
 
 ### 1.4 `premise_connection` (§3.1.3)
 
@@ -133,17 +141,17 @@ C12 (siting cap) is unbounded and the LP builds infinite PV.
 
 From the site's environmental permit:
 
-| `process_id` | `valid_from_year` | `valid_to_year` | `connection_id` | `known_capacity` | `unit_id` | `confidence` |
-|---|---|---|---|---|---|---|
-| `quarrying_crushing` | 1957 | — | `C-01` | — | — | medium |
-| `raw_grinding_blending` | 1957 | — | `C-01` | — | — | medium |
-| `raw_meal_homogenisation` | 1957 | — | `C-01` | — | — | medium |
-| `kiln_pyroprocessing` | **1957** | **2003** | `C-01` | 0.70 Mt/yr | `kiln_wet_ICMCLK` | medium |
-| `kiln_pyroprocessing` | **2004** | — | `C-01` | **0.95 Mt/yr** | `kiln_dry_coal` ⚠ | **high** |
-| `clinker_cooling` | 2004 | — | `C-01` | — | — | medium |
-| `cement_grinding` | 1957 | — | `C-01` | — | — | medium |
-| `packing_dispatch` | 1957 | — | `C-01` | — | — | medium |
-| `site_services` | 1957 | — | `C-01` | — | — | medium |
+| `process_id` | `valid_from_year` | `valid_to_year` | `connection_id` | `known_capacity` | `confidence` |
+|---|---|---|---|---|---|
+| `quarrying_crushing` | 1957 | — | `C-01` | — | medium |
+| `raw_grinding_blending` | 1957 | — | `C-01` | — | medium |
+| `raw_meal_homogenisation` | 1957 | — | `C-01` | — | medium |
+| `kiln_pyroprocessing` | **1957** | **2003** | `C-01` | 0.70 Mt/yr | medium |
+| `kiln_pyroprocessing` | **2004** | — | `C-01` | **0.95 Mt/yr** | **high** |
+| `clinker_cooling` | 2004 | — | `C-01` | — | medium |
+| `cement_grinding` | 1957 | — | `C-01` | — | medium |
+| `packing_dispatch` | 1957 | — | `C-01` | — | medium |
+| `site_services` | 1957 | — | `C-01` | — | medium |
 
 Nine rows covering eight processes, so this is the site's **complete** process list as at any
 year in range (§3.10's completeness rule). Two things it shows:
@@ -159,16 +167,29 @@ year in range (§3.10's completeness rule). Two things it shows:
   kiln that never coexisted — failure mode 10 of §10.5. The closed interval also explains the
   step in `premise_energy`'s history that would otherwise look like a data error.
 
-Only the kiln carries a capacity and a named unit; the rest are listed to establish that they
-exist and nothing more.
+Only the kiln carries a capacity; the rest are listed to establish that they exist and nothing
+more. **Which units a process runs is not on this table** — §3.10 no longer carries a
+`unit_id` at all — and that is §1.5.1.
 
-**⚠ `unit_id` names one unit, and this kiln is three (D13).** The works co-fires coal, gas and
-waste fuel, which §1.11 models as three units sharing the clinker duty. §3.10's field is
-singular, so the permit's entry names the dominant one and A4 resolves the rest from the
-metered carriers (§5.2). A site that genuinely ran a single-fuel kiln would be fully
-determined here and is not. Recorded in §13 — the field should take a set, or the entity
-should be keyed one field wider, and this is a consequence of D13 that §3.10 has not caught up
-with.
+### 1.5.1 `premise_process_unit` (§3.10.2) — which units a known process runs
+
+| `process_id` | `valid_from_year` | `unit_id` | `capacity_share` | `provenance` | `confidence` |
+|---|---|---|---|---|---|
+| `kiln_pyroprocessing` | **2004** | `kiln_dry_coal` | — | permit, fuel schedule | high |
+| `kiln_pyroprocessing` | **2004** | `kiln_dry_wdf` | — | permit, fuel schedule | high |
+| `kiln_pyroprocessing` | **2004** | `kiln_dry_gas` | — | permit, fuel schedule | high |
+| `kiln_pyroprocessing` | **1957** | `kiln_wet_ICMCLK` | — | permit, superseded line | medium |
+
+**One row per unit, so a co-firing kiln is expressible and a single-fuel one is
+distinguishable.** The first three fields are a foreign key to the §1.5 row above, so the
+dry line's three children hang off the 2004 interval and the wet line's single child off the
+closed 1957–2003 one. `known_capacity` stays on the **parent**, because a permit states the
+line's capacity once: the 0.95 Mt/yr is the whole dry kiln, and `A4` splits it across the
+three children on the §5.2 carrier mix — 0.503788 / 0.371843 / 0.074369 Mt/yr at §8.1 —
+because `capacity_share` is blank here. A works that genuinely ran one fuel would write one
+child row and be fully determined; under the old singular field it looked exactly like this
+one. The other seven processes have **no child rows**, which means the unit is unknown and is
+what a blank `unit_id` used to mean.
 
 ### 1.6 `premise_process_vintage` (§3.15) — `D11` tier 1
 
@@ -176,15 +197,18 @@ From the same permit, which records the kiln line's commissioning:
 
 | `process_id` | `cohort_id` | `unit_id` | `commissioned_year` | `capacity_share` | `confidence` |
 |---|---|---|---|---|---|
-| `kiln_pyroprocessing` | `1` | `kiln_dry_coal` | **2004** | 0.53030 | high |
-| `kiln_pyroprocessing` | `2` | `kiln_dry_wdf` | **2004** | 0.39141 | high |
-| `kiln_pyroprocessing` | `3` | `kiln_dry_gas` | **2004** | 0.07829 | high |
+| `kiln_pyroprocessing` | `1` | `kiln_dry_coal` | **2004** | 0.530303 | high |
+| `kiln_pyroprocessing` | `2` | `kiln_dry_wdf` | **2004** | 0.391414 | high |
+| `kiln_pyroprocessing` | `3` | `kiln_dry_gas` | **2004** | 0.078283 | high |
 
-Three rows at one commissioning year, because §3.15 is keyed per `(cohort_id, unit_id)` and
-D13 makes this one physical kiln line three units. The shares are the base-year fuel split of
-§5.2 and sum to 1.00 as §3.15 requires. This is the entity handling D13 gracefully where
-§3.10 above does not: because vintage is stated as *shares*, a co-firing kiln decomposes
-naturally, and all three cohorts carry the same year because they are the same steel. **No rows for the other seven processes**, and unlike §1.5 that is not an omission:
+Three rows at one commissioning year, because §3.15 is keyed per **cohort** —
+`(premise_id, process_id, cohort_id)`, with `unit_id` a plain field on the row — and D13 (one
+primary carrier per unit) makes this one physical kiln line three units, one cohort each, each
+naming its own `unit_id`. The shares are the base-year fuel split of §5.2, quoted at six
+decimal places so that they sum to **1.000000** as §3.15 requires. This and §1.5.1 now have the
+same **one row per unit** shape, which is what a co-firing kiln needs from both: vintage states
+it as shares, the process–unit table as rows, and either way the kiln decomposes naturally.
+All three cohorts carry the same year because they are the same steel. **No rows for the other seven processes**, and unlike §1.5 that is not an omission:
 this table asserts nothing about completeness. They fall to tier 2 and are aged from the
 works' 1957 construction year, where the bound is slack. The cohort is read only because
 `kiln_pyroprocessing` is valid at the base year (§3.15's last rule); the wet line's plant is
@@ -273,26 +297,39 @@ not.
 
 ### 1.11 Reference data this premise reads
 
-**Carriers (§3.4).** Nine rows are in play. Grades are carriers, not an attribute of one.
+**Carriers (§3.4).** Thirteen rows are in play. Grades are carriers, not an attribute of one.
 
-| `carrier_id` | `carrier_kind` | `is_gradeable` | `grade_rank` | `is_indirect` | `denominator_kind` |
-|---|---|---|---|---|---|
-| `coal` | primary | no | — | no | energy |
-| `natural_gas` | primary | no | — | no | energy |
-| `waste_derived_fuel` | primary | no | — | no | energy |
-| `fuel_oil` | primary | no | — | no | energy |
-| `electricity` | primary | no | — | **yes** | energy |
-| `motive_power` | intermediate | no | — | no | energy |
-| `clinker` | product | no | — | no | **mass** |
-| `cement` | product | no | — | no | **mass** |
-| `co2_process` | **emission** | no | — | no | **mass** |
-| `co2_fuel_fossil` | **emission** | no | — | no | **mass** |
-| `co2_fuel_biogenic` | **emission** | no | — | no | **mass** |
-| `co2_captured` | product | no | — | no | **mass** |
+| `carrier_id` | `carrier_kind` | `is_gradeable` | `grade_rank` | `is_indirect` | `denominator_kind` | `may_import` | `may_export` |
+|---|---|---|---|---|---|---|---|
+| `coal` | primary | no | — | no | energy | **yes** | no |
+| `natural_gas` | primary | no | — | no | energy | **yes** | no |
+| `waste_derived_fuel` | primary | no | — | no | energy | **yes** | no |
+| `fuel_oil` | primary | no | — | no | energy | **yes** | no |
+| `electricity` | primary | no | — | **yes** | energy | **yes** | **yes** |
+| `heat_lt60` | intermediate | **yes** | **1** | no | energy | no | no |
+| `motive_power` | intermediate | no | — | no | energy | no | no |
+| `clinker` | product | no | — | no | **mass** | **no** | **no** |
+| `cement` | product | no | — | no | **mass** | no | **yes** |
+| `co2_process` | **emission** | no | — | no | **mass** | no | no |
+| `co2_fuel_fossil` | **emission** | no | — | no | **mass** | no | no |
+| `co2_fuel_biogenic` | **emission** | no | — | no | **mass** | no | no |
+| `co2_captured` | product | no | — | no | **mass** | no | **yes** |
 
-Twelve carriers, four of them emissions. `carrier_kind` is load-bearing (§3.4, §7): a unit
+Thirteen carriers, three of them emissions — `co2_captured` is a product, not an emission. `carrier_kind` is load-bearing (§3.4, §7): a unit
 consuming `motive_power` produces no CO₂ at all, because the electricity that made it was
 already charged upstream.
+
+**`may_import` and `may_export` are the site boundary, and they are a property of the carrier
+(`D16`).** They decide which variables exist: an import $m_{c,k,t}$ is declared only where
+`may_import` is true *and* the connection carries the carrier, an export $x_{c,k,t}$ only
+where `may_export` is true and the same holds. A carrier false on both is **internal** — it
+can only be made and consumed on site. `clinker` is the case that matters here: this works
+makes it and grinds it, buying it in is out of scope, and selling it is not what this premise
+does, so it is internal and has no duty (§3.2). `cement` is the mirror image, false on import
+and true on export, which is what makes it a duty carrier. The flags are also what lets a
+Sankey of the site be drawn straight from §9's rows: imports on the left, carrier nodes and
+units in the middle, and on the right the four ways a stream ends — a duty delivered, an
+export, a disposal $d_{c,t}$, or a loss inside a unit.
 
 **The emission carriers and what they carry (D15):**
 
@@ -304,9 +341,10 @@ already charged upstream.
 | `co2_captured` | — | **no** | The capture train; leaves through the CO₂ transport network under C9 |
 
 **Waste-derived fuel is the carrier that makes the split earn its keep.** It carries
-`emission_factor` 92.0 kt/PJ **gross** and `biogenic_fraction` **0.5109**, so A6 derives a
-fossil coefficient against 92.0 × 0.4891 = 44.9972 kt/PJ and a biogenic one against
-92.0 × 0.5109 = 47.0028. Every other fuel here has `biogenic_fraction` 0 and generates a
+`biogenic_fraction` **0.5109** and an `emission_factor_source` naming the `scenario_parameters`
+series that holds the factor itself; that series is **92.0 kt/PJ gross** in every period
+(§6.3). So A6 (the problem builder) derives a fossil coefficient against
+92.0 × 0.4891 = 44.9972 kt/PJ and a biogenic one against 92.0 × 0.5109 = 47.0028. Every other fuel here has `biogenic_fraction` 0 and generates a
 fossil coefficient only. Before D15 this site's waste fuel carried a single net factor of
 45.0 kt/PJ, and the 71.93 kt of biogenic CO₂ inside it was invisible — which is exactly the
 quantity that turns capture net-negative in §8.4.
@@ -315,26 +353,26 @@ quantity that turns capture net-negative in §8.4.
 `electricity`, because C8 (carrier balance) would then have the motor unit consuming and
 producing the same carrier and the node would be circular. A duty is a *service*, so the
 motor consumes `electricity` and produces `motive_power`; the same holds for `cooling` on a
-`REF` (refrigeration) duty. This is forced by C8's algebra and is recorded in §13 as an open
-point, because §3.4 does not say it.
+`REF` (refrigeration) duty. This is forced by C8's algebra, and §3.4 states it: its duty-family
+table maps `MOT` to `motive_power` and `REF` to `cooling`.
 
 **Units (§3.5), the rows this premise can reach.** Capacity units follow `D5`: Mt/yr for
 chemistry, PJ/yr for energy services, MW for PV and storage.
 
-| `unit_id` | `unit_class` | `spine` | key | **fuel** | `capex` | `fixed_opex` | `L` | `α` | `γ` | `λ` area |
+| `unit_id` | `unit_class` | `spine` | `process_id` / `duty_family` | **fuel** | `capex` | `fixed_opex` | `L` | `α` | `γ` | `λ` area |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `kiln_dry_coal` | converter | chemistry | `ICMCLK` | **coal** | 260 £m/(Mt/yr) | 8.00 | 40 | 0.90 | 1.0 | — |
-| `kiln_dry_gas` | converter | chemistry | `ICMCLK` | **natural_gas** | 252 | 7.60 | 40 | 0.90 | 1.0 | — |
-| `kiln_dry_wdf` | converter | chemistry | `ICMCLK` | **waste_derived_fuel** | 274 | 9.10 | 40 | 0.90 | 1.0 | — |
-| `kiln_fluidbed_wdf` | converter | chemistry | `ICMCLK` | waste_derived_fuel | 295 | 9.20 | 40 | 0.88 | 1.0 | — |
-| `kiln_calcium_looping_coal` | converter | chemistry | `ICMCLK` | coal | 430 | 16.50 | 30 | 0.88 | 1.0 | — |
-| `ccs_amine` | abatement | chemistry | `ICMCLK` | **natural_gas** | 190 £m/(Mt/yr) | 9.50 | 25 | 0.90 | 1.0 | — |
-| `ccs_amine_mdea` | abatement | chemistry | `ICMCLK` | natural_gas | 205 | 8.80 | 25 | 0.90 | 1.0 | — |
-| `ccs_oxyfuel` | abatement | chemistry | `ICMCLK` | electricity | 240 | 11.00 | 25 | 0.90 | 1.0 | — |
-| `ccs_oxyfuel_partial` | abatement | chemistry | `ICMCLK` | electricity | 165 | 7.90 | 25 | 0.90 | 1.0 | — |
-| `grinder_mixer_elec` | converter | chemistry | `ICM` | **electricity** | 45 £m/(Mt/yr) | 1.50 | 25 | 0.92 | 1.0 | — |
-| `grinder_mixer_clinker_sub_elec` | converter | chemistry | `ICM` | electricity | 58 | 1.70 | 25 | 0.92 | 1.0 | — |
-| `cement_lowcarbon_elec` | converter | chemistry | `ICM` | electricity | 112 | 3.40 | 25 | 0.90 | 1.0 | — |
+| `kiln_dry_coal` | converter | chemistry | `kiln_pyroprocessing` | **coal** | 260 £m/(Mt/yr) | 8.00 | 40 | 0.90 | 1.0 | — |
+| `kiln_dry_gas` | converter | chemistry | `kiln_pyroprocessing` | **natural_gas** | 252 | 7.60 | 40 | 0.90 | 1.0 | — |
+| `kiln_dry_wdf` | converter | chemistry | `kiln_pyroprocessing` | **waste_derived_fuel** | 274 | 9.10 | 40 | 0.90 | 1.0 | — |
+| `kiln_fluidbed_wdf` | converter | chemistry | `kiln_pyroprocessing` | waste_derived_fuel | 295 | 9.20 | 40 | 0.88 | 1.0 | — |
+| `kiln_calcium_looping_coal` | converter | chemistry | `kiln_pyroprocessing` | coal | 430 | 16.50 | 30 | 0.88 | 1.0 | — |
+| `ccs_amine` | abatement | chemistry | `kiln_pyroprocessing` | **natural_gas** | 190 £m/(Mt/yr) | 9.50 | 25 | 0.90 | 1.0 | — |
+| `ccs_amine_mdea` | abatement | chemistry | `kiln_pyroprocessing` | natural_gas | 205 | 8.80 | 25 | 0.90 | 1.0 | — |
+| `ccs_oxyfuel` | abatement | chemistry | `kiln_pyroprocessing` | electricity | 240 | 11.00 | 25 | 0.90 | 1.0 | — |
+| `ccs_oxyfuel_partial` | abatement | chemistry | `kiln_pyroprocessing` | electricity | 165 | 7.90 | 25 | 0.90 | 1.0 | — |
+| `grinder_mixer_elec` | converter | chemistry | `cement_grinding` | **electricity** | 45 £m/(Mt/yr) | 1.50 | 25 | 0.92 | 1.0 | — |
+| `grinder_mixer_clinker_sub_elec` | converter | chemistry | `cement_grinding` | electricity | 58 | 1.70 | 25 | 0.92 | 1.0 | — |
+| `cement_lowcarbon_elec` | converter | chemistry | `cement_grinding` | electricity | 112 | 3.40 | 25 | 0.90 | 1.0 | — |
 | `motor_elec` | converter | service | `MOT` | **electricity** | 3.2 £m/(PJ/yr) | 0.35 | 20 | 0.95 | 1.0 | — |
 | `pv_rooftop` | generator | service | — | — | 0.62 £m/MW | 0.011 | 30 | **0.10** | **0.031536** | **6,500 m²/MW** |
 | `battery_2h` | storage | service | — | — | 0.58 £m/MW | 0.009 | 15 | 0.95 | 0.031536 | **unset** |
@@ -367,6 +405,32 @@ area-bound units (§3.5): PV carries 6,500 m²/MW, and the battery, being contai
 leaves it **unset** and is outside C12 (siting cap) — as is every kiln, grinder and motor at
 this works.
 
+**`unit_abatement_host` (§3.5.3), which units an abatement unit captures from.** `unit` carries
+no `abates_unit_id` field: a train that bolts onto a co-fired kiln has three hosts, so the
+relationship is its own table, one row per host.
+
+| `unit_id` | `host_unit_id` |
+|---|---|
+| `ccs_amine` | `kiln_dry_coal` |
+| `ccs_amine` | `kiln_dry_wdf` |
+| `ccs_amine` | `kiln_dry_gas` |
+| `ccs_amine_mdea` | `kiln_dry_coal` |
+| `ccs_amine_mdea` | `kiln_dry_wdf` |
+| `ccs_amine_mdea` | `kiln_dry_gas` |
+| `ccs_oxyfuel` | `kiln_dry_coal` |
+| `ccs_oxyfuel` | `kiln_dry_wdf` |
+| `ccs_oxyfuel` | `kiln_dry_gas` |
+| `ccs_oxyfuel_partial` | `kiln_dry_coal` |
+| `ccs_oxyfuel_partial` | `kiln_dry_wdf` |
+| `ccs_oxyfuel_partial` | `kiln_dry_gas` |
+
+Twelve rows: four capture trains against the three dry kiln units, each host a `converter` on
+the same `process_id` as its train. **An abatement unit inherits the earliest remaining life
+among its hosts** and strands nothing while any of them stands (C3, C4), which at this works is
+one number rather than three, because §1.6 puts all three cohorts at 2004. `kiln_fluidbed_wdf`
+and `kiln_calcium_looping_coal` are candidate replacements rather than plant this site runs, so
+nothing hosts off them at the base year.
+
 **Coefficients (§3.6), consumed negative, produced positive.** Per unit of the unit's output.
 
 | `unit_id` | `carrier_id` | `coefficient` | `role` | Authored |
@@ -391,14 +455,14 @@ this works.
 | `kiln_dry_wdf` | `co2_fuel_fossil` | **+206.98712** | `emission` | **derived** — 4.60000 × 92.0 × 0.4891 |
 | `kiln_dry_wdf` | `co2_fuel_biogenic` | **+216.21288** | `emission` | **derived** — 4.60000 × 92.0 × 0.5109 |
 | `ccs_amine` | `co2_captured` | **+1.00000** | `primary_output` | declared |
-| `ccs_amine` | `co2_process` | −0.55756 | `emission_input` | declared — the stack's composition, §8.4 |
+| `ccs_amine` | `co2_process` | −0.55755 | `emission_input` | declared — the stack's composition, §8.4 |
 | `ccs_amine` | `co2_fuel_fossil` | −0.35257 | `emission_input` | declared |
-| `ccs_amine` | `co2_fuel_biogenic` | −0.08987 | `emission_input` | declared |
+| `ccs_amine` | `co2_fuel_biogenic` | −0.08988 | `emission_input` | declared |
 | `ccs_amine` | `natural_gas` | −1.90000 | `fuel_input` | declared |
 | `ccs_amine` | `electricity` | −0.35000 | `aux_input` | declared — **auxiliary, and `primary`** |
 | `ccs_amine` | `co2_fuel_fossil` | **+0.10659** | `emission` | **derived** — 1.90000 × 56.1. The reboiler's own stack, a second row on a carrier the train also consumes |
 | `grinder_mixer_elec` | `cement` | **+1.00000** | `primary_output` | declared |
-| `grinder_mixer_elec` | `clinker` | −0.75221 | `aux_input` | declared |
+| `grinder_mixer_elec` | `clinker` | **−0.752212** | `aux_input` | declared — 0.85 ÷ 1.13 at six places, so the `clinker` node closes to 1e-6 |
 | `grinder_mixer_elec` | `electricity` | −0.14124 | `fuel_input` | declared |
 | `motor_elec` | `motive_power` | **+1.00000** | `primary_output` | declared |
 | `motor_elec` | `electricity` | −1.00000 | `fuel_input` | declared |
@@ -448,7 +512,7 @@ raw meal, and charging that correctly needs the per-unit reject coefficients of 
 group B5 (`MF-12`, a Should, at milestone M6). Until those exist the kiln's whole fuel is
 charged to the kiln and the raw mill is a motor duty only. §13 records that part.
 
-At 2025 the three kilns reject **0.470267 PJ** between them, and in the absence of any sink it
+At 2025 the three kilns reject **0.470271 PJ** between them, and in the absence of any sink it
 is disposed — `heat_lt60` carries `may_dispose`, and §5.2's $d_{c,t}$ is what a carrier with
 nowhere to go is for. It is not a loss the model can avoid this year; it becomes avoidable the
 moment a unit that draws rank-1 heat is eligible here.
@@ -478,15 +542,15 @@ screens in `A2` — outside the LP.
 
 | `process_id` | `duty_family` | `unit_id` | `default_share` | `sizing_basis` | `evidence_tier` |
 |---|---|---|---|---|---|
-| `kiln_pyroprocessing` | `ICMCLK` | `kiln_dry_coal` | 0.53 | throughput | derived |
-| `kiln_pyroprocessing` | `ICMCLK` | `kiln_dry_wdf` | 0.39 | throughput | derived |
-| `kiln_pyroprocessing` | `ICMCLK` | `kiln_dry_gas` | 0.08 | throughput | derived |
-| `cement_grinding` | `ICM` | `grinder_mixer_elec` | 1.00 | throughput | derived |
+| `kiln_pyroprocessing` | `HTH` | `kiln_dry_coal` | 0.53 | throughput | derived |
+| `kiln_pyroprocessing` | `HTH` | `kiln_dry_wdf` | 0.39 | throughput | derived |
+| `kiln_pyroprocessing` | `HTH` | `kiln_dry_gas` | 0.08 | throughput | derived |
+| `cement_grinding` | `MOT` | `grinder_mixer_elec` | 1.00 | throughput | derived |
 | *(six electric processes)* | `MOT` | `motor_elec` | 1.00 | duty_annual | assumed |
 
 Shares sum to 1.00 per `(activity, set, process, duty_family)` as §3.16 requires, and every
 row has a `unit_eligibility` entry, which §3.16 makes a precondition. **This premise never
-consults these rows**, because §1.5 names the kiln's unit directly and `D10` puts site
+consults these rows**, because §1.5.1 names the kiln's three units directly and `D10` puts site
 knowledge above the activity default; they are shown because the table is what the same
 premise would fall back to, and because §11 of the
 [food and drink example](2026-08-28-carb3-site-energy-system-worked-example-food-drink.md)
@@ -504,7 +568,7 @@ Ten checks, all passing.
 | 2 | `carb3_activity` is one of the 55 Factory-class activities (`D1`) | pass |
 | 3 | Base-year energy sums to 4.38000 PJ/yr > 0 | pass — not `no_energy` |
 | 4 | No duplicate `(premise_id, carrier_id, connection_id, data_year)` | pass — not `duplicate_year_row` |
-| 5 | A `premise_throughput` row exists, as a mass-denominated activity requires | pass — not `missing_throughput` |
+| 5 | A `premise_throughput` row exists for every **exported** product carrier — `cement` here; the `clinker` row is evidence under `D16` and is not required | pass — not `missing_throughput` |
 | 6 | `commissioned_year` 2004 ≤ `data_year` 2024; cohort shares sum to 1.00 | pass — not `vintage_in_future` / `vintage_shares_unbalanced` |
 | 7 | `construction_year` 1957 ≤ `data_year`; `last_refurbishment_year` 2011 between them | pass |
 | 8 | `premise_process_detail` intervals per `(premise, process)` are disjoint, and at least one is valid at 2024 | pass — not `process_intervals_overlap` / `no_process_valid_in_base_year` |
@@ -546,22 +610,42 @@ tier nor the activity-default tier was consulted.
 
 ### 3.2 `process_duty` (§3.9) — what the premise must produce
 
-| `process_id` | `duty_family` | `carrier_id` | `grade_rank` | `quantity` | `evidence_tier` |
-|---|---|---|---|---|---|
-| `kiln_pyroprocessing` | `ICMCLK` | `clinker` | — | **0.85000 Mt/yr** | `site_known` |
-| `cement_grinding` | `ICM` | `cement` | — | **1.13000 Mt/yr** | `site_known` |
-| `raw_grinding_blending` | `MOT` | `motive_power` | — | 0.10080 PJ/yr | `site_known` |
-| `raw_meal_homogenisation` | `MOT` | `motive_power` | — | 0.02520 PJ/yr | `site_known` |
-| `quarrying_crushing` | `MOT` | `motive_power` | — | 0.02100 PJ/yr | `site_known` |
-| `packing_dispatch` | `MOT` | `motive_power` | — | 0.02100 PJ/yr | `site_known` |
-| `clinker_cooling` | `MOT` | `motive_power` | — | **0.00000 PJ/yr** | `site_known` |
-| `site_services` | `MOT` | `motive_power` | — | **0.00000 PJ/yr** | `site_known` |
+| `process_id` | `carrier_id` | `grade_rank` | `quantity` | `evidence_tier` |
+|---|---|---|---|---|
+| `cement_grinding` | `cement` | — | **1.13000 Mt/yr** | `site_known` |
+| `raw_grinding_blending` | `motive_power` | — | 0.10080 PJ/yr | `site_known` |
+| `raw_meal_homogenisation` | `motive_power` | — | 0.02520 PJ/yr | `site_known` |
+| `quarrying_crushing` | `motive_power` | — | 0.02100 PJ/yr | `site_known` |
+| `packing_dispatch` | `motive_power` | — | 0.02100 PJ/yr | `site_known` |
+| `clinker_cooling` | `motive_power` | — | **0.00000 PJ/yr** | `site_known` |
+| `site_services` | `motive_power` | — | **0.00000 PJ/yr** | `site_known` |
 
-No row carries a `grade_rank`, because no carrier at this works is gradeable — the structural
-point of §13 of the specification, and the reason cement alone cannot demonstrate the model's
-mechanism.
+**Seven duties, and `kiln_pyroprocessing` is not one of them.** A duty exists only for a
+service carrier or for a `product` carrier the site can sell — `may_export` true (§1.11) —
+which is `D16` (internal products are carriers, not duties). `clinker` is false on both
+boundary flags, so the kiln process keeps everything else a process has — units, a
+`premise_process_detail` row, vintage, a load shape — and carries **no duty row**. Its
+activity is not free for that: C8 (carrier balance) pins it, because the grinder draws
+0.850000 Mt of clinker off the balance and only the kilns produce it. Nothing is lost by
+removing the row and one thing is gained, which §8.1 shows: the `clinker` node closes.
 
-**The two chemistry duties are masses**, read straight from `premise_throughput` under `D5`.
+**A duty is identified by its process, not by a commodity code.** §3.9 keys this entity on
+`(premise_id, process_id, period)` and carries no `duty_family` column at all. That column
+lives on `activity_default_unit` (§3.16), where §1.12 above puts `kiln_pyroprocessing` in `HTH`
+and `cement_grinding` in `MOT`, and on a *service*-spine `unit` row (§3.5); a chemistry-spine
+unit is keyed on `process_id` instead, which is what §1.11's table shows. `ICMCLK` and `ICM`
+are COMIT **process-commodity** codes, not duty families: they key §3.3's technology rows and
+the chemistry units' lineage, and they never name a duty. The one chemistry duty here is
+stated as a mass under `D5` at `site_known`, which overrides the activity default's carrier and
+grade.
+
+No duty row carries a `grade_rank`. The one gradeable carrier at this works, `heat_lt60`
+(§1.11), appears only as the kilns' reject output and no duty draws it — which is the
+structural point of §13 of the specification, and the reason cement alone cannot demonstrate
+the model's grade mechanism.
+
+**The one chemistry duty is a mass**, read straight from `premise_throughput`'s `cement` row
+under `D5`.
 The energy duties are derived from the premise's metered energy by the published process
 shares in
 [`activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv),
@@ -591,12 +675,12 @@ covers carry more than one. Applied to §1.2's base-year quantities:
 
 | `vector` | Premise PJ/yr | Process | Share | PJ/yr | Goes to |
 |---|---|---|---|---|---|
-| `coal` | 2.10000 | `kiln_pyroprocessing` | 1.00 | **2.10000** | the `ICMCLK` duty, as a kiln input coefficient |
+| `coal` | 2.10000 | `kiln_pyroprocessing` | 1.00 | **2.10000** | to the kilns, as a kiln input coefficient |
 | `gas` | 0.31000 | `kiln_pyroprocessing` | 1.00 | **0.31000** | as above |
 | `other` | 1.55000 | `kiln_pyroprocessing` | 1.00 | **1.55000** | as above |
 | `oil` | 0.00000 | `kiln_pyroprocessing` | **1.00** after R2 | **0.00000** | as above |
 | `electricity` | 0.42000 | `kiln_pyroprocessing` | 0.22 | **0.09240** | as above |
-| | | `cement_grinding` | 0.38 | **0.15960** | the `ICM` duty, as a grinder input coefficient |
+| | | `cement_grinding` | 0.38 | **0.15960** | the `cement_grinding` duty, as a grinder input coefficient |
 | | | `raw_grinding_blending` | 0.24 | **0.10080** | the `MOT` duty |
 | | | `raw_meal_homogenisation` | 0.06 | **0.02520** | the `MOT` duty |
 | | | `packing_dispatch` | 0.05 | **0.02100** | the `MOT` duty |
@@ -608,7 +692,7 @@ The `MOT` duty is therefore **0.16800 PJ/yr**, and the two chemistry units' elec
 0.09240 and 0.15960, which is where §1.11's coefficients come from: 0.09240 ÷ 0.85000 =
 **0.10871** PJ per Mt clinker and 0.15960 ÷ 1.13000 = **0.14124** PJ per Mt cement. The three
 sum to 0.42000 exactly — the split is an allocation of the meter, so it closes by
-construction, and the only residual left is the 1.26% between the kiln's metered fuel and its
+construction, and the only residual left is the 1.28% between the kiln's metered fuel and its
 coefficient (§5.1).
 
 **R2 renormalisation is exercised on the oil vector.** §1.5 puts this premise at `D10` tier 1
@@ -628,17 +712,15 @@ mechanism is visible on a vector where an error would cost nothing.
 > follow-on, and until then the `MOT` duty at every cement works is understated and the shares
 > of the six processes that do carry rows are correspondingly overstated.
 
-> **The specification rules this table out as an input, and that is the defect.** §3.3 calls
-> it "the 490-row fuel split" and makes it `V1b`'s **parity target**, never an input, on the
-> ground that supplying a fuel split alongside a duty split over-determines the problem. The
-> reasoning is right and the target is wrong: this is a process × vector **marginal** — of the
-> premise's gas, what share goes to the kiln — which is a demand-side fact about the site's
-> layout. What `V1b` compares is the **conditional over time**: in 2040, is a duty served by
-> gas, hydrogen or electricity. Reading the marginal over-determines nothing, because at the
-> base year the per-carrier totals are pinned by the meter on both sides anyway (C8 forces
-> import to equal consumption); what it fixes is the duty structure that drives every later
-> period. It is also the natural source for §4.1's tier 3 `activity_default` mix, which today
-> names no table at all. §13 records the change §3.3 needs.
+> **The specification holds this table as an input.** §3.3.1
+> (`activity_process_energy_share`) is the entity that reads it, and §3.3 keeps only the
+> **conditional over time** — in 2040, is a duty served by gas, hydrogen or electricity — as
+> `V1b`'s parity target. What this table states is the **marginal**: of the premise's gas, what
+> share goes to the kiln, a demand-side fact about the site's layout. Reading the marginal
+> over-determines nothing, because at the base year the per-carrier totals are pinned by the
+> meter on both sides anyway (C8 forces import to equal consumption); what it fixes is the duty
+> structure that drives every later period, and it is the natural source for §4.1's tier 3
+> `activity_default` mix.
 
 ### 3.3 The candidate unit set, and the lineage it is read through
 
@@ -745,8 +827,8 @@ kiln thermal input, metered   = 2.10000 + 0.31000 + 1.55000       = 3.96000 PJ/y
 kiln thermal coefficient      |ι| = 4.60000 PJ per Mt clinker
 implied clinker output        = 3.96000 / 4.60000                 = 0.86087 Mt/yr
 declared throughput                                               = 0.85000 Mt/yr
-known_capacity (permit)                                           = 0.95000 Mt/yr
-utilisation = duty / (capacity × γ) = 0.85000 / (0.95000 × 1.0)    = 0.89474
+known_capacity (permit, the whole line — §1.5)                     = 0.95000 Mt/yr
+utilisation = output / (capacity × γ) = 0.850000 / (0.95000 × 1.0)  = 0.89474
 ```
 
 Three checks, and all three pass:
@@ -757,13 +839,21 @@ Three checks, and all three pass:
 | Implied output vs declared throughput | 0.86087 vs 0.85000 | **1.28% apart** — profile and coefficients agree |
 | Utilisation vs operating schedule | continuous, 8,400 h/yr vs 0.89474 | pass — not `utilisation_schedule_inconsistent` |
 
-The two checks use different bases deliberately. Utilisation is computed against the *duty*,
-which is a measured throughput, so it is the figure the LP must reproduce. The 1.28% is the
+The two checks use different bases deliberately. Utilisation is computed against the kilns'
+**back-solved output**, which under `D16` (internal products are carriers, not duties) is what
+the grinder's draw pins through C8 rather than what a duty asks for — 0.850000 Mt, equal to
+the `clinker` throughput evidence row of §1.3, so it is the figure the LP must reproduce. The 1.28% is the
 independent cross-check between the meter and the coefficient, and it is the source of the
 base-year reconciliation gap in §10. The third check exists only because the schedule was
 supplied: a continuous works back-solving to 0.89 is credible; the same works back-solving to
 0.2 would have signalled an error in the capacity, the coefficients or the energy, and no
 other input could have said which.
+
+**The permit states one capacity and the line is three units.** `known_capacity` sits on the
+§1.5 parent row, not on the §1.5.1 child rows, because that is how a permit is written; those
+children carry no `capacity_share`, so `A4` splits the 0.95000 Mt/yr across them on the §5.2
+carrier mix — 0.503788, 0.371843 and 0.074369 Mt/yr, the standing capacities §8.1 works with.
+Utilisation is one figure for the line and therefore the same 0.89474 on each child.
 
 `grinder_mixer_elec` has no `known_capacity`, so its capacity **is** back-solved:
 1.13000 ÷ 0.92 = **1.22826 Mt/yr**. `motor_elec` likewise: 0.16800 ÷ 0.95 = **0.17684 PJ/yr**.
@@ -776,32 +866,45 @@ Tiers are tried in order and exactly one resolves:
 
 | Tier | Test at this premise | Resolves? |
 |---|---|---|
-| 1 — `site_known` | `premise_process_detail` names a kiln unit but not the split across the three | **no** |
+| 1 — `site_known` | `premise_process_unit` (§1.5.1) names all three kiln units, but every row's `capacity_share` is blank, so the split across them is not stated | **no** |
 | 2 — `carrier_bounded` | `premise_energy` gives site totals per carrier, and **exactly one kiln unit consumes each** of coal, gas and waste fuel | **yes** |
 | 3 — `activity_default` | not reached | — |
 
 ```
 mix_evidence_tier = "carrier_bounded"
-coal                  2.10000 / 3.96000 = 0.53030
-natural_gas           0.31000 / 3.96000 = 0.07828
-waste_derived_fuel    1.55000 / 3.96000 = 0.39141
-                                          ───────
-                                          1.00000  (0.99999 at five places)
+coal                  2.10000 / 3.96000 = 0.530303
+natural_gas           0.31000 / 3.96000 = 0.078283
+waste_derived_fuel    1.55000 / 3.96000 = 0.391414
+                                          ────────
+                                          1.000000
 ```
+
+The shares are quoted at **six decimal places**, which is what §1.6's `capacity_share` column
+carries for the same three cohorts: these are the same three numbers and they must not differ
+between the two sections. At five places they sum to 0.99999 rather than to one, and every
+figure derived from them inherits the shortfall.
 
 **Under D13 the mix is a dispatch split, not a coefficient blend.** Before, one kiln carried
 three fuel coefficients and A4 chose their proportions. Now each kiln unit burns one fuel at
-4.60000 PJ per Mt, and A4 divides the clinker duty between them:
+4.60000 PJ per Mt, and A4 divides the clinker output between them:
 
-| Unit | Share | $z_{u,\text{ICMCLK},0}$ (Mt) | Fuel drawn (PJ) |
+| Unit | Share | $z^{\circ}_{u,0}$ (Mt) | Fuel drawn (PJ) |
 |---|---|---|---|
-| `kiln_dry_coal` | 0.53030 | **0.450756** | 0.450756 × 4.60000 = **2.073478** |
-| `kiln_dry_wdf` | 0.39141 | **0.332699** | **1.530415** |
-| `kiln_dry_gas` | 0.07828 | **0.066538** | **0.306075** |
-| **Total** | **1.00000** | **0.849993** | **3.909968** |
+| `kiln_dry_coal` | 0.530303 | **0.450758** | **2.073485** |
+| `kiln_dry_wdf` | 0.391414 | **0.332702** | **1.530429** |
+| `kiln_dry_gas` | 0.078283 | **0.066540** | **0.306086** |
+| **Total** | **1.000000** | **0.850000** | **3.910000** |
 
-The totals are the same as a blended kiln would have given — 0.85000 Mt of clinker on
-3.91000 PJ of fuel — which is the point: D13 changes how the mix is *expressed*, not what it
+The quantity split is $z^{\circ}_{u,0}$, what each kiln **releases to the balance**, not
+$z_{u,q,0}$: there is no clinker duty to dispatch to (`D16`, §3.2). The same three shares split
+the parent's `known_capacity` across the three §1.5.1 child rows, which is the capacity column
+of §8.1. $z^{\circ}$ is
+0.850000 × share and the fuel drawn is $z^{\circ}$ × 4.60000, both evaluated on the exact ratio
+(2.10000 ÷ 3.96000 and so on) rather than on the six-place share printed beside them, so the
+columns close on the duty instead of accumulating three roundings.
+
+The totals are exactly what a blended kiln would have given — 0.850000 Mt of clinker on
+3.910000 PJ of fuel — which is the point: D13 changes how the mix is *expressed*, not what it
 is. What it adds is that each unit now carries its own capex, its own eligibility and, in
 §8.4, **its own CO₂ carriers**, which is what makes the waste fuel's biogenic share visible at
 all.
@@ -837,11 +940,22 @@ For the kiln, the final operating year is 2004 + 40 − 1 = **2043**:
 | Survival η | 1.000 | 1.000 | 1.000 | 1.000 | 0 | 0 |
 | Standing capacity $e_{u,t}$ (Mt/yr) | 0.95000 | 0.95000 | 0.95000 | 0.95000 | 0 | 0 |
 | Mean remaining life R̄ (yr) | 19 | 14 | 9 | 4 | 0 | 0 |
-| Stranding rate κ·ξ·R̄/L (£m per Mt/yr) | 123.500 | 91.000 | 58.500 | 26.000 | 0 | 0 |
-| Write-off if scrapped whole (£m) | **117.325** | **86.450** | **55.575** | **24.700** | 0 | 0 |
+| Stranding rate $\bar{\kappa}$·ξ·R̄/L (£m per Mt/yr) | 125.805 | 92.699 | 59.592 | 26.485 | 0 | 0 |
+| Write-off if scrapped whole (£m) | **119.515** | **88.064** | **56.612** | **25.161** | 0 | 0 |
 
-A point mass has no spread, so R̄ is exact rather than a pool average: at 2035 the rate is
-£260m × 1.0 × 9 ÷ 40 = £58.500m per Mt/yr, and the write-off is that times 0.95000 Mt/yr.
+**Stranding is per unit, because capex is (`D13`).** The write-off sums over the three kiln
+units rather than pricing one blended kiln:
+
+$$\text{write-off}_t \;=\; \sum_{u} \kappa_u\, \xi\, a_{u}\, \bar{R}_t / L$$
+
+so it carries §1.11's **£251.611m** of standing capital (0.503788 × 260 + 0.371843 × 274 +
+0.074369 × 252) rather than 0.95000 × £260m. Expressed as a rate it is the capacity-weighted
+$\bar{\kappa}$ = 251.611 ÷ 0.950000 = **£264.854m per Mt/yr**, and it is that weighted figure —
+not `kiln_dry_coal`'s £260m — that the row above quotes. A point mass has no spread, so R̄ is
+exact rather than a pool average: at 2035 the rate is £264.854m × 1.0 × 9 ÷ 40 =
+**£59.592m per Mt/yr**, and the write-off is that times the 0.950000 Mt/yr standing across the
+three units = **£56.612m**. The write-off falls by a constant £31.4514m a period
+(251.611 × 5 ÷ 40), which is the difference between any two consecutive columns.
 
 **The same kiln at the fallback tier**, had §1.6 been absent — the uniform survival function
 that reproduces COMIT's linear decay, and the only tier the MVP implements (`MF-43`, C4 at
@@ -852,7 +966,7 @@ the fallback tier only):
 | Survival η = 1 − τ/L | 1.000 | 0.875 | 0.750 | 0.625 | 0.500 | 0.375 |
 | Standing capacity (Mt/yr) | 0.95000 | 0.83125 | 0.71250 | 0.59375 | 0.47500 | 0.35625 |
 | Mean remaining life R̄ = (L − τ)/2 | 20.0 | 17.5 | 15.0 | 12.5 | 10.0 | 7.5 |
-| Stranding rate (£m per Mt/yr) | 130.000 | 113.750 | 97.500 | 81.250 | 65.000 | 48.750 |
+| Stranding rate $\bar{\kappa}$·ξ·R̄/L (£m per Mt/yr) | 132.427 | 115.873 | 99.320 | 82.767 | 66.213 | 49.660 |
 
 The two survival paths could hardly be less alike, and one line on a permit decides which the
 site gets. Meeting the duty of 0.85000 Mt/yr at an availability factor of 0.90 needs
@@ -922,11 +1036,15 @@ Emission factors, kt CO₂ per PJ:
 |---|---|---|---|---|---|---|---|
 | `coal` | 94.6 | 94.6 | 94.6 | 94.6 | 94.6 | 94.6 | direct |
 | `natural_gas` | 56.1 | 56.1 | 56.1 | 56.1 | 56.1 | 56.1 | direct |
-| `waste_derived_fuel` | **45.0** | 45.0 | 45.0 | 45.0 | 45.0 | 45.0 | direct, **net of biogenic** — gross 92.0, biogenic fraction 0.511 |
+| `waste_derived_fuel` | **92.0** | 92.0 | 92.0 | 92.0 | 92.0 | 92.0 | direct, **gross** — A6 derives fossil 44.9972 and biogenic 47.0028 from it via the carrier's `biogenic_fraction` 0.5109 (§1.11, §10.1) |
 | `electricity` | 18.0 | 13.0 | 9.0 | 6.0 | 4.0 | 3.0 | **indirect** (`is_indirect` true) |
 
-Process CO₂: **525 kt per Mt clinker**, on the `co2_process` carrier's mass denominator.
 `reinforcement_cost` at 33 kV: **£0.42m per MW**.
+
+**Process CO₂ is not a scenario parameter.** The **525 kt per Mt clinker** is the kilns'
+`co2_process` coefficient, declared on the unit in §3.6 as the stoichiometry it is (§1.11, and
+D15 (fuel CO₂ derived, process CO₂ declared)) — there is no `scenario_parameters` series for
+it.
 
 > **The objective charges direct carbon only.** §5.4's $Z^{\text{carbon}}_t$ does not say
 > whether an `is_indirect` carrier's emissions enter the cost, and §7.4 settles only that
@@ -942,15 +1060,16 @@ Process CO₂: **525 kt per Mt clinker**, on the `co2_process` carrier's mass de
 
 ```
 T   = {0,1,2,3,4,5}                             six periods, Δ = 5
-Q   = { ICMCLK, ICM, MOT×6 }                    eight duties, of which two are mass
-U   = the twelve units of §1.11 (of §3.3's fourteen; two CHPs are unreachable),
+Q   = the seven process duties of §3.2         one is a mass — cement_grinding on cement;
+                                                six MOT. kiln_pyroprocessing has no duty (D16)
+U   = the fifteen units of §1.11,
       less kiln_calcium_looping_coal (screened, §3.4)
-      less every hydrogen unit (C9, §6.2)                                    ⇒ 11 units
+      (no hydrogen unit is reachable here, so C9's screen removes none)      ⇒ 14 units
 U⁰  = { kiln_dry_coal, kiln_dry_gas, kiln_dry_wdf,
         grinder_mixer_elec, motor_elec }                                     incumbents
 Ugen= { pv_rooftop }                                                         generators
 Uarea = { pv_rooftop }                          area_per_capacity set; battery_2h is NOT
-C   = twelve carriers of §1.11
+C   = thirteen carriers of §1.11
 K   = { C-01, C-02 }
 ```
 
@@ -958,13 +1077,14 @@ K   = { C-01, C-02 }
 
 | Variable | Count here | Note |
 |---|---|---|
-| $n_{u,t}$ new capacity | 11 × 6 = 66 | |
-| $a_{u,t}$ available capacity | 66 | |
-| $z_{u,q,t}$ dispatch to a duty | declared over $u \in U_q$ only: 8 duties × eligible units × 6 | the duty index is what stops one unit being credited twice |
-| $z^{\circ}_{u,t}$ released to the balance | 66 | non-zero only for `pv_rooftop` |
-| $h_{c \to c',t}$ cascade | **0** | no gradeable carrier at this premise |
-| $e_{u,t}$, $r_{u,t}$ incumbent survival and early retirement | 3 × 6 each | over $U^0$ only |
-| $m_{c,k,t}$, $x_{c,k,t}$ import and export | per carrier per connection per period | $m = x = 0$ where the connection does not carry $c$ |
+| $n_{u,t}$ new capacity | 14 × 6 = 84 | |
+| $a_{u,t}$ available capacity | 84 | |
+| $z_{u,q,t}$ dispatch to a duty | declared over $u \in U_q$ only: 7 duties × eligible units × 6 | the duty index is what stops one unit being credited twice |
+| $z^{\circ}_{u,t}$ released to the balance | 84 | non-zero for the three kilns — all their clinker, `D16` — and for `pv_rooftop` |
+| $h_{c \to c',t}$ cascade | **0** | one gradeable carrier (`heat_lt60`), so no pair to flow between |
+| $e_{u,t}$, $r_{u,t}$ incumbent survival and early retirement | 5 × 6 = 30 each | over $U^0$ only |
+| $m_{c,k,t}$, $x_{c,k,t}$ import and export | networked carriers, per connection per period: `electricity` at `C-01`, `natural_gas` at `C-02` | C11 ranges over these |
+| $m_{c,t}$ site-level import | delivered carriers, per period: `coal`, `waste_derived_fuel`, `fuel_oil` | `may_import` true with no connection row, so no connection index and no C11 |
 | $w_{k,t}$ reinforcement | 2 × 6 | |
 
 **The problem is a pure LP** (§5.2) and stays one: `min_duty` was applied in `A2`, not as a
@@ -975,22 +1095,24 @@ before the build.
 
 | # | Constraint | Instances here | Binds? |
 |---|---|---|---|
-| **C1** | Duty satisfaction | 8 duties × 6 periods = 48 | always — it is an equality |
-| **C2** | Activity ≤ available capacity × γ × α | 11 × 6 = 66 | on the kiln at 0.89474 utilisation, slack elsewhere |
-| **C3** | Capacity transfer between periods | 66 | — |
-| **C4** | Incumbent ageing and early retirement (`D11`) | 3 × 6 = 18 | the kiln dies at 2045 |
-| **C5** | No building in the start year | 11 | binds — $n_{u,0} = 0$ for every unit |
+| **C1** | Duty satisfaction | 7 duties × 6 periods = 42 | always — it is an equality |
+| **C2** | Activity ≤ available capacity × γ × α | 14 × 6 = 84 | on the kiln at 0.89474 utilisation, slack elsewhere |
+| **C3** | Capacity transfer between periods | 84 | — |
+| **C4** | Incumbent ageing and early retirement (`D11`) | 5 × 6 = 30 | the kiln dies at 2045 |
+| **C5** | No building in the start year | 14 | binds — $n_{u,0} = 0$ for every unit |
 | **C6** | Unit stability | deferred (`MF-51`, Could) | — |
 | **C7** | Known changes | none announced at this premise | — |
-| **C8** | **Carrier balance** | 12 carriers × 6 = 72 | always — equalities |
+| **C8** | **Carrier balance** | 13 carriers × 6 = 78 | always — equalities |
 | **C9** | Infrastructure availability | hydrogen false throughout; CO₂ transport from 2035 | binds before 2035 |
-| **C10** | Heat grade cascade | **0 rows** | no gradeable carrier |
+| **C10** | Heat grade cascade | **no binding rows** | trivially satisfied — below |
 | **C11** | Connection capacity | 2 × 6 = 12 | **binds at `C-01` from 2035** — §8.3 |
 | **C12** | Siting cap | 6 | **binds** — §8.2 |
 
-C10's two sides both vanish here, and that is the honest statement of what a cement works
-cannot show. On the duty side there is no `grade_out` to compare against; on the carrier side
-there is no gradeable carrier for $h$ to flow between. The
+`heat_lt60` is a gradeable rank-1 carrier at this premise (§1.11), so C10 (the grade cascade)
+is not vacuous for want of a grade. But no unit here draws rank-1 heat and no second graded
+carrier exists, so the duty-side filter removes nothing and the cascade variable $h$ has
+nothing to flow to: the rows are trivially satisfied. The *mechanism* is still only
+demonstrable elsewhere — the
 [food and drink example](2026-08-28-carb3-site-energy-system-worked-example-food-drink.md)
 is where C10 does work.
 
@@ -1027,41 +1149,41 @@ of 2025. Every number below is determined, not chosen.
 
 | Unit | $z_{u,0}$ | α | $a_{u,0}$ | Basis |
 |---|---|---|---|---|
-| `kiln_dry_coal` | 0.450756 Mt | 0.90 | **0.503785 Mt/yr** | permit capacity 0.95000 split on §5.2's shares |
-| `kiln_dry_wdf` | 0.332699 Mt | 0.90 | **0.371843 Mt/yr** | as above |
-| `kiln_dry_gas` | 0.066538 Mt | 0.90 | **0.074369 Mt/yr** | as above |
+| `kiln_dry_coal` | 0.450758 Mt | 0.90 | **0.503788 Mt/yr** | permit capacity 0.95000 split on §5.2's shares |
+| `kiln_dry_wdf` | 0.332702 Mt | 0.90 | **0.371843 Mt/yr** | as above |
+| `kiln_dry_gas` | 0.066540 Mt | 0.90 | **0.074369 Mt/yr** | as above |
 | `grinder_mixer_elec` | 1.13000 Mt | 0.92 | **1.228261 Mt/yr** | back-solved |
 | `motor_elec` | 0.16800 PJ | 0.95 | **0.176842 PJ/yr** | back-solved |
 
-The three kiln capacities sum to **0.949997 Mt/yr**, the permit's kiln, and each runs at the
+The three kiln capacities sum to **0.950000 Mt/yr**, the permit's kiln, and each runs at the
 same utilisation 0.85000 ÷ 0.95000 = **0.89474**.
 
-**C8, every carrier node, period 0.** Twelve of the thirteen nodes close to zero, which is what `V18`
+**C8, every carrier node, period 0.** All thirteen nodes close to zero, which is what `V18`
 asserts to 1e-6 and `V30` extends to the emission carriers.
 
 | Carrier | Consumed by units | Produced by units | Import $m$ | **Disposal $d$** | Residual |
 |---|---|---|---|---|---|
-| `coal` | `kiln_dry_coal` −2.073478 | — | +2.073478 | — | **0** |
-| `natural_gas` | `kiln_dry_gas` −0.306075 | — | +0.306075 | — | **0** |
-| `waste_derived_fuel` | `kiln_dry_wdf` −1.530415 | — | +1.530415 | — | **0** |
+| `coal` | `kiln_dry_coal` −2.073485 | — | +2.073485 | — | **0** |
+| `natural_gas` | `kiln_dry_gas` −0.306086 | — | +0.306086 | — | **0** |
+| `waste_derived_fuel` | `kiln_dry_wdf` −1.530429 | — | +1.530429 | — | **0** |
 | `fuel_oil` | — | — | 0 | — | **0** |
 | `electricity` | kilns −0.092404, grinder −0.159600, motor −0.168000 | — | +0.420004 | — | **0** |
-| `heat_lt60` | — | kilns **+0.470267** (coal 0.249385, gas 0.036813, wdf 0.184069) | — | **−0.470267** | **0** |
+| `heat_lt60` | — | kilns **+0.470271** (coal 0.249386, gas 0.036814, wdf 0.184071) | — | **−0.470271** | **0** |
 | `motive_power` | — | motor +0.168000, all dispatched ⇒ $z^{\circ}=0$ | — | — | **0** |
-| `clinker` | grinder −0.850000 | kilns +0.850000, **but all of it dispatched to the `ICMCLK` duty** ⇒ $z^{\circ}=0$ | — | — | **⚠ −0.850000 — does not close** |
+| `clinker` | grinder −0.850000 (1.130000 × 0.752212) | kilns **+0.850000, all of it released to the balance** ⇒ $z^{\circ}_{u,0}$ = the §5.2 split | — | — | **0** |
 | `cement` | — | grinder +1.130000, dispatched | — | — | **0** |
 | **`co2_process`** | — | kilns **+446.25000 kt** | — | **−446.25000** | **0** |
-| **`co2_fuel_fossil`** | — | coal +196.15102, gas +17.17081, wdf +68.86439 = **+282.18622 kt** | — | **−282.18622** | **0** |
-| **`co2_fuel_biogenic`** | — | wdf **+71.93379 kt** | — | **−71.93379** | **0** |
+| **`co2_fuel_fossil`** | — | coal +196.15167, gas +17.17142, wdf +68.86503 = **+282.18812 kt** | — | **−282.18812** | **0** |
+| **`co2_fuel_biogenic`** | — | wdf **+71.93446 kt** | — | **−71.93446** | **0** |
 | `co2_captured` | — | no capture before 2035 | — | — | **0** |
 
 Kiln electricity: 0.850000 × 0.10871 = **0.092404**. Grinder: 1.130000 × 0.14124 =
 **0.159601**. Motor: **0.168000**. Import **0.420004** against the metered 0.420000,
 **+0.001%**.
 
-Kiln reject heat is per unit of *each kiln's* output, not the site's: 0.450756 Mt of clinker
-on coal, 0.066538 on gas and 0.332699 on waste fuel, each × 0.55326. Nothing here consumes
-rank-1 heat, so the whole 0.470267 PJ is disposed — **an energy disposal, and the first in
+Kiln reject heat is per unit of *each kiln's* output, not the site's: 0.450758 Mt of clinker
+on coal, 0.066540 on gas and 0.332702 on waste fuel, each × 0.55326. Nothing here consumes
+rank-1 heat, so the whole 0.470271 PJ is disposed — **an energy disposal, and the first in
 either worked example**. It carries no carbon: `heat_lt60` is `intermediate`, so its fuel was
 charged to the kiln that burnt it, and §7 sees nothing here.
 
@@ -1073,45 +1195,42 @@ the vent is $d_{c,t}$, it is declared, and it is **reported as a quantity**:
 | Disposal at 2025 | kt CO₂ | `carbon_charge` | Charged at £90/t |
 |---|---|---|---|
 | $d_{\text{co2\_process}}$ | 446.25000 | charged | £40.16250m |
-| $d_{\text{co2\_fuel\_fossil}}$ | 282.18622 | charged | £25.39676m |
-| $d_{\text{co2\_fuel\_biogenic}}$ | **71.93379** | **zero_rated** | **£0.00000m** |
-| **Total vented** | **800.37001** | | **£65.55926m** |
+| $d_{\text{co2\_fuel\_fossil}}$ | 282.18812 | charged | £25.39693m |
+| $d_{\text{co2\_fuel\_biogenic}}$ | **71.93446** | **zero_rated** | **£0.00000m** |
+| **Total vented** | **800.37258** | | **£65.55943m** |
 
 That the biogenic 71.93 kt is vented **free** rather than not counted is §7.3 operating at the
 carrier level, and it is what makes capturing it a credit rather than a saving in §8.4.
 
-**⚠ The `clinker` node does not close, and no convention available today makes it.** An
-earlier draft of this example claimed it did, by releasing the kilns' output to the balance
-through $z^{\circ}$ and letting the grinder's draw satisfy the `ICMCLK` duty. That is not
-feasible under §5.2 and C1, and the pair of constraints admits no third option:
-
-| If the kilns… | C1 on `ICMCLK` | C8 at `clinker` |
-|---|---|---|
-| dispatch all 0.85 Mt to the duty ($z^{\circ}=0$) | **satisfied** | **fails** — the grinder's −0.85 has nothing to meet it |
-| release all 0.85 Mt to the balance ($z_{u,q}=0$) | **fails** — nothing serves the duty | satisfied |
-| do both | satisfied | satisfied, **by counting the same 0.85 Mt twice** — exactly what C8's indicator functions exist to prevent |
-
-The table above shows the first row, because C1 is an equality and cannot be left unmet. So
-**this example does not claim C8 closure at `clinker`, and `V18` fails there** until the
-specification says how a product carrier reaches a downstream unit rather than a duty. Two
-resolutions are plausible and §13 records both; the choice is a design decision, not an
-arithmetic one.
-
-Every other node closes to 1e-6.
+**The `clinker` node closes, and that is `D16` doing its job.** The kilns release their whole
+output to the balance through $z^{\circ}_{u,0}$ — there is no clinker duty to dispatch to — and
+the grinder draws it off at 1.130000 × 0.752212 = 0.850000 Mt, so the node nets to zero with
+nothing assumed and nothing counted twice. Earlier drafts had a `kiln_pyroprocessing` duty as
+well, which forced a choice between satisfying C1 and closing C8 and admitted no third option;
+removing the duty removes the choice. The kilns' activity is no less determined for it, because
+the grinder's draw is what sets it.
 
 **The 2025 annual cost, undiscounted.**
 
 | Term | Computation | £m |
 |---|---|---|
 | $Z^{\text{capex}}$ | C5: $n_{u,0}=0$ | **0.00000** |
-| $Z^{\text{opex}}$ | kilns 0.949997 × 8.00 (weighted, §1.11) = 7.60000; grinder 1.228261 × 1.50 = 1.84239; motor 0.176842 × 0.35 = 0.06189 | **9.50428** |
-| $Z^{\text{fuel}}$ | coal 2.073478 × 2.60 = 5.39104; gas 0.306075 × 7.10 = 2.17313; WDF 1.530415 × 1.00 = 1.53042; electricity 0.420004 × 32.00 = 13.44013 | **22.53472** |
-| $Z^{\text{carbon}}$ | **disposal, not fuel** — (446.25000 + 282.18622) kt × £90/t × 10⁻³ | **65.55926** |
+| $Z^{\text{opex}}$ | kilns, each at its own §1.11 rate: coal 0.503788 × 8.00 = 4.03030, wdf 0.371843 × 9.10 = 3.38377, gas 0.074369 × 7.60 = 0.56520 ⇒ 7.97928; grinder 1.228261 × 1.50 = 1.84239; motor 0.176842 × 0.35 = 0.06189 | **9.88356** |
+| $Z^{\text{fuel}}$ | coal 2.073485 × 2.60 = 5.39106; gas 0.306086 × 7.10 = 2.17321; WDF 1.530429 × 1.00 = 1.53043; electricity 0.420004 × 32.00 = 13.44013 | **22.53483** |
+| $Z^{\text{carbon}}$ | **disposal, not fuel** — (446.25000 + 282.18812) kt × £90/t × 10⁻³ | **65.55943** |
 | $Z^{\text{infra}}$ | no CO₂ transport before 2035 | **0.00000** |
 | $Z^{\text{net}}$ | $w_{k,0}=0$ | **0.00000** |
 | $Z^{\text{exp}}$ | no generation, `export_capacity` 0 MW | **0.00000** |
 | $Z^{\text{strand}}$ | nothing retired early | **0.00000** |
-| **Total** | | **£97.59826m** |
+| **Total** | | **£97.97782m** |
+
+**The kiln's fixed opex is three rates, not one.** `D13` (a unit burns one fuel, so a co-firing
+kiln is three units) puts each kiln unit's own `fixed_opex` against its own standing capacity —
+£8.00, £9.10 and £7.60 per Mt/yr on 0.503788 / 0.371843 / 0.074369 Mt/yr — so the kiln leg is
+**£7.97928m** against the £7.60000m a single coal-rated row would have given. That £0.37928m is
+the operating-cost counterpart of the £4.611m of capex structure §1.11 describes, and it exists
+for the same reason: the waste-fuel unit's feed handling really does cost more to run, and the
+gas unit's really does cost less.
 
 **The carbon term reads the disposal variable, not the fuel.** It is the same number it would
 have been — the kiln burns what it burns — but the route matters at 2035, when capture removes
@@ -1167,7 +1286,7 @@ diversity step and no seasonal correction:
 
 | | 2025 | 2035, with capture |
 |---|---|---|
-| Electricity import (PJ/yr) | 0.42000 | 0.67212 |
+| Electricity **consumption** (PJ/yr), PV excluded per §8.2 | 0.42000 | 0.67212 |
 | Mean over 8,400 h (MW) | 13.889 | 22.226 |
 | × within-shift peak factor 1.17 (MW) | **16.25** | **26.00** |
 | `import_capacity` at `C-01` (MW) | 25.00 | 25.00 |
@@ -1184,7 +1303,7 @@ reading it. Once `MF-47` lands, $w_{\text{C-01},t}$ = 1.00 MW at £0.42m/MW = **
 reinforcement, weighed against curtailing capture.
 
 **The battery is not built**, at any period. A standalone battery earns only through β, its
-firm-capacity contribution to C11 (`V20` (d): a unit with `is_storage` and no hybrid parent
+firm-capacity contribution to C11 (`V20` (d): a unit with `unit_class` = storage and no hybrid parent
 has β set and ψ, χ, ε unset). At β = 0.35, covering the shortfall — 1.0047 MW before
 rounding — needs 2.87 MW of
 battery, costing 0.58 × 2.87 × 0.086825 = £0.14453m/yr plus 0.009 × 2.87 = £0.02583m/yr of
@@ -1202,20 +1321,20 @@ The three stack carriers at 2035, unchanged from §8.1 because the kilns are unc
 
 | Carrier | kt CO₂ | Share of stack |
 |---|---|---|
-| `co2_process` | 446.25000 | 0.55756 |
-| `co2_fuel_fossil` | 282.18622 | 0.35257 |
-| `co2_fuel_biogenic` | **71.93379** | 0.08987 |
-| **Total** | **800.37001** | 1.00000 |
+| `co2_process` | 446.25000 | 0.55755 |
+| `co2_fuel_fossil` | 282.18812 | 0.35257 |
+| `co2_fuel_biogenic` | **71.93446** | 0.08988 |
+| **Total** | **800.37258** | 1.00000 |
 
 Those three shares are `ccs_amine`'s consumption coefficients in §1.11 — the train takes the
 stack as it finds it. At 90% capture:
 
 ```
-capacity a = captured / α = 720.33301 / 0.90         = 800.37001 kt/yr  ⇒ 0.80037 Mt/yr
-z(ccs_amine)                                          = 0.72033 Mt of CO2 captured
+capacity a = captured / α = 720.33532 / 0.90         = 800.37258 kt/yr  ⇒ 0.80037 Mt/yr
+z(ccs_amine)                                          = 0.72034 Mt of CO2 captured
   co2_process           446.25000 x 0.90             = 401.62500 kt    vented  44.62500
-  co2_fuel_fossil       282.18622 x 0.90             = 253.96760 kt    vented  28.21862
-  co2_fuel_biogenic      71.93379 x 0.90             =  64.74041 kt    vented   7.19338
+  co2_fuel_fossil       282.18812 x 0.90             = 253.96931 kt    vented  28.21881
+  co2_fuel_biogenic      71.93446 x 0.90             =  64.74101 kt    vented   7.19345
 ```
 
 **§7.3 now falls out of the carrier set rather than being applied to it.** The objective's
@@ -1224,35 +1343,38 @@ carbon term at 2035:
 | Component | kt CO₂ | Rate |
 |---|---|---|
 | $d_{\text{co2\_process}}$, vented | +44.62500 | charged |
-| $d_{\text{co2\_fuel\_fossil}}$, vented from the kiln | +28.21862 | charged |
-| $d_{\text{co2\_fuel\_fossil}}$, the reboiler's own stack | **+76.77997** | charged |
-| $d_{\text{co2\_fuel\_biogenic}}$, vented | +7.19338 | **zero_rated — £0** |
-| **`co2_fuel_biogenic` captured** | **−64.74041** | **credit** |
-| **Net charged** | **+84.88319** | × £165/t |
+| $d_{\text{co2\_fuel\_fossil}}$, vented from the kiln | +28.21881 | charged |
+| $d_{\text{co2\_fuel\_fossil}}$, the reboiler's own stack | **+76.78104** | charged |
+| $d_{\text{co2\_fuel\_biogenic}}$, vented | +7.19345 | **zero_rated — £0** |
+| **`co2_fuel_biogenic` captured** | **−64.74101** | **credit** |
+| **Net charged** | **+84.88384** | × £165/t |
 
-The reboiler's 1.36863 PJ of gas derives 1.36863 × 56.1 = **76.77997 kt** onto
+The reboiler's 1.36865 PJ of gas derives 1.36865 × 56.1 = **76.78104 kt** onto
 `co2_fuel_fossil` and is not captured (§1.11). The biogenic line is the one that matters:
 **capturing 64.74 kt of biogenic CO₂ is a negative number in the objective**, not a zero, and
-the kiln's own reported emissions fall to 28.21862 − 64.74041 = **−36.52179 kt** before the
+the kiln's own reported emissions fall to 28.21881 − 64.74101 = **−36.52220 kt** before the
 reboiler is added. Had zero-rating been applied after capture, that credit would have been
 lost and the model would have undervalued co-firing at a cement works by an order of
 magnitude. `V5` and `V30` assert it.
 
 **The 2035 economics, annual.** The train is a *retrofit*: it bolts onto the kiln rather than
-replacing it, names it in `abates_unit_id`, and under C4 inherits the host's remaining life.
+replacing it, and §1.11's `unit_abatement_host` table (§3.5.3) gives it **three** hosts — the
+three dry kiln units D13 (one primary carrier per unit) splits the line into. Under C4 it
+inherits the **earliest** remaining life among them; all three were commissioned in 2004 and
+carry the same 40-year life, so the minimum is the single value the arithmetic below uses.
 The kiln dies in 2043, so the capex annuitises over **9 years, not 25**.
 
 | Term | Computation | £m/yr |
 |---|---|---|
 | Annuitised capex, **host life** $L$ = 9 | 190 × 0.131446 × 0.80037 | **19.98903** |
-| Annuitised capex, own life $L$ = 25, for contrast | 190 × 0.060674 × 0.80037 | *(9.22672)* |
-| Fixed opex | 9.50 × 0.80037 | 7.60351 |
-| Reboiler gas | 0.72033 × 1.90 = 1.36863 PJ × 8.20 | 11.22274 |
-| Auxiliary electricity | 0.72033 × 0.35 = 0.25212 PJ × 26.00 | 6.55500 |
-| CO₂ transport tariff | 0.72033 × 18.00 | 12.96594 |
-| **Total cost** | | **£58.33623m** |
-| Carbon avoided | (728.43622 − 84.88319) kt × £165/t × 10⁻³ | **+106.18625** |
-| **Net** | | **+£47.85002m/yr** |
+| Annuitised capex, own life $L$ = 25, for contrast | 190 × 0.060674 × 0.80037 | *(9.22671)* |
+| Fixed opex | 9.50 × 0.80037 | 7.60352 |
+| Reboiler gas | 0.72034 × 1.90 = 1.36865 PJ × 8.20 | 11.22290 |
+| Auxiliary electricity | 0.72034 × 0.35 = 0.25212 PJ × 26.00 | 6.55509 |
+| CO₂ transport tariff | 0.72034 × 18.00 | 12.96612 |
+| **Total cost** | | **£58.33666m** |
+| Carbon avoided | (728.43812 − 84.88384) kt × £165/t × 10⁻³ | **+106.18646** |
+| **Net** | | **+£47.84980m/yr** |
 
 **Capture is built at 2035, and the host-life rule more than doubles its capex charge** — from
 £9.23m to £19.99m a year. That is the honest cost of retrofitting late onto old plant, and
@@ -1281,7 +1403,7 @@ sitting beside the LP, and nothing checked that the two agreed. `V30` now does.
 | `battery_2h` (MW) | 0 | 0 | 0 | 0 | 0 | 0 |
 | $w_{\text{C-01}}$ reported (MW) | 0 | 0 | **1.00** | 1.00 | 1.00 | 1.00 |
 | **Vented `co2_process`** (kt/yr) | 446.25 | 446.25 | **44.63** | 44.63 | 44.63 | 44.63 |
-| **Vented `co2_fuel_fossil`** (kt/yr) | 282.19 | 282.19 | **104.998** | 104.998 | 104.998 | 104.998 |
+| **Vented `co2_fuel_fossil`** (kt/yr) | 282.19 | 282.19 | **105.000** | 105.000 | 105.000 | 105.000 |
 | **Vented `co2_fuel_biogenic`** (kt/yr) | 71.93 | 71.93 | 7.19 | 7.19 | 7.19 | 7.19 |
 | **Biogenic captured, credited** (kt/yr) | 0 | 0 | **−64.74** | −64.74 | −64.74 | −64.74 |
 | **Direct emissions, charged** (kt CO₂e/yr) | **728.44** | 728.44 | **84.88** | 84.88 | 84.88 | 84.88 |
@@ -1290,10 +1412,11 @@ sitting beside the LP, and nothing checked that the two agreed. `V30` now does.
 Three features of this pathway:
 
 - **The kiln is never scrapped early.** The write-off of §5.3 does not forbid switching, it
-  *prices delay*: it falls by a constant £30.875m a period (κ × 0.95000 × 5 ÷ 40, which is
-  simply the kiln depreciating). Capture at £47.85m a year of net benefit is cheaper than any
-  rebuild that would trigger the charge, so `Stranded value` is zero in every period. That is
-  the behaviour `D11` was designed to produce.
+  *prices delay*: it falls by a constant £31.4514m a period ($\sum_u \kappa_u a_u$ × 5 ÷ 40 =
+  251.611 × 0.125, which is simply the three kiln units depreciating). Capture at £47.85m a
+  year of net benefit is cheaper than any rebuild that would trigger the charge, so
+  `Stranded value` is zero in every period. That is the behaviour `D11` was designed to
+  produce.
 - **A new kiln at 2045 needs a new capture train**, because under C3 an abatement unit expires
   with its host rather than on its own life. The 2045 rebuild is 0.85000 ÷ 0.90 =
   **0.94444 Mt/yr**, slightly below the 0.95000 it replaces, because the permit capacity
@@ -1327,7 +1450,7 @@ An illustrative slice, `kiln_dry_coal` at 2035:
 | `unit_id` | `kiln_dry_coal` |
 | `carrier_id` | `coal` |
 | `period` / calendar year | 2 / 2035 |
-| `flow` | −2.07347 PJ/yr |
+| `flow` | −2.07348 PJ/yr |
 | `process_evidence_tier` | `site_known` (§3.1) |
 | `mix_evidence_tier` | **`carrier_bounded`** (§5.2) |
 | `year_evidence_tier` | `base_year` for this carrier; **`substituted`** on the `waste_derived_fuel` row |
@@ -1364,8 +1487,8 @@ emissions budget. The budget comparison is **reported, never enforced** — the
 
 | # | Rule | At this premise |
 |---|---|---|
-| 7.1 | Fuel CO₂ to the unit **consuming the fuel carrier**; process CO₂ to the chemistry unit against its mass denominator | all fuel and all 446.25 kt of calcination charged to `kiln_dry_coal` |
-| 7.2 | Non-CO₂ gases tracked separately; **CCS never abates them** | the kiln's N₂O is reported and uncaptured |
+| 7.1 | Fuel CO₂ to the unit **consuming the fuel carrier**; process CO₂ to the chemistry unit against its mass denominator | each fuel's CO₂ to the kiln unit burning it — coal to `kiln_dry_coal`, gas to `kiln_dry_gas`, waste fuel to `kiln_dry_wdf` — and the 446.25 kt of calcination split across the three on clinker output × 525 kt/Mt (§8.1) |
+| 7.2 | Non-CO₂ gases tracked separately; **CCS never abates them** | vacuous here: no non-CO₂ row is supplied at this premise, because §1.7 carries `total_co2e` only |
 | 7.3 | **Biomass zero-rated before capture** | §8.4 — the biogenic share of waste-derived fuel goes net-negative under capture |
 | 7.4 | Direct versus indirect is a property of the carrier | `electricity.is_indirect` = true; every other carrier here is direct |
 | 7.5 | Reporting categories derived over units, and they may overlap | the kiln appears under *combustion* and under *process* |
@@ -1380,17 +1503,23 @@ $$\text{direct emissions}_t \;=\; \sum_{c\,:\,\text{charged}} d_{c,t} \;-\; \sum
 | Term at 2025 | Computation | kt CO₂e |
 |---|---|---|
 | $d_{\text{co2\_process}}$ | 0.850000 Mt × 525 | **446.25000** |
-| $d_{\text{co2\_fuel\_fossil}}$, coal | 2.073478 PJ × 94.6 | **196.15102** |
-| $d_{\text{co2\_fuel\_fossil}}$, gas | 0.306075 PJ × 56.1 | **17.17081** |
-| $d_{\text{co2\_fuel\_fossil}}$, waste fuel | 1.530415 PJ × 92.0 × 0.4891 | **68.86439** |
-| $d_{\text{co2\_fuel\_biogenic}}$ | 1.530415 PJ × 92.0 × 0.5109 | 71.93379 — **zero_rated** |
+| $d_{\text{co2\_fuel\_fossil}}$, coal | 2.073485 PJ × 94.6 | **196.15167** |
+| $d_{\text{co2\_fuel\_fossil}}$, gas | 0.306086 PJ × 56.1 | **17.17142** |
+| $d_{\text{co2\_fuel\_fossil}}$, waste fuel | 1.530429 PJ × 92.0 × 0.4891 | **68.86503** |
+| $d_{\text{co2\_fuel\_biogenic}}$ | 1.530429 PJ × 92.0 × 0.5109 | 71.93446 — **zero_rated** |
 | Biogenic captured | none before 2035 | 0 |
-| **Computed direct total** | | **728.43622** |
+| **Computed direct total** | | **728.43812** |
 | Indirect, on the **import** (§7.8) | 0.420004 PJ × 18.0 | 7.56007 |
+
+**Process CO₂ is three rows as well, not one.** Under `D13` the calcination follows the
+clinker, so the 446.25 kt splits across the kiln units on their own output at 525 kt/Mt:
+`kiln_dry_coal` 0.450758 × 525 = **236.6477 kt**, `kiln_dry_wdf` 0.332702 × 525 =
+**174.6686 kt**, `kiln_dry_gas` 0.066540 × 525 = **34.9337 kt**. They sum to **446.25000 kt**
+exactly, because the three shares of §5.2 sum to one at the six places they are quoted at.
 
 **The waste fuel is the row D15 changed.** Before, it carried one net factor of 45.0 kt/PJ and
 contributed 68.87 kt. Now it carries a gross 92.0 with a biogenic fraction of 0.5109, produces
-**two** carriers, and contributes the same 68.86 kt of charged emissions — plus 71.93 kt that
+**two** carriers, and contributes the same 68.87 kt of charged emissions — plus 71.93 kt that
 is vented free today and becomes a £10.68m-a-year credit the moment capture arrives (§8.4).
 The charged number did not move; the thing that was invisible is now a line item.
 
@@ -1406,7 +1535,7 @@ Reported and not corrected. Two notes:
 
 - **The reconciliation runs on the model's flows, not the meter's.** On the metered fuel of
   4.38000 PJ the computed total is 732.05 kt and the divergence 1.47%; on the back-solved
-  3.90999 PJ it is 728.44 kt and 1.96%. The difference is entirely the 1.26% throughput-vs-
+  3.91000 PJ it is 728.44 kt and 1.96%. The difference is entirely the 1.28% throughput-vs-
   energy gap of §5.1. The model's base year is the meter *reconciled through the unit
   coefficients*, and stating which basis a reported number sits on is what stops the two being
   confused.
@@ -1434,27 +1563,40 @@ Tests are the specification's, at §10.3. Scope is `load`, `premise` or `release
 | **V1b** | release | §12: objective within 0.5%, energy per carrier per period within 1%, through the `MF-03` lineage table |
 | **V2** | load | the coefficients of §1.11 round-trip against `capacity_to_activity_factor` to 1e-6 |
 | **V4** | load | every carrier the units declare appears in `unit_input_output` |
-| **V5** | premise | §8.4 — biomass zero-rated **before** capture, giving +8.10 kt rather than 72.84 kt |
+| **V5** | premise | §8.4 — biomass zero-rated **before** capture, giving +8.10 kt rather than 72.84 kt (net charged excluding the reboiler's own 76.78 kt: 44.63 + 28.22 − 64.74; the 72.84 kt is the same sum with the biogenic credit lost) |
 | **V6** | premise | §7.4, §8.1 — $Z^{\text{exp}}$ is present and zero, and no term is assumed non-negative |
 | **V10** | release | two runs of this fixture agree under the §9.3 tie-break |
 | **V11** | load | §3.1 — exactly one process tier resolves, `site_known` |
 | **V12** | premise | §8.2 — the siting cap holds and its sum runs over `pv_rooftop` alone |
 | **V16** | batch | §8.3 — 16.25 MW rebuilt against 16.2 MW metered, **0.3% apart** |
 | **V17** | premise | §8.4 — the capture train inherits the kiln's 2043 end of life and strands nothing while the kiln stands |
-| **V18** | premise | §8.1 — **twelve of thirteen** carrier nodes close to 1e-6, emission carriers included, with no assumed vent. **`clinker` does not close** and V18 fails there, for the reason in §8.1 — a specification gap, not an arithmetic one |
+| **V18** | premise | §8.1 — **all thirteen** carrier nodes close to 1e-6, emission carriers included, with no assumed vent. `clinker` closes because `D16` gives it no duty and the kilns release their output to the balance |
 | **V19** | load | vacuous here; no duty at this premise carries a grade |
 | **V20** | load | (d) only — `battery_2h` has β set and ψ, χ, ε unset |
-| **V27** | load | §1.11 — each kiln unit carries exactly one `fuel_input` row; `ccs_amine`'s auxiliary electricity is `primary` and is `aux_input`, so it is not counted against it |
-| **V28** | load + premise | §3.2 — the published `Cement Works` shares sum to 1.00 per vector, and the oil vector renormalises over the processes this premise runs |
-| **V29** | premise | §8.1 — disposal exists only on the `may_dispose` carriers — the three CO₂ carriers and `heat_lt60`, which takes the kilns' unused reject heat — and every non-zero quantity is an output row |
-| **V30** | premise | §8.1, §8.4, §10.1 — emission carriers balance; §7's total equals the objective's carbon term ÷ π × 10³; the waste fuel's fossil and biogenic coefficients sum to its 92.0 kt/PJ gross factor; captured biogenic returns a **negative** contribution |
-| **V31** | load | §1.11 — `ccs_amine` holds `co2_fuel_fossil` twice, as `emission_input` (−0.35257, the kiln's) and `emission` (+0.10659, its reboiler's); every other row's sign agrees with its role and each unit has exactly one `primary_output` |
 | **V21** | load | §6.3 — the export price is strictly below the import price at all six periods |
 | **V22** | premise | (a) total equals the sum over units consuming **primary** carriers; (b) no chain to test — the kilns' `heat_lt60` reject is produced and consumed by nothing, so it is disposed rather than followed; (c) the three `reject` legs carry no emissions, `heat_lt60` being `intermediate` — their fuel was charged to the kiln that burnt it |
 | **V23** | load + premise | §5.2 — one tier resolves, `carrier_bounded`, and it appears on every output row |
 | **V24** | load + premise | §1.2 — one row per key at the base year or a recorded substitution; no duplicate `(key, year)` |
 | **V25** | premise | §1.2 — the 2022 and 2023 rows move nothing by more than 1e-9 |
 | **V26** | premise | §1.5 — `kiln_pyroprocessing`'s two intervals are disjoint, one is valid at 2024, and `A2`, `A4` and §3.15's cohort read touch no row outside it |
+| **V27** | load | §1.11 — each kiln unit carries exactly one `fuel_input` row; `ccs_amine`'s auxiliary electricity is `primary` and is `aux_input`, so it is not counted against it |
+| **V28** | load + premise | §3.2 — the published `Cement Works` shares sum to 1.00 per vector, and the oil vector renormalises over the processes this premise runs |
+| **V29** | premise | §8.1 — disposal exists only on the `may_dispose` carriers — the three CO₂ carriers and `heat_lt60`, which takes the kilns' unused reject heat — and every non-zero quantity is an output row |
+| **V30** | premise | §8.1, §8.4, §10.1 — emission carriers balance; §7's total equals the objective's carbon term ÷ π × 10³; the waste fuel's fossil and biogenic coefficients sum to its 92.0 kt/PJ gross factor; captured biogenic returns a **negative** contribution |
+| **V31** | load | §1.11 — `ccs_amine` holds `co2_fuel_fossil` twice, as `emission_input` (−0.35257, the kiln's) and `emission` (+0.10659, its reboiler's); every other row's sign agrees with its role and each unit has exactly one `primary_output` |
+| **V32** | load + premise | §1.11, §3.2, §8.1 — (a) **connection-indexed** $m_{c,k,t}$ and $x_{c,k,t}$ are declared only where the flag allows *and* a `premise_connection` row carries the carrier — electricity at `C-01`, natural gas at `C-02`; **site-level** $m_{c,t}$ only where `may_import` is true and no connection carries the carrier — `coal`, `waste_derived_fuel` and `fuel_oil`; and nothing at all is declared for the six carriers false on both flags; (b) no `process_duty` row names a `product` carrier with `may_export` false — `kiln_pyroprocessing`'s row is gone and `cement_grinding`'s remains; (c) `may_import` and `may_export` are both false on `heat_lt60`, `motive_power` and the three CO₂ emission carriers. Failure names the carrier |
+| **V33** | load + premise | §1.5.1, §1.11, §8.4 — (a) each of the four `premise_process_unit` rows names a unit `unit_eligibility` admits for `kiln_pyroprocessing` at `Cement Works`, the 2004 parent's three children are distinct, and no `capacity_share` is given so the sum rule is vacuous; (b) each of the four capture trains has three `unit_abatement_host` rows, every host is a `converter` on `kiln_pyroprocessing`, and none hosts off itself; (c) `ccs_amine`'s remaining life at 2035 is the minimum over its three hosts — 9 years, equal on all three because §1.6 puts every cohort at 2004. Failure names the unit |
+
+**`V32` (a) runs on two kinds of import here, and both are ordinary.** An import exists
+wherever `may_import` is true; what a `premise_connection` row decides is whether it carries a
+connection index. `electricity` and `natural_gas` are **networked**, so their imports are
+$m_{c,k,t}$ at `C-01` and `C-02` and C11 (connection capacity) ranges over them — which is why
+capture pushes this works 1.00 MW past its supply in §8.3. `coal` and `waste_derived_fuel`
+arrive by road and rail, have no connection row and never could have one, so they are
+**site-level** imports $m_{c,t}$ — 2.073485 and 1.530429 PJ in §8.1's balance — outside C11
+entirely. `fuel_oil` is the same kind and its import is simply zero. The six carriers false on
+both flags — `clinker`, the two intermediates and the three CO₂ carriers — get no import or
+export variable of either kind, and that absence is what (a) checks.
 
 **V22 (b) and (c) are untestable at this premise**, and that is the clearest single statement
 of what a cement works cannot demonstrate. There is no `gas → boiler → heat → dryer` chain to
@@ -1487,8 +1629,13 @@ lexicographic tie-break of §9.3 over `(unit_id, carrier_id, role)` applied as a
 solve over the optimal face.
 
 **What M2's gate does with it** (`MF-22`, `MF-59`): the fixture runs through S1–S8 in the
-carrier-equivalent configuration of §13 below; its objective and per-carrier energy match the
-expected tables within the `MF-58` tolerances; V2, V6, V12, V18, V22 (a), V23 pass; the
+carrier-equivalent configuration of the specification's §10.2; its objective and per-carrier
+energy match the expected tables within the `MF-58` tolerances; V2, V6, V12, **V18 (carrier
+balance closes, now at all thirteen nodes including `clinker`)**, V22 (a), V23 and
+**V32 (a), (b) and (c) (the site boundary on the carrier)** pass, (a) over both the
+connection-indexed imports at `C-01` and `C-02` and the site-level imports of the delivered
+fuels, and **V33 (a), (b) and (c) (a process runs several units, a train abates several
+hosts)** pass over §1.5.1's four rows and §1.11's twelve host rows; the
 post-solve constraint-row check multiplies the built matrix by the returned solution and
 verifies every row independently of the solver; and G1 (single-premise wall clock) is measured
 and recorded with its machine and settings.
@@ -1508,9 +1655,9 @@ and recorded with its machine and settings.
    capture retrofit at tier 1. One line on a permit is the difference, and no other optional
    input at this premise moves the answer nearly as far.
 3. **The write-off prices delay rather than forbidding change** (§8.5). It falls by a constant
-   £30.875m a period as the kiln depreciates, so a switch the model rejects at 2030 it accepts
-   at 2040, and a carbon price high enough still buys the kiln out early. That is the
-   difference between representing inertia and hard-coding it.
+   £31.4514m a period as the three kiln units depreciate, so a switch the model rejects at
+   2030 it accepts at 2040, and a carbon price high enough still buys the kiln out early. That
+   is the difference between representing inertia and hard-coding it.
 4. **Abatement is a unit, and inheriting the host's life is what makes retrofit honest**
    (§8.4). Annuitising the capture train over the kiln's remaining 9 years rather than its own
    25 more than doubles its annual charge — £19.99m against £9.23m — and it is still built.
@@ -1530,19 +1677,37 @@ and recorded with its machine and settings.
 9. **Reporting a small number is worth as much as reporting a large one** (§8.2). PV is built
    to the roof cap and supplies 1.86% of the site's electricity. The battery is not built at
    all, and β is what makes that a result rather than an omission.
+10. **An internal product is a carrier, not a duty** (`D16`, §1.11, §3.2, §8.1). This works
+    makes clinker and grinds it, so `clinker` is `may_import` false and `may_export` false;
+    `kiln_pyroprocessing` therefore has units, vintage and a load shape but **no duty row**,
+    the kilns release their whole output to the balance, the grinder draws it, and the
+    `clinker` node closes. The same two flags are what makes the site's Sankey drawable
+    straight from §9's rows: every stream either is imported, is exported, meets a duty, is
+    disposed of, or is lost inside a unit, and nothing else is possible.
+11. **A singular field cannot describe a kiln that D13 split** (§1.5.1, §1.11, §8.4). The same
+    defect appeared on both sides of the same join — a premise naming one unit for a process
+    that runs three, and a capture train naming one host when it bolts onto three — and both
+    are closed the same way, by a table with one row per unit instead of a column with room for
+    one. The cost is two small entities; what it buys is that a single-fuel works is now
+    distinguishable from a co-firing one, and that a retrofit's life is the earliest of its
+    hosts' rather than whichever one happened to be named.
 
 ### 13.2 What it cannot show
 
 The structural limits, restated so nobody tries to close them here:
 
-- **No graded heat, so no cascade.** C10 has zero rows at this premise; $h_{c \to c',t}$ has
-  no declaration set, and the candidate kilns differ by *fuel* rather than by device.
-- **No low-grade duty, so no waste-heat sink.** The kilns now *reject* 0.470267 PJ a year on
+- **One grade only, so no cascade.** `heat_lt60` is a gradeable rank-1 carrier here (§1.11), so
+  C10 (the grade cascade) has something to range over, but no unit draws rank-1 heat and no
+  second graded carrier exists: $h_{c \to c',t}$ has an empty declaration set and C10's rows are
+  trivially satisfied. The candidate kilns differ by *fuel* rather than by device, so nothing
+  competes at a grade either, and the mechanism is demonstrable only on the food and drink
+  premise.
+- **No low-grade duty, so no waste-heat sink.** The kilns now *reject* 0.470271 PJ a year on
   `heat_lt60` (§1.11), from one whole-of-industry fraction, and nothing here draws rank-1 heat,
   so all of it is disposed. Representing the recovery this works actually runs — the exhaust
   drying raw meal — still needs the per-unit reject coefficients of data migration B5
   (`MF-12`, a Should at milestone M6). Until they exist the raw mill is a motor duty only.
-- **No unit competition at a duty.** Each of the eight duties here has one sensible incumbent.
+- **No unit competition at a duty.** Each of the seven duties here has one sensible incumbent.
 - **CHP only fused inside bundled capture rows** (§3.3), never as plant the site runs.
 - **V22 (b) untestable** (§11), for want of an intermediate-carrier chain: the reject heat is
   produced but consumed by nothing, so there is no chain to follow.
@@ -1553,15 +1718,18 @@ and that is why §13 of the specification says cement alone is not sufficient.
 
 ### 13.3 Open points against the specification
 
-**Five of the seven this example originally raised are now closed**, and an external review of 2026-09-15 added two more, by D13, D15, the
-disposal variable, the two new §3 entities and §7.7. They are kept with their resolutions
-rather than deleted, because the record of *why* a rule exists is what stops it being undone.
+**Five of the seven this example originally raised are now closed** — by D13 (one primary
+carrier per unit), D15 (the three emission carriers), the disposal variable $d_{c,t}$, the two
+new §3 entities and §7.7 — and two remain. An external review of 2026-09-15 raised three more, of which
+the second is closed by D16 (internal products are carriers, not duties) and the third by
+§3.6's role key, and a pass of 2026-09-17 raised two more, of which the second is closed. They are kept with their resolutions rather than deleted, because the record
+of *why* a rule exists is what stops it being undone.
 
 | # | Open point | Status |
 |---|---|---|
 | 1 | Nothing said where a process's share of premise energy comes from; §3.3 ruled out the only table that held it | **Closed.** §3.3.1 promotes it to an entity, on the marginal-versus-conditional argument, and §3.2 above now runs on the published shares |
 | 2 | No per-premise tier over that table, so every premise of an activity got the same split | **Closed.** §3.10.1 `premise_process_energy` — quantities, not shares, with the residual renormalised |
-| 3 | C8 admitted no disposal route, so vented process CO₂ could not balance and V18 failed on a physically fine premise | **Closed.** $d_{c,t}$ (§5.2), gated on `carrier_kind`, and §8.1's thirteen nodes now close with nothing assumed |
+| 3 | C8 admitted no disposal route, so vented process CO₂ could not balance and V18 failed on a physically fine premise | **Closed.** $d_{c,t}$ (§5.2), gated on `carrier_kind`, and **all thirteen of §8.1's nodes** now close with nothing assumed — `clinker` was the last exception and D16 closed it at point 9 |
 | 4 | §7 double-counted once electricity was generated on site, and said nothing about exports | **Closed.** §7.8 charges an indirect carrier on the import; §7.7 gives the allocation layer; D14 keeps the two apart |
 | 5 | A `MOT` or `REF` duty had no carrier that worked, because a duty carrier that is also a fuel makes C8 circular | **Closed.** §3.4 states the service-carrier convention and names `motive_power` and `cooling` |
 
@@ -1573,13 +1741,17 @@ written:
 | **6** | **§5.3.1 is cited and unwritten.** The vintage tier ladder, the survival function and the stranding formula are cited from §3.15, §5.3 and §5.5, and the section does not exist | §5.3 — the tier-2 window is read from the archived COMIT-parity baseline rather than from the live specification | `T23` / `MF-18` |
 | **7** | **§5.6 is cited and unwritten**, so nothing says how C11's peak is rebuilt or which year it reads | §8.3 — this example uses mean import × the observed within-shift peak factor, with no diversity step, and **understates** the peak | `T23` / `MF-18`; §10.4 records that this row carries no automated guard |
 
-And three new ones. The third is now closed by §3.6's role key; the other two are open:
+And five more — points 8 to 10 from the 2026-09-15 review, 11 and 12 from the 2026-09-17 pass.
+**All five are now closed**, and with points 1 to 5 above that is **all twelve this example has
+raised**; only points 6 and 7 remain, and both are the same unwritten section:
 
 | # | Open point | Where it bites | Closed by |
 |---|---|---|---|
-| **8** | **`premise_process_detail.unit_id` is singular, and a co-firing kiln is three units.** D13 splits the kiln by fuel, and §3.10 has one field to name it with | §1.5 — the permit's entry names the dominant unit and A4 resolves the rest, so a site that genuinely runs one fuel is no better determined than one that runs three | §3.10 — the field should take a set, or the entity should be keyed one field wider. §3.15 already handles it correctly, by stating vintage as shares |
-| **9** | **A product carrier consumed by a downstream unit has no route through C8 that also satisfies C1**, and this is a hard failure rather than a missing convention. The kilns' clinker is consumed by the grinder; C1 needs it dispatched to the `ICMCLK` duty, C8 needs it released to the balance, and doing both double-counts | §8.1 — **`V18` fails at the `clinker` node** and the example says so rather than claiming closure | §5.5. Two resolutions: let a dispatched primary output also enter the balance where its consumer is a unit rather than a duty; **or** drop the `ICMCLK` duty entirely and make clinker a pure intermediate, so the works' only duty is cement and throughput's clinker row is evidence. The second is cleaner and is a D5 question |
+| **8** | **CLOSED.** `premise_process_detail.unit_id` was singular, and D13 (one primary carrier per unit) makes a co-firing kiln three units, so §3.10 had one field to name three plants with | §1.5 — the permit's entry named the dominant unit and A4 resolved the rest, so a site that genuinely ran one fuel was no better determined than one that ran three | **§3.10.2 `premise_process_unit`**, one row per unit, keyed `(premise_id, process_id, valid_from_year, unit_id)` on the §3.10 parent. `unit_id` is removed from §3.10; `known_capacity` stays on the parent as the line total and A4 splits it on the §4.1 mix unless `capacity_share` is given. §1.5.1 shows the kiln's three children and the wet line's one, and V33 checks the eligibility, distinctness and share-sum legs |
+| **9** | **CLOSED.** A product carrier consumed by a downstream unit had no route through C8 that also satisfied C1: the kilns' clinker is consumed by the grinder, C1 needed it dispatched to the `kiln_pyroprocessing` duty, C8 needed it released to the balance, and doing both double-counted | §8.1 — **`V18` failed at the `clinker` node** and the example said so rather than claiming closure | **D16** (internal products are carriers, not duties). §3.4 gives every carrier `may_import` and `may_export`; a duty exists only for a service carrier or for a `product` carrier with `may_export` true, so `clinker` — false on both — loses its duty row, the kilns release their output through $z^{\circ}$, the grinder draws it, and all thirteen nodes close. The throughput row stays as evidence (§1.3) and V32 checks the three legs |
 | **10** | **CLOSED.** An abatement unit that burns fuel needs two coefficients on one carrier, and `unit_input_output` was keyed for one | §1.11 — `ccs_amine` could not load as written, and netting the two hid the reboiler's 76.78 kt/yr, which §8.4 reads separately | §3.6 — the key is now `(unit_id, carrier_id, role)`, so the host's CO₂ is `emission_input` and the reboiler's own is `emission`. Both legs stay gross, and V31 checks the pairing |
+| **11** | **CLOSED.** `abates_unit_id` was singular, and this train abates three kiln units: D13 (one primary carrier per unit) splits the kiln by fuel, so a retrofit that bolts onto "the kiln" had three hosts and one field to name them with | §8.4 — the train named one host and annuitised over its remaining life; in [`unit.csv`](../notes/data/unit.csv) the field was blank for every `ccs` unit, so nothing was named at all | **§3.5.3 `unit_abatement_host`**, one row per host, keyed `(unit_id, host_unit_id)`, each host a `converter` on the same `process_id`. `abates_unit_id` is removed from §3.5. C3 and C4 take the **earliest** remaining life among the hosts; §1.11's twelve rows and §8.4 show it, and V33 checks it. It was point 8's defect on the other side of the join and is closed the same way |
+| **12** | **CLOSED.** A6's derivation rule fires on every `fuel_input` row that carries an emission factor, and `electricity` has one (indirect, 18.0 kt/PJ at 2025), so an electrically fired unit would derive a `co2_fuel_fossil` row that §7.8 then charges a second time on the import | §1.11 — `grinder_mixer_elec` and `motor_elec` both draw `electricity` as `fuel_input`, and §8.1's ledger correctly shows no such row for either | §3.6 — A6 derives fuel CO₂ only for carriers whose `is_indirect` is false, so an indirect carrier's emissions are charged once, on the import, by §7.8 |
 
 One thing stated rather than filed: **the objective charges direct carbon only** (§6.3). §5.4
 does not say whether an `is_indirect` carrier's emissions enter $Z^{\text{carbon}}$, and both

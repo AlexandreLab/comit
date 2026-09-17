@@ -366,8 +366,8 @@ SPEC_COLUMNS = {
     "carrier.csv": [
         "carrier_id", "carrier_name", "carrier_kind", "is_gradeable", "grade_rank",
         "grade_label", "is_indirect", "emission_factor_source", "biogenic_fraction",
-        "carbon_charge", "denominator_kind", "may_dispose", "vector", "comit_commodity",
-        "provenance",
+        "carbon_charge", "denominator_kind", "may_dispose", "may_import", "may_export",
+        "vector", "comit_commodity", "provenance",
     ],
     "activity_process_duty_profile.csv": [
         "carb3_activity", "process_set_id", "process_id", "duty_family", "carrier_id",
@@ -383,7 +383,10 @@ SPEC_COLUMNS = {
         "fuel_carrier_id", "grade_out", "grade_in_max", "capex", "fixed_opex", "lifetime",
         "availability_factor", "capacity_to_activity_factor", "area_per_capacity",
         "emissions_released", "min_viable_scale", "load_shape_override", "is_hybrid",
-        "draws_ambient", "abates_unit_id", "provenance", "confidence", "provenance_ref",
+        "draws_ambient", "provenance", "confidence", "provenance_ref",
+    ],
+    "unit_abatement_host.csv": [
+        "unit_id", "host_unit_id", "provenance", "confidence",
     ],
     "unit_input_output.csv": [
         "unit_id", "carrier_id", "coefficient", "role",
@@ -461,7 +464,8 @@ SPEC_ENUMS = {
 }
 BOOL_COLUMNS = {
     ("carrier.csv", "is_gradeable"), ("carrier.csv", "is_indirect"),
-    ("carrier.csv", "may_dispose"), ("unit.csv", "is_hybrid"), ("unit.csv", "draws_ambient"),
+    ("carrier.csv", "may_dispose"), ("carrier.csv", "may_import"),
+    ("carrier.csv", "may_export"), ("unit.csv", "is_hybrid"), ("unit.csv", "draws_ambient"),
     ("process_load_shape.csv", "runs_when_idle"),
     ("infrastructure_scenario.csv", "available"),
     ("decarbonisation_options_library.csv", "route_change"),
@@ -534,6 +538,97 @@ def check_carrier(car: list[dict]) -> Result:
         if b is not None and not 0 <= b <= 1:
             r.fail(f"{cid}: biogenic_fraction {b} outside [0,1]")
     r.note = f"{len(seen)} carriers, {len(ranks)} heat grades"
+    return r
+
+
+def check_abatement_hosts(host: list[dict], unit: list[dict]) -> Result:
+    """V33 (a capture train abates several hosts): leg (b).
+
+    Every `abatement` unit has at least one host; each host is a `converter` on the same
+    `process_id`; no unit hosts itself; both ids resolve. This replaces the single
+    `unit.abates_unit_id` column, which could name only one host and was blank on 11 of
+    the 13 trains.
+
+    Leg (a) — `premise_process_unit` rows naming an eligible unit, distinct per parent,
+    with `capacity_share` summing to 1 — has no premise data in this repository to check
+    against, and leg (c) — an abatement unit's remaining life equals the minimum over its
+    hosts — is an LP-build assertion. Neither is implemented here.
+    """
+    r = Result("V33 (a capture train abates several hosts): every train names its hosts")
+    by_id = {x["unit_id"]: x for x in unit}
+    trains = {u for u, x in by_id.items() if x["unit_class"] == "abatement"}
+    named: dict[str, set[str]] = {}
+    for i, row in enumerate(host, start=2):
+        u, h = row["unit_id"], row["host_unit_id"]
+        if u not in by_id:
+            r.fail(f"unit_abatement_host.csv:{i}: unit_id {u!r} is not a unit "
+                   "(V33 (b): both ids resolve)")
+            continue
+        if h not in by_id:
+            r.fail(f"{u}: host_unit_id {h!r} is not a unit "
+                   "(V33 (b): both ids resolve)")
+            continue
+        if by_id[u]["unit_class"] != "abatement":
+            r.fail(f"{u}: unit_class {by_id[u]['unit_class']!r}, not abatement "
+                   "(V33 (b): only an abatement unit has hosts)")
+        if u == h:
+            r.fail(f"{u}: hosts itself (V33 (b): no self-host)")
+        if by_id[h]["unit_class"] != "converter":
+            r.fail(f"{u}: host {h} is {by_id[h]['unit_class']!r}, not converter "
+                   "(V33 (b): a host is the converter the train captures from)")
+        if by_id[h]["process_id"] != by_id[u]["process_id"]:
+            r.fail(f"{u}: host {h} is on process_id {by_id[h]['process_id']!r}, "
+                   f"the train on {by_id[u]['process_id']!r} "
+                   "(V33 (b): a host runs the same process)")
+        if h in named.setdefault(u, set()):
+            r.fail(f"{u}: host {h} named twice (V33 (b): the key is the pair)")
+        named[u].add(h)
+    for u in sorted(trains - set(named)):
+        r.fail(f"{u}: abatement unit with no host row "
+               "(V33 (b): every train names at least one host)")
+    blank = sorted(u for u in trains if not by_id[u]["process_id"].strip())
+    r.note = (f"{len(host)} rows, {len(trains)} abatement units, "
+              f"{len(blank)} with a blank process_id")
+    return r
+
+
+def check_boundary(car: list[dict], duty: list[dict]) -> Result:
+    """V32 (the site boundary is a property of the carrier, D16): legs (b) and (c).
+
+    Leg (a) — that import and export variables are declared only where the carrier
+    allows it *and* the connection carries the carrier — is an LP-build assertion and
+    has no reference data to check here.
+    """
+    r = Result("V32 (site boundary on the carrier): may_import / may_export")
+    kinds: dict[str, str] = {}
+    exportable: dict[str, bool] = {}
+    for i, row in enumerate(car, start=2):
+        cid = row["carrier_id"]
+        kind = row["carrier_kind"]
+        kinds[cid] = kind
+        imp = (row.get("may_import") or "").strip()
+        exp = (row.get("may_export") or "").strip()
+        for col, v in (("may_import", imp), ("may_export", exp)):
+            if v not in {"TRUE", "FALSE"}:
+                r.fail(f"carrier.csv:{i} {cid}: {col}={v!r}, required TRUE/FALSE "
+                       "(V32: the boundary marker is not optional)")
+        exportable[cid] = exp == "TRUE"
+        # leg (c)
+        if kind in {"emission", "intermediate"} and (imp == "TRUE" or exp == "TRUE"):
+            r.fail(f"{cid}: {kind} carrier with may_import={imp} may_export={exp} "
+                   "(V32 (c): an emission or intermediate carrier never crosses the "
+                   "site boundary)")
+    # leg (b)
+    for i, row in enumerate(duty, start=2):
+        cid = row["carrier_id"]
+        if kinds.get(cid) == "product" and not exportable.get(cid, True):
+            r.fail(f"activity_process_duty_profile.csv:{i} names {cid} "
+                   "(V32 (b): a product carrier with may_export FALSE is internal to "
+                   "the site and has no duty; its activity is fixed by C8, the carrier "
+                   "balance)")
+    n_int = sum(1 for c, k in kinds.items() if k == "product" and not exportable[c])
+    r.note = (f"{sum(1 for k in kinds.values() if k == 'product')} product carriers, "
+              f"{n_int} internal to the site")
     return r
 
 
@@ -648,9 +743,6 @@ def check_units(unit: list[dict], io: list[dict], bom: list[dict], car: list[dic
             r.fail(f"{u}: process_id {row['process_id']!r} not in register")
         if row["is_hybrid"] == "TRUE":
             hybrids.add(u)
-        ab = row["abates_unit_id"].strip()
-        if ab and ab not in {x["unit_id"] for x in unit}:
-            r.fail(f"{u}: abates_unit_id {ab!r} unknown")
         for col in ("capex", "fixed_opex", "availability_factor", "emissions_released"):
             v = _f(row[col])
             if v is not None and v < 0:
@@ -927,6 +1019,8 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
         check_citations_resolve(tables, refs),
         check_spec_shape(tables),
         check_carrier(car),
+        check_boundary(car, duty),
+        check_abatement_hosts(tables["unit_abatement_host.csv"], unit),
         check_duty_profile(duty, reg, car),
         check_process_crosswalk(tables["carb3_comit_process_crosswalk.csv"], reg),
         check_units(unit, tables["unit_input_output.csv"],

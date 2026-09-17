@@ -265,6 +265,12 @@ are each reachable only through a CHP unit today; the two boiler requests above 
    `ccs_oxyfuel` and `ccs_oxyfuel_partial` all map from cement rows whose host `ICMKLND01` D13
    split into four. This table's `notes` fan-out is the information needed to fill them, if the
    decision is ever to fill them at all.
+
+   **Acted on 2026-09-17, and this note is what settled the count.** `abates_unit_id` is gone;
+   `unit_abatement_host.csv` names every host of all thirteen trains. The five cement trains
+   take **four** hosts each — `kiln_dry_coal`, `kiln_dry_gas`, `kiln_dry_wdf`, `kiln_dry_oil` —
+   because this table's `d13_fan_out` on `ICMKLND01` says four, against a design note that named
+   the three the cement worked example happens to reach. See `DONE_units.md` §8.
 3. **Coordinator** — `docs/notes/data/README.md` needs a row for
    `comit_technology_lineage.csv`. It is the only index and an unregistered document is invisible;
    I did not edit it because it is a shared file (convention 6). Suggested row, matching the

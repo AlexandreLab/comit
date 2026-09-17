@@ -19,7 +19,7 @@
 
 ## 1. Scope, inputs, conventions, and how to read this
 
-*Section last updated: 2026-09-16*
+*Section last updated: 2026-09-17*
 
 ### 1.1 What this document is
 
@@ -77,9 +77,9 @@ Label families in this document, and where each is defined:
 | `C1`–`C12` | Constraints | §5.5 |
 | `A1`–`A9` | Algorithms | §4 |
 | `S0`–`S9` | Pipeline stages | §2.1 |
-| `V1`–`V31` | Validation tests | §10 |
+| `V1`–`V33` | Validation tests | §10 |
 | `G1`–`G4` | Scale gates | §9 |
-| `D1`–`D15` | Design decisions | §1.6 |
+| `D1`–`D16` | Design decisions | §1.6 |
 | `PD1`–`PD2` | Programme decisions | the [overview](2026-08-28-carb3-site-energy-system-overview.md) |
 
 ### 1.5 Glossary
@@ -100,7 +100,7 @@ inter-premise coupling D2 forbids. "Hybrid unit" means co-located, one premise.
 
 ### 1.6 Design decisions
 
-Fifteen decisions fix the shape of the model. Everything in §2–§13 is written inside them,
+Sixteen decisions fix the shape of the model. Everything in §2–§13 is written inside them,
 and each is cited by label wherever it constrains a choice.
 
 | # | Decision | What it buys | What it costs |
@@ -119,6 +119,7 @@ and each is cited by label wherever it constrains a choice.
 | **D12** | Measured inputs are a time series; exactly one year is the **base year**, and only that year is read | History becomes available for reconciliation, trend evidence and audit without touching the annual LP or A4's back-solve | A base year must be named per premise, a substitution ladder is needed for carriers metered off it, and every history row is data nobody reads today |
 | **D13** | **One primary carrier per unit.** A unit's fuel is part of its identity: `boiler_gas` and `boiler_hydrogen` are two units, not one unit with two bindings | Capex, lifetime, efficiency, availability year and minimum scale become per-fuel attributes, which they physically are; `unit_eligibility` can cap one fuel without capping another; §10.2's carrier-equivalent configuration stops being a special setup and becomes how the library always works | The library roughly doubles, from ~40 units to ~98 before hybrids. The collapse across *sectors* — one boiler for a dairy and a paper mill — is untouched, and it is the larger saving |
 | **D15** | **Every emission is a carrier.** Combustion CO₂ joins process CO₂ on the balance, so emissions are produced by units, consumed by capture, and vented through disposal | Capture needs no special case — a train simply consumes a carrier; the carbon price attaches to what is actually vented; biomass zero-rating and net-negative capture fall out of the carrier set instead of an accounting rule; §7 becomes a readout of the balance rather than a parallel calculation | Three more balance nodes per period, and fuel CO₂ coefficients must be **derived** at build time from the scenario's factors rather than declared, because a factor may vary by period |
+| **D16** | **An internal product is a carrier, not a duty, and the site boundary is a property of the carrier.** `carrier` gains required `may_import` and `may_export` flags (§3.4); a `product` a site makes and consumes itself carries both false, presents no `process_duty` row (§3.9), and reaches its consumer through C8 by way of $z^{\circ}$ | The double-count between C1 (duty satisfaction) and C8 (carrier balance) on a product a downstream unit draws disappears — the two constraints stop competing for the same tonne. The boundary becomes data rather than convention, so a site's Sankey is derivable from §8's solved rows: imports on the left, carrier nodes in the middle, and on the right the four ways a stream ends — a duty delivered, an export, a disposal $d_{c,t}$, or a loss inside a unit | Two more required fields on every `carrier` row, and a process may now exist with units, vintage and a `premise_process_detail` row but no duty, so anything that counted duties as a proxy for processes has to stop |
 | **D14** | **Emissions attach once, at the fuel. Any per-carrier figure is a reporting allocation that sums back to it** | A CHP's electricity can carry a defensible intensity without the same molecules being charged twice; the grid factor applies to imports only, so self-generation stops being counted as if it came off the grid | An allocation convention must be chosen and defended (§7.7), and two numbers now exist for one emission — accounted and allocated — which must never be added together |
 
 Five have the widest reach in this document:
@@ -198,20 +199,20 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-09-16*
+*Section last updated: 2026-09-17*
 
-**Twenty-four entities.** Every one of them is defined here in full: fields, types, units,
-keys and validation rules. Four are supplied by the CaRB3 stock model, eight by the
-modelling team, two by scenario definition, one is derived at run time, seven are optional
+**Twenty-six entities.** Every one of them is defined here in full: fields, types, units,
+keys and validation rules. Four are supplied by the CaRB3 stock model, nine by the
+modelling team, two by scenario definition, one is derived at run time, eight are optional
 per-premise intelligence, and two carry defaults and the offline archetype layer.
 
 | | Supplied by | Entities |
 |---|---|---|
 | §3.1–§3.1.3 | the CaRB3 stock model | `premise_record`, `premise_energy`, `premise_throughput`, `premise_connection` |
-| §3.2–§3.6 | the modelling team | `activity_process_register`, `activity_process_duty_profile`, `activity_process_energy_share`, `carrier`, `unit`, `unit_input_output` |
+| §3.2–§3.6 | the modelling team | `activity_process_register`, `activity_process_duty_profile`, `activity_process_energy_share`, `carrier`, `unit`, `unit_abatement_host`, `unit_input_output` |
 | §3.7–§3.8 | scenario definition | `infrastructure_scenario`, `scenario_parameters` |
 | §3.9 | derived at run time (A2) | `process_duty` |
-| §3.10–§3.15 | optional per-premise intelligence (D10) | `premise_process_detail`, `premise_process_energy` and companions |
+| §3.10–§3.15 | optional per-premise intelligence (D10) | `premise_process_detail`, `premise_process_energy`, `premise_process_unit` and companions |
 | §3.16–§3.17 | defaults and the offline layer | `activity_default_unit`, `archetype_coefficient` |
 
 ### 3.1 `premise_record` — the premise itself
@@ -355,6 +356,19 @@ to supply it. A premise whose activity carries a mass-denominated process must t
 have at least one `premise_throughput` row, and A1 rejects it otherwise
 (`missing_throughput`). Activities with no mass-denominated process need no rows at all.
 
+**A row is a duty or it is evidence, and `may_export` decides which (D16).** Where the
+`carrier_id` is a `product` with `may_export` true, the row is the premise's **duty** on that
+product under D5 — a cement works' 1.13 Mt/yr of cement is what C1 makes it produce. Where the
+carrier is an **internal** product (`may_export` false), there is no duty to state (§3.9) and
+the row is **evidence** instead: A4 cross-checks its back-solved capacity and implied output
+against it (§5.1), and §7.6-style reconciliation reports it, but nothing in the LP is pinned by
+it. The row is still worth carrying, and a premise should still state it.
+
+**`missing_throughput` therefore applies to exported products only.** A premise whose only
+mass-denominated process makes an internal product has its activity fixed by C8 through
+$z^{\circ}$, not by a duty, so a missing row costs a cross-check rather than the problem. A1
+reports it, and does not reject.
+
 #### 3.1.3 `premise_connection`
 
 One row per MPAN or MPRN.
@@ -370,8 +384,15 @@ One row per MPAN or MPRN.
 | `available_area` | real | m² | no | — | ≥ 0. Roof plus land available for onsite generation |
 
 **Capacities are never summed across connections.** A site with two supplies has two limits,
-and adding them grants headroom the load cannot physically reach. C11 is written per
-connection for exactly this reason.
+and adding them grants headroom the load cannot physically reach. C11 (connection capacity) is
+written per connection for exactly this reason.
+
+**A delivered fuel has no connection row, and needs none.** This entity covers *networked*
+carriers — electricity, natural gas, hydrogen, CO₂ transport — where a physical connection
+bounds the flow. Coal, waste-derived fuel, fuel oil and biomass arrive by road or rail, so they
+carry no row here and are imported at **site level**, $m_{c,t}$ (§5.2), outside C11 altogether.
+`carrier.may_import` (§3.4) is what says the premise may buy them at all; the absence of a
+connection row says only that no capacity limit applies.
 
 **`available_area` is the single biggest missing input.** Without it C12 is unbounded and
 the LP builds infinite PV. Where the stock model cannot supply it, a per-activity usable-area
@@ -612,6 +633,8 @@ Anything that flows and balances: a fuel, electricity, hydrogen, CO₂, or heat 
 | `carbon_charge` | enum{charged, zero_rated} | — | no | — | Set on `emission` carriers only. `zero_rated` is what makes biogenic CO₂ free to vent and a **credit** to capture (§7.3) |
 | `denominator_kind` | enum{energy, mass} | — | yes | — | D5 |
 | `may_dispose` | boolean | — | yes | — | Whether $d_{c,t}$ exists for this carrier (§5.2). **Derived from `carrier_kind`, not free**: true for `intermediate` and `emission`, false for `primary` and `product`. Stated as a column so the LP builder reads it rather than re-deriving it |
+| `may_import` | boolean | — | yes | — | Whether the carrier may cross the site boundary inwards (D16), and the only thing that decides whether an import exists. A **networked** carrier a `premise_connection` row carries takes the connection-indexed $m_{c,k,t}$; a **delivered** fuel with no connection row takes the site-level $m_{c,t}$ (§5.2). True on every `primary` fuel and on `electricity`; false on `intermediate`, `emission` and `product` carriers |
+| `may_export` | boolean | — | yes | — | Whether the carrier may cross the site boundary outwards (D16). $x_{c,k,t}$ is declared only where this is true **and** a `premise_connection` row carries $c$ (§5.2) — an export always goes onto a network. True on `electricity`, on a `product` with an outside market, and on `co2_captured`, which leaves through the CO₂ transport network under C9 (infrastructure availability); false on `intermediate`, `emission` and internal `product` carriers |
 
 **Grades are carriers, not an attribute of one.** `heat@60-150C` and `heat@150-400C` are two
 `carrier` rows with different `grade_rank`. This is what lets C8 balance them independently
@@ -629,6 +652,25 @@ row for it — whether the unit declares it as its `fuel_input` or as a second f
 emission belongs at the import instead (§7.8). `intermediate` means it was charged upstream.
 Reading the role rather than the carrier is the error §3.6 records: it would silently
 zero-rate every secondary fuel in the library.
+
+**Rule (boundary). The site boundary is a property of the carrier, and it has four exits.**
+`may_import` and `may_export` say which carriers may cross it, and every stream in a solved
+premise ends in exactly one of four ways: **delivered to a duty** ($z_{u,q,t}$ against C1, duty satisfaction),
+**exported** ($x_{c,k,t}$, only where `may_export`), **disposed of** ($d_{c,t}$, only where
+`may_dispose`) or **lost inside a unit**, as the shortfall between a unit's input coefficients
+and its outputs in §3.6. Nothing else terminates a stream, which is why a Sankey of a site is
+derivable from §8's solved rows plus these two flags alone — imports on the left, units and
+carrier nodes in the middle, the four endings on the right — rather than needing a separate
+diagram model.
+
+**A carrier with both flags false is internal to the site**, and that is the case D16 exists
+for. An `intermediate` carrier has always been internal, and so has an `emission` carrier. What
+D16 adds is that a **`product`** may be internal too: a cement works makes clinker and grinds it
+itself, so `clinker` is `may_import` false and `may_export` false, while `cement` is false and
+true. An internal product presents no duty (§3.9) and reaches its consumer through C8 (carrier
+balance) by way of
+$z^{\circ}$ — see §5.5. Buying clinker in is out of scope, and the flag is where that is
+recorded.
 
 **Three emission carriers, and the split is load-bearing (D15).** Emissions are produced,
 balanced, captured and vented like anything else that flows:
@@ -648,12 +690,16 @@ CO₂ transport network under C9. Anything not captured leaves through $d_{c,t}$
 the motor would consume and produce the same carrier and C8's node at that carrier would be
 circular. Every duty family therefore resolves to a carrier that represents the *service*:
 
-| Duty family | Carrier | Kind |
-|---|---|---|
-| `LTH`, `HTH`, `STM`, `DRY`, `SPC` | graded heat, `heat@band` | intermediate, gradeable |
-| `MOT` | **`motive_power`** | intermediate, not gradeable |
-| `REF` | **`cooling`** | intermediate, not gradeable |
-| `OTH` | resolves to whichever of the above the underlying service is | — |
+| Duty family | Carrier | Kind | Boundary |
+|---|---|---|---|
+| `LTH`, `HTH`, `STM`, `DRY`, `SPC` | graded heat, `heat@band` | intermediate, gradeable | **internal** — `may_import` and `may_export` both false |
+| `MOT` | **`motive_power`** | intermediate, not gradeable | **internal** |
+| `REF` | **`cooling`** | intermediate, not gradeable | **internal** |
+| `OTH` | resolves to whichever of the above the underlying service is | — | **internal** |
+
+Every service carrier is internal by construction: a service is produced and consumed on the
+premise, so neither $m$ nor $x$ is ever declared on one. A duty may also sit on a `product`
+carrier, but only where `may_export` is true (§3.9).
 
 Compressed air is a candidate for a carrier of its own rather than `motive_power`: it has real
 distribution losses and is storable, and motive power is neither. Deferred until the duty
@@ -697,7 +743,6 @@ the unit's carrier bindings in §3.6.
 | `load_shape_override` | string | — | no | → `process_load_shape` | **By exception only.** The shape belongs to the process (§3.13); a unit overrides it only where the device genuinely changes the draw |
 | `is_hybrid` | boolean | — | yes | — | If true, `unit_bill_of_materials` rows must exist |
 | `draws_ambient` | boolean | — | yes | — | True where the unit takes energy from ambient air, ground or water — outside the carrier set by §3.4. Exempts the unit from V2's energy-closure leg (§3.6) |
-| `abates_unit_id` | string | — | no | → `unit` | For abatement units: the unit whose output it captures |
 | `provenance` | enum{comit_reuse, bref, proxy} | — | yes | — | D6 |
 | `confidence` | enum{high, medium, low} | — | yes | — | D6 |
 
@@ -724,9 +769,13 @@ equivalents in fifteen other sectors are one `boiler_gas` — and D13 does not t
 the maintainability claim: adding hydrogen firing is now one unit row per family that can burn
 it, roughly ten rows against the 52 hydrogen technology rows today, rather than one.
 
-**Abatement is a unit, not a cost differential against another unit.** A CCS train is a
-unit that consumes a CO₂ carrier produced by its host and names that host in
-`abates_unit_id`. It inherits the host's remaining life under D11 and strands nothing.
+**Abatement is a unit, not a cost differential against another unit.** A CCS train is a unit
+that consumes a CO₂ carrier produced by its host. **A train may have several hosts**, and under
+D13 (one primary carrier per unit) it usually does: a co-firing kiln is three units, and one
+capture train serves all three. The hosts are therefore named in a table of their own,
+`unit_abatement_host` (§3.5.3), not in a field on the unit. Under D11 (existing plant has an
+age) the train inherits the **earliest** remaining life among its hosts and strands nothing
+while any host still stands.
 
 #### 3.5.1 `unit_eligibility`
 
@@ -769,6 +818,37 @@ reporting bundle capacity — §8's `Costs` and `Network` rows decompose through
 Second, it makes the levelised capex auditable: PV lasts 30–40 years and a battery 10–15, so
 `unit.capex` must already contain the battery replacement. `replacements_in_life` is what
 V20 (c) checks that against.
+
+#### 3.5.3 `unit_abatement_host`
+
+**Which units an abatement unit captures from.** One row per abatement unit per host.
+Required for every unit with `unit_class = abatement`; meaningless for any other class.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `unit_id` | string | — | yes | PK part → `unit` | Must have `unit_class = abatement` |
+| `host_unit_id` | string | — | yes | PK part → `unit` | Must have `unit_class = converter` and the **same `process_id`** as `unit_id`. May not equal `unit_id` |
+| `provenance` | enum{comit_reuse, bref, proxy} | — | yes | — | D6 |
+
+**Rule (a train has at least one host).** Every `abatement` unit has one or more rows here.
+Zero rows is not "unknown host" but an undefined unit: without a host there is no CO₂ stream
+for the train to consume, no process to site it on, and no life to inherit. V33 (plant is
+named one unit at a time) rejects it.
+
+**Rule (one row per host, and D13 is why there are several).** D13 (one primary carrier per
+unit) splits a co-firing machine into one unit per fuel, so a cement works' dry kiln is
+`kiln_dry_coal`, `kiln_dry_gas` and `kiln_dry_wdf`. The single physical capture train bolted
+onto that line therefore has three hosts and writes three rows. The single optional field on
+`unit` that this table replaces could name only one, which either lost two hosts or forced the
+train to be split per host as well — tripling a capex that is paid once.
+
+**Rule (earliest remaining life).** The train inherits the **minimum** remaining life over its
+hosts, and attracts no stranding charge while **any** host still stands (C3, capacity transfer;
+C4, incumbent ageing). Where the hosts share a vintage — the cement kiln's three cohorts are
+all one commissioning year — the minimum is that single value, so the common case reads
+exactly as the old single-host rule did. Where they differ, the train dies with the first host
+to go, which is the conservative reading: a train sized for a line cannot outlive the part of
+the line that still feeds it.
 
 ### 3.6 `unit_input_output`
 
@@ -954,6 +1034,24 @@ per-premise intelligence that exists (D10).
 | `grade_rank` | integer | — | no | → `carrier` | Required where the carrier is gradeable |
 | `evidence_tier` | enum{site_known, named_set, activity_default} | — | yes | — | D10 |
 
+**Not every process presents a duty (D16).** A row exists where the `carrier_id` is a **service**
+carrier — an `intermediate` reached through a duty family (§3.4) — or a **`product`** carrier
+with `may_export` true. A process whose unit's primary output is a `product` with `may_export`
+false has **no `process_duty` row at all**. The *activity-level* row stays, though: a chemistry
+process keeps its `activity_process_duty_profile` (§3.3) and `activity_default_unit` (§3.16)
+entries — `HTH` at `heat_gt1000` on a clinker kiln, say — because those classify the process's
+heat need for eligibility and grouping rather than stating a demand the LP must serve; D16
+removes the premise-level row only. The process still exists in every other sense: it is in the register,
+it has candidate units, it may carry a `premise_process_detail` row and a vintage, and it is
+reported. What it does not have is a demand the LP must meet.
+
+**Its activity is fixed by C8 (carrier balance) instead.** The unit releases its whole primary output into the
+carrier balance through $z^{\circ}_{u,t}$ (§5.2), and the downstream units drawing that carrier
+determine how much it makes. This is what closes the double-count a downstream product consumer
+would otherwise raise — C1 (duty satisfaction) demanding the output be dispatched to a duty while C8 demands it be
+released to the balance, with doing both counting the same tonne twice. The throughput row on
+that product remains as evidence and as A4's cross-check (§3.1.2, §5.1).
+
 ### 3.10 `premise_process_detail` — known site processes and capacity
 
 **Optional per-premise intelligence.** Where the actual processes at a site are known —
@@ -969,7 +1067,6 @@ normal case and means "use the register".
 | `valid_to_year` | integer | year | no | — | The year it stopped. Absent ⇒ still running. ≥ `valid_from_year` if present |
 | `connection_id` | string | — | no | → `premise_connection` | **Optional.** Which electricity connection serves this process (§3.1.3). Absent ⇒ the default. This is what decides where electrified load lands |
 | `known_capacity` | real | capacity units | no | — | > 0 if present. Units follow the process's denominator (D5): PJ/yr-equivalent for energy, Mt/yr for mass |
-| `unit_id` | string | — | no | → `unit` | The specific installed unit, where known |
 | `provenance` | string | — | yes | — | Citation: permit number, audit reference, disclosure |
 | `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
 
@@ -996,11 +1093,18 @@ base year, which is the only year the model reads, and nothing is claimed about 
 evidence does not cover. This mirrors §3.15's residual cohort, and the alternative — every
 data supplier inventing a convention — is what makes the field unusable.
 
-**Rule (precedence).** Where `unit_id` is given, that unit is the premise's existing plant
-for that process **for an interval valid at the base year**, and A4 does not choose between
-candidates. A closed interval's `unit_id` describes plant the site no longer has. Where
-`known_capacity` is given, it is used directly and A4 back-solves *utilisation* instead of
-capacity (§A4).
+**Rule (precedence).** Where a row has **child rows in `premise_process_unit` (§3.10.2)**,
+those units are the premise's existing plant for that process **for an interval valid at the
+base year**, and A4 does not choose between candidates. A parent row with no child rows means
+the plant is unknown, and A4 resolves it from the candidate set as usual — exactly what a blank
+`unit_id` meant before the child table existed. A closed interval's children describe plant the
+site no longer has. Where `known_capacity` is given, it is used directly and A4 back-solves
+*utilisation* instead of capacity (§A4).
+
+**`known_capacity` is the line total, not a per-unit figure.** A permit states a kiln line's
+capacity once, and D13 (one primary carrier per unit) then splits that line into several units.
+The number therefore stays on this parent row and A4 divides it across the child units by the
+§4.1 carrier mix, unless §3.10.2 gives an explicit `capacity_share`.
 
 **On history.** A closed interval is evidence, not an input to the optimisation. It does
 two jobs. It tells A2 and A4 which rows to read, only those valid at the base year, so a
@@ -1063,6 +1167,45 @@ evidence, and discarding the premise would discard them.
 a row exists, `activity_default` for the residual, in the same solve — the pattern §3.15 uses
 for vintage, where a works may know its kiln's age and not its mills'. §8 carries it as
 `energy_evidence_tier`.
+
+#### 3.10.2 `premise_process_unit` — which units a known process runs
+
+**Optional per-premise intelligence.** One row per known unit per §3.10 interval. Zero rows
+under a parent is the normal case and means the plant is unknown; A4 resolves it from the
+candidate set.
+
+| Field | Type | Unit | Req | Key | Validation |
+|---|---|---|---|---|---|
+| `premise_id` | string | — | yes | PK part | → `premise_process_detail`, on the triple `(premise_id, process_id, valid_from_year)` |
+| `process_id` | string | — | yes | PK part | Part of the same triple |
+| `valid_from_year` | integer | year | yes | PK part | Part of the same triple. The parent interval this row belongs to |
+| `unit_id` | string | — | yes | PK part | → `unit`. Must be eligible for this process at the premise's activity (§3.5.1) |
+| `capacity_share` | real | fraction | no | — | ∈ (0, 1]. Where any row of one parent gives it, every row must, and they sum to 1 within 1e-6 |
+| `provenance` | string | — | yes | — | Citation: permit number, audit reference, disclosure |
+| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Why a child table rather than a field.** §3.10 carried a single optional `unit_id`, which
+could say "this process runs this unit" but not "this process runs these three". D13 (one
+primary carrier per unit) makes that the common case, not an edge case: a co-firing kiln line
+is three units. A single field forced a choice between naming the dominant unit and losing the
+rest, or leaving the field blank — which made a site that genuinely runs one fuel
+indistinguishable from one that runs three. A single-fuel works now writes one row, and the
+distinction is in the data.
+
+**Rule (a parent's children are its complete plant list).** The rows under one §3.10 interval
+are treated as the whole of what that process runs in that interval, the same completeness
+reading §3.10 takes over the process list itself. They must name distinct units.
+
+**`capacity_share` is optional because the split is usually derivable.** Where it is absent,
+A4 divides the parent's `known_capacity` by the §4.1 carrier mix — for a co-firing kiln, the
+base-year fuel split. Where a permit states the split, giving it here pins the back-solve
+instead. V33 (plant is named one unit at a time) checks the sum.
+
+**§3.15 already has this shape, and that is the argument for it.** `premise_process_vintage`
+is keyed per cohort with `unit_id` a plain field on the row, so a co-firing kiln decomposes
+into three cohorts naturally and states vintage as shares. This table gives §3.10 the same
+one-row-per-unit structure, so the two tables now answer *which units* and *how old each is*
+in the same grain instead of disagreeing about how many there are.
 
 ### 3.11 `premise_measured_emissions` — reported emissions, where they exist
 
@@ -1332,6 +1475,13 @@ now, and the reason a site with a 20 MW CHP and one without are currently the sa
 duty_family)`, `default_share` must sum to 1.00 ± 0.015. A duty is met by *something* today;
 a shortfall means the unit set is incomplete, not that the duty goes unmet.
 
+**Rule (a chemistry process keeps its row even with no duty).** Where D16 removes a process's
+premise-level `process_duty` row because its primary output is an internal product (§3.9), this
+entity's row and its `duty_family` — `HTH` on a clinker kiln, for instance — are kept: they
+classify the process's heat need so that `unit_eligibility` and the duty-family grouping still
+work, and they name the incumbent plant A4 back-solves. They are a classification, not a demand
+the LP serves.
+
 **Rule (eligibility is a precondition).** A row whose `(unit_id, carb3_activity,
 process_id)` has no `unit_eligibility` entry is rejected. The default cannot assert plant the
 model would refuse to build, or A4 back-solves a baseline the optimiser cannot reproduce.
@@ -1389,7 +1539,7 @@ would change a premise's answer without changing any input the reader can see.
 
 ## 4. Algorithms
 
-*Section last updated: 2026-09-16*
+*Section last updated: 2026-09-17*
 
 > **Partially written.** The numbered pseudocode for A1–A9 is outstanding; the delivery plan
 > names its owner. What each algorithm is responsible for, and the two rules that were open
@@ -1399,10 +1549,10 @@ Nine algorithms run the pipeline of §2.1. A1–A9 map onto the stages S1–S9 o
 
 | # | Algorithm | Responsibility |
 |---|---|---|
-| A1 | Ingest and validate premise records | Accept a premise record and its companions, apply the load-scope validation of §10, reject with reasons. **Resolve the base year (D12), apply §3.1.1's substitution ladder, and report `duplicate_year_row`, `profile_year_unmatched` and `emissions_year_unmatched`** |
-| A2 | Expand premise to duties and candidate units | Resolve the process set, **size each process from §3.3.1's shares or §3.10.1's sub-meters**, produce `process_duty` rows, and resolve the **candidate unit set** from `unit_eligibility` — including the `min_duty` screening that keeps minimum viable scale out of the LP. **Reads only the `premise_process_detail` rows valid at the base year (§3.10)** |
+| A1 | Ingest and validate premise records | Accept a premise record and its companions, apply the load-scope validation of §10, reject with reasons. **Resolve the base year (D12), apply §3.1.1's substitution ladder, and report `duplicate_year_row`, `profile_year_unmatched` and `emissions_year_unmatched`. `missing_throughput` is raised only for a `product` carrier with `may_export` true (D16); an internal product's throughput row is evidence, so its absence is reported, not rejected** |
+| A2 | Expand premise to duties and candidate units | Resolve the process set, **size each process from §3.3.1's shares or §3.10.1's sub-meters**, produce `process_duty` rows, and resolve the **candidate unit set** from `unit_eligibility` — including the `min_duty` screening that keeps minimum viable scale out of the LP. **Reads only the `premise_process_detail` rows valid at the base year (§3.10). A process whose unit's primary output is a `product` with `may_export` false produces no duty row (D16, §3.9); its candidate units are resolved as usual and its activity is left to C8 (carrier balance)** |
 | A3 | Allocate premise energy onto carriers | Split metered energy across carriers. It does **not** allocate energy across processes: the carrier balance decides that. **Reads the base year only; history rows are carried to reporting untouched** |
-| A4 | Back-solve implied capacity, carrier mix and vintage | Turn metered energy into installed unit capacity, the mix of carriers each unit burns (§4.1), and plant age under D11. **Back-solves from the base year only, reads only base-year-valid process rows, and carries a substituted carrier vintage into the mix evidence** |
+| A4 | Back-solve implied capacity, carrier mix and vintage | Turn metered energy into installed unit capacity, the mix of carriers each unit burns (§4.1), and plant age under D11. **Back-solves from the base year only, reads only base-year-valid process rows, and carries a substituted carrier vintage into the mix evidence. Where a process has no duty (D16), the `premise_throughput` evidence row is what the utilisation and implied-output checks of §5.1 are run against** |
 | A5 | Apply the scenario | Attach prices, carbon price, infrastructure availability and the archetype coefficients ψ, β, χ, ε |
 | A6 | Build the per-premise problem | Declare variables over units and carrier flows, assemble C1–C12 and the objective of §5.4. **Derive the fuel-emission coefficients of §3.6 over $\mathcal{C}^{\text{burn}}_u$** — every consumed carrier that is `primary` and not `is_indirect`, summed across carriers and roles, so a unit's secondary fuels are charged and its electricity is not |
 | A7 | Solve and extract | Solve, extract the pathway, and handle infeasibility by the relaxation ladder of §4.2 |
@@ -1447,7 +1597,7 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-09-16*
+*Section last updated: 2026-09-17*
 
 **This section is authoritative.** Everything else serves it.
 
@@ -1484,14 +1634,24 @@ All continuous and non-negative. **The problem is a pure LP and must stay one.**
 | $n_{u,t}$ | New capacity of unit $u$ built in $t$ | capacity units |
 | $a_{u,t}$ | Capacity of $u$ available in $t$ | capacity units |
 | $z_{u,q,t}$ | Activity of $u$ dispatched to duty $q$, declared over $u \in U_q$ only | output units of $u$ |
-| $z^{\circ}_{u,t}$ | Activity of $u$ whose primary output is released into the carrier balance rather than dispatched to a duty | output units of $u$ |
+| $z^{\circ}_{u,t}$ | Activity of $u$ whose primary output is released into the carrier balance rather than dispatched to a duty. **For a unit whose primary output is an internal `product` (D16), this carries the unit's whole activity, because no duty exists to dispatch to** | output units of $u$ |
 | $h_{c \to c',t}$ | Heat cascaded from carrier $c$ down to carrier $c'$, declared only where both are gradeable and $g(c') < g(c)$ | PJ/yr |
 | $e_{u,t}$ | Surviving incumbent capacity of $u$ (D11), declared over $U^0$ only | capacity units |
 | $r_{u,t}$ | Incumbent capacity retired early in $t$ (D11), over $U^0$ only | capacity units |
-| $m_{c,k,t}$ | Import of carrier $c$ at connection $k$ | PJ/yr |
-| $x_{c,k,t}$ | Export of carrier $c$ at connection $k$ | PJ/yr |
+| $m_{c,k,t}$ | **Connection-indexed** import of carrier $c$ at connection $k$. Declared where `carrier.may_import` (§3.4) is true **and** a `premise_connection` row carries $c$ | PJ/yr |
+| $m_{c,t}$ | **Site-level** import of carrier $c$, with no connection index. Declared where `carrier.may_import` is true and **no** connection carries $c$ — a delivered fuel (coal, waste-derived fuel, fuel oil, biomass) arriving by road or rail | PJ/yr |
+| $x_{c,k,t}$ | Export of carrier $c$ at connection $k$. Declared where `carrier.may_export` (§3.4) is true **and** a `premise_connection` row carries $c$ | PJ/yr |
 | $w_{k,t}$ | Reinforcement purchased at connection $k$ | MW |
 | $d_{c,t}$ | **Disposal of carrier $c$** — heat rejected to atmosphere, CO₂ vented. Declared only where `carrier.may_dispose` (§3.4) | PJ/yr or Mt/yr |
+
+**An import exists wherever `may_import` does; only some imports are connection-indexed.** A
+*networked* carrier — electricity, natural gas, hydrogen, CO₂ transport — arrives through a
+`premise_connection` row (§3.1.3) and takes $m_{c,k,t}$, so C11 (connection capacity) can bound
+it. A **delivered** fuel has no connection row and takes $m_{c,t}$ instead: coal, waste-derived
+fuel, fuel oil and biomass arrive by road or rail, and a lorry is not a connection. The flag
+decides whether an import exists at all; the presence of a connection decides only how it is
+indexed. Exports are always connection-indexed, because leaving the site means going onto a
+network.
 
 **Total activity is a defined expression, not a variable.**
 $z_{u,t} \equiv \sum_{q \in Q_u} z_{u,q,t} + z^{\circ}_{u,t}$, and it is what C2, C6, C7 and §7
@@ -1554,7 +1714,12 @@ the **single-year** factor used for the stranding write-off. Capex is annuitised
 $L_u$ at interest rate $i$; the annuity for a hybrid already contains its component
 replacements (§3.5).
 
-$$Z^{\text{fuel}}_t = \sum_{c,k} m_{c,k,t}\,\big(p^{\text{imp}}_{c,t} + \tau_{c,t}\big) \cdot \varepsilon(c,t) \qquad Z^{\text{exp}}_t = \sum_{c,k} x_{c,k,t}\,p^{\text{exp}}_{c,t}$$
+$$Z^{\text{fuel}}_t = \sum_{c}\Big(\sum_{k} m_{c,k,t} + m_{c,t}\Big)\big(p^{\text{imp}}_{c,t} + \tau_{c,t}\big) \cdot \varepsilon(c,t) \qquad Z^{\text{exp}}_t = \sum_{c,k} x_{c,k,t}\,p^{\text{exp}}_{c,t}$$
+
+**Both import terms are priced, and at the same price.** A delivered fuel arriving at
+$m_{c,t}$ (§5.2) costs what a networked one arriving at $m_{c,k,t}$ costs: the connection index
+decides whether C11 (connection capacity) can bound the flow, never whether it is paid for.
+Omitting the site-level term would make coal free.
 
 $$Z^{\text{net}}_t = \sum_{k} \gamma_k\big(w_{k,t}\big)$$
 
@@ -1590,6 +1755,10 @@ $$\sum_{u \in U_q} z_{u,q,t} = D_{q,t} \qquad \forall q \in Q,\; t \in T$$
 Dispatch is per (unit, duty) pair, so a unit sitting in several $U_q$ contributes to each
 duty only what it sends there.
 
+**An internal product never appears in C1 (duty satisfaction).** Under D16 a `product` carrier
+with `may_export` false presents no duty at all (§3.9), so $Q$ holds no $q$ for it and no unit
+is asked to dispatch to one. Its maker's output reaches its consumer through C8 below.
+
 **C2 — Activity limited by available capacity.**
 
 $$z_{u,t} \le a_{u,t}\,\gamma_u\,\alpha_u \qquad \forall u,\, t$$
@@ -1601,13 +1770,16 @@ it releases to the balance, share one capacity.
 
 $$a_{u,t} = e_{u,t} + \sum_{s \le t} n_{u,s}\,\mathbb{1}[\,s \le t \le s + \ell_{u,s} - 1\,]$$
 
-with $e_{u,t} \equiv 0$ for $u \notin U^0$. An abatement unit expires with its host, not on
-its own life.
+with $e_{u,t} \equiv 0$ for $u \notin U^0$. An abatement unit expires with its **earliest**
+host, not on its own life: its hosts are the rows of `unit_abatement_host` (§3.5.3) and the
+window it inherits is the minimum remaining life over them.
 
 **C4 — Incumbent ageing and early retirement (D11).** Incumbent capacity decays by the
 survival function $\eta$, may be retired early against a stranding charge in $\xi$, and the
-abatement rule keys on `abates_unit_id`: a unit whose host is still standing has not been
-scrapped, so it attracts no stranding charge and inherits the host's remaining life.
+abatement rule reads `unit_abatement_host` (§3.5.3): an abatement unit **any** of whose hosts is
+still standing has not been scrapped, so it attracts no stranding charge, and the remaining life
+it inherits is the **minimum** over its hosts. Where the hosts share a vintage the minimum is
+that one value, which is the single-host rule this replaces.
 
 **C5 — No building in the start year.** $n_{u,t_0} = 0 \;\; \forall u$.
 
@@ -1622,11 +1794,14 @@ premise:
 
 $$\sum_{u \in U} \;\sum_{\theta \,\in\, \Theta_{u,c}} \Big( \mathbb{1}[\theta \neq \texttt{primary\_output}]\, z_{u,t} \;+\; \mathbb{1}[\theta = \texttt{primary\_output}]\, z^{\circ}_{u,t} \Big)\,\iota_{u,c,\theta}
 \;+\; \sum_{c'' :\, g(c'') > g(c)} h_{c'' \to c,t} \;-\; \sum_{c' :\, g(c') < g(c)} h_{c \to c',t}
-\;+\; \sum_{k \in \mathcal{K}} \big(m_{c,k,t} - x_{c,k,t}\big) \;-\; d_{c,t} \;=\; 0 \qquad \forall c \in \mathcal{C},\, t$$
+\;+\; \sum_{k \in \mathcal{K}} \big(m_{c,k,t} - x_{c,k,t}\big) \;+\; m_{c,t} \;-\; d_{c,t} \;=\; 0 \qquad \forall c \in \mathcal{C},\, t$$
 
-with $m_{c,k,t} = x_{c,k,t} = 0$ where the premise has no connection carrying $c$, both
-cascade sums empty where $c$ is not gradeable, and $d_{c,t} = 0$ where
-`carrier.may_dispose` is false. Every carrier balances, including
+with $m_{c,k,t} = m_{c,t} = 0$ where `carrier.may_import` is false and $x_{c,k,t} = 0$ where
+`carrier.may_export` is false (D16); of the two import terms **exactly one is declared** for a
+carrier the flag admits — $m_{c,k,t}$ where a `premise_connection` row carries $c$, $m_{c,t}$
+where none does (§5.2) — and $x_{c,k,t} = 0$ where the premise has no connection carrying $c$,
+since an export must go onto a network. Both cascade sums are empty where $c$ is not gradeable,
+and $d_{c,t} = 0$ where `carrier.may_dispose` is false. Every carrier balances, including
 electricity: that is what makes onsite generation, CHP and export expressible at all.
 
 **Three things the form settles.** A unit's inputs, co-products and reject heat scale with
@@ -1641,6 +1816,14 @@ sit on the same carrier and scale with different activity variables. And $h$ is 
 the architecture calls a one-way ordering in the balance: heat may flow down a grade at no
 cost, never up, which is what lets a kiln's reject heat at one band be drawn by a heat pump
 whose input row sits at a lower one.
+
+**An internal product reaches its consumer here, and only here.** Because D16 gives it no duty,
+its maker's whole activity enters this balance through $z^{\circ}$ and the downstream unit's
+input coefficient draws it out; the node closes and the maker's activity is pinned by the draw.
+That is what settles the double-count a downstream product consumer would otherwise raise: with
+a duty as well, C1 would require the output to be dispatched and C8 to be released, satisfying
+both would count the same tonne twice, and satisfying either alone would fail the other. One
+constraint now owns the flow.
 
 **C9 — Infrastructure availability (D7).** A unit whose carrier is unavailable at the premise
 in a period cannot run, and where a cap is specified the premise's draw respects it. This
@@ -1664,7 +1847,9 @@ mapping table. The cascade has two sides and the algebra covers both: on the dut
 unit in several $U_q$ serves each through its own $z_{u,q,t}$, sharing one capacity through
 C2; on the carrier side $h$ in C8 carries heat down the grade ladder and nothing carries it up.
 
-**C11 — Connection capacity.** Per connection, never summed across connections:
+**C11 — Connection capacity.** Per connection, never summed across connections, and over
+**connection-indexed flows only** — a delivered fuel arriving at $m_{c,t}$ with no connection
+row (§5.2) has no connection to bound and never enters this constraint:
 
 $$P^{\text{peak}}_{k,t} \;\le\; \overline{P}^{\text{imp}}_{k} + w_{k,t} + \sum_{u} \beta_u\,a_{u,t} \qquad \forall k \in \mathcal{K},\, t$$
 
@@ -1846,7 +2031,7 @@ degeneracy that would otherwise let the solver report either of two equal-cost a
 
 ## 10. Validation
 
-*Section last updated: 2026-09-16*
+*Section last updated: 2026-09-17*
 
 ### 10.1 Scopes
 
@@ -1918,7 +2103,7 @@ pass mark.
 | V11 | load | yes | Process sets resolve to exactly one tier per premise |
 | V12 | premise | yes | Capacity bounds hold, including the siting cap, whose sum runs over area-bound units only |
 | V16 | batch | yes | Connection peak is rebuilt correctly from the solved pathway |
-| V17 | premise | yes | Vintage and stranding per unit. An abatement unit inherits its host's remaining life through `abates_unit_id`, and strands nothing while the host stands |
+| V17 | premise | yes | Vintage and stranding per unit. An abatement unit inherits the **minimum** remaining life over the hosts named in `unit_abatement_host` (§3.5.3), and strands nothing while any of them stands |
 | **V18** | premise | yes | **Carrier balance closes to 1e-6 at every carrier node, every period** |
 | **V19** | load | yes | No unit is eligible for a duty above its `grade_out`. Asserted at load, not per premise |
 | **V20** | load | yes | Five legs, all on the archetype and hybrid-unit data — see below |
@@ -1933,6 +2118,8 @@ pass mark.
 | **V29** | premise | yes | **Disposal and allocation.** $d_{c,t}$ exists only where `carrier.may_dispose`, and every non-zero disposal appears as an output row. Every generating unit's §7.7 allocated emissions sum to its §7.1 accounted emissions to 1e-6, and no reported total adds the two layers together |
 | **V30** | premise | yes | **Emissions close through the balance (D15).** Every emission carrier balances to 1e-6 like any other; §7's reported direct total equals the objective's $Z^{\text{carbon}}_t \div \pi_t \times 10^{3}$ exactly; a fuel's derived fossil and biogenic coefficients sum to its factor; and capture of a `zero_rated` carrier returns a **negative** contribution rather than zero |
 | **V31** | load | yes | **Role and sign agree (§3.6).** `(unit_id, carrier_id, role)` is unique; `fuel_input`, `aux_input` and `emission_input` carry a negative coefficient and `primary_output`, `coproduct`, `reject` and `emission` a positive one; `emission` and `emission_input` appear on an emission carrier and no other role does. Exactly one `primary_output` per unit with coefficients |
+| **V32** | load + premise | yes | **The site boundary is honoured (D16).** (a) connection-indexed $m_{c,k,t}$ and $x_{c,k,t}$ are declared only where `carrier.may_import` / `carrier.may_export` is true **and** a `premise_connection` row carries the carrier; site-level $m_{c,t}$ only where `may_import` is true and **no** connection carries it; nothing of either kind where the flag is false; (b) no `process_duty` row and no `activity_process_duty_profile` row names a `product` carrier whose `may_export` is false; (c) `may_import` and `may_export` are both false on every `emission` and every `intermediate` carrier. Failure names the carrier |
+| **V33** | load + premise | yes | **Plant is named one unit at a time.** (a) every `premise_process_unit` row (§3.10.2) names a unit that `unit_eligibility` admits for that process at the premise's activity, the rows of one parent name distinct units, and `capacity_share` where given is present on every row of that parent and sums to 1 within 1e-6; (b) every `abatement` unit has at least one `unit_abatement_host` row (§3.5.3), each host is a `converter` on the same `process_id`, and no unit hosts itself; (c) the remaining life used for an abatement unit equals the **minimum** over its hosts. Failure names the unit |
 
 **V20's five legs.**
 
@@ -2005,6 +2192,10 @@ write. Its scope is the whole built problem, not just A3 and A4: the archetype m
   emissions allocation (§7.7)      ───▶ V29               premise
   fuel CO2 as a carrier (D15)      ───▶ V30 + V18          premise
   biogenic split before capture    ───▶ V30 + V5           premise
+  site boundary on the carrier     ───▶ V32               load+premise
+  known plant, one row per unit    ───▶ V33               load+premise
+  abatement host set and life      ───▶ V33 + V17          premise
+  internal product has no duty     ───▶ V32 (b) + V18      premise
   §5.6 peak selects the base year  ───▶ (none, §5.6 unwritten)
   §1.4 label ranges match the spec ───▶ (none, checked by hand)
 ```
@@ -2034,6 +2225,8 @@ Widening a range is a manual step in the same commit as the label.
 | 12 | A shared multi-fuel unit carries one capex, one lifetime and one eligibility row for fuels that differ in all three, and `max_share` cannot cap one fuel without capping every fuel | V27 | Load assertion; D13 keys the unit per fuel (§3.5) |
 | 13 | A CHP's electricity is given its own emission factor on top of its fuel being charged, and the site total inflates by whatever it generated | V29 | §7.7's two layers; the objective reads only the accounted one |
 | 14 | A premise generating its own electricity is charged the grid factor on power that never came off the grid | V29 | §7.8 — an indirect carrier is charged on $m_{c,k,t}$, not on consumption |
+| 15 | A product a downstream unit consumes is given a duty as well, so C1 (duty satisfaction) and C8 (carrier balance) compete for the same tonne and one of them must fail | V32 (b) + V18 | Load assertion on the duty tables, premise assertion on the node |
+| 16 | A capture train is named one host of several, so two thirds of a co-firing kiln's CO₂ has no route to it and the train's life is read off whichever host happened to be named | V33 (b) + V17 | Load assertion on the host table, premise assertion on the inherited life |
 
 ---
 
@@ -2055,7 +2248,7 @@ Widening a range is a manual step in the same commit as the label.
 
 ## 13. Worked examples
 
-*Section last updated: 2026-09-15*
+*Section last updated: 2026-09-17*
 
 Two examples, both written, each a document of its own because each is long enough to be one
 and because both are published as test fixtures. They share a thirteen-section structure so
@@ -2080,9 +2273,29 @@ one reported as `emissions_year_unmatched`), all three tiers of §4.1's carrier-
 both areas of evidence for C12 (a measured survey and a floorspace proxy). The food and drink
 example is milestone M4's exit gate; the cement one is M2's.
 
-**Both documents carry an open-points table**, and five entries are shared between them:
-§3.3's treatment of `activity_process_energy_profile.csv` as a parity target rather than the
-input that sizes a premise's processes; the absence of any per-premise tier over it; C8's lack
-of a disposal route for a carrier nothing consumes; §7's attribution once electricity is
-generated on site; and the service carrier a `MOT` or `REF` duty needs. They are recorded
-there rather than closed there, and T23 owns the last three.
+**Both documents carry an open-points table**, and four entries are shared between them: the
+absence of any per-premise tier over
+[`../notes/data/activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv);
+C8 (carrier balance)'s lack of a disposal route for a carrier nothing consumes; §7's
+attribution once electricity is generated on site; and the service carrier a `MOT` or `REF`
+duty needs. They are recorded there rather than closed there, and T23 (complete §5) owns the
+last three. **A fifth shared entry is closed and should be dropped from both tables**: §3.3.1
+makes that file the input that sizes a premise's processes, not the parity target §3.3 once
+treated it as.
+
+**The cement document's product-carrier point is closed by D16.** It recorded that a `product`
+carrier consumed by a downstream unit had no route through C8 (carrier balance) that also
+satisfied C1 (duty satisfaction) — the kilns' clinker is drawn by the grinder, C1 wanted it
+dispatched to a duty, C8 wanted it released to the balance, and doing both counted the same
+tonne twice. D16 removes the duty: an internal product is a carrier with `may_import` and
+`may_export` both false, it presents no `process_duty` row (§3.9), and it reaches its consumer
+through C8 by way of $z^{\circ}$. V32 guards it.
+
+**The two singular-plant points are closed by a pair of child tables.** Both documents recorded
+that one field could name only one unit where D13 (one primary carrier per unit) routinely makes
+several: §3.10 named a process's installed plant with a single `unit_id`, and `unit` named a
+capture train's host with a single field. Neither survived a co-firing kiln, which is three
+units with one capture train bolted to the line. §3.10.2 `premise_process_unit` and §3.5.3
+`unit_abatement_host` replace them with one row per unit and one row per host; the train inherits
+the earliest remaining life over its hosts (C3, capacity transfer; C4, incumbent ageing) and
+strands nothing while any host stands. V33 (plant is named one unit at a time) guards both.

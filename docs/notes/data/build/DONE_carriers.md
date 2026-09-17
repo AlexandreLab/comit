@@ -222,12 +222,26 @@ put the fossil/biogenic split at production, driven by `carrier.biogenic_fractio
 `ef_<carrier>` series carries the **gross** factor and the split happens downstream —
 `ef_solid_biomass` is 97.22, not 0.
 
-**Both worked examples do the opposite.** The cement example §6.3 lists
-`waste_derived_fuel` at 45.0 with the note "direct, **net of biogenic** — gross 92.0,
-biogenic fraction 0.511", and the food & drink example §6.3 lists `solid_biomass` at 0.0
-"direct, biogenic and zero-rated under §7.3". If the examples' convention is the intended
-one, these files are pre-split and would double-apply the zero-rating. See question Q5 — this
-is the one that would silently produce wrong numbers.
+**Settled 2026-09-17 in favour of these files. Both halves, and the question is closed.**
+
+The cement example §6.3 used to list `waste_derived_fuel` at 45.0 with the note "direct,
+**net of biogenic** — gross 92.0, biogenic fraction 0.511"; it now lists **92.0 gross** in
+every period and states that A6 (the problem builder) derives fossil 44.9972 and biogenic
+47.0028 from it via the carrier's `biogenic_fraction` 0.5109.
+
+The food & drink example used to list `solid_biomass` at **0.0**, "direct, biogenic and
+zero-rated under §7.3" — pre-split, and it would have double-applied the zero-rating. It now
+carries the **gross 97.22 kt/PJ** these files hold, with `biogenic_fraction` **1**, so A6
+derives a `co2_fuel_biogenic` coefficient and no fossil one at all. `ef_solid_biomass` is
+97.22, not 0, at every period, and nothing downstream has to know that biomass is special.
+
+**The decision behind it (Alexandre, 2026-09-17): biogenic CO₂ is part of a site's accounted
+emissions.** It is derived, it balances through C8 (carrier balance) like any other emission
+carrier, and it is **reported as a vented `zero_rated` quantity** — free to vent, not absent.
+A zero factor would have made the tonnes disappear before anything could report them, which is
+the failure the cement example's 71.93 kt of biogenic CO₂ makes concrete: that quantity is
+what turns capture net-negative, and it cannot do that if it was never derived. `zero_rated`
+and "not there" look identical in a total and are opposite in a balance.
 
 ### 4.8 Infrastructure: `available = FALSE` where nothing is published
 
@@ -300,9 +314,16 @@ off the 2021 wholesale spike; (c) accept a non-published basis. (a) is what is s
 £43.99/t (the first UK ETS auction, 19 May 2021). The worked examples use 90 → 275 £/t, which
 is neither. Which does §5.4's carbon term mean to charge?
 
-**Q5 — do the `ef_<carrier>` series carry the gross or the net-of-biogenic factor?** These
-files say gross, on the §7.3 and D15 reading; both worked examples say net. Getting this
-wrong zero-rates biomass twice or not at all, silently. **This is the one to settle first.**
+**Q5 — do the `ef_<carrier>` series carry the gross or the net-of-biogenic factor? CLOSED
+2026-09-17: gross, as these files already had it.** The reading was the §7.3 (biomass
+zero-rating applied before capture) and D15 (the three-carrier emission split) one, and both
+worked examples have been brought to it — cement's §6.3 now carries `waste_derived_fuel` at
+**92.0 gross** with `biogenic_fraction` 0.5109, and food & drink's carries `solid_biomass` at
+**97.22 gross** with `biogenic_fraction` 1. Neither pre-splits any more, so the zero-rating is
+applied exactly once, at §7.3, where D15 puts it. The underlying decision is that **biogenic
+CO₂ is part of a site's accounted emissions**: derived, balanced, and reported as a vented
+`zero_rated` quantity rather than netted away at the factor. No file in this lane changed —
+the question was whether the examples or these files were right, and it was these files.
 
 **Q6 — hydrogen availability.** Nothing published names a region for the 2031 network, so
 `hydrogen` is FALSE on all 63 rows and C9 (infrastructure availability) deletes every
@@ -339,3 +360,86 @@ the Green Book tables date from November 2023. Rename if a different convention 
   with the 270 already in `references.csv`. Closest existing entry is `HYNET2022`, which is
   the 2022 Industrial Fuel Switching project report — a different document from
   `HYNET_T1_EXPANSION_2026`.
+
+---
+
+## 8. 2026-09-17 — `may_import` / `may_export` added to `carrier.csv` (D16)
+
+**What changed.** `carrier.csv` gains two required booleans, `may_import` and `may_export`,
+between `may_dispose` and `vector`. All 44 rows carry a value; no other column moved.
+
+**Why.** D16 (the site boundary is a property of the carrier) puts the boundary on the
+carrier rather than on the entity that crosses it. A6 (the problem builder) declares an
+import variable $m_{c,k,t}$ only where `may_import` is true *and* the connection carries the
+carrier, and an export $x_{c,k,t}$ only where `may_export` is true and likewise. A carrier
+false on both is internal to the site. That is what makes a premise's Sankey drawable from
+the solved rows alone: imports on the left, carrier and unit nodes in the middle, and on the
+right the four ways a stream ends — a duty delivered, an export, a disposal $d_{c,t}$, or a
+loss inside a unit.
+
+It also closes the cement works' product-carrier problem. An internal product presents no
+`process_duty` row at all (D16), so C1 (duty satisfaction) no longer wants the clinker
+dispatched while C8 (carrier balance) wants it released, and the clinker node closes.
+
+**Values, by `carrier_kind`.**
+
+| Kind | Rows | `may_import` | `may_export` |
+|---|---:|---|---|
+| `primary`, purchased fuels | 14 | TRUE | FALSE |
+| `primary`, site byproduct gases | 2 | FALSE | FALSE |
+| `primary`, `electricity` | 1 | TRUE | TRUE |
+| `intermediate` | 8 | FALSE | FALSE |
+| `emission` | 3 | FALSE | FALSE |
+| `product`, exported | 9 | FALSE | TRUE |
+| `product`, internal to the site | 7 | FALSE | FALSE |
+
+**The test for an internal product is whether a unit consumes it.** A `product` carrier that
+appears as a negative `aux_input` row in `unit_input_output.csv` is made and then taken by a
+downstream unit on the same site, which is the clinker case D16 names. Seven do:
+`clinker`, `quicklime`, `pig_iron`, `steel_crude`, `sinter`, `paper_before_pressing` and
+`paper_before_drying`. The other nine end the modelled chain and are sold.
+
+**Judgement calls, all carrying a provenance fragment in the file.** Eleven rows. The last two were settled by ruling 11 of 2026-09-17, against the first pass.
+
+| `carrier_id` | Call | Reasoning |
+|---|---|---|
+| `quicklime` | internal, export FALSE | `lime_grinder_elec` and `lime_grinder_sub_elec` consume it. COMIT even names `ILMCLK` "Clinker": a lime works makes it and grinds it exactly as a cement works does |
+| `pig_iron` | internal, export FALSE | `bof_converter_cog` consumes it. Merchant pig iron exists, but an integrated works is the modelled case |
+| `steel_crude` | internal, export FALSE | `rolling_mill_reheat_gas` and `…_hydrogen` consume it; liquid steel is cast on site |
+| `sinter` | internal, export FALSE | `blast_furnace_coke` and `tgr_blast_furnace_coke` consume it |
+| `paper_before_pressing` | internal, export FALSE | `paper_press_elec` consumes it |
+| `paper_before_drying` | internal, export FALSE | `paper_dryer_elec` consumes it |
+| `steel_hot_rolled` | exported, export TRUE | COMIT calls `IISHRS` an intermediate product, but nothing consumes it here and hot rolled coil is sold. **COMIT's chain label is not the site boundary** |
+| `paper_basic` | exported, export TRUE | Same shape: `IPPBPA` is labelled intermediate, nothing consumes it, basic paper is sold |
+| `glass` | exported, export TRUE | Melted refined glass is formed on site in reality, but no forming unit exists in `unit_input_output.csv` and `IGLMRG` is COMIT's glass demand node |
+| `blast_furnace_gas` | **internal, both FALSE** | A site byproduct with no outside market — a `coproduct` of `blast_furnace_coke`, burnt on site by `chp_bfg_gas_turbine` and the reheat furnaces. **Ruling 11 (2026-09-17): the `primary` rule of D16 item 2 does not reach a coproduct with no market.** The first pass set import TRUE and argued the connection clause made it inert; ruling 9 then established that a carrier with `may_import` true and no connection row is imported at *site* level, $m_{c,t}$, with no connection index — so the TRUE was not inert at all, and FALSE is the only correct value |
+| `coke_oven_gas` | **internal, both FALSE** | Same: a site byproduct burnt on site by `bof_converter_cog` and the reheat furnaces, with no outside market. Same ruling, same correction |
+
+**`validate_carb3_data.py` gained V32 (the site boundary is a property of the carrier).**
+Leg (b) — no `activity_process_duty_profile.csv` row names a `product` carrier with
+`may_export` false — and leg (c) — `may_import` and `may_export` are both false on every
+`emission` and `intermediate` carrier — are blocking, alongside a required-boolean check on
+both columns. Leg (a) is an LP-build assertion with no reference data to test, and says so in
+the docstring. `make data-check` now runs **23** blocking checks, up from 22, all passing;
+the new one reports "16 product carriers, 7 internal to the site".
+
+**Also changed, one cell.** `unit_input_output.csv`, `grinder_mixer_elec` on `clinker`:
+−0.75221 → **−0.752212** (0.85 ÷ 1.13 at six places), so the clinker node closes to 1e-6 —
+the kilns release 0.850000 Mt and the grinder draws 1.130000 × 0.752212 = 0.850000. The row's
+provenance is unchanged.
+
+**Settled by ruling 10 of 2026-09-17 — the activity-level rows stay, and nothing changes in
+either CSV.** The first pass raised `activity_process_duty_profile.csv:79`, which asserts
+`Cement Works` / `kiln_pyroprocessing` / `HTH` / `heat_gt1000`, with three matching kiln rows
+at `activity_default_unit.csv:83-85`, as a possible D16 inconsistency. It is not one. **An
+activity-level row of that kind classifies the process's heat need** — it is what makes a
+unit eligible for the process and what groups the process with other high-temperature heat
+users. It is not a duty the LP serves. D16 removes the **premise-level** `process_duty` row
+(§3.9) only: at a real cement works the kiln presents no duty, its output is released to the
+carrier balance through $z^{\circ}$, and the grinder's draw fixes its activity.
+
+**V32 (b) as specified is therefore right, and was not widened.** The leg tests that no
+`activity_process_duty_profile` row names a `product` carrier with `may_export` false. Row 79
+names `heat_gt1000`, an `intermediate` carrier, so it passes — correctly, not by accident.
+Widening the leg to reach through `activity_default_unit` to the units' primary outputs would
+have rejected a row that belongs in the file.

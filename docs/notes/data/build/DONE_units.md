@@ -73,7 +73,7 @@ asserted by the check script.
 | `area_per_capacity` | 5 | correct — §3.5 says set it **only** on area-bound units. PV ×2 and the three `pv_battery_*` packages carry it; every boiler, CHP, kiln and battery leaves it unset and is outside C12 (the siting cap) |
 | `min_viable_scale` | 0 | **a gap.** See §4 |
 | `load_shape_override` | 0 | correct — §3.5 makes it by exception only, and no source states an exception |
-| `abates_unit_id` | 2 | **a gap.** See §4 |
+| ~~`abates_unit_id`~~ | — | **column removed 2026-09-17.** Replaced by `unit_abatement_host.csv`. See §8 |
 
 Provenance mix after the phase-3 published-source pass (§7): 92 rows `comit_reuse` (69 high
 confidence, 23 medium), 24 `bref` (11 medium, 13 low), 21 `proxy` (all low).
@@ -194,11 +194,14 @@ waste fuel and −0.900 PJ extra electricity per Mt clinker) and divide through 
 captured per Mt clinker to re-base onto `co2_captured` = +1. It needs a decision about which
 host the subtraction is against, which is G3, so it was left undone rather than guessed.
 
-**G3 — `abates_unit_id` is blank on 11 of 13 abatement units.** D13 split their hosts into
-several fuel-specific units — the cement kiln is three — and §3.5 gives `abates_unit_id` room
-for one. The cement example says the train "names it in `abates_unit_id`" without saying which
-of the three. Only `ccs_amine_ammonia` and `ccs_amine_dri` resolve, because their hosts were
-not split. **This is a specification gap, not a data gap**, and §5 puts it to Alexandre.
+**G3 — `abates_unit_id` is blank on 11 of 13 abatement units. CLOSED 2026-09-17.** D13 split
+their hosts into several fuel-specific units — the cement kiln is three — and §3.5 gave
+`abates_unit_id` room for one. The cement example said the train "names it in
+`abates_unit_id`" without saying which of the three. Only `ccs_amine_ammonia` and
+`ccs_amine_dri` resolved, because their hosts were not split. This was read correctly as **a
+specification gap, not a data gap**: §3.5 drops the column and §3.5.3 `unit_abatement_host`
+takes one row per (train, host) pair. All 13 trains now name their hosts, 37 rows, none blank.
+See §8.
 
 **G4 — seven chemistry units have no `process_id`.** The CaRB3 register has no Glass Works
 activity at all (`glass_furnace_{gas,elec,hydrogen}`), no ammonia process (`ammonia_smr_gas`,
@@ -269,6 +272,13 @@ find is listed in §7.4.
    instead of a `unit_id`, which matches how the cement example actually reasons about it;
    (iii) create one train per host unit, tripling the abatement block. Until this is settled
    G2 and G3 both stay open. (ii) looks right to me.
+
+   **Answered 2026-09-17: none of the three. The column goes.** A fourth option — one row per
+   (train, host) pair in a table of its own — keeps one train per technology *and* names every
+   host, which is what (i) and (iii) each gave up half of. (ii) would have been wrong on the
+   data: `ccs_amine_ironmaking` hosts `hisarna_coal` and `tgr_blast_furnace_coke` but **not**
+   `blast_furnace_coke`, and all three carry `process_id = blast_furnace_ironmaking`, so a
+   `process_id` cannot express it. See §8.
 3. **`unit_input_output`'s `(unit_id, carrier_id)` primary key blocks two real cases** — every
    storage unit (G8) and `ccs_amine`'s reboiler CO₂, which the cement example already flags
    with a ⚠. Adding a `flow_direction` or `role` column to the key would fix both at once.
@@ -474,3 +484,68 @@ ratios are recorded here as a cross-check, not applied.
 rows now hold a figure from a UK government study that is not a BREF. `bref` is the closest
 value but it is not the true one. Should the enum gain a `published` value, or is `bref` meant
 to read as "published external" generally?
+
+---
+
+## 8. 2026-09-17 — `abates_unit_id` replaced by `unit_abatement_host.csv`
+
+**What changed.** `unit.csv` loses the `abates_unit_id` column, 24 columns to 23; 137 rows,
+none otherwise touched. A new `docs/notes/data/unit_abatement_host.csv` carries
+`unit_id,host_unit_id,provenance,confidence` — **37 rows over all 13 `abatement` units**, so
+G3's eleven blanks are gone.
+
+**Why.** D13 (a unit is family-or-node × fuel) split most hosts into several fuel-specific
+units, and a single-valued column cannot name them. §3.5.3 keys on the pair, so a train can
+host as many units as it captures from, and C3 and C4 take the **earliest** remaining life
+among a train's hosts — at the cement works a single value, because all three cohorts there
+are 2004.
+
+**How the hosts were derived, and it is reproducible.** `comit_technology_lineage.csv` records
+which COMIT technology row each unit collapsed from. A capture bundle carries a `Q` in its
+code and pairs with the base technology it is the abated form of; the units that base row
+produced — through its `d13_fan_out` where it has one — are the hosts.
+
+| Bundle | Base | Hosts |
+|---|---|---|
+| `ICMKLNMNQ01`, `ICMKLNMAQ02`, `ICMKLNMCQ01`, `ICMKLNOXQ01`, `ICMKLNPOQ01` | `ICMKLND01` "Dry kiln, BAT" | `kiln_dry_coal`, `kiln_dry_gas`, `kiln_dry_wdf`, `kiln_dry_oil` |
+| `ILMKLNMNQ01`, `ILMKLNOXQ01` | `ILMKLND01` "Dry kiln, BAT" | `lime_kiln_dry_gas`, `lime_kiln_dry_coal`, `lime_kiln_dry_wdf` |
+| `ICHHVCSCQE01` | `ICHHVCSCELEC01` | `steam_cracker_elec` |
+| `ICHHVCSCQG01`, `ICHHVCSCQB01` | `ICHHVCSCE01` | `steam_cracker_gas`, `steam_cracker_naphtha`, `steam_cracker_byproduct` |
+| `ICHAMMSRQ01` | `ICHAMMSRS01` | `ammonia_smr_gas` |
+| `IISULCOREDQ01` | `IISMIDREX01` | `dri_midrex_gas` |
+| `IISHISARQ01`, `IISTGRBFQ01` | `IISHISAR01`, `IISTGRBF01` | `hisarna_coal`, `tgr_blast_furnace_coke` |
+
+The two hosts the old column *did* name, `ammonia_smr_gas` and `dri_midrex_gas`, are carried
+over unchanged and the lineage corroborates both.
+
+**Judgement calls, each carrying its reasoning in the row's `provenance`.**
+
+| Call | Reasoning |
+|---|---|
+| Cement hosts are the **four** dry kilns, not three | DESIGN2 item 6 names `kiln_dry_coal`, `kiln_dry_wdf` and `kiln_dry_gas`, which is the cement worked example's set — that premise does not reach `kiln_dry_oil`. The library does, and the fourth kiln is the same `ICMKLND01` fan-out, so omitting it would make an oil-fired cement kiln unabatable for no stated reason. The example's three stay a subset, so its §8.4 text remains true |
+| **Five** cement trains, not four | DESIGN2 says "the four cement trains"; `unit.csv` has five on `kiln_pyroprocessing` — `ccs_amine_coal_chp` (`ICMKLNMCQ01`, "Dry kiln with coal CHP and MEA CCS") is the fifth and is not reachable at the worked example's premise. It is the same shape as `ccs_amine` and gets the same four hosts |
+| `kiln_calcium_looping_coal` is **not** a host | `ICMKLNCLQ01` is integrated capture and `unit.csv` deliberately keeps it a `converter` rather than a bolt-on. A train on top of it would capture the same CO₂ twice. Same for `lime_kiln_calcium_looping_coal` |
+| `kiln_fluidbed_wdf` is **not** a host | `ICMKLNWST02` is a fluidised-bed kiln, a different device from the dry kiln every cement bundle names. Same for `lime_kiln_fluidbed_wdf` |
+| `ccs_amine_hvc_gas` hosts **three** crackers, not one | Its bundle's base is the generic `ICHHVCSCE01` → `steam_cracker_gas`, but a post-combustion train takes a flue gas and does not care which fossil fuel made it — exactly as the cement amine trains host every dry kiln. `steam_cracker_naphtha` and `steam_cracker_byproduct` are added; `steam_cracker_elec` has no combustion flue gas and `steam_cracker_hydrogen`'s releases water, so neither is |
+| `ccs_amine_hvc_biomass` gets the **same three** | The biomass in `ICHHVCSCQB01` is the *train's* reboiler fuel, not the cracker's, so the cracker half of the bundle is the same generic row. The cement pair `ccs_amine` (gas CHP) and `ccs_amine_coal_chp` (coal CHP) is the same case: a train's own fuel does not restrict its hosts |
+| `blast_furnace_coke` is **not** a host of `ccs_amine_ironmaking` | Two bundles collapse to that one train, `IISHISARQ01` and `IISTGRBFQ01`, and their bases are HISarna and top-gas recovery. No COMIT bundle pairs capture with `IISBLAFUR01` "Blast furnace, standard". Asserting one would invent a technology the source library does not carry — and it is the case that proves a `process_id` could not have replaced the column, since all three furnaces share `blast_furnace_ironmaking` |
+
+**The guard.** `validate_carb3_data.py` gains a blocking check, V33 (a capture train abates
+several hosts), leg (b): every `abatement` unit has at least one host, each host is a
+`converter` on the same `process_id`, no unit hosts itself, both ids resolve, and no pair is
+named twice. Legs (a) and (c) are recorded in the docstring as not implemented — (a) needs
+`premise_process_unit` rows that this repository has no premise data for, and (c) is an
+LP-build assertion. `make data-check` now runs **24** blocking checks, up from 23, all
+passing; the new one reports "37 rows, 13 abatement units, 2 with a blank process_id".
+
+**G4 is still open and now bites here.** `ccs_amine_ammonia`/`ammonia_smr_gas` and
+`ccs_amine_dri`/`dri_midrex_gas` carry a blank `process_id`, because the register has no
+ammonia and no direct-reduced-iron process. Both pairs therefore satisfy V33 (b)'s
+same-process leg **trivially, blank against blank**, rather than substantively. Two of the
+thirteen trains are unguarded on that leg until G4 closes, and the check's note counts them so
+the number is visible rather than assumed.
+
+**One dead reference left in place.** `check_units.py:130-131` still reads
+`r["abates_unit_id"]`. That script does not run today — it aborts earlier on a missing
+`carrier_products_units.csv` staging artefact, which is a known pre-existing failure and not
+this change's doing — so the line is unreachable. Left for whoever repairs the staging inputs.
