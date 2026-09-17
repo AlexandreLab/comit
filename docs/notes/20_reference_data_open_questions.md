@@ -8,7 +8,7 @@ what has to change to answer them, so they can be worked through in one sitting.
 names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
-2026-09-15 and items 2, 3, 4 and 43 on 2026-09-16; each carries the decision inline, with the
+2026-09-15 and items 2, 3, 4, 43 and 46 on 2026-09-16; each carries the decision inline, with the
 work items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in
 items 44 and 45. The rest are undecided.
 
@@ -394,3 +394,37 @@ These are the ones with a consequence outside the reference data.
     `make data-check`, which is why it passes. It bites V20 (d) directly: that test asks
     whether a storage unit is named by a hybrid, and one of the three that are is named under
     an id that does not exist. Found 2026-09-16 while answering item 43. *This note.*
+46. **The fuel-emissions rule was stated three times and two were incompatible; A6 now fires on
+    the carrier, not the role.** §3.6 derived emissions "for every unit with a `fuel_input`
+    row", while §3.4 and §5.1 both said emissions attach to any consumed `primary` carrier.
+    D13 allows only one `fuel_input` per unit, so every *second* fuel a unit burns sits on
+    `aux_input` and was silently zero-rated. Found 2026-09-16 by an independent review of the
+    open-items triage.
+
+    **Answered 2026-09-16, in §3.4, §3.6, §4 (A6), §5.1, §7.1 and V22.** A6 now derives fuel
+    CO₂ over $\mathcal{C}^{\text{burn}}_u$ — every consumed carrier that is `primary` **and
+    not** `is_indirect` — summed across carriers and roles. No new field and no new enum
+    value: `is_indirect` already existed on §3.4 and already carried exactly this meaning.
+
+    **The counts.** 84 rows in `unit_input_output.csv` draw a `primary` carrier as
+    `aux_input`, across 35 units. 29 are `electricity` and stay zero-rated at the unit, because
+    §7.8 charges an indirect carrier on the import — that is the whole reason `is_indirect` is
+    the right discriminator rather than a new flag. The other **55 are combustible** and now
+    book their carbon.
+
+    **What it changes.** 24 of the 111 units with coefficients change their derived fossil
+    CO₂. Four were emitting **exactly zero** while burning fossil fuel: `steam_cracker_hydrogen`
+    (0 → 4190.8), `steam_cracker_elec` (0 → 3301.0), `lime_kiln_fluidbed_wdf` (0 → 2637.8) and
+    `lime_lowcarbon_elec` (0 → 1310.0). `blast_furnace_coke` rises 36%, `tgr_blast_furnace_coke`
+    45%. Three of the four zero cases are named as low-carbon routes, so under a carbon price
+    they were strictly dominant and free. That is a modelling defect, not an accounting one.
+
+    **It interacts with item 44 and the figures above are not final.** The steam crackers are
+    exactly the units whose rows net a `NEU` feedstock into a fuel coefficient. Part of their
+    increase is feedstock carbon that a feedstock carrier will remove again. Neither number is
+    settled until both land; do not quote these four in isolation.
+
+    **The sums are load-bearing.** A unit drawing three combustible carriers would, under a
+    per-carrier derivation, emit three rows on one `(unit_id, co2_fuel_fossil, emission)`
+    triple — a key collision of the kind §3.6's key was widened to prevent. A6 sums first.
+    *This note; independent review of the triage, 2026-09-16.*

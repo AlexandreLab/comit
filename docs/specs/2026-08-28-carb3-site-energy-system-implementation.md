@@ -618,9 +618,17 @@ Anything that flows and balances: a fuel, electricity, hydrogen, CO₂, or heat 
 and C10 order them, without a special case in either.
 
 **`carrier_kind` is load-bearing for emissions.** Fuel emissions attach only to units
-consuming a `primary` carrier. A unit consuming an `intermediate` adds nothing, because the
-fuel was already charged upstream. Getting this wrong double-counts every boiler in the
-stock.
+consuming a `primary` carrier that is **not** `is_indirect`. A unit consuming an
+`intermediate` adds nothing, because the fuel was already charged upstream. Getting this wrong
+double-counts every boiler in the stock.
+
+**The pair `(carrier_kind, is_indirect)` is the whole test, and the role is not part of it.**
+`primary` and not indirect means the carbon is released here, so §3.6's A6 derives an emission
+row for it — whether the unit declares it as its `fuel_input` or as a second fuel on
+`aux_input`. `primary` and indirect, which today is `electricity` and `hydrogen`, means the
+emission belongs at the import instead (§7.8). `intermediate` means it was charged upstream.
+Reading the role rather than the carrier is the error §3.6 records: it would silently
+zero-rate every secondary fuel in the library.
 
 **Three emission carriers, and the split is load-bearing (D15).** Emissions are produced,
 balanced, captured and vented like anything else that flows:
@@ -844,10 +852,12 @@ coefficients are not all authored the same way, because the two have different n
 | `co2_process` | **Declared** in this table | Stoichiometry. 525 kt CO₂ per Mt of clinker is chemistry, not a scenario assumption |
 | `co2_fuel_fossil`, `co2_fuel_biogenic` | **Derived by A6 at build time** | The emission factor is a `scenario_parameters` series and may vary by period, so a declared coefficient could not follow it |
 
-For every unit with a `fuel_input` row on carrier $c$ with factor $f_{c,t}$ and biogenic
-fraction $b_c$, A6 generates, both at `role = emission`,
+**A6 (the problem builder) fires on the carrier, not on the role.** Let $\mathcal{C}^{\text{burn}}_u$ be the
+carriers $u$ consumes that are `primary` and **not** `is_indirect` (§3.4), and
+$\Theta^{-}_{u,c}$ the consuming roles $u$ holds on $c$. For every unit, A6 generates exactly
+two rows, both at `role = emission`,
 
-$$\iota_{u,\text{co2\_fuel\_fossil},\,\text{emission}} = \big|\iota_{u,c,\,\text{fuel\_input}}\big|\, f_{c,t}\,(1 - b_c), \qquad \iota_{u,\text{co2\_fuel\_biogenic},\,\text{emission}} = \big|\iota_{u,c,\,\text{fuel\_input}}\big|\, f_{c,t}\, b_c$$
+$$\iota_{u,\text{co2\_fuel\_fossil},\,\text{emission}} = \sum_{c \,\in\, \mathcal{C}^{\text{burn}}_u} \;\sum_{\theta \,\in\, \Theta^{-}_{u,c}} \big|\iota_{u,c,\theta}\big|\, f_{c,t}\,(1 - b_c), \qquad \iota_{u,\text{co2\_fuel\_biogenic},\,\text{emission}} = \sum_{c \,\in\, \mathcal{C}^{\text{burn}}_u} \;\sum_{\theta \,\in\, \Theta^{-}_{u,c}} \big|\iota_{u,c,\theta}\big|\, f_{c,t}\, b_c$$
 
 both positive, because emissions are produced. **A derived `emission` row never collides with
 a declared `emission_input` row on the same carrier**, which is what the role in the key buys:
@@ -857,8 +867,31 @@ before anything is captured**, which is what §7.3 requires and what makes captu
 stream net-negative rather than merely zero. Authoring these rows by hand instead would freeze
 one scenario's factors into the unit library.
 
-A unit consuming an `intermediate` carrier generates nothing: its heat was already charged to
-whatever made it.
+**Why the trigger is the carrier and not `fuel_input`.** D13 (one primary carrier per unit)
+permits at most one `fuel_input`
+row per unit, but a unit may burn more than one fuel, and the second and later ones have
+nowhere to sit except `aux_input`. **84 rows in `unit_input_output.csv` draw a `primary`
+carrier as `aux_input` today**, across 35 units: `rolling_mill_reheat_gas` takes blast-furnace
+gas *and* coke-oven gas, `kiln_fluidbed_wdf` takes gas, coal and both fuel oils. Keying A6 on
+the role alone would have every one of those burn carbon and emit nothing, while §3.4 and §5.1
+say the opposite. Keying it on the carrier reconciles all three statements without a new field:
+a secondary fuel is still a fuel.
+
+**29 of those 84 rows are `electricity`, and they must keep emitting nothing.** That is what
+`is_indirect` excludes, and it is not a special case — §7.8 charges an indirect carrier on
+$m_{c,k,t}$, the import, precisely so that a premise generating its own supply is not billed
+the grid factor on power that never came off the grid. Hydrogen carries `is_indirect` for the
+same reason: its combustion releases water, and its emissions belong to whoever made it. The
+two exclusions and the 55 inclusions all fall out of one existing column.
+
+**The sums are load-bearing, not tidiness.** A unit drawing three combustible carriers would,
+under a per-carrier form, produce three rows on the same
+$(\texttt{unit\_id}, \texttt{co2\_fuel\_fossil}, \texttt{emission})$ triple — a key collision
+of exactly the kind §3.6's key was widened to prevent. Summing first yields one row per unit
+per emission carrier, which is what the key admits.
+
+A unit consuming an `intermediate` carrier still generates nothing: its heat was already
+charged to whatever made it.
 
 **Rule (ambient heat is not a carrier, and V2 exempts it).** An air-source heat pump draws
 roughly two-thirds of its output from ambient air, which does not flow between units and never
@@ -1356,7 +1389,7 @@ would change a premise's answer without changing any input the reader can see.
 
 ## 4. Algorithms
 
-*Section last updated: 2026-09-07*
+*Section last updated: 2026-09-16*
 
 > **Partially written.** The numbered pseudocode for A1–A9 is outstanding; the delivery plan
 > names its owner. What each algorithm is responsible for, and the two rules that were open
@@ -1371,7 +1404,7 @@ Nine algorithms run the pipeline of §2.1. A1–A9 map onto the stages S1–S9 o
 | A3 | Allocate premise energy onto carriers | Split metered energy across carriers. It does **not** allocate energy across processes: the carrier balance decides that. **Reads the base year only; history rows are carried to reporting untouched** |
 | A4 | Back-solve implied capacity, carrier mix and vintage | Turn metered energy into installed unit capacity, the mix of carriers each unit burns (§4.1), and plant age under D11. **Back-solves from the base year only, reads only base-year-valid process rows, and carries a substituted carrier vintage into the mix evidence** |
 | A5 | Apply the scenario | Attach prices, carbon price, infrastructure availability and the archetype coefficients ψ, β, χ, ε |
-| A6 | Build the per-premise problem | Declare variables over units and carrier flows, assemble C1–C12 and the objective of §5.4 |
+| A6 | Build the per-premise problem | Declare variables over units and carrier flows, assemble C1–C12 and the objective of §5.4. **Derive the fuel-emission coefficients of §3.6 over $\mathcal{C}^{\text{burn}}_u$** — every consumed carrier that is `primary` and not `is_indirect`, summed across carriers and roles, so a unit's secondary fuels are charged and its electricity is not |
 | A7 | Solve and extract | Solve, extract the pathway, and handle infeasibility by the relaxation ladder of §4.2 |
 | A8 | Assemble output tables | Produce the per-premise pathway rows, each carrying its evidence tier, **the disposal quantities of §5.2 and the §7.7 allocated intensities beside the accounted figures they derive from** |
 | A9 | Aggregate to GB and compare | Roll up across premises; compare against ECUK and the GHGI |
@@ -1433,7 +1466,8 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 | $c^{\star}_u$ | Primary output carrier of $u$ — the one `role = primary_output` row of §3.6 |
 | $U^0$ | **Incumbent** units, those with existing capacity |
 | $\mathcal{C}$ | Carriers |
-| $\mathcal{C}^{\text{prim}}$ | Primary carriers. Emissions attach here and nowhere else |
+| $\mathcal{C}^{\text{prim}}$ | Primary carriers |
+| $\mathcal{C}^{\text{burn}}_u$ | Carriers $u$ consumes that are `primary` and not `is_indirect`. **Fuel emissions attach here and nowhere else**, whatever role the row carries (§3.6) |
 | $\mathcal{K}$ | The premise's connections |
 | $g(c)$ | Grade rank of carrier $c$, where gradeable |
 
@@ -1494,6 +1528,7 @@ expressible.
 | $D_{q,t}$ | `process_duty` | Duty quantity |
 | $\iota_{u,c,\theta}$ | `unit_input_output.coefficient` | Signed coefficient of $u$ for $c$ in role $\theta$. A unit may hold one row per role on a carrier, which is how a store and a fired capture train are written (§3.6) |
 | $\theta \in \Theta_{u,c}$ | `unit_input_output.role` | A §3.6 role, and the set of roles $u$ holds on $c$. **$\theta$, not $\rho$** — $\rho_u$ two rows below is the fraction not captured, and the two are unrelated |
+| $\Theta^{-}_{u,c}$ | `unit_input_output.role` | The **consuming** roles in $\Theta_{u,c}$ — `fuel_input`, `aux_input`, `emission_input`. Used by §3.6's A6 derivation, which must not read a unit's *output* rows on a carrier it also burns. The superscript is a restriction of $\Theta_{u,c}$, not a second symbol |
 | $\kappa_u, \phi_u, L_u$ | `unit` | Capex, fixed opex, lifetime |
 | $\alpha_u, \gamma_u, \rho_u$ | `unit` | Availability, capacity→activity, fraction not captured |
 | $\psi_u, \beta_u, \chi_u, \varepsilon_u$ | `archetype_coefficient` | Tier A coefficients |
@@ -1690,7 +1725,7 @@ and who they are attributed to; none of them is a second calculation.
 
 | # | Rule |
 |---|---|
-| 7.1 | **Two sources, both carriers (D15).** Fuel CO₂ is **produced by** the unit that burns the fuel, never by the unit that consumes the heat that fuel made; its coefficient is derived in §3.6. Process CO₂ is produced by the chemistry unit against its mass denominator (D5) and is declared |
+| 7.1 | **Two sources, both carriers (D15).** Fuel CO₂ is **produced by** the unit that burns the fuel, never by the unit that consumes the heat that fuel made; its coefficient is derived in §3.6 over $\mathcal{C}^{\text{burn}}_u$, so a unit's **second and later fuels count exactly like its first** — the role a row carries does not change whether its carbon is released. Process CO₂ is produced by the chemistry unit against its mass denominator (D5) and is declared |
 | 7.2 | **Non-CO₂ gases** are tracked separately, are **not** carriers, and **CCS never abates them** |
 | 7.3 | **Biomass zero-rating is applied before capture** — the split into `co2_fuel_fossil` and `co2_fuel_biogenic` happens at production (§3.6), so capture of a co-fired stream takes both pro rata and the biogenic share returns a **credit**. Net-negative, not zero |
 | 7.4 | **Direct versus indirect** is a property of the carrier — `carrier.is_indirect` (§3.4) — not a list held in code |
@@ -1702,16 +1737,21 @@ and who they are attributed to; none of them is a second calculation.
 | 7.10 | **Non-energy use is not combustion.** A `NEUOTH` feedstock carrier is consumed as material and carries no combustion emissions (§3.4) |
 
 **The rule that stops double-counting.** Emissions attach to the unit that consumes a
-**primary** carrier — gas, coal, biomass, grid electricity. A unit consuming an
-**intermediate** carrier — heat at any grade, steam, recovered heat — adds nothing. The heat
-was already paid for upstream, and charging it again at the point of use would double-count
-every boiler in the stock.
+**primary, non-indirect** carrier — gas, coal, biomass, the fuel oils, the works gases. A unit
+consuming an **intermediate** carrier — heat at any grade, steam, recovered heat — adds
+nothing. The heat was already paid for upstream, and charging it again at the point of use
+would double-count every boiler in the stock.
+
+**Grid electricity is not in that list, and the omission is deliberate.** It is `primary` but
+`is_indirect`, so it is charged once on the import under §7.8 and never at the unit. Listing
+it here — as an earlier statement of this rule did — charges a premise's own PV and CHP output
+the grid factor, which is the error §7.8 exists to close.
 
 **Recovered heat is emissions-free, and that is a real result rather than an accounting
 trick.** A kiln's reject heat carries no fuel, so a heat pump drawing on it inherits no
 emissions; the fuel that made it stays charged to the kiln. This is precisely why heat
 recovery abates, and it works only because the rule above is stated rather than assumed.
-V22 asserts all three legs.
+V22 asserts all four legs.
 
 ### 7.7 Per-carrier intensities, and why they are a separate layer (D14)
 
@@ -1883,7 +1923,7 @@ pass mark.
 | **V19** | load | yes | No unit is eligible for a duty above its `grade_out`. Asserted at load, not per premise |
 | **V20** | load | yes | Five legs, all on the archetype and hybrid-unit data — see below |
 | **V21** | load | yes | The price wedge $p^{\text{exp}} < p^{\text{imp}}$ holds strictly for every carrier and period |
-| **V22** | premise | yes | Emissions attribution closes across a carrier chain — three legs, see below |
+| **V22** | premise | yes | Emissions attribution closes across a carrier chain — four legs, see below |
 | **V23** | load + premise | yes | A4's carrier mix resolves to exactly one tier per unit, tiers are tried in order, and `mix_evidence_tier` appears on every output row |
 | **V24** | load + premise | yes | One measured row per key at the base year or a recorded substitution; no duplicate `(key, year)`; the optional entities of §3.1.1's table report rather than reject |
 | **V25** | premise | yes | **History is never read.** Adding history rows at years both **before and after** the base year leaves every §5.3 parameter, every constraint coefficient, the solution, **and every reported reconciliation (§7.6)** identical to 1e-9 |
@@ -1910,13 +1950,18 @@ pass mark.
   ratio**. This is what makes LP interpolation between them err on the safe side, and it
   needs at least three ratios per pairing to be meaningful.
 
-**V22's three legs.**
+**V22's four legs.**
 
-- (a) Total emissions equal the sum over units consuming **primary** carriers only. No unit
-  consuming an intermediate carrier contributes.
+- (a) Total emissions equal the sum over units consuming **primary, non-indirect** carriers
+  only, taken over every consuming role rather than `fuel_input` alone. No unit consuming an
+  intermediate carrier contributes, and no unit is charged for the electricity or hydrogen it
+  draws, both of which are charged on import under §7.8.
 - (b) A chain `gas → boiler → heat@150-400C → dryer` books exactly the boiler's fuel, once.
 - (c) A recovered-heat leg contributes zero, and the fuel that produced it remains charged to
   the rejecting unit.
+- (d) **A secondary fuel is charged like a first fuel.** A unit holding a combustible
+  `primary` carrier on `aux_input` — 55 rows do today — books its carbon. A unit holding
+  `electricity` on `aux_input` — 29 rows — books none.
 
 **V25 runs in both directions, and that is the point.** History must be added at years
 **before and after** the base year. A test that only adds older years passes against an
