@@ -96,11 +96,12 @@ knows the gloss.
 > `build_interface_docs.py:137`, and `interfaces.enabled` is `false` for
 > `site-energy-system` while §8 is unwritten, so it never runs for the live spec at all;
 > `build_spec_flow_diagram.py` never calls it. Even where it does run it checks family
-> *presence*, never range values. **Widening `D1`–`D15` or `V1`–`V31` in §1.4 is a manual
+> *presence*, never range values. **Widening `D1`–`D16` or `V1`–`V33` in §1.4 is a manual
 > step, in the same commit as the label.** Verified 2026-09-07 while adding D12 and
 > V24–V26, again 2026-09-15 while adding D13–D15 and V27–V30, and again 2026-09-16 while
 > adding V31 — where the table at the foot of this file was widened and this sentence was
-> not, in the same commit, which is the failure it describes. The `diagrams.domains` partition check described below *is* real; do not
+> not, in the same commit, which is the failure it describes — and again 2026-09-17 while
+> adding D16 and V32, and V33 with points 8 and 11. The `diagrams.domains` partition check described below *is* real; do not
 > confuse the two.
 
 Python here is stdlib-only by necessity: **`pandas` is not installed.** Write validators
@@ -113,9 +114,9 @@ things:
 
 | Family | Means | Defined in |
 |---|---|---|
-| `D1`–`D15` | Design decisions | live spec §1.6 (the archived vision doc §6 carries the rationale for `D1`–`D11`) |
+| `D1`–`D16` | Design decisions | live spec §1.6 (the archived vision doc §6 carries the rationale for `D1`–`D11`) |
 | `C1`–`C12` | Constraints | live spec §5.5 |
-| `V1`–`V31` | Validation tests | live spec §10.3 |
+| `V1`–`V33` | Validation tests | live spec §10.3 |
 | `A1`–`A9` | Algorithms | live spec §4 |
 | `S0`–`S9` | Pipeline stages | live spec §2.1 |
 | `R1`–`R3` | Profile rules | archived baseline §3.3.3 |
@@ -175,6 +176,14 @@ at the archived baseline's §6, lines 2126–2127.
   used as a role index two rows above `$\rho_u$`, "fraction not captured" — the λ/ξ
   collision again, in the same document. Renamed to `\theta` with a disambiguation note.
   Before any new subscript or Greek letter, `grep -c '\\<letter>'` the spec.
+- **Changing the precision of a shared input cascades through every derived number.**
+  Restating the cement kiln's three fuel shares at six places instead of five (so they sum
+  to 1 within §3.15's 1e-6) moved 40-odd figures downstream: the dispatch, every C8 row,
+  the CO₂ legs, the capture train's stack shares in both the example and
+  `unit_input_output.csv`, the objective, note 19, and two lines of the food and drink
+  example. A lane that owns one section cannot apply that; give one agent the whole file.
+  Before touching a rounded figure that other figures are computed from, `grep -rn` the
+  values derived from it across `docs/` and count them.
 
 ## Data caveats worth knowing before quoting a number
 

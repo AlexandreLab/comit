@@ -171,7 +171,8 @@
               "premise_process_detail",
               "premise_process_vintage",
               "process_load_shape",
-              "premise_process_energy"
+              "premise_process_energy",
+              "premise_process_unit"
             ]
           },
           {
@@ -194,6 +195,7 @@
               "unit",
               "unit_eligibility",
               "unit_bill_of_materials",
+              "unit_abatement_host",
               "unit_input_output",
               "activity_default_unit",
               "archetype_coefficient"

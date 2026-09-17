@@ -8,9 +8,10 @@ what has to change to answer them, so they can be worked through in one sitting.
 names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
-2026-09-15 and items 2, 3, 4, 43 and 46 on 2026-09-16; each carries the decision inline, with the
-work items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in
-items 44 and 45. The rest are undecided.
+2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, and items 5 and 16 on 2026-09-17 — **nine
+of the forty-nine**. Each carries the decision inline, with the work items 1 and 36 leave
+behind in items 1a and 1b, and the work item 4 leaves behind in items 44 and 45. The rest are
+undecided.
 
 ## A. Questions that change the specification
 
@@ -215,6 +216,17 @@ These are the ones with a consequence outside the reference data.
 5. **Which host does a capture train name in `abates_unit_id` once D13 (a unit is family-or-node
    × fuel) has split the host into three?** Eleven of thirteen abatement units are blank. Making
    it a `process_id` matches how the cement example reasons. *`DONE_units.md`, Q2 and G3.*
+
+    **Answered 2026-09-17, by removing the column.** Neither option was taken: `abates_unit_id`
+    held one host and the question was which one, so the field was the defect. §3.5 drops it and
+    the new §3.5.3 `unit_abatement_host` carries one row per (train, host) pair —
+    `docs/notes/data/unit_abatement_host.csv`, **37 rows over all 13 abatement units**, none
+    blank. The cement trains name the four kilns of `ICMKLND01`'s D13 fan-out; C3 and C4 take the
+    **earliest** remaining life among a train's hosts, which at the cement works is one value
+    because all three cohorts there are 2004. V33 (b) (every train names its hosts) is blocking
+    in `make data-check`. A `process_id` would not have worked: `ccs_amine_ironmaking` hosts
+    `hisarna_coal` and `tgr_blast_furnace_coke` but **not** `blast_furnace_coke`, all three of
+    which share `blast_furnace_ironmaking`.
 6. **Where does a demand-side option live?** Thirteen library options (insulation, controls,
    warm-mix asphalt) reduce a duty and change no unit, so `unit_eligibility` cannot express them.
    *`DONE_eligibility.md`, Q1.*
@@ -251,6 +263,18 @@ These are the ones with a consequence outside the reference data.
     say gross, on the D15 (every emission is a carrier) reading; both worked examples say net.
     Getting this wrong zero-rates biomass twice or not at all. *`DONE_carriers.md`, Q5 — the
     lane says settle this first.*
+
+    **Answered 2026-09-17: gross, and the files were right.** Both worked examples were
+    brought to it rather than the other way round. Cement's §6.3 carries `waste_derived_fuel`
+    at **92.0 gross** with `biogenic_fraction` 0.5109, from which A6 (the problem builder)
+    derives fossil 44.9972 and biogenic 47.0028; food and drink's carries `solid_biomass` at
+    **97.22 gross** with `biogenic_fraction` 1, from which A6 derives a `co2_fuel_biogenic`
+    coefficient and no fossil one. Neither pre-splits, so §7.3's zero-rating applies exactly
+    once. The decision underneath it (Alexandre, 2026-09-17) is that **biogenic CO₂ is part of
+    a site's accounted emissions**: it is derived, it balances through C8 (carrier balance)
+    like any other emission carrier, and it is reported as a vented `zero_rated` quantity —
+    free to vent, not absent. Item 15 (gross or net *calorific* basis) is a different question
+    and is still open.
 17. **`waste_derived_fuel` is mapped to COMIT's inorganic MSW code, yet the cement example gives
     it a biogenic fraction of 0.511.** Both cannot be right; the fraction is blank. *Q7.*
 18. **Grid electricity: average or long-run marginal factor?** Both series are in the file; they

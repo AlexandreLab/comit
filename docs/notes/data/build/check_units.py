@@ -127,8 +127,6 @@ for r in units:
         fail.append("enum  %s.duty_family = %r" % (r["unit_id"], r["duty_family"]))
     if r["process_id"] and r["process_id"] not in PROC_IDS:
         fail.append("fk    %s.process_id = %r does not resolve" % (r["unit_id"], r["process_id"]))
-    if r["abates_unit_id"] and r["abates_unit_id"] not in set(UNIT_IDS):
-        fail.append("fk    %s.abates_unit_id = %r does not resolve" % (r["unit_id"], r["abates_unit_id"]))
     for f, v in r.items():
         if (v or "").strip() in PLACEHOLDERS:
             fail.append("blank %s.%s is %r; a blank must be an empty string" % (r["unit_id"], f, v))

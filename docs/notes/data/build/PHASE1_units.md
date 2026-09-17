@@ -47,6 +47,13 @@ checked by ID.
    `abates_unit_id` room for exactly one. Filling it would be a guess about which of the
    three the train bolts onto. `ccs_amine_ammonia` and `ccs_amine_dri` are the two that
    resolve, because their hosts were not split.
+
+   **Closed 2026-09-17.** The blank was right and the column was wrong. §3.5 drops
+   `abates_unit_id`; §3.5.3 `unit_abatement_host` takes one row per (train, host) pair, and
+   `docs/notes/data/unit_abatement_host.csv` names every host of all thirteen trains — 37
+   rows, none blank. The hosts come from `comit_technology_lineage.csv`'s bundle-to-base
+   pairing and its `d13_fan_out`, exactly the information `DONE_lineage.md` §9 note 2 said
+   would be needed. See `DONE_units.md` §8.
 3. **`pv_rooftop`, `pv_ground_mount` and `solar_thermal_flat` carry `draws_ambient = TRUE`,**
    which the cement worked example's §1.11 coefficient table implicitly denies ("no unit here
    draws ambient heat"). Without the flag those units fail V2 (the round-trip energy-closure

@@ -180,13 +180,13 @@ kiln_calcium_looping_coal,waste_derived_fuel,-1.89457,aux_input,comit_reuse,medi
 kiln_calcium_looping_coal,electricity,-0.31544,aux_input,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICMKLNCLQ01"
 kiln_calcium_looping_coal,co2_process,602.53064,emission,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICMKLNCLQ01 | declared process CO2 (D15: only co2_process is declared; A6 derives co2_fuel_*)"
 ccs_amine,co2_captured,1,primary_output,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
-ccs_amine,co2_process,-0.55756,emission_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
+ccs_amine,co2_process,-0.55755,emission_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 ccs_amine,co2_fuel_fossil,-0.35257,emission_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
-ccs_amine,co2_fuel_biogenic,-0.08987,emission_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
+ccs_amine,co2_fuel_biogenic,-0.08988,emission_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 ccs_amine,natural_gas,-1.9,fuel_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 ccs_amine,electricity,-0.35,aux_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 grinder_mixer_elec,cement,1,primary_output,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
-grinder_mixer_elec,clinker,-0.75221,aux_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
+grinder_mixer_elec,clinker,-0.752212,aux_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 grinder_mixer_elec,electricity,-0.14124,fuel_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 grinder_mixer_clinker_sub_elec,cement,1,primary_output,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICMGRIMIX02"
 grinder_mixer_clinker_sub_elec,electricity,-0.07249,fuel_input,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICMGRIMIX02"
