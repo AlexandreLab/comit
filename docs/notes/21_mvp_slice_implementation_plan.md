@@ -187,8 +187,8 @@ every drop is listed by `unit_id` with its reason in the run report.
 | `capex` present and non-blank | A blank is read as zero and the unit is built free | 15 units blank |
 | `lifetime`, `fixed_opex`, `availability_factor`, `capacity_to_activity_factor` present | Annuitisation and C2 are undefined without them | 13, 15, 13, 13 units blank |
 | At least one `unit_input_output` row | No rows means no consumption, so output is free | 26 units |
-| `fuel_input` row present where `unit_class` requires one | Same failure one step along | 37 units have none, not all wrongly |
-| **Every consumed carrier has an `import_price` for every period, or is produced on site** | Otherwise the fuel is free | **Only 5 of 15 `may_import` carriers have a price** |
+| `fuel_input` row present where `unit_class` requires one | Same failure one step along | 37 have none, not all wrongly; but 3 — `lime_kiln_fluidbed_wdf`, `refinery_fixed_mix_gas`, `refinery_flexible_mix_gas` — declare a `fuel_carrier_id` and burn it free |
+| **Every consumed carrier has an `import_price` for every period, or is produced on site** | Otherwise the fuel is free | **Only 4 of 15 `may_import` carriers are priced for every period** |
 
 **The worked example of why.** `unit.csv:12`, `heat_exchanger_lt_steam`: `capex` 0,
 `fixed_opex` 0, and no `unit_input_output` rows at all. It produces low-temperature heat from
@@ -196,8 +196,10 @@ nothing, for nothing, and `unit_eligibility.csv:1644-1646` makes it eligible on
 `hot_water_sterilisation_cleaning`, `scalding_singeing` and `steam_hot_water` — the dairy's
 own duties. Unscreened, it serves the whole duty free and the demonstration never happens.
 
-**The price leg bites hardest.** `import_price` exists for `coal`, `electricity`,
-`heavy_fuel_oil`, `light_fuel_oil` and `natural_gas`. It is missing for `hydrogen`,
+**The price leg bites hardest.** `import_price` covers every period for only `coal`,
+`electricity`, `light_fuel_oil` and `natural_gas`. `heavy_fuel_oil` carries a single row, at
+2021 — the more dangerous shape, because it looks present until you index it. It is absent
+entirely for `hydrogen`,
 `biomethane`, `lpg`, `solid_biomass`, `wood_pellets`, `organic_waste`, `waste_derived_fuel`,
 `coke`, `coking_coal` and `petroleum_products_misc`. `boiler_lt_hydrogen`,
 `boiler_lt_biomass`, `boiler_lt_biomethane` and `boiler_lt_lpg` all have complete capex and
@@ -208,7 +210,7 @@ whose price is missing, which is precisely what
 [note 20](20_reference_data_open_questions.md) needs to record.
 
 The same check lands in `validate_carb3_data.py` as an **advisory** count surfaced by
-`make data-report`, not by `make data-check`. Making it blocking would turn 38 units red and
+`make data-report`, not by `make data-check`. Making it blocking would turn 41 units red and
 break the green baseline note 18's M1 exit depends on, in the same commit as an unrelated
 package.
 
@@ -526,7 +528,7 @@ Synthesized from the review's findings. Each derives from a specific finding abo
   - Files: `carb3/`, `Makefile`, `.Rbuildignore`
   - Verify: `uv run pytest` collects; `make check` still green
 - [ ] **T2 (P0, human: ~1 day / CC: ~35min)** — load — Admission screen over capex, lifetime, opex, coefficients and fuel prices; dropped units reported
-  - Surfaced by: Architecture issue 2 and issue 14 — `unit.csv:12`; 5 of 15 `may_import` carriers priced
+  - Surfaced by: Architecture issue 2 and issue 14 — `unit.csv:12`; only 4 of 15 `may_import` carriers priced for every period
   - Files: `carb3/src/carb3/load.py`
   - Verify: `heat_exchanger_lt_steam` and `boiler_lt_hydrogen` both dropped with reasons
 - [ ] **T3 (P0, human: ~2 days / CC: ~60min)** — build — Restore $d_{c,t}$ gated on `carrier_kind`, add its term to C8, charge carbon on venting per §5.4

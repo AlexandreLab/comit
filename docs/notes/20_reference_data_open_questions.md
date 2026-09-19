@@ -471,8 +471,10 @@ standing home for them.
     against COMIT's R code, and the specific test is whether PyPSA's component model can
     express C10 (heat grade cascade), duty-family eligibility and the D16 (site boundary on
     the carrier) boundary without fighting it. *Note 21 §9; note 08 §2.*
-48. **Ten of the fifteen `may_import` carriers have no `import_price`.** Present for `coal`,
-    `electricity`, `heavy_fuel_oil`, `light_fuel_oil` and `natural_gas`; absent for
+48. **Eleven of the fifteen `may_import` carriers are not priced across the horizon.** Only
+    `coal`, `electricity`, `light_fuel_oil` and `natural_gas` carry an `import_price` for
+    every period. `heavy_fuel_oil` has a single row, at 2021 — the more dangerous shape,
+    because it looks present until it is indexed. Absent entirely for
     `hydrogen`, `biomethane`, `lpg`, `solid_biomass`, `wood_pellets`, `organic_waste`,
     `waste_derived_fuel`, `coke`, `coking_coal` and `petroleum_products_misc`. A cost
     minimiser reads a missing price as free fuel, so `boiler_lt_hydrogen`,
@@ -480,9 +482,12 @@ standing home for them.
     21's admission screen drops them and names the gap; the prices are still owed, and the
     hydrogen trajectory in particular is a scenario assumption rather than a lookup.
     *Note 21 §3.2.*
-49. **Thirty-eight units cannot be fully costed.** Fifteen have blank `capex`, thirteen blank
+49. **Forty-one units cannot be fully costed.** Fifteen have blank `capex`, thirteen blank
     `lifetime`, fifteen blank `fixed_opex`, and twenty-six carry no `unit_input_output` rows
-    at all. They are reachable through 384 of `unit_eligibility.csv`'s 2612 rows across 40
+    at all; three more — `lime_kiln_fluidbed_wdf`, `refinery_fixed_mix_gas` and
+    `refinery_flexible_mix_gas` — declare a `fuel_carrier_id` in `unit.csv` and carry no
+    `fuel_input` row, so they burn a declared fuel for free. They are reachable through 387
+    of `unit_eligibility.csv`'s 2612 rows across 40
     activities, 129 of those rows on heat or steam processes. `unit.csv:12`
     `heat_exchanger_lt_steam` is the sharpest case: `capex` 0, `fixed_opex` 0 and no
     coefficients, so it produces low-temperature heat from nothing. `make data-check` reports
