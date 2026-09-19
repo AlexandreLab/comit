@@ -452,3 +452,47 @@ These are the ones with a consequence outside the reference data.
     per-carrier derivation, emit three rows on one `(unit_id, co2_fuel_fossil, emission)`
     triple — a key collision of the kind §3.6's key was widened to prevent. A6 sums first.
     *This note; independent review of the triage, 2026-09-16.*
+
+---
+
+## F. Questions raised by the model build
+
+Added 2026-09-19 by the `/plan-eng-review` of
+[note 21](21_mvp_slice_implementation_plan.md). These are architecture and cost-data
+questions rather than reference-data ones, but they surfaced here and there is no other
+standing home for them.
+
+47. **The PyPSA / Calliope spike named as a prerequisite has never been run.** Note 08 §2 is
+    phrased as a gate, not a suggestion: *"Evaluate before writing anything … a spike might
+    show 70% of COMIT is configuration rather than code … The cheapest code is code not
+    written."* Note 18's milestones do not schedule it, and note 21's slice is about to write
+    that code. The question has moved on since note 08 was written: the spike would now be
+    evaluated against the live spec's §3 entities and §5's twelve constraints rather than
+    against COMIT's R code, and the specific test is whether PyPSA's component model can
+    express C10 (heat grade cascade), duty-family eligibility and the D16 (site boundary on
+    the carrier) boundary without fighting it. *Note 21 §9; note 08 §2.*
+48. **Ten of the fifteen `may_import` carriers have no `import_price`.** Present for `coal`,
+    `electricity`, `heavy_fuel_oil`, `light_fuel_oil` and `natural_gas`; absent for
+    `hydrogen`, `biomethane`, `lpg`, `solid_biomass`, `wood_pellets`, `organic_waste`,
+    `waste_derived_fuel`, `coke`, `coking_coal` and `petroleum_products_misc`. A cost
+    minimiser reads a missing price as free fuel, so `boiler_lt_hydrogen`,
+    `boiler_lt_biomass`, `boiler_lt_biomethane` and `boiler_lt_lpg` would win on it. Note
+    21's admission screen drops them and names the gap; the prices are still owed, and the
+    hydrogen trajectory in particular is a scenario assumption rather than a lookup.
+    *Note 21 §3.2.*
+49. **Thirty-eight units cannot be fully costed.** Fifteen have blank `capex`, thirteen blank
+    `lifetime`, fifteen blank `fixed_opex`, and twenty-six carry no `unit_input_output` rows
+    at all. They are reachable through 384 of `unit_eligibility.csv`'s 2612 rows across 40
+    activities, 129 of those rows on heat or steam processes. `unit.csv:12`
+    `heat_exchanger_lt_steam` is the sharpest case: `capex` 0, `fixed_opex` 0 and no
+    coefficients, so it produces low-temperature heat from nothing. `make data-check` reports
+    green on all of it; note 21 adds an advisory count to `make data-report`. Some of these
+    may be legitimately costless placeholders and the list needs triaging rather than
+    filling wholesale. *Note 21 §3.2; learning `comit-make-check-is-green-but-blind`,
+    2026-09-16.*
+50. **§5.1's uniform timestep does not hold against the data.** The spec writes
+    $y_t = y_{t_0} + \Delta t$ and $\ell_u = \lceil L_u / \Delta \rceil$, but
+    `scenario_parameters.csv` runs 2021, 2025, 2030, 2035, 2040, 2045, 2050 — a four-year
+    first gap and five-year gaps thereafter. Every present-value factor and lifetime
+    conversion from $t = 1$ onward is affected. Note 21 carries an explicit year vector; the
+    specification is owed the correction. *Note 21 §6.4.*
