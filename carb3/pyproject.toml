@@ -1,0 +1,43 @@
+[project]
+name = "carb3"
+version = "0.1.0"
+description = "CaRB3 site energy system — the pre-M2 demonstration slice"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "linopy>=0.9.1",
+    "pandas>=2.2",
+    "xarray>=2024.7",
+    "pandera>=0.20",
+    "pydantic>=2.8",
+    "pyarrow>=17.0",
+    # linopy's solver backend. Pinned exactly: the cement worked example §12 requires
+    # the HiGHS version to be pinned in pyproject.toml so V10 (determinism) can hold
+    # across machines.
+    "highspy==1.15.1",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/carb3"]
+
+# Solver settings, pinned here rather than passed at the call site, per the cement worked
+# example §12 ("Solver settings, pinned in the package so V10 (determinism) can hold across
+# machines: HiGHS, version pinned in pyproject.toml, presolve on, single-threaded").
+#
+# The §9.3 lexicographic tie-break that §12 also names is deliberately NOT here: note 21 §6.2
+# puts MF-45 and MF-74 out of the slice and leaves degenerate optima visible. It is M2's work.
+[tool.carb3]
+solver = "highs"          # linopy's solver name for HiGHS
+presolve = "on"           # HiGHS option `presolve`
+threads = 1               # HiGHS option `threads`; single-threaded is the determinism argument
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
