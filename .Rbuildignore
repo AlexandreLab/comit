@@ -14,3 +14,4 @@ $run_dev.*
 ^\.rscignore$
 ^LICENSE\.md$
 ^docs/notes$
+^carb3$
