@@ -1597,7 +1597,7 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-09-17*
+*Section last updated: 2026-09-19*
 
 **This section is authoritative.** Everything else serves it.
 
@@ -1606,7 +1606,9 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 | Symbol | Meaning |
 |---|---|
 | $T$ | Model periods, $t \in \{0, \ldots, N\}$. **$t$ is a period index, not a calendar year** |
-| $\Delta$ | Timestep in years. The calendar year of period $t$ is $y_t = y_{t_0} + \Delta t$ |
+| $y_t$ | The calendar year of period $t$, read from the **year vector** $\mathbf{y} = (y_0, \ldots, y_N)$. Strictly increasing; $y_0$ is the start year $y_{t_0}$ |
+| $\Delta_t$ | Span of period $t$ in years: $\Delta_t = y_{t+1} - y_t$ for $t < N$, and $\Delta_N = \Delta_{N-1}$ |
+| $\Delta$ | A single timestep in years. Defined **only** where every gap is equal, which is not the general case |
 | $Q$ | Duties at this premise |
 | $U$ | Units available, $U = \bigcup_{q} U_q$ |
 | $U_q$ | Units eligible for duty $q$, after `unit_eligibility` screening |
@@ -1621,9 +1623,52 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 | $\mathcal{K}$ | The premise's connections |
 | $g(c)$ | Grade rank of carrier $c$, where gradeable |
 
-**Any lifetime used as an index offset is converted to periods first:**
-$\ell_{u} = \lceil L_u / \Delta \rceil$. A 25-year life on a 5-year timestep is 5 periods;
-reading it as 25 is a 125-year asset.
+**The periods are data, not a formula.** $\mathbf{y}$ is an input to the model — the
+scenario's own list of calendar years — and nothing may reconstruct it from a step. The
+reference scenario runs 2021, 2025, 2030, 2035, 2040, 2045, 2050: the first gap is four
+years and every later one is five, so $\Delta_t = (4, 5, 5, 5, 5, 5, 5)$. **A uniform step
+is not an approximation of that, it is wrong**, and it is wrong from the first period
+onward: $y_{t_0} + 5t$ puts period 1 at 2026 rather than 2025 and period 6 at 2051 rather
+than 2050, so every period after the start lands a year late.
+
+**$\Delta$ survives as a shorthand for the uniform case and nothing more.** Where all gaps
+are equal, $\Delta_t = \Delta$ for every $t$ and the expressions below collapse to the
+familiar uniform forms. That is a special case to recognise, never the definition: an
+implementation that carries a scalar step cannot read the reference scenario at all.
+
+**Any lifetime used as an index offset is converted against actual years, not against a
+nominal step.** A unit built in period $s$ with lifetime $L_u$ years stands in every period
+whose year falls inside that life:
+
+$$\ell_{u,s} = \big|\{\, t \in T \;:\; y_s \le y_t < y_s + L_u \,\}\big|$$
+
+which is why C3 (capacity transfer) keys its window on the build period $s$ and not on the
+unit alone: on the reference vector a 25-year life built in 2021 covers six periods and the
+same life built in 2025 covers five. Dividing by a nominal step gets both wrong, and
+reading $L_u$ itself as a period count is a 125-year asset.
+
+**The present-value factor aggregates over the period's own span.** With the discount rate
+$r$ of §5.3, and $d_t = (1+r)^{-(y_t - y_{t_0})}$ the single-year factor §5.4 uses for the
+stranding write-off:
+
+$$\delta_t \;=\; \sum_{j=0}^{\Delta_t - 1} (1+r)^{-(y_t + j - y_{t_0})} \;=\; d_t\,\frac{1 - (1+r)^{-\Delta_t}}{1 - (1+r)^{-1}}$$
+
+Every cost term in §5.4 is an annual **rate**, so a period carries that rate once for each
+year it stands for. Giving the start period five years instead of the four it spans
+overstates its whole cost by a quarter.
+
+**The terminal period's span is a stated convention.** $y_N$ has no successor, so
+$\Delta_N$ cannot be derived from the vector; the last observed gap is carried forward,
+$\Delta_N = \Delta_{N-1}$, which weights 2050 as 2045 is weighted. It is a choice rather
+than a fact, and it is written down here so that two implementations make the same one.
+
+**What reads the vector.** Everything that crosses between a period index and a calendar
+year: $\delta_t$ and $d_t$ above; C3's (capacity transfer) build window, through
+$\ell_{u,s}$; C4's (incumbent ageing and early retirement) survival function $\eta_{u,t}$,
+which ages a `commissioned_year` (§3.15) by elapsed years; C5 (no building in the start
+year), which pins $t_0$ and so the year $y_0$ that bears no investment; and the
+`earliest_year` screen of §3.5.1, which compares a calendar year against $y_t$ rather than
+against $t$.
 
 ### 5.2 Decision variables
 
@@ -1709,10 +1754,10 @@ Minimise total present-value cost:
 
 $$\min \; Z = \sum_{t} \Big[\; \delta_t \big( Z^{\text{capex}}_t + Z^{\text{opex}}_t + Z^{\text{fuel}}_t + Z^{\text{carbon}}_t + Z^{\text{infra}}_t + Z^{\text{net}}_t - Z^{\text{exp}}_t \big) \;+\; d_t \, Z^{\text{strand}}_t \;\Big]$$
 
-with $\delta_t$ the present-value factor aggregated over the periods in a timestep and $d_t$
-the **single-year** factor used for the stranding write-off. Capex is annuitised over
-$L_u$ at interest rate $i$; the annuity for a hybrid already contains its component
-replacements (§3.5).
+with $\delta_t$ the present-value factor aggregated over the years period $t$ stands for
+and $d_t$ the **single-year** factor used for the stranding write-off, both as §5.1 defines
+them against the year vector. Capex is annuitised over $L_u$ at interest rate $i$; the
+annuity for a hybrid already contains its component replacements (§3.5).
 
 $$Z^{\text{fuel}}_t = \sum_{c}\Big(\sum_{k} m_{c,k,t} + m_{c,t}\Big)\big(p^{\text{imp}}_{c,t} + \tau_{c,t}\big) \cdot \varepsilon(c,t) \qquad Z^{\text{exp}}_t = \sum_{c,k} x_{c,k,t}\,p^{\text{exp}}_{c,t}$$
 
