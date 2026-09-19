@@ -1,0 +1,4 @@
+premise_id,carb3_activity,latitude,longitude,nation,floorspace,process_set_id,construction_year,construction_year_band,last_refurbishment_year,data_year,source
+mvp-minimal,Food Processing Centre,53.40,-2.60,England,4000,,2009,,,2024,synthetic - written fresh for the pre-M2 demonstration slice (note 21 section 3.4)
+mvp-dairy,Food Processing Centre,53.39,-2.59,England,18400,,,1965-1984,2019,2024,synthetic - cut from the food and drink worked example section 1.1 (premise P-004417)
+mvp-cement,Cement Works,53.35,-1.75,England,46000,,1957,,2011,2024,synthetic - cut from the cement worked example section 1.1 (premise P-000123)

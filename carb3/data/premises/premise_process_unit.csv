@@ -1,0 +1,19 @@
+premise_id,process_id,valid_from_year,unit_id,capacity_share,provenance,confidence
+mvp-minimal,boiler_steam_hot_water,2009,boiler_lt_gas,1.000000,synthetic - the single incumbent; grade_out 3 covers both the grade-2 and the grade-3 duty,high
+mvp-dairy,boiler_steam_hot_water,2011,chp_gas_turbine,0.350000,food and drink worked example section 1.6 cohort share,high
+mvp-dairy,boiler_steam_hot_water,2011,boiler_lt_gas,0.650000,food and drink worked example section 1.6 cohort share,high
+mvp-dairy,direct_heating,2019,dryer_direct_gas,1.000000,food and drink worked example section 1.5 named unit,high
+mvp-dairy,refrigeration,2016,chiller_electric,1.000000,synthetic - the activity_default_unit REF unit; the worked example names none,medium
+mvp-dairy,machinery_motors,2011,motor_elec,1.000000,synthetic - the activity_default_unit MOT unit; the worked example names none,medium
+mvp-dairy,compressed_air,2011,motor_elec,1.000000,synthetic - the activity_default_unit MOT unit; the worked example names none,medium
+mvp-dairy,site_services,2011,heat_pump_lt_air,0.549000,synthetic - substituted for the default boiler_spc_gas which is grade_out 1 and cannot serve a grade-2 SPC duty,low
+mvp-dairy,site_services,2011,motor_elec,0.451000,synthetic - the activity_default_unit MOT unit for the site_services motive share,low
+mvp-cement,quarrying_crushing,1957,motor_elec,1.000000,synthetic - the activity_default_unit MOT unit; the worked example names none,medium
+mvp-cement,raw_grinding_blending,1957,motor_elec,1.000000,synthetic - the activity_default_unit MOT unit; the worked example names none,medium
+mvp-cement,raw_meal_homogenisation,1957,motor_elec,1.000000,synthetic - the activity_default_unit MOT unit; the worked example names none,medium
+mvp-cement,kiln_pyroprocessing,2004,kiln_dry_coal,0.871369,cement worked example section 1.5.1 permit fuel schedule; share renormalised after dropping kiln_dry_wdf,high
+mvp-cement,kiln_pyroprocessing,2004,kiln_dry_gas,0.128631,cement worked example section 1.5.1 permit fuel schedule; share renormalised after dropping kiln_dry_wdf,high
+mvp-cement,clinker_cooling,2004,motor_elec,1.000000,synthetic - the activity_default_unit MOT unit; the worked example names none,medium
+mvp-cement,cement_grinding,1957,grinder_mixer_elec,1.000000,synthetic - the activity_default_unit unit for cement_grinding; the worked example names none,medium
+mvp-cement,packing_dispatch,1957,motor_elec,1.000000,synthetic - the activity_default_unit MOT unit; the worked example names none,medium
+mvp-cement,site_services,1957,motor_elec,1.000000,synthetic - the activity_default_unit MOT unit; the worked example names none,medium
