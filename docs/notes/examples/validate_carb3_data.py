@@ -16,7 +16,9 @@ never right.
 
 Exit 0 if every BLOCKING check passes, 1 otherwise. ADVISORY checks report counts and
 never change the exit code, following the spec's own "reported comparison, not
-constraint" pattern (implementation spec section 6.3).
+constraint" pattern (implementation spec section 6.3). Their per-item work lists print
+in the full report and under --json, and are suppressed by --quiet, which is how
+`make data-check` stays a gate and `make data-report` carries the detail.
 
 Standard library only, deliberately: pandas is not installed in this environment and
 the repo has no Python dependency management.
@@ -103,16 +105,27 @@ ENUMS = {
 
 
 class Result:
-    """One check's outcome. `blocking` decides whether a failure fails the run."""
+    """One check's outcome. `blocking` decides whether a failure fails the run.
+
+    `failures` are printed whatever the verbosity, so an advisory check that wants to
+    hand over a work list rather than raise an alarm puts it in `details` instead:
+    details print in the full report and in --json, and are silent under --quiet. That
+    is what keeps `make data-check` reading as a pass/fail gate while `make data-report`
+    carries the detail.
+    """
 
     def __init__(self, name: str, blocking: bool = True):
         self.name = name
         self.blocking = blocking
         self.failures: list[str] = []
+        self.details: list[str] = []
         self.note = ""
 
     def fail(self, msg: str) -> None:
         self.failures.append(msg)
+
+    def detail(self, msg: str) -> None:
+        self.details.append(msg)
 
     @property
     def ok(self) -> bool:
@@ -124,6 +137,7 @@ class Result:
             "blocking": self.blocking,
             "ok": self.ok,
             "failures": self.failures,
+            "details": self.details,
             "note": self.note,
         }
 
@@ -969,6 +983,145 @@ def check_default_unit(du: list[dict], duty: list[dict], elig: list[dict],
     return r
 
 
+# -------------------------------------------------- the admission screen (2026-09-19)
+#
+# Note 21 section 3.2 describes the guard the first Python build needs: a unit the model
+# cannot fully cost must not enter U. The blocking checks above are green on data that a
+# cost-minimiser reads as free energy, because "blank" and "absent" are consistent — they
+# are just not priced. The screen is ADVISORY here and BLOCKING in `carb3` (note 21
+# section 7). Making it blocking here would turn tens of units red and break the green
+# baseline note 18's M1 exit depends on, in a commit that changes no data.
+
+# A blank in any of these is read as zero: the unit is built free, or annuitised over an
+# undefined life, or has an undefined C2 (capacity to activity).
+COST_FIELDS = ("capex", "lifetime", "fixed_opex", "availability_factor",
+               "capacity_to_activity_factor")
+
+
+def _fuel_input_verdict(u: dict, rows: list[dict]) -> tuple[str, str]:
+    """Classify a unit's missing `fuel_input` row. Returns (verdict, reason).
+
+    Most units with no `fuel_input` row are not wrong, so this classifies rather than
+    flagging blindly. A store shifts a carrier it does not burn, a rooftop array draws
+    ambient, and a heat exchanger or steam dryer is driven by an `aux_input`. What is
+    wrong is a unit that names the fuel it burns and then never consumes it, and a unit
+    with no input row of any role at all — both produce output from nothing.
+    """
+    if any(r["role"] == "fuel_input" for r in rows):
+        return "ok", ""
+    fc = u["fuel_carrier_id"].strip()
+    if fc:
+        return "gap", f"declares fuel_carrier_id {fc} but has no fuel_input row"
+    if u["unit_class"] == "storage":
+        return "fuel_free", "storage: shifts a carrier, burns none"
+    if u["draws_ambient"] == "TRUE":
+        return "fuel_free", "draws_ambient: the input is not a costed carrier"
+    if any(r["role"] in INPUT_ROLES for r in rows):
+        return "fuel_free", "driven by an aux_input, not by a fuel"
+    return "gap", "no fuel_input and no input row of any role"
+
+
+def check_admission_screen(unit: list[dict], io: list[dict], elig: list[dict],
+                           car: list[dict], sp: list[dict]) -> Result:
+    """ADVISORY. Note 21 section 3.2: the units a cost-minimiser would build or run for
+    free, and the imported carriers it would burn for free.
+
+    Reported per unit_id with the reason, as the work list note 20 needs. Never
+    blocking: `make data-check` stays a gate on data consistency, `make data-report`
+    carries this."""
+    r = Result("admission screen: cost completeness (advisory)", blocking=False)
+    io_by_unit: dict[str, list[dict]] = defaultdict(list)
+    for row in io:
+        io_by_unit[row["unit_id"]].append(row)
+
+    # ---- legs 1 to 3: the unit itself
+    blank_counts: dict[str, int] = defaultdict(int)
+    no_io: list[str] = []
+    fuel_gap: list[str] = []
+    fuel_free: dict[str, str] = {}
+    reasons: dict[str, list[str]] = {}
+    for u in unit:
+        uid = u["unit_id"]
+        rows = io_by_unit.get(uid, [])
+        why: list[str] = []
+        blank = [c for c in COST_FIELDS if not u[c].strip()]
+        for c in blank:
+            blank_counts[c] += 1
+        if blank:
+            why.append("blank " + ", ".join(blank))
+        if not rows:
+            no_io.append(uid)
+            why.append("no unit_input_output rows")
+        verdict, reason = _fuel_input_verdict(u, rows)
+        if verdict == "gap":
+            fuel_gap.append(uid)
+            # A unit with no rows at all has already been named for it; do not say it twice.
+            if rows or u["fuel_carrier_id"].strip():
+                why.append(reason)
+        elif verdict == "fuel_free":
+            fuel_free[uid] = reason
+        if why:
+            reasons[uid] = why
+
+    # ---- leg 4: an importable carrier with no price is a free fuel
+    periods = sorted({row["period"].strip() for row in sp if row["period"].strip()})
+    priced: dict[str, set[str]] = defaultdict(set)
+    for row in sp:
+        if row["parameter_id"] == "import_price":
+            priced[row["carrier_id"].strip()].add(row["period"].strip())
+    importable = [c["carrier_id"] for c in car if c["may_import"] == "TRUE"]
+    unpriced: dict[str, list[str]] = {}
+    for cid in importable:
+        missing = sorted(set(periods) - priced.get(cid, set()))
+        if missing:
+            unpriced[cid] = missing
+
+    # ---- leg 5: what the gaps reach through eligibility
+    # Two counts, because the price leg is a property of the carrier rather than of the
+    # unit and roughly triples the reach: the unit legs alone are the migration work list,
+    # the wider figure is what the LP would actually admit today.
+    unit_gaps = set(reasons)
+    with_price = set(unit_gaps)
+    for u in unit:
+        uid = u["unit_id"]
+        drawn = {row["carrier_id"] for row in io_by_unit.get(uid, [])
+                 if row["role"] in INPUT_ROLES}
+        if u["fuel_carrier_id"].strip():
+            drawn.add(u["fuel_carrier_id"].strip())
+        if drawn & set(unpriced):
+            with_price.add(uid)
+    reach = sum(1 for row in elig if row["unit_id"] in unit_gaps)
+    reach_price = sum(1 for row in elig if row["unit_id"] in with_price)
+
+    r.note = (f"{len(unit_gaps)}/{len(unit)} units incomplete, "
+              f"{len(unpriced)}/{len(importable)} may_import carriers unpriced, "
+              f"{reach}/{len(elig)} eligibility rows reach an incomplete unit "
+              f"({reach_price} including the unpriced-fuel leg)")
+
+    r.detail(f"blank cost fields: "
+             + ", ".join(f"{c}={blank_counts[c]}" for c in COST_FIELDS))
+    r.detail(f"no unit_input_output rows: {len(no_io)} units")
+    r.detail(f"missing a required fuel_input: {len(fuel_gap)} units "
+             f"({len(fuel_free)} more have none legitimately)")
+    # The case that motivated the screen. Named because it is the cheapest possible unit
+    # in the table and eligible on the dairy premise's own duties, so an unscreened run
+    # serves the whole low-temperature heat duty free and demonstrates nothing.
+    worked = next((u for u in unit if u["unit_id"] == "heat_exchanger_lt_steam"), None)
+    if worked is not None and "heat_exchanger_lt_steam" in reasons:
+        n = sum(1 for row in elig if row["unit_id"] == "heat_exchanger_lt_steam")
+        r.detail(f"worked example: heat_exchanger_lt_steam capex={worked['capex']!r} "
+                 f"fixed_opex={worked['fixed_opex']!r} and no unit_input_output rows, so "
+                 f"it produces low-temperature heat from nothing, for nothing, on "
+                 f"{n} eligibility rows")
+    for uid in sorted(reasons):
+        r.detail(f"  {uid}: {'; '.join(reasons[uid])}")
+    for cid in sorted(unpriced):
+        missing = unpriced[cid]
+        span = "all periods" if len(missing) == len(periods) else ", ".join(missing)
+        r.detail(f"  carrier {cid}: may_import TRUE, no import_price for {span}")
+    return r
+
+
 # ----------------------------------------------------------------------------- main
 
 def run() -> tuple[list[Result], dict[str, list[dict]]]:
@@ -1035,7 +1188,12 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
     if "activity_default_unit.csv" in tables:
         results.append(check_default_unit(tables["activity_default_unit.csv"], duty,
                                           elig, unit))
-    results += [check_coverage(reg, prof, opt, lib), check_band_coverage(prof)]
+    results += [
+        check_coverage(reg, prof, opt, lib),
+        check_band_coverage(prof),
+        check_admission_screen(unit, tables["unit_input_output.csv"], elig, car,
+                               tables["scenario_parameters.csv"]),
+    ]
     return results, tables
 
 
@@ -1062,6 +1220,8 @@ def main(argv: list[str] | None = None) -> int:
             if not args.quiet:
                 tag = "PASS" if r.blocking else "----"
                 print(f"  {tag}  {r.name}" + (f"  ({r.note})" if r.note else ""))
+                for msg in r.details:
+                    print(f"          {msg}")
             continue
         tag = "FAIL" if r.blocking else "WARN"
         print(f"  {tag}  {r.name}  ({len(r.failures)} problems)")
@@ -1069,6 +1229,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"          {msg}")
         if len(r.failures) > args.max_failures:
             print(f"          ... and {len(r.failures) - args.max_failures} more")
+        if not args.quiet:
+            for msg in r.details:
+                print(f"          {msg}")
 
     if blocking_failed:
         print(f"\nFAILED: {len(blocking_failed)} blocking check(s). "
