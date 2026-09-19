@@ -187,7 +187,48 @@ at the archived baseline's §6, lines 2126–2127.
 
 ## Data caveats worth knowing before quoting a number
 
-- `docs/notes/data/` is **derived reference data. COMIT never reads it.**
+- `docs/notes/data/` is **derived reference data that the R model never reads.** Nothing in
+  `R/` touches it, so a change here is inert for COMIT. It is no longer unread, though: the
+  `carb3` Python package takes `carrier.csv`, `unit.csv`, `unit_input_output.csv`,
+  `unit_eligibility.csv`, `scenario_parameters.csv`, `activity_process_duty_profile.csv`
+  and `activity_process_register.csv` as inputs, through a configurable reference root
+  whose default is this directory.
+- **41 of `unit.csv`'s 137 units cannot be fully costed, and a cost minimiser reads the gaps
+  as free energy.** 15 have a blank `capex`, 13 a blank `lifetime`, 15 a blank `fixed_opex`,
+  13 each a blank `availability_factor` and `capacity_to_activity_factor`, and 26 carry no
+  `unit_input_output` rows at all — 38 distinct units. Three more belong to the same defect
+  class and are easy to miss because their cost fields are complete:
+  `lime_kiln_fluidbed_wdf`, `refinery_fixed_mix_gas` and `refinery_flexible_mix_gas` each
+  declare a `fuel_carrier_id` in `unit.csv` and carry no `fuel_input` row in
+  `unit_input_output.csv`, so the declared fuel burns free. The 41 are reachable through 387
+  of `unit_eligibility.csv`'s 2612 rows. `unit.csv:12`, `heat_exchanger_lt_steam`, is the
+  sharpest: `capex` 0, `fixed_opex` 0 and no coefficients, so it makes low-temperature heat
+  from nothing.
+- **The price test is a price in *every* period, and only 4 of the 15 `may_import` carriers
+  pass it.** The periods are 2021, 2025, 2030, 2035, 2040, 2045 and 2050. `natural_gas`,
+  `light_fuel_oil`, `coal` and `electricity` are priced across all seven. Ten carry no
+  `import_price` row at all — `hydrogen`, `biomethane`, `lpg`, `solid_biomass`,
+  `wood_pellets`, `organic_waste`, `waste_derived_fuel`, `coke`, `coking_coal`,
+  `petroleum_products_misc` — and **`heavy_fuel_oil` has exactly one row, at 2021**. The
+  partial case is the dangerous one: it looks present until you index it by year, and a
+  test that asks only whether a carrier has *a* price counts 5 and misses it. Widen the
+  reach to every unit burning an unpriced or part-priced fuel and it is 1178 of the 2612
+  eligibility rows. Screen for cost completeness before pointing any optimiser at these
+  tables. Detail in [note 20](docs/notes/20_reference_data_open_questions.md) items 48
+  and 49.
+- **`unit_eligibility.csv` is a three-table join, not a lookup.** It is keyed by *process*,
+  not by duty — `(unit_id, carb3_activity, process_id)`, with no carrier and no grade
+  column — and 142 of its rows carry a blank `process_id`, which is activity-level supply.
+  Three constraint columns are live and most readers miss them: `earliest_year` (9 rows),
+  `max_share` (4 rows, one of them `boiler_lt_coal` at `Food Processing Centre` at 0.00, a
+  hard prohibition) and `min_duty` (15 rows). Building the eligible-unit set means joining
+  to `activity_process_duty_profile.csv` for the duty and to `unit.grade_out` for C10 (the
+  heat grade cascade).
+- **A green `make check` is not evidence the data is sound.** `make data-check`'s blocking
+  checks pass on all 41 uncostable units and on every unpriced and part-priced carrier
+  above. `make data-report` carries an advisory count for them, and advisory is deliberate
+  — making it blocking would turn 41 units red. Green means the keys join, not that a model
+  can be run on the tables.
 - The public workbook's `commodities` and `Fuel_emissions` sheets are labelled *dummy
   figures*. The classification and method are real; the absolute intensities are not.
 - Seven files under `docs/notes/data/` were built by hand research with no committed
