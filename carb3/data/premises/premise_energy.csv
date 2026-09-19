@@ -1,0 +1,17 @@
+premise_id,carrier_id,connection_id,vector,quantity,data_status,data_year,source
+mvp-minimal,natural_gas,,gas,0.113636,modelled,2024,synthetic - duty 0.100000 PJ/yr through boiler_lt_gas at 1.13636 PJ gas per PJ heat
+mvp-minimal,electricity,,electricity,0.000000,not_consumed,2024,synthetic - the premise runs one gas-fired process and nothing else
+mvp-minimal,light_fuel_oil,,oil,0.000000,not_consumed,2024,synthetic - the premise runs one gas-fired process and nothing else
+mvp-minimal,coal,,coal,0.000000,not_consumed,2024,synthetic - the premise runs one gas-fired process and nothing else
+mvp-minimal,solid_biomass,,biomass,0.000000,not_consumed,2024,synthetic - the premise runs one gas-fired process and nothing else
+mvp-dairy,natural_gas,,gas,0.300000,measured,2024,food and drink worked example section 1.2 base-year row
+mvp-dairy,electricity,,electricity,0.060000,measured,2024,food and drink worked example section 1.2 base-year row (net import; the CHP sits behind the meter)
+mvp-dairy,light_fuel_oil,,oil,0.000000,not_consumed,2024,food and drink worked example section 1.2 explicit zero (stated there as fuel_oil which is not a carrier_id)
+mvp-dairy,coal,,coal,0.000000,not_consumed,2024,food and drink worked example section 1.2 explicit zero
+mvp-dairy,solid_biomass,,biomass,0.000000,not_consumed,2024,food and drink worked example section 1.2 explicit zero
+mvp-cement,coal,,coal,3.407053,modelled,2024,synthetic - 0.740664 Mt clinker on kiln_dry_coal at 4.6 PJ per Mt
+mvp-cement,natural_gas,,gas,0.502947,modelled,2024,synthetic - 0.109336 Mt clinker on kiln_dry_gas at 4.6 PJ per Mt
+mvp-cement,electricity,,electricity,0.420005,modelled,2024,synthetic - kiln aux 0.092404 plus grinder 0.159601 plus motive 0.168000; reproduces the worked example's metered 0.42000
+mvp-cement,light_fuel_oil,,oil,0.000000,not_consumed,2024,cement worked example section 1.2 explicit zero (stated there as fuel_oil which is not a carrier_id)
+mvp-cement,solid_biomass,,biomass,0.000000,not_consumed,2024,synthetic - stated as an explicit zero where the worked example left it absent
+mvp-cement,waste_derived_fuel,,other,0.000000,not_consumed,2024,synthetic - this premise does not co-fire WDF because waste_derived_fuel carries no import_price in any period

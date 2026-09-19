@@ -1,0 +1,19 @@
+premise_id,process_id,cohort_id,unit_id,commissioned_year,capacity_share,provenance,confidence
+mvp-minimal,boiler_steam_hot_water,1,boiler_lt_gas,2009,1.000000,synthetic - lifetime 25 so the incumbent dies in 2034 inside the horizon,high
+mvp-dairy,boiler_steam_hot_water,1,chp_gas_turbine,2011,0.350000,food and drink worked example section 1.6,high
+mvp-dairy,boiler_steam_hot_water,2,boiler_lt_gas,2016,0.650000,food and drink worked example section 1.6,medium
+mvp-dairy,direct_heating,1,dryer_direct_gas,2019,1.000000,food and drink worked example section 1.6,high
+mvp-dairy,refrigeration,1,chiller_electric,2016,1.000000,synthetic - lifetime 10 so the chiller dies in 2026 and must be replaced,medium
+mvp-dairy,machinery_motors,1,motor_elec,2016,1.000000,synthetic - a 2016 drives refit; lifetime 20 keeps the motors alive at the 2021 start year,medium
+mvp-dairy,compressed_air,1,motor_elec,2016,1.000000,synthetic - a 2016 drives refit; lifetime 20 keeps the motors alive at the 2021 start year,medium
+mvp-dairy,site_services,1,heat_pump_lt_air,2018,0.549000,synthetic - see premise_process_unit for why the SPC incumbent is a heat pump,low
+mvp-dairy,site_services,2,motor_elec,2016,0.451000,synthetic - a 2016 drives refit,low
+mvp-cement,quarrying_crushing,1,motor_elec,2016,1.000000,synthetic - a 2016 drives refit; lifetime 20 keeps the motors alive at the 2021 start year,medium
+mvp-cement,raw_grinding_blending,1,motor_elec,2016,1.000000,synthetic - a 2016 drives refit; lifetime 20 keeps the motors alive at the 2021 start year,medium
+mvp-cement,raw_meal_homogenisation,1,motor_elec,2016,1.000000,synthetic - a 2016 drives refit; lifetime 20 keeps the motors alive at the 2021 start year,medium
+mvp-cement,kiln_pyroprocessing,1,kiln_dry_coal,2004,0.871369,cement worked example section 1.6; share renormalised after dropping kiln_dry_wdf,high
+mvp-cement,kiln_pyroprocessing,2,kiln_dry_gas,2004,0.128631,cement worked example section 1.6; share renormalised after dropping kiln_dry_wdf,high
+mvp-cement,clinker_cooling,1,motor_elec,2016,1.000000,synthetic - a 2016 drives refit,medium
+mvp-cement,cement_grinding,1,grinder_mixer_elec,1998,1.000000,synthetic - lifetime 30 so the grinder dies in 2028 inside the horizon,medium
+mvp-cement,packing_dispatch,1,motor_elec,2016,1.000000,synthetic - a 2016 drives refit,medium
+mvp-cement,site_services,1,motor_elec,2016,1.000000,synthetic - a 2016 drives refit,medium
