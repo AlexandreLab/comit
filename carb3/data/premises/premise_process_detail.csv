@@ -1,0 +1,17 @@
+premise_id,process_id,valid_from_year,valid_to_year,connection_id,known_capacity,provenance,confidence
+mvp-minimal,boiler_steam_hot_water,2009,,G-01,0.100000,synthetic - PJ/yr useful heat; chosen round so the LTH/STM split 0.46180/0.53820 is exact,high
+mvp-dairy,boiler_steam_hot_water,2011,,G-01,0.131579,PJ/yr useful heat; food and drink worked example section 3.2 duties 0.075587 LTH plus 0.055992 STM,high
+mvp-dairy,direct_heating,2019,,G-01,0.079050,PJ/yr useful heat; food and drink worked example section 3.2 DRY duty,high
+mvp-dairy,refrigeration,2016,,E-01,0.064598,PJ/yr useful cooling; food and drink worked example section 3.2 REF duty,high
+mvp-dairy,machinery_motors,2011,,E-01,0.038759,PJ/yr motive power; food and drink worked example section 3.2 electricity allocation,medium
+mvp-dairy,compressed_air,2011,,E-01,0.008613,PJ/yr motive power; food and drink worked example section 3.2 electricity allocation,medium
+mvp-dairy,site_services,2011,,E-01,0.033661,PJ/yr; set so the reference SPC share 0.549 reproduces the worked example's 0.018480 SPC duty,medium
+mvp-cement,quarrying_crushing,1957,,C-01,0.021000,PJ/yr motive power; cement worked example section 3.2 duty,medium
+mvp-cement,raw_grinding_blending,1957,,C-01,0.100800,PJ/yr motive power; cement worked example section 3.2 duty,medium
+mvp-cement,raw_meal_homogenisation,1957,,C-01,0.025200,PJ/yr motive power; cement worked example section 3.2 duty,medium
+mvp-cement,kiln_pyroprocessing,1957,2003,C-01,0.700000,Mt/yr clinker; cement worked example section 1.5 closed wet-line interval - history only,medium
+mvp-cement,kiln_pyroprocessing,2004,,C-01,0.950000,Mt/yr clinker line capacity; cement worked example section 1.5 permit figure,high
+mvp-cement,clinker_cooling,2004,,C-01,,cement worked example section 3.2 duty is 0.00000 PJ/yr and known_capacity cannot state a zero,medium
+mvp-cement,cement_grinding,1957,,C-01,1.130000,Mt/yr cement; the mass duty under D5 - the same figure premise_throughput carries,high
+mvp-cement,packing_dispatch,1957,,C-01,0.021000,PJ/yr motive power; cement worked example section 3.2 duty,medium
+mvp-cement,site_services,1957,,C-01,,cement worked example section 3.2 duty is 0.00000 PJ/yr and known_capacity cannot state a zero,medium
