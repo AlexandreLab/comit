@@ -42,13 +42,18 @@ from carb3.build import (
     _scalar_parameter,
     _scenario_series,
     _unit_parameters,
+    biogenic_capture_weights,
+    export_unit_cost,
 )
 from carb3.load import AdmissionScreen, ReferenceTables
 from carb3.sets import ModelSets
 
-#: The objective's four live terms, in §5.4's order. ``Z^infra``, ``Z^net``, ``Z^exp`` and
+#: The objective's five live terms, in §5.4's order. ``Z^infra``, ``Z^net`` and
 #: ``Z^strand`` are out of the slice (§2.1) and carry no row rather than a row of zeros.
-COST_TERMS: tuple[str, ...] = ("capex", "opex", "fuel", "carbon")
+#: ``export`` is §5.4's ``Z^exp`` with the §3.7 transport tariff folded in, and it is the
+#: one term that can carry either sign: electricity sold is a revenue, captured CO₂ handed
+#: to a pipeline is a cost. At the cement works it is a cost.
+COST_TERMS: tuple[str, ...] = ("capex", "opex", "fuel", "carbon", "export")
 
 #: What :func:`write_parquet` writes, and the order it returns the paths in.
 LEDGER_TABLES: tuple[str, ...] = (
@@ -90,7 +95,11 @@ class RunReport:
 
 
 def build_ledger(
-    result: SolveResult, sets: ModelSets, axis: PeriodAxis, reference: ReferenceTables
+    result: SolveResult,
+    sets: ModelSets,
+    axis: PeriodAxis,
+    reference: ReferenceTables,
+    tariff_override: float | None = None,
 ) -> Ledger:
     """Decompose the solution into the five tables above.
 
@@ -136,16 +145,18 @@ def build_ledger(
     e = _series(solution, "e", "unit", periods)
     m = _series(solution, "m", "carrier", periods)
     d = _series(solution, "d", "carrier", periods)
+    x = _series(solution, "x", "carrier", periods)
 
     activity = _activity_by_unit(pairs, z, model_units, periods)
     dispatch = _dispatch_table(pairs, z, periods)
     build = _build_table(model_units, periods, n, a, e)
     disposal = _disposal_table(reference, carrier_facts, d, periods)
     carrier_mix = _carrier_mix_table(
-        coefficients, carrier_facts, activity, m, d, dispatch, periods
+        coefficients, carrier_facts, activity, m, d, x, dispatch, periods
     )
     cost_by_term = _cost_table(
-        reference, axis, periods, model_units, parameters, carrier_facts, a, e, m, d
+        reference, axis, periods, model_units, parameters, carrier_facts, a, e, m, d, x,
+        activity, tariff_override,
     )
     return Ledger(
         cost_by_term=cost_by_term,
@@ -264,8 +275,10 @@ def _activity_by_unit(
 def _dispatch_table(pairs, z: dict[str, np.ndarray], periods: tuple[int, ...]) -> pd.DataFrame:
     """z_{u,q,t}, one row per ``(unit_id, duty, period)``.
 
-    An internal-supply column carries ``kind`` ``internal_supply`` and no process: it is a
-    unit producing a carrier D16 left with no duty row, settled by C8 rather than by C1.
+    A supply column carries ``kind`` ``supply`` and no process: it is a unit producing a
+    carrier that carries no duty row, settled by C8 (carrier balance) rather than by C1
+    (duty satisfaction). Two families sit here — the cement kilns making ``clinker``, an
+    internal product, and ``ccs_amine`` making ``co2_captured``, an exportable one.
     """
     records = []
     for pair in pairs:
@@ -273,7 +286,7 @@ def _dispatch_table(pairs, z: dict[str, np.ndarray], periods: tuple[int, ...]) -
         if pair.duty_key is None:
             premise_id, process_id = "", ""
             carrier_id = pair.label.removeprefix(SUPPLY_PREFIX)
-            kind = "internal_supply"
+            kind = "supply"
         else:
             premise_id, process_id, carrier_id = pair.duty_key
             kind = "duty"
@@ -387,6 +400,7 @@ def _carrier_mix_table(
     activity: dict[str, np.ndarray],
     m: dict[str, np.ndarray],
     d: dict[str, np.ndarray],
+    x: dict[str, np.ndarray],
     dispatch: pd.DataFrame,
     periods: tuple[int, ...],
 ) -> pd.DataFrame:
@@ -410,7 +424,7 @@ def _carrier_mix_table(
             [float(by_period.get(year, 0.0)) for year in periods]
         )
 
-    carriers = sorted(set(coefficients) | set(m) | set(d) | set(dispatched))
+    carriers = sorted(set(coefficients) | set(m) | set(d) | set(x) | set(dispatched))
     records = []
     for carrier_id in carriers:
         produced = np.zeros(len(periods))
@@ -423,6 +437,7 @@ def _carrier_mix_table(
             consumed += -np.clip(flow, None, 0.0)
         imported = _column(m, carrier_id, len(periods))
         disposed = _column(d, carrier_id, len(periods))
+        exported = _column(x, carrier_id, len(periods))
         served = _column(dispatched, carrier_id, len(periods))
         facts = carrier_facts.get(carrier_id)
         for index, year in enumerate(periods):
@@ -435,16 +450,21 @@ def _carrier_mix_table(
                     "produced": float(produced[index]),
                     "consumed": float(consumed[index]),
                     "disposed": float(disposed[index]),
+                    "exported": float(exported[index]),
                     "dispatched": float(served[index]),
                     "net": float(
-                        imported[index] + produced[index] - consumed[index] - disposed[index]
+                        imported[index]
+                        + produced[index]
+                        - consumed[index]
+                        - disposed[index]
+                        - exported[index]
                     ),
                 }
             )
     return pd.DataFrame.from_records(
         records,
         columns=["carrier_id", "period", "carrier_kind", "imported", "produced", "consumed",
-                 "disposed", "dispatched", "net"],
+                 "disposed", "exported", "dispatched", "net"],
     )
 
 
@@ -459,8 +479,11 @@ def _cost_table(
     e: dict[str, np.ndarray],
     m: dict[str, np.ndarray],
     d: dict[str, np.ndarray],
+    x: dict[str, np.ndarray],
+    activity: dict[str, np.ndarray],
+    tariff_override: float | None = None,
 ) -> pd.DataFrame:
-    """Z^capex, Z^opex, Z^fuel and Z^carbon by period, undiscounted and discounted.
+    """Z^capex, Z^opex, Z^fuel, Z^carbon and Z^exp by period, undiscounted and discounted.
 
     The discounted column sums to the objective the solver reported, which is the §5.3 path
     "objective decomposition — terms sum to the reported objective". Nothing here is a
@@ -468,9 +491,11 @@ def _cost_table(
     ``scenario_parameters`` and ``unit.csv`` values the build read, so the two agreeing is
     evidence that the objective was assembled from the parameters it claims.
 
-    §5.4's biogenic credit is structurally zero in this slice — with z° restricted to the
-    D16 carriers, no abatement unit takes a column — so it carries no term rather than a
-    column of zeros, exactly as :func:`carb3.build._biogenic_credit` returns ``None``.
+    §5.4's biogenic credit **is** live now and nets off the carbon term. It was
+    structurally zero while no abatement unit could take an activity column, and a ledger
+    that ignored it still balanced; once ``ccs_amine`` reached the dispatch dimension the
+    decomposition stopped summing to the reported objective by exactly the credit. Both
+    sides now read :func:`carb3.build.biogenic_capture_weights`.
     """
     rate = _scalar_parameter(reference, "discount_rate")
     n_periods = len(periods)
@@ -494,10 +519,27 @@ def _cost_table(
     for carrier_id, vented in d.items():
         if carrier_facts[carrier_id].carbon_charge == "charged":
             carbon += vented * CARBON_UNIT_CONVERSION * carbon_price
+    for unit_id, weight in biogenic_capture_weights(
+        reference, model_units, parameters, carrier_facts
+    ).items():
+        carbon -= (
+            activity.get(unit_id, np.zeros(n_periods))
+            * weight
+            * CARBON_UNIT_CONVERSION
+            * carbon_price
+        )
+
+    export = np.zeros(n_periods)
+    for carrier_id, exported in x.items():
+        export += exported * np.array(
+            export_unit_cost(reference, carrier_id, periods, tariff_override)
+        )
 
     delta = np.array(axis.discount_factors, dtype=float)
     records = []
-    for term, values in zip(COST_TERMS, (capex, opex, fuel, carbon), strict=True):
+    for term, values in zip(
+        COST_TERMS, (capex, opex, fuel, carbon, export), strict=True
+    ):
         for index, year in enumerate(periods):
             records.append(
                 {

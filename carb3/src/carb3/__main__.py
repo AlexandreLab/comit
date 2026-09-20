@@ -102,6 +102,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="where to write the parquet ledger; omit to solve and report without writing",
     )
     parser.add_argument(
+        "--co2-tariff",
+        type=float,
+        default=None,
+        metavar="GBP_PER_T",
+        help=(
+            "override the co2_transport_tariff series with one flat value in GBP per "
+            "tonne CO2, for the sensitivity its own provenance asks for. Nothing under "
+            "the reference root is written and the override is printed in the report"
+        ),
+    )
+    parser.add_argument(
         "--show-dropped",
         action="store_true",
         help="print the §3.2 screen's dropped-unit work list in full, not just its shape",
@@ -116,6 +127,7 @@ def run_premise(
     axis: build.PeriodAxis,
     premise_root: Path,
     out_dir: Path | None,
+    tariff_override: float | None = None,
 ) -> PremiseRun:
     """Load, derive, build, solve and (optionally) write one premise.
 
@@ -137,7 +149,7 @@ def run_premise(
 
     vintages = survival.vintage_capacity(premise, reference.unit)
     surviving = survival.surviving_capacity(vintages, reference.unit, periods)
-    model = build.build_model(sets, surviving, axis, reference)
+    model = build.build_model(sets, surviving, axis, reference, tariff_override)
     result = build.solve(model)
     if result.solution is None:
         return PremiseRun(
@@ -148,7 +160,7 @@ def run_premise(
         )
 
     violations = build.check_constraint_rows(model, result)
-    tables = ledger.build_ledger(result, sets, axis, reference)
+    tables = ledger.build_ledger(result, sets, axis, reference, tariff_override)
     written: tuple[Path, ...] = ()
     if out_dir is not None:
         report = ledger.RunReport(
@@ -188,6 +200,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(f"periods          {', '.join(str(year) for year in axis.years)}")
     print(f"spans (years)    {', '.join(str(span) for span in axis.spans)}")
     print(f"discount rate    {rate}")
+    if args.co2_tariff is not None:
+        print(
+            f"co2 tariff       OVERRIDDEN to £{args.co2_tariff:,.2f}/t flat "
+            "(scenario_parameters.csv is unchanged on disk)"
+        )
     _print_screen(screen, show_all=args.show_dropped)
 
     runs: list[PremiseRun] = []
@@ -195,7 +212,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         # Run and report one at a time: the solver prints its own status line, and batching
         # the runs would stack every one of them above the first premise's section.
         run = run_premise(
-            premise_id, reference, screen, axis, args.premise_root, args.out_dir
+            premise_id,
+            reference,
+            screen,
+            axis,
+            args.premise_root,
+            args.out_dir,
+            args.co2_tariff,
         )
         runs.append(run)
         _print_premise(run)
@@ -314,9 +337,21 @@ def _print_premise(run: PremiseRun) -> None:
             )
         for carrier_id, units in sorted(run.sets.supply.items()):
             print(
-                f"  internal supply (D16, no duty row): {carrier_id} <- "
+                f"  supply, no duty row (§3.9): {carrier_id} <- "
                 f"{', '.join(sorted(units))}"
             )
+        for window in run.sets.export_windows:
+            gate = (
+                f" gated by C9 on {window.network}" if window.network else " (C9 does not gate it)"
+            )
+            span = (
+                ", ".join(str(period) for period in window.periods)
+                if window.periods
+                else "never"
+            )
+            print(f"  export x_c,t: {window.carrier_id} available {span}{gate}")
+        for refusal in run.sets.export_refused:
+            print(f"  export refused: {refusal.carrier_id} — {refusal.reason}")
         if run.sets.no_magnitude:
             print(
                 "  no duty derived — known_capacity is blank (§3.10 cannot state a known "
@@ -344,6 +379,7 @@ def _print_premise(run: PremiseRun) -> None:
     if run.tables is not None:
         _print_costs(run.tables, result.objective)
         _print_disposal(run.tables)
+        _print_export(run.tables)
         _print_pathway(run.tables)
     if run.written:
         print(f"written          {run.written[0].parent} ({len(run.written)} parquet files)")
@@ -374,6 +410,24 @@ def _print_disposal(tables: ledger.Ledger) -> None:
     pivot = live.pivot_table(
         index=["carrier_id", "carbon_charge"], columns="period", values="quantity"
     )
+    print(_indent(pivot.to_string(float_format=lambda v: f"{v:10.5f}")))
+
+
+def _print_export(tables: ledger.Ledger) -> None:
+    """x_{c,t} — what left the site, and what it cost.
+
+    Printed beside the disposal table on purpose: the two are the same decision seen from
+    either side. A tonne of CO₂ is either vented and charged the carbon price, or exported
+    and charged the transport tariff, and which one the LP picks is the whole capture case.
+    """
+    mix = tables.carrier_mix
+    if "exported" not in mix.columns:
+        return
+    live = mix[mix["exported"].abs() > 1e-9]
+    if live.empty:
+        return
+    print("export (a flow that leaves the site, and is therefore never vented):")
+    pivot = live.pivot_table(index="carrier_id", columns="period", values="exported")
     print(_indent(pivot.to_string(float_format=lambda v: f"{v:10.5f}")))
 
 

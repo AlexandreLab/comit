@@ -5,3 +5,4 @@ mvp-dairy,E-01,electricity,4,2,11,12000
 mvp-dairy,G-01,natural_gas,18,0,,
 mvp-cement,C-01,electricity,25,0,33,
 mvp-cement,C-02,natural_gas,20,0,,
+mvp-cement,C-03,co2_captured,0,,,
