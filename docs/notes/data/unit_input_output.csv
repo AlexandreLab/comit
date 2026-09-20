@@ -150,15 +150,15 @@ refinery_process_heat_gas,electricity,1.31579,coproduct,comit_reuse,medium,"[COM
 kiln_dry_coal,clinker,1,primary_output,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 kiln_dry_coal,coal,-4.6,fuel_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 kiln_dry_coal,electricity,-0.10871,aux_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
-kiln_dry_coal,co2_process,0.525,emission,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
+kiln_dry_coal,co2_process,525,emission,proxy,medium,"[CARB3_SPEC_IMPL] 3.6 derivation table (D15 - process CO2 is declared): 525 kt CO2 per Mt of clinker is chemistry, not a scenario assumption | was 0.52500, a Mt-per-Mt reading a thousandfold out against the kt emission nodes A6 derives fuel CO2 onto; restated on the kt-per-Mt basis every other kiln in this table already uses ([CARB3_WE_CEMENT] 1.11 quoted the old figure)"
 kiln_dry_gas,clinker,1,primary_output,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 kiln_dry_gas,natural_gas,-4.6,fuel_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 kiln_dry_gas,electricity,-0.10871,aux_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
-kiln_dry_gas,co2_process,0.525,emission,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
+kiln_dry_gas,co2_process,525,emission,proxy,medium,"[CARB3_SPEC_IMPL] 3.6 derivation table (D15 - process CO2 is declared): 525 kt CO2 per Mt of clinker is chemistry, not a scenario assumption | was 0.52500, a Mt-per-Mt reading a thousandfold out against the kt emission nodes A6 derives fuel CO2 onto; restated on the kt-per-Mt basis every other kiln in this table already uses ([CARB3_WE_CEMENT] 1.11 quoted the old figure)"
 kiln_dry_wdf,clinker,1,primary_output,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 kiln_dry_wdf,waste_derived_fuel,-4.6,fuel_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 kiln_dry_wdf,electricity,-0.10871,aux_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
-kiln_dry_wdf,co2_process,0.525,emission,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
+kiln_dry_wdf,co2_process,525,emission,proxy,medium,"[CARB3_SPEC_IMPL] 3.6 derivation table (D15 - process CO2 is declared): 525 kt CO2 per Mt of clinker is chemistry, not a scenario assumption | was 0.52500, a Mt-per-Mt reading a thousandfold out against the kt emission nodes A6 derives fuel CO2 onto; restated on the kt-per-Mt basis every other kiln in this table already uses ([CARB3_WE_CEMENT] 1.11 quoted the old figure)"
 kiln_dry_oil,clinker,1,primary_output,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICMKLND01"
 kiln_dry_oil,heavy_fuel_oil,-4.6,fuel_input,proxy,medium,"[CARB3_WE_CEMENT] 1.11 coefficient table | 'Each kiln unit consumes 4.60000 PJ per Mt clinker ... of its own single fuel'; the same figure as kiln_dry_coal/_gas/_wdf, in place of the 3.83443 the D13 sum of COMIT's ICMKLND01 fuel rows gives"
 kiln_dry_oil,electricity,-0.01544,aux_input,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICMKLND01"
@@ -180,9 +180,9 @@ kiln_calcium_looping_coal,waste_derived_fuel,-1.89457,aux_input,comit_reuse,medi
 kiln_calcium_looping_coal,electricity,-0.31544,aux_input,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICMKLNCLQ01"
 kiln_calcium_looping_coal,co2_process,602.53064,emission,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICMKLNCLQ01 | declared process CO2 (D15: only co2_process is declared; A6 derives co2_fuel_*)"
 ccs_amine,co2_captured,1,primary_output,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
-ccs_amine,co2_process,-0.55755,emission_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
-ccs_amine,co2_fuel_fossil,-0.35257,emission_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
-ccs_amine,co2_fuel_biogenic,-0.08988,emission_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
+ccs_amine,co2_process,-557.55,emission_input,proxy,medium,"[CARB3_WE_CEMENT] 8.1 base-year stack: 446.25000 of 800.37258 kt = 0.55755 of the stack | that share x 1000 kt per Mt of co2_captured output, per [CARB3_SPEC_IMPL] 3.6; was -0.55755, a Mt-per-Mt reading. The three emission_input rows still sum to 1000 kt = 1 Mt in per Mt captured, and are still a fixed stack composition rather than per-stream capture rates - see note 20 item 57"
+ccs_amine,co2_fuel_fossil,-352.57,emission_input,proxy,medium,"[CARB3_WE_CEMENT] 8.1 base-year stack: 282.18812 of 800.37258 kt = 0.35257 of the stack | that share x 1000 kt per Mt of co2_captured output, per [CARB3_SPEC_IMPL] 3.6; was -0.35257, a Mt-per-Mt reading. The three emission_input rows still sum to 1000 kt = 1 Mt in per Mt captured, and are still a fixed stack composition rather than per-stream capture rates - see note 20 item 57"
+ccs_amine,co2_fuel_biogenic,-89.88,emission_input,proxy,medium,"[CARB3_WE_CEMENT] 8.1 base-year stack: 71.93446 of 800.37258 kt = 0.08988 of the stack | that share x 1000 kt per Mt of co2_captured output, per [CARB3_SPEC_IMPL] 3.6; was -0.08988, a Mt-per-Mt reading. The three emission_input rows still sum to 1000 kt = 1 Mt in per Mt captured, and are still a fixed stack composition rather than per-stream capture rates - see note 20 item 57"
 ccs_amine,natural_gas,-1.9,fuel_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 ccs_amine,electricity,-0.35,aux_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table
 grinder_mixer_elec,cement,1,primary_output,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table

@@ -234,17 +234,21 @@ at the archived baseline's §6, lines 2126–2127.
 - Seven files under `docs/notes/data/` were built by hand research with no committed
   validator. Their key integrity is currently perfect and nothing would tell you if that
   changed.
-- **An emission coefficient is in kt per output unit, and six rows are not.** Spec §3.6 is
-  explicit — "525 kt CO₂ per Mt of clinker is chemistry" — and `unit_input_output.csv` puts
-  `kiln_dry_oil` at 602.53064, `lime_kiln_dry_gas` at 159.51915 and `ammonia_smr_gas` at
-  1489.354 on exactly that basis. But `kiln_dry_coal`, `kiln_dry_gas` and `kiln_dry_wdf`
-  carry **0.52500**, and `ccs_amine`'s three `emission_input` rows are shares of a
-  Mt-denominated stream. All six are a thousandfold out. A6 derives fuel CO₂ from a kt/PJ
-  emission factor, so the node those rows land on *is* kt and nothing reconciles them: a
-  cement works vents 0.44625 kt/yr of process CO₂ where its own worked example says 446.25,
-  and capture never pays. **Before quoting any emission number from the model, check the
-  coefficient's order of magnitude against its neighbours in the same column.** Note 20
-  item 56.
+- **An emission coefficient is in kt per output unit, and nothing in the file says so.**
+  Spec §3.6 is explicit — "525 kt CO₂ per Mt of clinker is chemistry" — and A6 (the problem
+  builder) derives fuel CO₂ from a kt/PJ emission factor, so the node those rows land on
+  *is* kt. Six rows were a thousandfold out on exactly that point: `kiln_dry_coal`,
+  `kiln_dry_gas` and `kiln_dry_wdf` carried 0.52500 and `ccs_amine`'s three
+  `emission_input` rows were shares of a Mt-denominated stream, so a cement works vented
+  0.44625 kt/yr of process CO₂ where its own worked example says 446.25 and capture never
+  paid. **Corrected 2026-09-20** (note 20 item 56), and
+  `check_emission_coefficient_basis` in `validate_carb3_data.py` is now a **blocking**
+  check that bands every emission coefficient against what stoichiometry permits —
+  [3.667, 3666.67] kt/Mt on a mass output, [1.118, 1117.89] kt/PJ on an energy one. **The
+  band is derived from chemistry, not from the data: do not widen it to admit a row.** The
+  refinery rows at 4.93580 sit 1.35× above the floor and are doubtful on magnitude rather
+  than basis — note 20 item 59. Before quoting any emission number, still check the
+  coefficient's order of magnitude against its neighbours in the same column.
 - `R/fct_emissions.R` hardcodes the indirect-commodity list (`:180-183`) and the biomass
   category string (`:234`), so the carrier taxonomy is not fully data-driven.
 
