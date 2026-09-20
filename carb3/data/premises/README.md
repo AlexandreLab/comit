@@ -12,10 +12,10 @@ single row of it.
 
 | File | Spec | What it carries |
 |---|---|---|
-| `premise_record.csv` | §3.1 | One row per premise: identity, `carb3_activity`, location, base year |
-| `premise_connection.csv` | §3.1.3 | One row per networked connection. Delivered fuels carry no row and need none |
+| `premise_record.csv` | §3.1 | One row per premise: identity, `carb3_activity`, location, `cluster_id`, base year |
+| `premise_connection.csv` | §3.1.3 | One row per networked connection. Delivered fuels carry no row and need none. **Read**: §5.2 declares an export only where a row carries the carrier |
 | `premise_energy.csv` | §3.1.1 | Base-year consumption by carrier. Required entity; A1 (ingest and validate) rejects `no_energy` without it |
-| `premise_throughput.csv` | §3.1.2 | Base-year physical output. Required where the activity has a mass-denominated process |
+| `premise_throughput.csv` | §3.1.2 | Base-year physical output. Required where the activity has a mass-denominated process. **Read**: an exportable product's row is the premise's D5 mass duty |
 | `premise_process_detail.csv` | §3.10 | Which processes run, over which validity interval, at what capacity |
 | `premise_process_unit.csv` | §3.10.2 | Which units each process runs — one row per unit, from the 2026-09-17 pass |
 | `premise_process_vintage.csv` | §3.15 | Install year per cohort (D11, existing plant has an age) |
@@ -23,7 +23,18 @@ single row of it.
 
 **`process_duty` is not here.** §3.9 derives it at run time by A2 (duties and candidate
 units), in its relaxation-free minimal form, from `activity_process_register` and
-`activity_process_duty_profile`. These tables supply only the *magnitudes* A2 needs.
+`activity_process_duty_profile` — **and, from 2026-09-20, from `premise_throughput` for a
+product duty**. The duty profile carries no mass carrier anywhere, so a cement works' 1.13
+Mt/yr cannot come from it; §3.1.2 says the throughput row on an exportable product *is*
+that duty. See [finding 6](#findings-for-the-reference-data).
+
+**`premise_record` carries a `cluster_id` that §3.1 does not define.** §3.7's rule is that
+A1 assigns the nearest in-scope cluster on ingest, and A1 is out of scope, so C9
+(infrastructure availability) has nothing to read unless the assignment is written down.
+`mvp-cement` is `humber` and the two Food Processing Centres are `mersey`, matching the two
+worked examples' own §6.2. A premise with no `cluster_id` is treated as outside every
+cluster. Recorded as a specification gap in
+[note 20](../../../docs/notes/20_reference_data_open_questions.md) item 58.
 
 **Four tables were commissioned; seven are written.** `premise_connection`, `premise_energy`
 and `premise_throughput` are the three §3.1 companions. §3.1 declares the first two
@@ -141,7 +152,7 @@ by the price leg first), no closed validity interval.
 | `carb3_activity` | `Cement Works` |
 | Cut from | [Cement worked example](../../../docs/specs/2026-08-28-carb3-site-energy-system-worked-example-cement.md), premise `P-000123` |
 | Processes | Eight valid at the base year, plus one closed interval |
-| Duties | The `cement` mass duty 1.130000 Mt/yr, and `motive_power` 0.168000 PJ/yr over four processes. `kiln_pyroprocessing` carries **no** duty (D16, internal products are carriers, not duties) |
+| Duties | The `cement` mass duty 1.130000 Mt/yr from `premise_throughput` (§3.1.2), and `motive_power` 0.168000 PJ/yr over four processes. Neither `kiln_pyroprocessing` nor `cement_grinding` carries a duty from the profile: both make a `product`, so their profile rows classify their energy need rather than stating a demand (§3.9) |
 | Incumbents | Nine rows over eight processes: `kiln_dry_coal` + `kiln_dry_gas`, `grinder_mixer_elec`, `motor_elec` ×6 |
 | Base-year energy | `coal` 3.407053, `natural_gas` 0.502947, `electricity` 0.420005 PJ/yr; three explicit `not_consumed` zeros |
 
@@ -154,7 +165,13 @@ carries no `premise_connection` row, which is the delivered-fuel case §3.1.3 de
 `natural_gas` and `electricity` are networked and carry one each. `ccs_amine` survives the
 admission screen and carries `earliest_year` 2035 and `min_duty` 0.25 on
 `kiln_pyroprocessing`, so the capture-train gate is live and testable against a 0.95 Mt/yr
-process.
+process. **It is genuinely testable from 2026-09-20 and was not before**: `ccs_amine`
+serves no duty, so it sat in no $U_q$, the duty-keyed `earliest_year` never reached it, and
+its `co2_captured` output had no sink at all. A `C-03` connection on `co2_captured` and the
+restored export variable give it one; C9 (infrastructure availability) then opens `humber`
+at 2030 and the 2035 eligibility gate binds first. The train is buildable and, on the
+reference data as it stands, still not built — see
+[note 20](../../../docs/notes/20_reference_data_open_questions.md) items 56 and 57.
 
 **Which figures are taken from the worked example.** The premise record (§1.1), both
 throughput rows (§1.3), both connections (§1.4), the nine `premise_process_detail` rows
@@ -209,6 +226,8 @@ Stdlib only, because `pandas` is not installed in this repo. It checks, and curr
 - every `carrier_id` resolves against `carrier.csv`, and every `premise_throughput` carrier
   has `denominator_kind = mass`;
 - every `connection_id` resolves against `premise_connection.csv`;
+- every `cluster_id` resolves against `infrastructure_scenario.csv`, and a premise
+  without one is warned about, because C9 then permits it no CO₂ export at all;
 - the §3.10 rules: validity intervals disjoint, at least one row valid at the base year,
   `valid_from_year ≤ data_year`, `known_capacity > 0` where present;
 - the §3.10.2 rules: children distinct, `capacity_share` all-or-none and summing to 1 within
@@ -247,7 +266,10 @@ Recorded, not fixed. Nothing under `docs/notes/data/` was changed.
 5. **`known_capacity` cannot express a known zero** (§3.10), where §3.1.1 solved the same
    absence-versus-zero problem with `data_status = not_consumed`.
 6. **A minimal A2 that reads `activity_process_duty_profile.csv` without applying §3.9's D16
-   suppression will get `mvp-cement` wrong in two ways at once.** It will manufacture a
+   suppression will get `mvp-cement` wrong in two ways at once.** *(Closed 2026-09-20: A2
+   now reads `premise_throughput` for product duties and suppresses the profile row of any
+   process whose units make a `product`. Kept here because the diagnosis is what the fix
+   was built from.)* It will manufacture a
    `heat_gt1000` grade-6 duty at `kiln_pyroprocessing` that no unit can serve — `kiln_dry_coal`
    and `kiln_dry_gas` have a blank `grade_out`, and the only HTH unit, `furnace_ht_elec`, is
    `grade_out` 5 — and it will read `cement_grinding`'s duty as `motive_power` in PJ/yr rather

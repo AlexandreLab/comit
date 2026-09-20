@@ -4,9 +4,21 @@ The model is the live spec §5 with terms switched off (plan §2). Nothing is in
 features are removed, never added.
 
 Variables in: n_{u,t} new capacity, a_{u,t} capacity available, z_{u,q,t} activity
-dispatched to duty, e_{u,t} surviving incumbent capacity, m_{c,t} / m_{c,k,t} import, and
-d_{c,t} **disposal**. Out: h_{c->c',t} cascade (C10 is enforced by eligibility instead),
-r_{u,t} early retirement, x_{c,k,t} export, w_{k,t} reinforcement.
+dispatched to duty, e_{u,t} surviving incumbent capacity, m_{c,t} / m_{c,k,t} import,
+d_{c,t} **disposal** and x_{c,t} **export**. Out: h_{c->c',t} cascade (C10 is enforced by
+eligibility instead), r_{u,t} early retirement, w_{k,t} reinforcement.
+
+**x_{c,t} is back, narrowly, and without it no capture train can ever be built.**
+``co2_captured`` appears exactly once in ``unit_input_output.csv``, as the capture train's
+``primary_output``, and nothing consumes it. It is ``carrier_kind`` ``product``, so §5.2's
+safety gate forbids disposing of it; its ``may_export`` is TRUE and the slice had dropped
+the export variable, so C8 pinned the node — and every capture train — to zero however
+cheap it was. The variable is declared where ``carrier.may_export`` is true, a
+``premise_connection`` row carries the carrier, and a complete price series exists; C9
+(infrastructure availability) bounds it to zero where §3.7 says the premise's cluster
+cannot take the carrier. Exporting CO₂ is a **cost**, not a revenue: the site pays a
+transport-and-storage tariff. What leaves through the pipe was not vented, so it never
+reaches Z^carbon, and getting that sign wrong inverts the whole result.
 
 **z°_{u,t} is in, but only for the D16 carriers, and note 21 §2.2 was wrong to put it
 out.** §2.2's reason is "no internal ``product`` carriers in the synthetic premises", and
@@ -14,7 +26,7 @@ out.** §2.2's reason is "no internal ``product`` carriers in the synthetic prem
 premise-level duty row §3.9 therefore removes. The plan says C8 pins those kilns through the
 ``clinker`` balance, which is right, but a unit serving no duty has no z_{u,q,t} to be
 pinned: without a variable the node has no producer, the grinder is forced to zero and the
-1.13 Mt cement duty is infeasible. :func:`carb3.sets.internal_supply` names those units and
+1.13 Mt cement duty is infeasible. :func:`carb3.sets.undutied_supply` names those units and
 they take a column on the ``dispatch`` dimension that C1 does not select. Nothing else about
 z° is restored — an ordinary unit's output is still fully dispatched and settled by C1.
 
@@ -31,7 +43,10 @@ may not, or the model could import gas and dump it.
 Constraints in: C1 (duty satisfaction), C2 (activity limited by available capacity), C3
 (capacity transfer between periods), C4 (incumbent ageing, fallback tier only), C5 (no
 building in the start year), C8 (carrier balance) and C10 (heat grade cascade, via
-eligibility). Out: C6, C7, C9, C11, C12.
+eligibility). Out: C6, C7, C11, C12. **C9 (infrastructure availability) is partially in**
+— for the export of CO₂ only, as a bound of zero on x_{c,t} in every period the premise's
+cluster cannot take it. The 63 ``co2_transport`` rows of §3.7 are real, sourced data: four
+clusters turn available at 2030 and five never do.
 
 **The problem is a pure LP and must stay one** (§2.3). No binaries: minimum viable scale is
 the ``min_duty`` screen at load, never a fixed-charge binary.
@@ -62,13 +77,21 @@ carriers are networked is not knowable here and ``m_{c,k,t}`` cannot be declared
 already records that the connection index carries no information while C11 (connection
 capacity), Z^net and export are all out, and ``import_price`` has no connection dimension, so
 the two forms are numerically identical in this slice — but restoring the index needs a
-connections argument, not a change here. Second, ``z°`` is restored **only** for the D16
-carriers above, so a unit that serves no duty and supplies no internal product has no
-activity variable at all. That still holds for the capture trains, which §2.2 expects the
-cement premise to do without — ``ccs_amine``'s ``co2_captured`` is ``may_export`` true, so
-it is not an internal product, and with export out C8 would pin it to zero in any case — and
-it is why the §5.4 biogenic credit below is structurally zero in this slice even though it
-is implemented in full.
+connections argument, not a change here. **x_{c,t} is site-level for the same reason and no
+other**: §5.2 indexes every export by connection, and the index would carry no information
+while C11 is out and the tariff has no connection dimension. Which carriers *have* a
+connection is knowable, because :class:`~carb3.sets.ModelSets` now carries the windows
+:func:`carb3.sets.export_windows` derived from ``premise_connection``; only the index is
+collapsed.
+
+Second, ``z°`` is restored for the carriers that carry **no duty**, which is now two
+families rather than one: the kilns making ``clinker``, an internal ``product``, and
+``ccs_amine`` making ``co2_captured``, an exportable one that no premise states a
+throughput of. A unit that serves no duty and supplies no such carrier still has no
+activity variable at all. One consequence is that §5.4's biogenic credit, structurally
+zero while no abatement unit could take a column, is now live — and
+:func:`biogenic_capture_weights` is shared with the ledger so the cost decomposition still
+sums to the reported objective.
 
 Owed by T3, T6 and T7.
 """
@@ -231,6 +254,7 @@ def build_model(
     surviving: pd.DataFrame,
     axis: PeriodAxis,
     reference: ReferenceTables,
+    tariff_override: float | None = None,
 ) -> linopy.Model:
     """Build the LP: the §2.2 variables, C1-C5, C8, C10 via eligibility, and the objective.
 
@@ -244,6 +268,11 @@ def build_model(
 
     ``surviving`` is :func:`carb3.survival.surviving_capacity`'s long frame — ``unit_id``,
     ``period``, ``capacity`` — and a unit absent from it carries no incumbent capacity.
+
+    ``tariff_override`` replaces the ``co2_transport_tariff`` series with one flat value in
+    £/t, for the sensitivity the tariff's own provenance asks for. It is a scenario knob,
+    not a data edit: nothing under the reference root is written, and the run report prints
+    the override whenever it is set so no number is ever quoted without it.
     """
     periods = tuple(int(year) for year in sets.periods)
     if tuple(axis.years) != periods:
@@ -336,6 +365,26 @@ def build_model(
             name="d",
         )
 
+    # x_{c,k,t}, site-level for the same reason m is (see the module docstring): C11
+    # (connection capacity) is out, so the connection index carries no information and
+    # neither price series has one. C9 (infrastructure availability) arrives as an upper
+    # bound of zero in every period the premise's cluster cannot take the carrier.
+    export_carriers = sorted(
+        window.carrier_id
+        for window in sets.export_windows
+        if window.carrier_id in coefficients
+    )
+    x_export = None
+    if export_carriers:
+        x_export = model.add_variables(
+            lower=0.0,
+            upper=_export_upper_bounds(
+                sets, export_carriers, periods, period_index
+            ),
+            coords=[pd.Index(export_carriers, name="carrier"), period_index],
+            name="x",
+        )
+
     # --- groupings ---------------------------------------------------------------------
     unit_of = xr.DataArray(
         [pair.unit_id for pair in pairs], coords=[dispatch_index], name="unit"
@@ -414,6 +463,11 @@ def build_model(
         balance = (total_activity.sel(unit=contributors) * weights).sum("unit")
         if m_import is not None and carrier_id in import_carriers:
             balance = balance + m_import.sel(carrier=carrier_id, drop=True)
+        if x_export is not None and carrier_id in export_carriers:
+            # §5.5's −x term. What leaves the site is not vented, so it never reaches
+            # Z^carbon; that is the whole point of the capture route and the sign that
+            # inverts the result if it is got wrong.
+            balance = balance - x_export.sel(carrier=carrier_id, drop=True)
         if d_disposal is not None and carrier_id in disposal_carriers:
             balance = balance - d_disposal.sel(carrier=carrier_id, drop=True)
         model.add_constraints(balance == 0, name=f"C8_{carrier_id}")
@@ -436,9 +490,39 @@ def build_model(
             import_carriers=import_carriers,
             disposal=d_disposal,
             disposal_carriers=disposal_carriers,
+            exports=x_export,
+            export_carriers=export_carriers,
+            tariff_override=tariff_override,
         )
     )
     return model
+
+
+def _export_upper_bounds(
+    sets: ModelSets,
+    export_carriers: Sequence[str],
+    periods: Sequence[int],
+    period_index: pd.Index,
+) -> xr.DataArray:
+    """C9 (infrastructure availability) as an upper bound of zero on x_{c,t} (§5.5).
+
+    §3.7's rows are the sourced statement of when a network reaches a cluster, and they are
+    better evidence than the ``earliest_year`` column: four clusters take CO₂ from 2030 and
+    five never do. Written as a bound rather than a constraint row because the window is a
+    parameter — the LP has no decision to make about whether a pipeline exists.
+    """
+    allowed = {
+        window.carrier_id: set(window.periods) for window in sets.export_windows
+    }
+    bounds = np.full((len(export_carriers), len(periods)), np.inf)
+    for row, carrier_id in enumerate(export_carriers):
+        open_periods = allowed.get(carrier_id, set())
+        for column, year in enumerate(periods):
+            if year not in open_periods:
+                bounds[row, column] = 0.0
+    return xr.DataArray(
+        bounds, coords=[pd.Index(list(export_carriers), name="carrier"), period_index]
+    )
 
 
 def solve(model: linopy.Model, settings: SolverSettings = SolverSettings()) -> SolveResult:
@@ -605,8 +689,8 @@ def _dispatch_pairs(sets: ModelSets) -> tuple[_Pair, ...]:
 
     Two kinds of column sit on it. Most are the eligible **(duty, unit)** pairs and are
     summed into C1 (duty satisfaction) by ``groupby``. The rest are the **internal-supply**
-    columns :func:`carb3.sets.internal_supply` found — a unit producing a carrier that D16
-    left with no duty row — and they carry ``duty_key`` ``None``, so C1 never selects their
+    columns :func:`carb3.sets.undutied_supply` found — a unit producing a carrier that
+    carries no duty row — and they carry ``duty_key`` ``None``, so C1 never selects their
     label and their level is settled by C8 (carrier balance) alone. That is exactly what
     note 21 §2.2 means by "C8 pins the kiln through the ``clinker`` balance instead", and it
     is the smallest restoration of z° that makes the sentence true.
@@ -722,10 +806,22 @@ def _build_upper_bounds(
     the technology may be built at all, and the nine rows carrying one are a hydrogen boiler,
     a high-temperature heat pump and the capture trains, none of which is eligible on two
     duties at two different years today.
+
+    **Supply units carry a gate too, and reading only the duty-keyed map missed it.** A
+    unit D16 leaves with no duty sits in no U_q, so ``ccs_amine``'s ``earliest_year`` 2035 —
+    the only row in the table that gates a capture train at a premise that can host one —
+    arrives through :attr:`~carb3.sets.ModelSets.supply_earliest_year` instead. Both
+    sources are merged and the earliest wins.
     """
     wanted = set(model_units)
     earliest: dict[str, int] = {}
-    for (_duty_key, unit_id), year in sets.earliest_year.items():
+    gates = [
+        (unit_id, year) for (_duty_key, unit_id), year in sets.earliest_year.items()
+    ] + [
+        (unit_id, year)
+        for (_carrier_id, unit_id), year in sets.supply_earliest_year.items()
+    ]
+    for unit_id, year in gates:
         if unit_id in wanted:
             earliest[unit_id] = min(earliest.get(unit_id, int(year)), int(year))
     bounds = np.full((len(model_units), len(periods)), np.inf)
@@ -1012,8 +1108,11 @@ def _objective(
     import_carriers: Sequence[str],
     disposal,
     disposal_carriers: Sequence[str],
+    exports=None,
+    export_carriers: Sequence[str] = (),
+    tariff_override: float | None = None,
 ):
-    """min Z = Σ_t δ_t (Z^capex + Z^opex + Z^fuel + Z^carbon). The other four terms are out.
+    """min Z = Σ_t δ_t (Z^capex + Z^opex + Z^fuel + Z^carbon + Z^exp). Three terms are out.
 
     Capex is annuitised over each unit's lifetime and charged on the **new** capacity standing
     in the period, which is exactly C3's build convolution: an incumbent's capex is sunk and
@@ -1075,8 +1174,98 @@ def _objective(
     if credit is not None:
         terms.append(credit * (-CARBON_UNIT_CONVERSION * carbon_price))
 
+    if exports is not None and export_carriers:
+        prices = xr.DataArray(
+            np.array(
+                [
+                    export_unit_cost(reference, carrier_id, periods, tariff_override)
+                    for carrier_id in export_carriers
+                ]
+            ),
+            coords=[pd.Index(list(export_carriers), name="carrier"), period_index],
+        )
+        terms.append((exports * prices).sum("carrier"))
+
     annual = reduce(lambda left, right: left + right, terms)
     return (annual * delta).sum()
+
+
+def export_unit_cost(
+    reference: ReferenceTables,
+    carrier_id: str,
+    periods: Sequence[int],
+    tariff_override: float | None = None,
+) -> list[float]:
+    """What one unit of exported ``carrier_id`` costs the site, per period.
+
+    §5.4 writes the export term as a **revenue**, $Z^{exp} = \\sum x\\,p^{exp}$, entering
+    with a negative sign. Captured CO₂ inverts that: nobody buys it, the site pays a
+    transport-and-storage tariff to be rid of it, and §3.7 already has a ``unit_tariff``
+    column for exactly that — blank on all 63 ``co2_transport`` rows. So the cost per unit
+    is the tariff less any export price, and the term enters the objective **positive**
+    where the tariff dominates:
+
+        cost = τ_{c,t} − p^exp_{c,t}
+
+    with either side absent read as zero. :func:`carb3.sets.export_windows` has already
+    refused any carrier where both are absent or partial, so at least one is complete here.
+
+    **The carbon charge does not appear, and must not.** §5.4 charges carbon on d_{c,t},
+    what is vented. Exported CO₂ went into a pipe, not up a stack, so it attracts nothing —
+    which is the whole economic case for the capture route.
+    """
+    cost = [0.0] * len(periods)
+    if tariff_override is not None and carrier_id in _TARIFFED_CARRIERS:
+        tariff = [float(tariff_override)] * len(periods)
+    else:
+        tariff = _optional_series(reference, "co2_transport_tariff", carrier_id, periods)
+    revenue = _optional_series(reference, "export_price", carrier_id, periods)
+    if tariff is None and revenue is None:
+        raise ValueError(
+            f"carrier {carrier_id!r} has an export variable and neither a "
+            "co2_transport_tariff nor an export_price covering every period; "
+            "carb3.sets.export_windows should have refused it, because an unpriced "
+            "export is free disposal (§5.2)"
+        )
+    for index in range(len(periods)):
+        if tariff is not None:
+            cost[index] += tariff[index]
+        if revenue is not None:
+            cost[index] -= revenue[index]
+    return cost
+
+
+#: Carriers the ``--co2-tariff`` sensitivity switch applies to. One today; the constant
+#: exists so the switch cannot silently reprice an unrelated export.
+_TARIFFED_CARRIERS: frozenset[str] = frozenset({"co2_captured"})
+
+
+def _optional_series(
+    reference: ReferenceTables,
+    parameter_id: str,
+    carrier_id: str,
+    periods: Sequence[int],
+) -> list[float] | None:
+    """A ``scenario_parameters`` series, or ``None`` where it does not cover every period.
+
+    A *partial* series returns ``None`` rather than being back-filled with zeros — the same
+    reading the §3.2 screen takes of ``heavy_fuel_oil``'s single ``import_price`` row. A
+    zero-filled price is a free flow in the periods it is missing from.
+    """
+    table = reference.scenario_parameters
+    rows = table[
+        (table["parameter_id"] == parameter_id) & (table["carrier_id"] == carrier_id)
+    ]
+    by_year: dict[int, float] = {}
+    for row in rows.itertuples(index=False):
+        year = _as_float(row.period)
+        value = _as_float(row.value)
+        if year is None or value is None:
+            continue
+        by_year[int(year)] = value
+    if any(year not in by_year for year in periods):
+        return None
+    return [by_year[year] for year in periods]
 
 
 def _biogenic_credit(
@@ -1091,11 +1280,43 @@ def _biogenic_credit(
 ):
     """§5.4's subtrahend: Σ_{c zero_rated} Σ_{u ∈ U^abate} |ι_{u,c,emission_input}| z_{u,t}.
 
-    The only negative emission the model can produce. It is structurally zero in this slice
-    and implemented anyway: with z° out, an abatement unit whose primary output is an
-    internal ``product`` — every capture train in the library — is eligible for no duty and so
-    enters no U_q, which leaves U^abate empty. Returning ``None`` rather than a zero term
-    keeps the objective free of a row that carries nothing.
+    The only negative emission the model can produce, and it is **live** at ``mvp-cement``
+    from the moment ``ccs_amine`` takes a supply column. It was structurally zero before
+    that: an abatement unit whose primary output carries no duty was eligible for nothing,
+    entered no U_q and had no activity variable, which left U^abate empty. ``None`` rather
+    than a zero term keeps the objective free of a row that carries nothing, which is still
+    the answer at the two premises with no capture train.
+
+    The weights are shared with :func:`carb3.ledger._cost_table` through
+    :func:`biogenic_capture_weights`, because once the credit is non-zero a ledger that
+    computed it separately — or not at all — stops summing to the reported objective.
+    """
+    captured = biogenic_capture_weights(
+        reference, model_units, parameters, carrier_facts
+    )
+    creditable = sorted(captured)
+    if not creditable:
+        return None
+    weights = xr.DataArray(
+        np.array([[captured[unit_id]] * len(periods) for unit_id in creditable]),
+        coords=[pd.Index(creditable, name="unit"), period_index],
+    )
+    return (total_activity.sel(unit=creditable) * weights).sum("unit")
+
+
+def biogenic_capture_weights(
+    reference: ReferenceTables,
+    model_units: Sequence[str],
+    parameters: dict[str, _UnitParameters],
+    carrier_facts: dict[str, _CarrierFacts],
+) -> dict[str, float]:
+    """|ι_{u,c,emission_input}| summed over the ``zero_rated`` carriers, per abatement unit.
+
+    The weight behind §5.4's only negative emission. Shared with the ledger on purpose: the
+    cost decomposition has to sum to the reported objective, and before ``ccs_amine`` could
+    take an activity variable the credit was structurally zero, so a ledger that omitted it
+    still balanced. It no longer is, and a term computed twice from one function is the
+    only version of "the terms sum" that means anything.
     """
     zero_rated = {
         carrier_id
@@ -1106,25 +1327,17 @@ def _biogenic_credit(
         unit_id for unit_id in model_units if parameters[unit_id].unit_class == "abatement"
     }
     if not zero_rated or not abatement:
-        return None
+        return {}
 
-    table = reference.unit_input_output
     captured: dict[str, float] = {}
-    for row in table.itertuples(index=False):
+    for row in reference.unit_input_output.itertuples(index=False):
         unit_id = str(row.unit_id)
         if unit_id not in abatement or str(row.role or "").strip() != "emission_input":
             continue
         if str(row.carrier_id) not in zero_rated:
             continue
         captured[unit_id] = captured.get(unit_id, 0.0) + abs(_as_float(row.coefficient) or 0.0)
-    creditable = sorted(unit_id for unit_id, value in captured.items() if value > 0.0)
-    if not creditable:
-        return None
-    weights = xr.DataArray(
-        np.array([[captured[unit_id]] * len(periods) for unit_id in creditable]),
-        coords=[pd.Index(creditable, name="unit"), period_index],
-    )
-    return (total_activity.sel(unit=creditable) * weights).sum("unit")
+    return {unit_id: value for unit_id, value in captured.items() if value > 0.0}
 
 
 def _constraint_rows(model: linopy.Model) -> dict[int, tuple[str, tuple[object, ...]]]:

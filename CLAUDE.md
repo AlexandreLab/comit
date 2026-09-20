@@ -190,9 +190,9 @@ at the archived baseline's §6, lines 2126–2127.
 - `docs/notes/data/` is **derived reference data that the R model never reads.** Nothing in
   `R/` touches it, so a change here is inert for COMIT. It is no longer unread, though: the
   `carb3` Python package takes `carrier.csv`, `unit.csv`, `unit_input_output.csv`,
-  `unit_eligibility.csv`, `scenario_parameters.csv`, `activity_process_duty_profile.csv`
-  and `activity_process_register.csv` as inputs, through a configurable reference root
-  whose default is this directory.
+  `unit_eligibility.csv`, `scenario_parameters.csv`, `activity_process_duty_profile.csv`,
+  `activity_process_register.csv` and `infrastructure_scenario.csv` as inputs, through a
+  configurable reference root whose default is this directory.
 - **41 of `unit.csv`'s 137 units cannot be fully costed, and a cost minimiser reads the gaps
   as free energy.** 15 have a blank `capex`, 13 a blank `lifetime`, 15 a blank `fixed_opex`,
   13 each a blank `availability_factor` and `capacity_to_activity_factor`, and 26 carry no
@@ -234,6 +234,17 @@ at the archived baseline's §6, lines 2126–2127.
 - Seven files under `docs/notes/data/` were built by hand research with no committed
   validator. Their key integrity is currently perfect and nothing would tell you if that
   changed.
+- **An emission coefficient is in kt per output unit, and six rows are not.** Spec §3.6 is
+  explicit — "525 kt CO₂ per Mt of clinker is chemistry" — and `unit_input_output.csv` puts
+  `kiln_dry_oil` at 602.53064, `lime_kiln_dry_gas` at 159.51915 and `ammonia_smr_gas` at
+  1489.354 on exactly that basis. But `kiln_dry_coal`, `kiln_dry_gas` and `kiln_dry_wdf`
+  carry **0.52500**, and `ccs_amine`'s three `emission_input` rows are shares of a
+  Mt-denominated stream. All six are a thousandfold out. A6 derives fuel CO₂ from a kt/PJ
+  emission factor, so the node those rows land on *is* kt and nothing reconciles them: a
+  cement works vents 0.44625 kt/yr of process CO₂ where its own worked example says 446.25,
+  and capture never pays. **Before quoting any emission number from the model, check the
+  coefficient's order of magnitude against its neighbours in the same column.** Note 20
+  item 56.
 - `R/fct_emissions.R` hardcodes the indirect-commodity list (`:180-183`) and the biomass
   category string (`:234`), so the carrier taxonomy is not fully data-driven.
 

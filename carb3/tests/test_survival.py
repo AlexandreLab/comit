@@ -226,6 +226,8 @@ def _premise(detail_rows, vintage_rows):
 
     return PremiseTables(
         premise_record=pd.DataFrame([{"premise_id": "fx", "data_year": 2024}]),
+        premise_connection=pd.DataFrame(),
+        premise_throughput=pd.DataFrame(),
         premise_process_detail=pd.DataFrame(detail_rows),
         premise_process_unit=pd.DataFrame(),
         premise_process_vintage=pd.DataFrame(vintage_rows),

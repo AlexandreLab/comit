@@ -21,9 +21,22 @@ from carb3 import load
 
 PREMISE_FILES: dict[str, str] = {
     "premise_record": (
-        "premise_id,carb3_activity,latitude,longitude,nation,data_year,source\n"
-        "fx-dairy,Food Processing Centre,52.0,-1.0,England,2021,fixture\n"
-        "fx-cement,Cement Works,53.0,-2.0,England,2021,fixture\n"
+        "premise_id,carb3_activity,latitude,longitude,nation,cluster_id,data_year,source\n"
+        "fx-dairy,Food Processing Centre,52.0,-1.0,England,mersey,2021,fixture\n"
+        "fx-cement,Cement Works,53.0,-2.0,England,humber,2021,fixture\n"
+    ),
+    "premise_connection": (
+        "premise_id,connection_id,carrier_id,import_capacity,export_capacity\n"
+        "fx-dairy,E-01,electricity,4,2\n"
+        "fx-dairy,G-01,natural_gas,18,0\n"
+        "fx-cement,C-01,electricity,25,0\n"
+        "fx-cement,C-02,natural_gas,20,0\n"
+        "fx-cement,C-03,co2_captured,0,\n"
+    ),
+    "premise_throughput": (
+        "premise_id,carrier_id,quantity,data_year,data_status,source\n"
+        "fx-cement,clinker,0.25,2021,measured,fixture\n"
+        "fx-cement,cement,0.3,2021,measured,fixture\n"
     ),
     "premise_process_detail": (
         "premise_id,process_id,valid_from_year,known_capacity,provenance,confidence\n"
@@ -88,7 +101,9 @@ def test_period_years_are_the_real_vector() -> None:
     assert load.PERIOD_YEARS == (2021, 2025, 2030, 2035, 2040, 2045, 2050)
 
 
-def test_reference_tables_carry_the_seven_tables() -> None:
+def test_reference_tables_carry_the_eight_tables() -> None:
+    """``infrastructure_scenario`` is the eighth: C9 (infrastructure availability) came
+    partially back into scope for CO₂ transport, and its 63 rows are where the gate is."""
     fields = {f.name for f in dataclasses.fields(load.ReferenceTables)}
     assert fields == {
         "carrier",
@@ -98,14 +113,23 @@ def test_reference_tables_carry_the_seven_tables() -> None:
         "scenario_parameters",
         "activity_process_duty_profile",
         "activity_process_register",
+        "infrastructure_scenario",
     }
 
 
-def test_premise_tables_carry_four_and_not_process_duty() -> None:
-    """Plan §3.4: process_duty is derived by the minimal A2, not an input table."""
+def test_premise_tables_carry_six_and_not_process_duty() -> None:
+    """Plan §3.4: process_duty is derived by the minimal A2, not an input table.
+
+    Six, not the four the plan commissioned. ``premise_throughput`` (§3.1.2) carries the
+    cement works' mass duty, which the duty profile cannot state because it holds no mass
+    carrier; ``premise_connection`` (§3.1.3) is what §5.2 requires before an export
+    variable may be declared. Both were written by the premise lane and read by nothing.
+    """
     fields = {f.name for f in dataclasses.fields(load.PremiseTables)}
     assert fields == {
         "premise_record",
+        "premise_connection",
+        "premise_throughput",
         "premise_process_detail",
         "premise_process_unit",
         "premise_process_vintage",

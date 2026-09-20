@@ -7,6 +7,21 @@ table. A2 here reads those two tables to determine which duties each premise has
 carrier, at which ``grade_rank``. Only ``quantity`` is hand-written, taken from the worked
 examples. No premise energy allocation, no A3, no A4 back-solve, no D10 refinement ladder.
 
+**It reads a third table, and note 21 §3.3 omitted it.** The duty profile carries no mass
+carrier anywhere — 427 rows, 26 ``carrier_id`` values, neither ``cement`` nor ``clinker``
+among them — so a mass duty cannot come from it. §3.1.2 already says where it comes from:
+"Where the ``carrier_id`` is a product with ``may_export`` true, the row is the premise's
+duty on that product under D5 — a cement works' 1.13 Mt/yr of cement is what C1 makes it
+produce." So A2 reads ``premise_throughput`` too, for product duties only, at the base year
+only (D12). Without it A2 read the cement works' ``MOT`` profile row against a
+``known_capacity`` that is 1.13 **Mt of cement** and produced a 1.13 **PJ** motive-power
+duty no unit could serve.
+
+**Export, and C9's gate, are assembled here too** (:func:`export_windows`). §5.2 declares
+x_{c,k,t} where ``carrier.may_export`` is true and a ``premise_connection`` row carries the
+carrier, which is premise-side knowledge, so the joins belong beside the others rather than
+in ``build.py``.
+
 **U_q is a three-table join, not a lookup** (§3.1). ``unit_eligibility.csv`` is keyed
 ``(unit_id, carb3_activity, process_id)`` — by *process*, not by duty — with no carrier or
 grade column, and 142 of its rows carry a blank ``process_id`` and are activity-level supply.
@@ -89,6 +104,35 @@ class UnservableDuty:
 
 
 @dataclass(frozen=True)
+class ExportWindow:
+    """One carrier the premise may export, and when (§5.2's x_{c,k,t}, C9's gate).
+
+    ``periods`` is the subset of the horizon in which the export variable may be positive.
+    An empty tuple means the variable is declared and bounded to zero throughout, which is
+    what a premise in a cluster CO₂ transport never reaches looks like.
+    """
+
+    carrier_id: str
+    periods: tuple[int, ...]
+    #: The §3.7 network this carrier rides on, or ``""`` where C9 does not gate it.
+    network: str
+
+
+@dataclass(frozen=True)
+class ExportRefusal:
+    """A carrier the premise could have exported and may not, with the reason.
+
+    The same shape of finding as :class:`~carb3.load.UnitDrop`, and for the same reason: an
+    export with no price is free disposal, and free disposal of a `primary` carrier is the
+    hole §5.2's ``may_dispose`` gate exists to close. Refusing it loudly is what stops a CHP
+    building itself an electricity sink.
+    """
+
+    carrier_id: str
+    reason: str
+
+
+@dataclass(frozen=True)
 class ModelSets:
     """Q, U and U_q, plus the three eligibility columns the LP turns into bounds."""
 
@@ -105,14 +149,24 @@ class ModelSets:
     max_share: Mapping[tuple[DutyKey, str], float]
     #: Floor below which the unit is screened out of the duty. 15 rows, 0.01 to 0.50.
     min_duty: Mapping[tuple[DutyKey, str], float]
-    #: Carrier -> the units that may supply it although it carries **no duty**, because D16
-    #: removed the premise-level row. See :func:`internal_supply`: without this the cement
-    #: kilns have no activity variable and the ``clinker`` node can never be met.
+    #: Carrier -> the units that may supply it although it carries **no duty**. See
+    #: :func:`undutied_supply`: without this the cement kilns have no activity variable and
+    #: the ``clinker`` node can never be met, and ``ccs_amine`` has none either.
     supply: Mapping[str, frozenset[str]] = field(default_factory=dict)
     #: Processes valid at the base year that yielded no duty because ``known_capacity`` is
     #: blank. Reported by the run report rather than silently absorbed — see
     #: :func:`derive_duties`.
     no_magnitude: tuple[str, ...] = ()
+    #: ``earliest_year`` for the supply units above. They sit in no U_q, so the duty-keyed
+    #: mapping cannot hold them, and without this ``ccs_amine``'s 2035 gate would not be
+    #: applied to the one unit it exists for.
+    supply_earliest_year: Mapping[tuple[str, str], int] = field(default_factory=dict)
+    #: Carriers the premise may export, and in which periods (§5.2, C9). Empty where the
+    #: premise has no exportable carrier with a connection and a price.
+    export_windows: tuple[ExportWindow, ...] = ()
+    #: Carriers refused an export variable, with the reason. The run report prints these
+    #: beside the §3.2 screen's dropped units.
+    export_refused: tuple[ExportRefusal, ...] = ()
 
 
 # ------------------------------------------------------------------- the minimal A2
@@ -198,26 +252,42 @@ def _units_run_by(
     }
 
 
-def _makes_only_an_internal_product(
-    reference: ReferenceTables, unit_ids: set[str]
-) -> bool:
-    """D16: every one of these units' primary output is a ``product`` it cannot export.
-
-    A process of that shape has **no ``process_duty`` row at all** (§3.9). A cement kiln is
-    the case: its units make ``clinker``, ``may_export`` false, so the duty row is gone and
-    C8 (carrier balance) pins the kilns' activity instead — the grinder draws clinker off the
-    balance and only the kilns produce it. The cement worked example §3.2 states exactly this
-    outcome, and V32(b) checks it.
-    """
-    carrier = reference.carrier.set_index("carrier_id")
+def _primary_outputs(reference: ReferenceTables, unit_ids: set[str]) -> set[str]:
+    """The ``primary_output`` carriers of a set of units — §5.1's c*_u, collected."""
     io = reference.unit_input_output
     outputs = io[(io["unit_id"].isin(unit_ids)) & (io["role"] == "primary_output")]
-    carriers = {str(c) for c in outputs["carrier_id"]}
+    return {str(c) for c in outputs["carrier_id"]}
+
+
+def _makes_only_a_product(reference: ReferenceTables, unit_ids: set[str]) -> bool:
+    """Every one of these units' primary output is a ``product`` carrier.
+
+    **This is the test that decides whether a process states an energy duty at all**, and
+    widening it from "an *internal* product" is what makes the cement works solvable. §3.9
+    is written on the carrier, not on the export flag: a process whose unit's primary output
+    is a `product` presents no *energy* duty, because what it makes is a substance and its
+    heat and power need is a classification rather than a demand — "those classify the
+    process's heat need for eligibility and grouping rather than stating a demand the LP
+    must serve".
+
+    The export flag then decides what happens next, exactly as §3.1.2 says:
+
+    * ``may_export`` **false** — ``clinker`` — there is no duty at all, and C8 (carrier
+      balance) pins the maker's activity through :func:`undutied_supply`;
+    * ``may_export`` **true** — ``cement`` — the duty exists and is stated by
+      ``premise_throughput`` in Mt/yr (D5, hybrid denominators), not by the duty profile.
+
+    Reading only the internal case was the first of the two defects that stopped
+    ``mvp-cement``: ``cement_grinding`` makes an exportable product, so the old test let its
+    ``MOT`` profile row through and A2 labelled 1.13 **Mt** of cement as 1.13 **PJ** of
+    motive power — a weight read as an energy, servable by nothing.
+    """
+    carrier = reference.carrier.set_index("carrier_id")
+    carriers = _primary_outputs(reference, unit_ids)
     if not carriers:
         return False
     return all(
         str(carrier.loc[c, "carrier_kind"]) == "product"
-        and bool(carrier.loc[c, "may_export"]) is not True
         for c in carriers
         if c in carrier.index
     )
@@ -241,6 +311,16 @@ def derive_duties(
     reached through a duty family — or a ``product`` that may be exported. A process whose
     output is a ``product`` the site cannot export keeps its register and profile entries and
     is fixed by C8 (carrier balance) instead, so it yields no duty here.
+
+    **A product duty is a mass, and it comes from ``premise_throughput`` (§3.1.2).** The
+    duty profile carries no mass carrier at all — its 427 rows name 26 carriers and neither
+    ``cement`` nor ``clinker`` is among them — so a process that makes a substance has its
+    magnitude nowhere else. §3.1.2 settles it: "Where the ``carrier_id`` is a product with
+    ``may_export`` true, the row is the premise's duty on that product under D5 — a cement
+    works' 1.13 Mt/yr of cement is what C1 makes it produce." Such a process therefore
+    yields **no profile duty** — its ``MOT`` or ``HTH`` row classifies its energy need, and
+    that need reaches C8 through the unit's own input coefficients — and exactly one
+    throughput duty instead. Only the base year is read (D12); the rest is history.
 
     **A process with a blank ``known_capacity`` yields no duty, and is reported rather than
     raised on.** §3.10 requires ``known_capacity > 0 if present``, so the column cannot state
@@ -284,8 +364,10 @@ def derive_duties(
         runs = _units_run_by(
             reference, premise, activity, process_id, int(process["valid_from_year"])
         )
-        if _makes_only_an_internal_product(reference, runs):
-            continue  # D16: the process keeps everything but its duty row (§3.9)
+        if _makes_only_a_product(reference, runs):
+            # The process makes a substance. Its duty, if it has one, is the mass stated by
+            # premise_throughput below; its profile row is a classification (§3.1.2, §3.9).
+            continue
 
         capacity = process["known_capacity"]
         if pd.isna(capacity):
@@ -327,7 +409,92 @@ def derive_duties(
                 )
             duties[duty.key] = duty
 
+    for duty in _throughput_duties(reference, premise, processes, activity, periods):
+        if duty.key in duties:
+            raise DutyDerivationError(
+                f"{premise_id}: throughput duty {duty.key} collides with a duty the duty "
+                "profile already stated; one process cannot state the same duty twice"
+            )
+        duties[duty.key] = duty
+
     return tuple(duties.values())
+
+
+def _throughput_duties(
+    reference: ReferenceTables,
+    premise: PremiseTables,
+    processes: pd.DataFrame,
+    activity: str,
+    periods: Sequence[int],
+) -> tuple[Duty, ...]:
+    """The §3.1.2 product duties: one per base-year throughput row on an exportable product.
+
+    "A row is a duty or it is evidence, and ``may_export`` decides which (D16)." An
+    exportable product becomes a C1 (duty satisfaction) duty at the stated quantity, in
+    Mt/yr because the carrier's ``denominator_kind`` is mass (D5, hybrid denominators). An
+    internal product — ``clinker`` — becomes nothing here: §3.9 gives it no duty and
+    :func:`undutied_supply` hands its makers to C8 (carrier balance) instead.
+
+    **The duty is attached to the process that makes the product**, found by asking which
+    base-year process runs a unit whose ``primary_output`` is that carrier. DutyKey is
+    ``(premise, process, carrier)`` and U_q is a join on ``(unit_id, carb3_activity,
+    process_id)``, so a duty with no process would have no eligible-unit set to build. A
+    throughput row naming a product no base-year process makes is an input error and raises:
+    silently dropping it would delete the premise's whole reason for existing.
+
+    Only the base year is read (D12). A row at another ``data_year`` is history and is
+    skipped without comment, which is what §3.1.2's "the rest is history" means.
+    """
+    throughput = premise.premise_throughput
+    if throughput is None or throughput.empty:
+        return ()
+
+    record = premise.premise_record.iloc[0]
+    premise_id = str(record["premise_id"])
+    data_year = int(record["data_year"])
+    carrier = reference.carrier.set_index("carrier_id")
+
+    maker_of: dict[str, str] = {}
+    for _, process in processes.iterrows():
+        process_id = str(process["process_id"])
+        runs = _units_run_by(
+            reference, premise, activity, process_id, int(process["valid_from_year"])
+        )
+        for carrier_id in _primary_outputs(reference, runs):
+            maker_of.setdefault(carrier_id, process_id)
+
+    derived: list[Duty] = []
+    for _, row in throughput.iterrows():
+        if int(row["data_year"]) != data_year:
+            continue  # D12: only the base year is read
+        carrier_id = str(row["carrier_id"])
+        spec = carrier.loc[carrier_id]
+        if bool(spec["may_export"]) is not True:
+            continue  # §3.1.2: an internal product's row is evidence, not a duty
+        if carrier_id not in maker_of:
+            raise DutyDerivationError(
+                f"{premise_id}: premise_throughput states a duty on {carrier_id!r} and no "
+                "process valid at the base year runs a unit whose primary_output is that "
+                "carrier; C1 would have no eligible-unit set to satisfy it (§3.1.2)"
+            )
+        quantity = float(row["quantity"])
+        if quantity <= 0:
+            raise DutyDerivationError(
+                f"{premise_id}: premise_throughput.quantity for {carrier_id!r} is "
+                f"{quantity}; §3.1.2 requires > 0"
+            )
+        derived.append(
+            Duty(
+                premise_id=premise_id,
+                process_id=maker_of[carrier_id],
+                carrier_id=carrier_id,
+                # A product carrier is not gradeable, so C10 (heat grade cascade) has
+                # nothing to say about it and _serves falls back to the carrier test.
+                grade_rank=None,
+                quantity={period: quantity for period in periods},
+            )
+        )
+    return tuple(derived)
 
 
 def processes_without_magnitude(premise: PremiseTables) -> tuple[str, ...]:
@@ -344,10 +511,13 @@ def processes_without_magnitude(premise: PremiseTables) -> tuple[str, ...]:
     return tuple(sorted({str(process_id) for process_id in blank["process_id"]}))
 
 
-def internal_supply(
-    reference: ReferenceTables, premise: PremiseTables, admitted: frozenset[str]
-) -> dict[str, frozenset[str]]:
-    """Carrier -> the units that may supply it although D16 gave it **no duty** (§3.9).
+def undutied_supply(
+    reference: ReferenceTables,
+    premise: PremiseTables,
+    admitted: frozenset[str],
+    dutied_carriers: frozenset[str] = frozenset(),
+) -> tuple[dict[str, frozenset[str]], dict[tuple[str, str], int]]:
+    """Carrier -> the units that may supply it although it carries **no duty** (§3.9).
 
     **The D16 branch of :func:`derive_duties` needs a matching branch here, and the plan
     missed it.** Note 21 §2.2 puts z° (undispatched primary output) out of scope because
@@ -360,18 +530,30 @@ def internal_supply(
     (duty satisfaction) on the 1.13 Mt cement duty is infeasible.
 
     The set is the same three-table join U_q is: the eligible, admitted units of a
-    D16-suppressed process, narrowed to those whose primary output is an internal product.
-    ``ccs_amine`` is therefore **not** here — its ``co2_captured`` carries ``may_export``
-    true, so it is not internal, and with export out of the slice C8 would pin it to zero
-    anyway. The premise's own §3.10.2 children are unioned in, so named plant is never lost
-    to an eligibility gap.
+    product-making process, narrowed to those whose own primary output is a ``product``
+    carrier that ``dutied_carriers`` does not name. The premise's own §3.10.2 children are
+    unioned in, so named plant is never lost to an eligibility gap.
+
+    **``ccs_amine`` is now here, and that is the second defect closed.** Its
+    ``co2_captured`` is a ``product`` with ``may_export`` true and no duty — no premise
+    states a throughput of captured CO₂ — so the train serves nothing and, before this,
+    took no activity variable at all. It sits in the ``kiln_pyroprocessing`` eligibility
+    set, so it arrives here with the kilns, and C8 (carrier balance) plus the export
+    variable settle its level. ``cement`` is excluded by ``dutied_carriers``, because the
+    grinder *is* dispatched — to the §3.1.2 throughput duty — and giving it a second,
+    undispatched column would let one Mt of cement satisfy C1 and enter C8 as well.
+
+    Returns the supply sets and, beside them, the ``earliest_year`` of each supply unit.
+    These units sit in no U_q, so the duty-keyed mapping cannot carry their gate, and
+    ``ccs_amine``'s 2035 row is the only one in the table that binds on a capture train.
     """
     activity, set_id = _activity_and_set(reference, premise)
     record = premise.premise_record.iloc[0]
     processes = _processes_at(premise, int(record["data_year"]))
     if processes.empty:
-        return {}
+        return {}, {}
 
+    carrier = reference.carrier.set_index("carrier_id")
     io = reference.unit_input_output
     outputs = io[io["role"] == "primary_output"]
     primary_by_unit: dict[str, set[str]] = {}
@@ -379,6 +561,7 @@ def internal_supply(
         primary_by_unit.setdefault(str(unit_id), set()).add(str(carrier_id))
 
     supply: dict[str, set[str]] = {}
+    earliest: dict[tuple[str, str], int] = {}
     for _, process in processes.iterrows():
         process_id = str(process["process_id"])
         if _duty_profile_for(reference, activity, set_id, process_id).empty:
@@ -386,18 +569,186 @@ def internal_supply(
         runs = _units_run_by(
             reference, premise, activity, process_id, int(process["valid_from_year"])
         )
-        if not _makes_only_an_internal_product(reference, runs):
+        if not _makes_only_a_product(reference, runs):
             continue
-        candidates = {
-            str(unit_id)
-            for unit_id in _eligibility_rows(reference, activity, process_id)["unit_id"]
-        } | runs
+        rows = _eligibility_rows(reference, activity, process_id)
+        gate = {
+            str(row["unit_id"]): int(row["earliest_year"])
+            for _, row in rows.iterrows()
+            if not pd.isna(row["earliest_year"])
+        }
+        floor = {
+            str(row["unit_id"]): float(row["min_duty"])
+            for _, row in rows.iterrows()
+            if not pd.isna(row["min_duty"])
+        }
+        # min_duty is a floor on a duty magnitude, and this process has no duty. The
+        # premise's own known_capacity for it is the nearest thing the data holds — it is
+        # what a duty would have been sized at — so the floor is applied against that where
+        # it exists, rather than dropped. ccs_amine's 0.25 clears the kiln's 0.95 Mt/yr.
+        magnitude = process["known_capacity"]
+        candidates = {str(unit_id) for unit_id in rows["unit_id"]} | runs
         for unit_id in sorted(candidates & admitted):
-            if not _makes_only_an_internal_product(reference, {unit_id}):
+            made = {
+                carrier_id
+                for carrier_id in primary_by_unit.get(unit_id, set())
+                if carrier_id in carrier.index
+                and str(carrier.loc[carrier_id, "carrier_kind"]) == "product"
+                and carrier_id not in dutied_carriers
+            }
+            if not made:
                 continue
-            for carrier_id in sorted(primary_by_unit.get(unit_id, set())):
+            if (
+                unit_id in floor
+                and not pd.isna(magnitude)
+                and float(magnitude) < floor[unit_id]
+            ):
+                continue
+            for carrier_id in sorted(made):
                 supply.setdefault(carrier_id, set()).add(unit_id)
-    return {carrier_id: frozenset(units) for carrier_id, units in sorted(supply.items())}
+            if unit_id in gate:
+                for carrier_id in sorted(made):
+                    key = (carrier_id, unit_id)
+                    earliest[key] = min(earliest.get(key, gate[unit_id]), gate[unit_id])
+    return (
+        {carrier_id: frozenset(units) for carrier_id, units in sorted(supply.items())},
+        earliest,
+    )
+
+
+# ------------------------------------------------------------------- export, and C9's gate
+
+#: §3.4's carrier → the §3.7 network it rides on. The two vocabularies differ on purpose and
+#: only here: ``carrier.csv`` names the substance, ``infrastructure_scenario.csv`` names the
+#: network, and for CO₂ they are ``co2_captured`` and ``co2_transport``. C9 (infrastructure
+#: availability) gates a carrier only where this map has an entry; ``electricity`` has none,
+#: because §3.7's ``grid_headroom`` rows are about connection capacity, which is C11's
+#: business and out of this slice.
+EXPORT_NETWORK: Mapping[str, str] = {
+    "co2_captured": "co2_transport",
+    "hydrogen": "hydrogen",
+}
+
+#: The two ``scenario_parameters`` series that can price an export. At least one must cover
+#: every period or the carrier is refused an export variable: an unpriced export is free
+#: disposal, and a `primary` carrier may not be disposed of at all (§5.2).
+EXPORT_PRICE_PARAMETERS: tuple[str, ...] = ("export_price", "co2_transport_tariff")
+
+
+def export_windows(
+    reference: ReferenceTables, premise: PremiseTables, periods: Sequence[int]
+) -> tuple[tuple[ExportWindow, ...], tuple[ExportRefusal, ...]]:
+    """Which carriers the premise may export, and when — §5.2's x_{c,k,t} and C9's gate.
+
+    §5.2 declares an export "where ``carrier.may_export`` is true **and** a
+    ``premise_connection`` row carries that carrier", because "leaving the site means going
+    onto a network". Three further tests apply here, and each removes a way the variable
+    would otherwise be a hole in the model:
+
+    * **C9 (infrastructure availability), for the carriers §3.7 gates.** The 63
+      ``co2_transport`` rows are real, sourced data: four clusters turn available at 2030
+      and five never do. The export is bounded to zero in every period the premise's
+      cluster is unavailable. A premise with no ``cluster_id`` is outside every cluster,
+      which is §3.7's beyond-the-radius case, and exports nothing.
+    * **A price, for every period.** An export with no price is free disposal. ``primary``
+      carriers may not be disposed of (§5.2's gate), so an unpriced export variable would
+      reintroduce exactly what that gate forbids — a CHP could overbuild and dump the
+      electricity. ``export_price`` covers ``electricity`` at six of the seven periods, not
+      2021, so electricity is refused: the partial case is the dangerous one, and it is the
+      same failure mode as ``heavy_fuel_oil``'s single ``import_price`` row one table away.
+    * **The carrier must be one a unit at this premise can make.** Not tested here — C8
+      (carrier balance) settles it, since a carrier nothing produces has an export pinned to
+      zero by its own node.
+
+    Returns the windows and the refusals. A refusal is a finding, not an error: the run
+    report prints it beside the §3.2 screen's dropped units.
+    """
+    periods = tuple(int(period) for period in periods)
+    record = premise.premise_record.iloc[0]
+    cluster = record.get("cluster_id")
+    cluster = "" if cluster is None or pd.isna(cluster) else str(cluster).strip()
+
+    carrier = reference.carrier.set_index("carrier_id")
+    connected = sorted({str(c) for c in premise.premise_connection["carrier_id"]})
+
+    windows: list[ExportWindow] = []
+    refused: list[ExportRefusal] = []
+    for carrier_id in connected:
+        if carrier_id not in carrier.index:
+            continue
+        if bool(carrier.loc[carrier_id, "may_export"]) is not True:
+            continue
+
+        priced, missing = _export_price_cover(reference, carrier_id, periods)
+        if priced is None:
+            refused.append(ExportRefusal(
+                carrier_id,
+                "no export_price and no co2_transport_tariff at "
+                + (", ".join(str(period) for period in missing) if missing else "any period")
+                + "; an unpriced export is free disposal (§5.2)",
+            ))
+            continue
+
+        network = EXPORT_NETWORK.get(carrier_id, "")
+        if not network:
+            windows.append(ExportWindow(carrier_id, periods, ""))
+            continue
+        if not cluster or cluster == "none":
+            refused.append(ExportRefusal(
+                carrier_id,
+                f"the premise states no cluster, so §3.7 marks {network} unavailable "
+                "(C9, beyond the cluster radius)",
+            ))
+            continue
+        available = _available_periods(reference, network, cluster, periods)
+        windows.append(ExportWindow(carrier_id, available, network))
+    return tuple(windows), tuple(refused)
+
+
+def _export_price_cover(
+    reference: ReferenceTables, carrier_id: str, periods: Sequence[int]
+) -> tuple[str | None, tuple[int, ...]]:
+    """The first :data:`EXPORT_PRICE_PARAMETERS` series covering every period, and the gaps.
+
+    Completeness, not presence — the same test the §3.2 screen applies to ``import_price``.
+    Where no series is complete the returned gap list is the **shortest** one, because that
+    is the series closest to being usable and so the one worth reporting.
+    """
+    parameters = reference.scenario_parameters
+    shortest: tuple[int, ...] = tuple(int(period) for period in periods)
+    for parameter_id in EXPORT_PRICE_PARAMETERS:
+        rows = parameters[
+            (parameters["parameter_id"] == parameter_id)
+            & (parameters["carrier_id"] == carrier_id)
+        ]
+        covered = {
+            int(period) for period in rows["period"] if not pd.isna(period)
+        }
+        missing = tuple(period for period in periods if period not in covered)
+        if not missing:
+            return parameter_id, ()
+        if len(missing) < len(shortest):
+            shortest = missing
+    return None, shortest
+
+
+def _available_periods(
+    reference: ReferenceTables, network: str, cluster: str, periods: Sequence[int]
+) -> tuple[int, ...]:
+    """C9: the periods §3.7 marks ``network`` available at ``cluster``.
+
+    A period with no row is **unavailable**. §3.7 makes ``available`` required, so a gap is
+    an absent statement rather than a permissive one, and reading it the other way would
+    turn a missing row into an open pipeline.
+    """
+    rows = reference.infrastructure_scenario
+    rows = rows[(rows["carrier"] == network) & (rows["cluster_id"] == cluster)]
+    available = {
+        int(period)
+        for period, flag in zip(rows["period"], rows["available"], strict=True)
+        if not pd.isna(period) and bool(flag) is True
+    }
+    return tuple(period for period in periods if period in available)
 
 
 # ------------------------------------------------------------------------ U_q, the join
@@ -509,7 +860,7 @@ def build_sets(
     """Assemble Q, U, U_q and the three eligibility columns for one premise.
 
     Two fields beyond Q, U and U_q: ``supply`` carries the D16-suppressed producers
-    :func:`internal_supply` finds, and ``no_magnitude`` the processes
+    :func:`undutied_supply` finds, and ``no_magnitude`` the processes
     :func:`processes_without_magnitude` could not size.
 
     ``min_duty`` is applied against the duty's largest quantity over the horizon: "below this
@@ -545,6 +896,13 @@ def build_sets(
             if not pd.isna(row["min_duty"]):
                 min_duty[(duty.key, unit_id)] = float(row["min_duty"])
 
+    supply, supply_earliest_year = undutied_supply(
+        reference,
+        premise,
+        screen.admitted,
+        dutied_carriers=frozenset(duty.carrier_id for duty in duties),
+    )
+    windows, refused = export_windows(reference, premise, periods)
     return ModelSets(
         periods=periods,
         duties=duties,
@@ -553,8 +911,11 @@ def build_sets(
         earliest_year=earliest_year,
         max_share=max_share,
         min_duty=min_duty,
-        supply=internal_supply(reference, premise, screen.admitted),
+        supply=supply,
         no_magnitude=processes_without_magnitude(premise),
+        supply_earliest_year=supply_earliest_year,
+        export_windows=windows,
+        export_refused=refused,
     )
 
 

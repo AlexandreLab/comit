@@ -15,6 +15,7 @@ def rd(root, name):
         return list(csv.DictReader(f))
 
 carrier   = {r["carrier_id"]: r for r in rd(REF, "carrier.csv")}
+CLUSTERS  = {r["cluster_id"] for r in rd(REF, "infrastructure_scenario.csv")}
 unit      = {r["unit_id"]: r for r in rd(REF, "unit.csv")}
 elig      = rd(REF, "unit_eligibility.csv")
 reg       = rd(REF, "activity_process_register.csv")
@@ -63,6 +64,15 @@ for r in record:
         E(f"premise_record[{p}]: construction_year after data_year")
     if r["construction_year"] and r["construction_year_band"]:
         W(f"premise_record[{p}]: both construction_year and _band given; the year wins")
+    # cluster_id is not a spec 3.1 field. Spec 3.7 says A1 assigns the nearest in-scope
+    # cluster on ingest and gives the assignment nowhere to live (note 20 item 58), so the
+    # slice keeps it here. Optional: absent means outside every cluster, which is 3.7's own
+    # beyond-the-radius case, and C9 then permits no CO2 export at all.
+    cluster = (r.get("cluster_id") or "").strip()
+    if cluster and cluster != "none" and cluster not in CLUSTERS:
+        E(f"premise_record[{p}]: cluster_id {cluster!r} not in infrastructure_scenario.csv")
+    if not cluster:
+        W(f"premise_record[{p}]: no cluster_id, so C9 marks CO2 transport unavailable")
 
 # --- premise_connection ---------------------------------------------------
 for r in conn:

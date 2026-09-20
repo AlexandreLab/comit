@@ -53,9 +53,13 @@ carb3: ## Run the carb3 package tests
 # and verifies. PREMISES overrides which premises run, OUT_DIR asks for the parquet ledger.
 #   make carb3-run PREMISES=mvp-dairy OUT_DIR=outputs/carb3
 #
-# It exits non-zero while any premise does not solve, so make reports `Error 1` after the
-# report. That is the intended signal, not a broken target: mvp-cement is blocked by note 20
-# item 51 and the whole report is printed above the error.
+# PREMISES also carries the CLI's own switches, which is how the note 21 §4.4 sensitivity
+# is run:
+#   make carb3-run PREMISES="mvp-cement --co2-tariff 60"
+#
+# All three premises solve as of 2026-09-20, so it exits zero. It still exits non-zero if
+# any premise does not solve — §5.2 makes that a reported outcome, and the whole report is
+# printed above the error rather than swallowed by it.
 carb3-run: ## Solve the synthetic premises and print the run report
 	@$(UV) run --directory $(CARB3) python -m carb3 $(PREMISES) \
 	  $(if $(OUT_DIR),--out-dir $(abspath $(OUT_DIR)))

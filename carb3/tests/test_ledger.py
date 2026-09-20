@@ -37,14 +37,21 @@ def test_run_report_carries_the_screen_and_the_g1_measurement() -> None:
 
 
 def test_signatures(assert_signature) -> None:
-    """``build_ledger`` takes a fourth argument the scaffolded signature did not have.
+    """``build_ledger`` takes two arguments the scaffolded signature did not have.
 
     The scaffold named ``(result, sets, axis)``, none of which carries a price: κ, φ and L
     are in ``unit.csv`` and ``import_price``, ``carbon_price`` and ``discount_rate`` in
     ``scenario_parameters.csv``. ``cost_by_term``'s whole contract is to sum to the reported
-    objective, and with those three arguments it cannot be computed at all.
+    objective, and with those three arguments it cannot be computed at all. The fifth is
+    ``tariff_override``, which has to reach the cost table for the same reason: the export
+    term is priced from the same series the objective read, so a sensitivity run whose
+    ledger ignored the override would not sum to its own objective.
     """
-    assert_signature(ledger, "build_ledger", ("result", "sets", "axis", "reference"))
+    assert_signature(
+        ledger,
+        "build_ledger",
+        ("result", "sets", "axis", "reference", "tariff_override"),
+    )
     assert_signature(ledger, "write_parquet", ("ledger", "report", "out_dir"))
 
 

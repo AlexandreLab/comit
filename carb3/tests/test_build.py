@@ -311,6 +311,7 @@ def _reference(
         ),
         activity_process_duty_profile=pd.DataFrame(),
         activity_process_register=pd.DataFrame(),
+        infrastructure_scenario=pd.DataFrame(),
     )
 
 
@@ -397,7 +398,13 @@ def test_signatures(assert_signature) -> None:
     assert_signature(
         build, "lifetime_in_periods", ("axis", "lifetime_years", "built_at")
     )
-    assert_signature(build, "build_model", ("sets", "surviving", "axis", "reference"))
+    # ``tariff_override`` is the fifth: a scenario knob for the CO₂ transport-and-storage
+    # tariff sensitivity, defaulted so every existing caller is unchanged.
+    assert_signature(
+        build,
+        "build_model",
+        ("sets", "surviving", "axis", "reference", "tariff_override"),
+    )
     assert_signature(build, "solve", ("model", "settings"))
     assert_signature(build, "check_constraint_rows", ("model", "result", "tolerance"))
 
@@ -1024,6 +1031,7 @@ def test_a_declared_process_co2_row_is_vented_rather_than_making_the_premise_inf
         scenario_parameters=_scenario_table(),
         activity_process_duty_profile=pd.DataFrame(),
         activity_process_register=pd.DataFrame(),
+        infrastructure_scenario=pd.DataFrame(),
     )
     duty = _Duty(
         premise_id="mvp-cement",

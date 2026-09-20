@@ -121,6 +121,15 @@ REFERENCE_SCHEMA: dict[str, _ReferenceSchema] = {
          "process_name", "is_optional", "equipment_examples", "provenance"),
         (),
     ),
+    # §3.7, read for C9 (infrastructure availability) on CO₂ transport only. Its 63
+    # ``co2_transport`` rows carry a sourced availability by cluster and period — four
+    # clusters turn available at 2030 and five never do — which is better evidence about
+    # when a capture train can run than ``unit_eligibility.earliest_year`` alone.
+    "infrastructure_scenario": (
+        ("scenario_id", "carrier", "cluster_id", "period", "available", "capacity_limit",
+         "unit_tariff", "provenance"),
+        (),
+    ),
 }
 
 #: Premise schemas are spec §3.1, §3.10, §3.10.2 and §3.15. Unlike the reference side they
@@ -131,7 +140,23 @@ PREMISE_SCHEMA: dict[str, _ReferenceSchema] = {
         ("premise_id", "carb3_activity", "latitude", "longitude", "nation", "data_year",
          "source"),
         ("floorspace", "process_set_id", "construction_year", "construction_year_band",
-         "last_refurbishment_year"),
+         "last_refurbishment_year", "cluster_id"),
+    ),
+    # §3.1.3. Read for one thing only in this slice: x_{c,k,t} is declared where
+    # ``carrier.may_export`` is true **and** a connection row carries the carrier (§5.2),
+    # because leaving the site means going onto a network. C11 (connection capacity) is
+    # still out, so the capacity columns are carried and not read.
+    "premise_connection": (
+        ("premise_id", "connection_id", "carrier_id"),
+        ("import_capacity", "export_capacity", "connection_voltage", "available_area"),
+    ),
+    # §3.1.2. "Where the carrier_id is a product with may_export true, the row is the
+    # premise's duty on that product under D5 — a cement works' 1.13 Mt/yr of cement is
+    # what C1 makes it produce." Where the product is internal (``may_export`` false) the
+    # row is evidence and no duty (§3.9).
+    "premise_throughput": (
+        ("premise_id", "carrier_id", "quantity", "data_year", "data_status", "source"),
+        (),
     ),
     "premise_process_detail": (
         ("premise_id", "process_id", "valid_from_year", "provenance", "confidence"),
@@ -158,7 +183,9 @@ _INTEGER_COLUMNS: dict[str, tuple[str, ...]] = {
     "unit_eligibility": ("earliest_year",),
     "scenario_parameters": ("period",),
     "activity_process_duty_profile": ("grade_rank",),
+    "infrastructure_scenario": ("period",),
     "premise_record": ("data_year", "construction_year", "last_refurbishment_year"),
+    "premise_throughput": ("data_year",),
     "premise_process_detail": ("valid_from_year", "valid_to_year"),
     "premise_process_unit": ("valid_from_year",),
     "premise_process_vintage": ("commissioned_year",),
@@ -174,7 +201,12 @@ _FLOAT_COLUMNS: dict[str, tuple[str, ...]] = {
     "unit_eligibility": ("min_duty", "max_share"),
     "scenario_parameters": ("value",),
     "activity_process_duty_profile": ("duty_share", "share_low", "share_high"),
+    "infrastructure_scenario": ("capacity_limit", "unit_tariff"),
     "premise_record": ("latitude", "longitude", "floorspace"),
+    "premise_throughput": ("quantity",),
+    "premise_connection": (
+        "import_capacity", "export_capacity", "connection_voltage", "available_area",
+    ),
     "premise_process_detail": ("known_capacity",),
     "premise_process_unit": ("capacity_share",),
     "premise_process_vintage": ("capacity_share",),
@@ -184,12 +216,17 @@ _BOOLEAN_COLUMNS: dict[str, tuple[str, ...]] = {
     "carrier": ("is_gradeable", "is_indirect", "may_dispose", "may_import", "may_export"),
     "unit": ("is_hybrid", "draws_ambient"),
     "activity_process_register": ("is_default", "is_optional"),
+    "infrastructure_scenario": ("available",),
 }
 
 
 @dataclass(frozen=True)
 class ReferenceTables:
-    """The seven reference tables the slice reads, unmodified (§3.1)."""
+    """The eight reference tables the slice reads, unmodified (§3.1).
+
+    ``infrastructure_scenario`` is the eighth, added when C9 (infrastructure availability)
+    came partially back into scope for CO₂ transport.
+    """
 
     carrier: pd.DataFrame
     unit: pd.DataFrame
@@ -198,18 +235,26 @@ class ReferenceTables:
     scenario_parameters: pd.DataFrame
     activity_process_duty_profile: pd.DataFrame
     activity_process_register: pd.DataFrame
+    infrastructure_scenario: pd.DataFrame
 
 
 @dataclass(frozen=True)
 class PremiseTables:
-    """The four synthetic premise-side tables (§3.4).
+    """The six synthetic premise-side tables (§3.4).
 
     ``process_duty`` is deliberately absent: spec §3.9 derives it at run time from
-    ``activity_process_register`` and ``activity_process_duty_profile``, which is
+    ``activity_process_register``, ``activity_process_duty_profile`` and — for a mass duty
+    on an exportable product — ``premise_throughput`` (§3.1.2), which is
     :func:`carb3.sets.derive_duties`.
+
+    ``premise_throughput`` and ``premise_connection`` were written by the premise lane and
+    unread until now. The first carries the cement works' 1.13 Mt/yr duty; the second is
+    what §5.2 requires before an export variable may be declared.
     """
 
     premise_record: pd.DataFrame
+    premise_connection: pd.DataFrame
+    premise_throughput: pd.DataFrame
     premise_process_detail: pd.DataFrame
     premise_process_unit: pd.DataFrame
     premise_process_vintage: pd.DataFrame
@@ -282,7 +327,7 @@ def _coerce(frame: pd.DataFrame, name: str) -> pd.DataFrame:
 
 
 def load_reference_tables(root: Path = DEFAULT_REFERENCE_ROOT) -> ReferenceTables:
-    """Read the seven reference tables from ``root``.
+    """Read the eight reference tables from ``root``.
 
     Fails loud on a missing file, a missing column or an unknown column, and keeps ``period``
     an integer through the CSV round-trip (§5.3, loader paths).
@@ -298,7 +343,7 @@ def load_reference_tables(root: Path = DEFAULT_REFERENCE_ROOT) -> ReferenceTable
 def load_premise_tables(
     premise_id: str, root: Path = DEFAULT_PREMISE_ROOT
 ) -> PremiseTables:
-    """Read one synthetic premise's four tables from ``root``.
+    """Read one synthetic premise's six tables from ``root``.
 
     The four files hold every premise; this returns the slice of each keyed on
     ``premise_id``. A premise with no ``premise_record`` row is an error, not an empty
@@ -388,6 +433,65 @@ def resolve_premise_references(
                     f"{premise_id}: {table_name}.unit_id {unit_id!r} is not in unit.csv "
                     f"(§3.10.2, §3.15)"
                 )
+
+    _resolve_carrier_keys(reference, premise, premise_id)
+    _resolve_cluster(reference, record, premise_id)
+
+
+def _resolve_carrier_keys(
+    reference: ReferenceTables, premise: PremiseTables, premise_id: str
+) -> None:
+    """Every ``carrier_id`` on the two §3.1 companion tables resolves, and with the right kind.
+
+    §3.1.2 requires a throughput carrier to be ``denominator_kind = mass`` (D5, hybrid
+    denominators); a throughput row on an energy carrier would state a duty in the wrong
+    unit, which is precisely the failure that made the cement works unservable.
+    """
+    carrier = reference.carrier.set_index("carrier_id")
+    for _, row in premise.premise_throughput.iterrows():
+        carrier_id = str(row["carrier_id"])
+        if carrier_id not in carrier.index:
+            raise ResolutionError(
+                f"{premise_id}: premise_throughput.carrier_id {carrier_id!r} is not in "
+                "carrier.csv (§3.1.2)"
+            )
+        if str(carrier.loc[carrier_id, "denominator_kind"]) != "mass":
+            raise ResolutionError(
+                f"{premise_id}: premise_throughput names {carrier_id!r}, whose "
+                "denominator_kind is not 'mass'; §3.1.2 requires one (D5)"
+            )
+    for _, row in premise.premise_connection.iterrows():
+        carrier_id = str(row["carrier_id"])
+        if carrier_id not in carrier.index:
+            raise ResolutionError(
+                f"{premise_id}: premise_connection.carrier_id {carrier_id!r} is not in "
+                "carrier.csv (§3.1.3)"
+            )
+
+
+def _resolve_cluster(reference: ReferenceTables, record: pd.Series, premise_id: str) -> None:
+    """The premise's ``cluster_id``, where it states one, is a cluster §3.7 knows.
+
+    **``cluster_id`` is not a §3.1 field, and this slice carries it anyway.** §3.7's rule is
+    that "a premise is assigned to the nearest in-scope cluster on ingest (A1)", and A1 is
+    out of scope here, so the assignment has to be written down somewhere or C9
+    (infrastructure availability) has nothing to read. It is optional: a premise with no
+    ``cluster_id`` is treated as outside every cluster, which is §3.7's own
+    beyond-the-radius case and the conservative reading. Recorded as a spec gap — §3 has no
+    field for A1's output.
+    """
+    cluster_id = record.get("cluster_id")
+    if cluster_id is None or pd.isna(cluster_id) or not str(cluster_id).strip():
+        return
+    cluster_id = str(cluster_id).strip()
+    if cluster_id == "none":
+        return
+    known = {str(value) for value in reference.infrastructure_scenario["cluster_id"]}
+    if cluster_id not in known:
+        raise ResolutionError(
+            f"{premise_id}: cluster_id {cluster_id!r} is not a cluster of "
+            f"infrastructure_scenario.csv (§3.7); known clusters are {sorted(known)}"
+        )
 
 
 # ------------------------------------------------------------------- the §3.2 screen
