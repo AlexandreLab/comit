@@ -442,10 +442,10 @@ period, staggered only where `earliest_year` gates a technology.
 
 The tariff is an assumption, not a lookup (§2.2), so the number that matters is not the
 objective at £40/t — it is the tariff at which capture stops paying. **Against the
-reference tables as they stand, that number does not exist: capture is never built, at any
-tariff, including zero.**
+reference tables as this section was first written, that number did not exist: capture was
+never built, at any tariff, including zero.**
 
-| `co2_transport_tariff` | `mvp-cement` objective | Capture built? |
+| `co2_transport_tariff` | `mvp-cement` objective, before the fix below | Capture built? |
 |---|---|---|
 | £20/t | £2,205.6742m | no |
 | £40/t (central) | £2,205.6742m | no |
@@ -453,23 +453,25 @@ tariff, including zero.**
 | £0/t | £2,205.6742m | no |
 
 An answer that does not move with the assumption is not a robust answer, it is a broken
-model or broken data, and here it is the data. **`kiln_dry_coal`, `kiln_dry_gas` and
-`kiln_dry_wdf` declare `co2_process` at 0.52500 where spec §3.6 says the figure is "525 kt
-CO₂ per Mt of clinker".** Every other kiln in `unit_input_output.csv` is on the kt basis —
-`kiln_dry_oil` and `kiln_calcium_looping_coal` at 602.53064, `kiln_fluidbed_wdf` at
-616.92145, `lime_kiln_dry_gas` at 159.51915 — so the three dry-kiln rows are a
-thousandfold under-statement, and `ccs_amine`'s three `emission_input` rows are on the same
-wrong basis. At the cement works this makes process CO₂ **0.44625 kt/yr against a true
-446.25**, so the capture route has almost nothing worth capturing and £55m/yr of reboiler
+model or broken data, and here it was the data. **`kiln_dry_coal`, `kiln_dry_gas` and
+`kiln_dry_wdf` declared `co2_process` at 0.52500 where spec §3.6 says the figure is "525 kt
+CO₂ per Mt of clinker".** Every other kiln in `unit_input_output.csv` was already on the
+kt basis — `kiln_dry_oil` and `kiln_calcium_looping_coal` at 602.53064, `kiln_fluidbed_wdf` at
+616.92145, `lime_kiln_dry_gas` at 159.51915 — so the three dry-kiln rows were a
+thousandfold under-statement, and `ccs_amine`'s three `emission_input` rows were on the same
+wrong basis. At the cement works this made process CO₂ **0.44625 kt/yr against a true
+446.25**, so the capture route had almost nothing worth capturing and £55m/yr of reboiler
 gas, auxiliary power, capex and opex to pay for it. Recorded as
-[note 20](20_reference_data_open_questions.md) item 56, with the six rows named. **It is
-not fixed here**: the tariff is the one authorised data edit and a coefficient correction
-is a decision for the data owner.
+[note 20](20_reference_data_open_questions.md) item 56, with the six rows named.
 
-**Run against a corrected copy of the reference root, the tariff sensitivity is legible.**
-The copy lives in a scratch directory, is passed through the existing `--reference-root`
-switch and changes nothing in the repository; the six rows are multiplied by 1000 and
-nothing else is touched.
+**The six rows were corrected on 2026-09-20** — the three kilns to 525, `ccs_amine` to
+−557.55, −352.57 and −89.88 kt per Mt of `co2_captured` — and a blocking check in
+`validate_carb3_data.py` now bands every emission coefficient against what stoichiometry
+permits, so the basis cannot silently slip again. Item 56 carries the detail.
+
+**Against the corrected tables the tariff sensitivity is legible.** The figures below were
+first measured on a scratch copy of the reference root and are unchanged when re-measured
+on the corrected tables themselves.
 
 | `co2_transport_tariff` | Objective | Capture first built | Captured, Mt CO₂/yr |
 |---|---|---|---|
@@ -495,9 +497,11 @@ pays at £20, £40 and £60 by a factor of seven, and the assumption would have 
 above and the volume below.
 
 **The volume is capped at 3% of the stack, and that is a second data finding.**
-`ccs_amine`'s three `emission_input` coefficients — 0.55755 `co2_process`, 0.35257
-`co2_fuel_fossil`, 0.08988 `co2_fuel_biogenic` — are a **fixed stream composition**, and
-they sum to exactly 1. They match the cement worked example's premise, which fires waste
+`ccs_amine`'s three `emission_input` coefficients — −557.55 `co2_process`, −352.57
+`co2_fuel_fossil`, −89.88 `co2_fuel_biogenic`, in kt per Mt of `co2_captured` — are a
+**fixed stream composition**, and they sum to 1000 kt, which is the one Mt of CO₂ the
+train produces: the shares themselves are 0.55755, 0.35257 and 0.08988, summing to 1.
+They match the cement worked example's premise, which fires waste
 derived fuel and so has 71.93 kt/yr of biogenic CO₂ to offer. `mvp-cement` has no WDF
 kiln — `waste_derived_fuel` carries no `import_price` and the §3.2 screen drops
 `kiln_dry_wdf` — so its only biogenic CO₂ is natural gas's 1.15% `biogenic_fraction`:

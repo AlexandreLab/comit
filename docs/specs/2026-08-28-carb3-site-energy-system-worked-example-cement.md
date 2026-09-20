@@ -335,7 +335,7 @@ export, a disposal $d_{c,t}$, or a loss inside a unit.
 
 | `carrier_id` | `carbon_charge` | `may_dispose` | Produced by |
 |---|---|---|---|
-| `co2_process` | **charged** | yes | The kiln units, declared at 0.52500 Mt per Mt clinker (§3.6 — stoichiometry) |
+| `co2_process` | **charged** | yes | The kiln units, declared at 525.00000 kt per Mt clinker (§3.6 — stoichiometry) |
 | `co2_fuel_fossil` | **charged** | yes | Every combusting unit, **derived** by A6 from its fuel coefficient × factor × (1 − biogenic fraction) |
 | `co2_fuel_biogenic` | **zero_rated** | yes | The waste-fuel kiln only, at this premise |
 | `co2_captured` | — | **no** | The capture train; leaves through the CO₂ transport network under C9 |
@@ -439,28 +439,28 @@ nothing hosts off them at the base year.
 | `kiln_dry_coal` | `coal` | −4.60000 | `fuel_input` | declared |
 | `kiln_dry_coal` | `electricity` | −0.10871 | `aux_input` | declared |
 | `kiln_dry_coal` | `heat_lt60` | **+0.55326** | `reject` | declared — [DECC_SURPLUSHEAT2014], (48 − 13)/291 = 0.12027 of fuel in |
-| `kiln_dry_coal` | `co2_process` | **+0.52500** | `emission` | **declared** — stoichiometry |
+| `kiln_dry_coal` | `co2_process` | **+525.00000** | `emission` | **declared** — stoichiometry, kt per Mt of clinker |
 | `kiln_dry_coal` | `co2_fuel_fossil` | **+435.16000** | `emission` | **derived** — 4.60000 × 94.6 × (1 − 0) |
 | `kiln_dry_gas` | `clinker` | +1.00000 | `primary_output` | declared |
 | `kiln_dry_gas` | `natural_gas` | −4.60000 | `fuel_input` | declared |
 | `kiln_dry_gas` | `electricity` | −0.10871 | `aux_input` | declared |
 | `kiln_dry_gas` | `heat_lt60` | **+0.55326** | `reject` | declared — [DECC_SURPLUSHEAT2014], (48 − 13)/291 = 0.12027 of fuel in |
-| `kiln_dry_gas` | `co2_process` | +0.52500 | `emission` | declared |
+| `kiln_dry_gas` | `co2_process` | +525.00000 | `emission` | declared |
 | `kiln_dry_gas` | `co2_fuel_fossil` | **+258.06000** | `emission` | **derived** — 4.60000 × 56.1 |
 | `kiln_dry_wdf` | `clinker` | +1.00000 | `primary_output` | declared |
 | `kiln_dry_wdf` | `waste_derived_fuel` | −4.60000 | `fuel_input` | declared |
 | `kiln_dry_wdf` | `electricity` | −0.10871 | `aux_input` | declared |
 | `kiln_dry_wdf` | `heat_lt60` | **+0.55326** | `reject` | declared — [DECC_SURPLUSHEAT2014], (48 − 13)/291 = 0.12027 of fuel in |
-| `kiln_dry_wdf` | `co2_process` | +0.52500 | `emission` | declared |
+| `kiln_dry_wdf` | `co2_process` | +525.00000 | `emission` | declared |
 | `kiln_dry_wdf` | `co2_fuel_fossil` | **+206.98712** | `emission` | **derived** — 4.60000 × 92.0 × 0.4891 |
 | `kiln_dry_wdf` | `co2_fuel_biogenic` | **+216.21288** | `emission` | **derived** — 4.60000 × 92.0 × 0.5109 |
 | `ccs_amine` | `co2_captured` | **+1.00000** | `primary_output` | declared |
-| `ccs_amine` | `co2_process` | −0.55755 | `emission_input` | declared — the stack's composition, §8.4 |
-| `ccs_amine` | `co2_fuel_fossil` | −0.35257 | `emission_input` | declared |
-| `ccs_amine` | `co2_fuel_biogenic` | −0.08988 | `emission_input` | declared |
+| `ccs_amine` | `co2_process` | −557.55000 | `emission_input` | declared — the stack's composition, §8.4, at 0.55755 of it × 1000 kt per Mt captured |
+| `ccs_amine` | `co2_fuel_fossil` | −352.57000 | `emission_input` | declared |
+| `ccs_amine` | `co2_fuel_biogenic` | −89.88000 | `emission_input` | declared |
 | `ccs_amine` | `natural_gas` | −1.90000 | `fuel_input` | declared |
 | `ccs_amine` | `electricity` | −0.35000 | `aux_input` | declared — **auxiliary, and `primary`** |
-| `ccs_amine` | `co2_fuel_fossil` | **+0.10659** | `emission` | **derived** — 1.90000 × 56.1. The reboiler's own stack, a second row on a carrier the train also consumes |
+| `ccs_amine` | `co2_fuel_fossil` | **+106.59000** | `emission` | **derived** — 1.90000 × 56.1. The reboiler's own stack, a second row on a carrier the train also consumes |
 | `grinder_mixer_elec` | `cement` | **+1.00000** | `primary_output` | declared |
 | `grinder_mixer_elec` | `clinker` | **−0.752212** | `aux_input` | declared — 0.85 ÷ 1.13 at six places, so the `clinker` node closes to 1e-6 |
 | `grinder_mixer_elec` | `electricity` | −0.14124 | `fuel_input` | declared |
@@ -480,8 +480,8 @@ phrased as "one primary carrier per unit" would have rejected every capture trai
 library, which is why §3.6 is phrased on the fuel input instead.
 
 **The capture train needs two coefficients on one carrier, and §3.6's key now carries
-both.** `ccs_amine` *consumes* `co2_fuel_fossil` from the kiln at −0.35257 as `emission_input`
-and *produces* its own from the reboiler at 1.90000 × 56.1 = +0.10659 Mt per Mt captured as
+both.** `ccs_amine` *consumes* `co2_fuel_fossil` from the kiln at −352.57000 as `emission_input`
+and *produces* its own from the reboiler at 1.90000 × 56.1 = +106.59000 kt per Mt captured as
 `emission`. The key is `(unit_id, carrier_id, role)`, so the two rows coexist and the unit
 loads. This example is where the defect was first written down, and it is why the role is in
 the key at all.
@@ -1188,7 +1188,7 @@ either worked example**. It carries no carbon: `heat_lt60` is `intermediate`, so
 charged to the kiln that burnt it, and §7 sees nothing here.
 
 **Every node closes, and nothing is assumed.** An earlier draft of this example could not
-close `co2_process` — the kiln produced 0.44625 Mt that nothing consumed, and C8 admits no
+close `co2_process` — the kiln produced 446.25000 kt that nothing consumed, and C8 admits no
 sink — so it asserted an implicit vent the specification did not define. Under D15 and §5.2
 the vent is $d_{c,t}$, it is declared, and it is **reported as a quantity**:
 
@@ -1326,8 +1326,9 @@ The three stack carriers at 2035, unchanged from §8.1 because the kilns are unc
 | `co2_fuel_biogenic` | **71.93446** | 0.08988 |
 | **Total** | **800.37258** | 1.00000 |
 
-Those three shares are `ccs_amine`'s consumption coefficients in §1.11 — the train takes the
-stack as it finds it. At 90% capture:
+Those three shares are `ccs_amine`'s consumption coefficients in §1.11 divided by the 1000 kt
+in a Mt of `co2_captured` — −557.55000, −352.57000 and −89.88000 — because the train takes
+the stack as it finds it. At 90% capture:
 
 ```
 capacity a = captured / α = 720.33532 / 0.90         = 800.37258 kt/yr  ⇒ 0.80037 Mt/yr
@@ -1583,7 +1584,7 @@ Tests are the specification's, at §10.3. Scope is `load`, `premise` or `release
 | **V28** | load + premise | §3.2 — the published `Cement Works` shares sum to 1.00 per vector, and the oil vector renormalises over the processes this premise runs |
 | **V29** | premise | §8.1 — disposal exists only on the `may_dispose` carriers — the three CO₂ carriers and `heat_lt60`, which takes the kilns' unused reject heat — and every non-zero quantity is an output row |
 | **V30** | premise | §8.1, §8.4, §10.1 — emission carriers balance; §7's total equals the objective's carbon term ÷ π × 10³; the waste fuel's fossil and biogenic coefficients sum to its 92.0 kt/PJ gross factor; captured biogenic returns a **negative** contribution |
-| **V31** | load | §1.11 — `ccs_amine` holds `co2_fuel_fossil` twice, as `emission_input` (−0.35257, the kiln's) and `emission` (+0.10659, its reboiler's); every other row's sign agrees with its role and each unit has exactly one `primary_output` |
+| **V31** | load | §1.11 — `ccs_amine` holds `co2_fuel_fossil` twice, as `emission_input` (−352.57000, the kiln's) and `emission` (+106.59000, its reboiler's); every other row's sign agrees with its role and each unit has exactly one `primary_output` |
 | **V32** | load + premise | §1.11, §3.2, §8.1 — (a) **connection-indexed** $m_{c,k,t}$ and $x_{c,k,t}$ are declared only where the flag allows *and* a `premise_connection` row carries the carrier — electricity at `C-01`, natural gas at `C-02`; **site-level** $m_{c,t}$ only where `may_import` is true and no connection carries the carrier — `coal`, `waste_derived_fuel` and `fuel_oil`; and nothing at all is declared for the six carriers false on both flags; (b) no `process_duty` row names a `product` carrier with `may_export` false — `kiln_pyroprocessing`'s row is gone and `cement_grinding`'s remains; (c) `may_import` and `may_export` are both false on `heat_lt60`, `motive_power` and the three CO₂ emission carriers. Failure names the carrier |
 | **V33** | load + premise | §1.5.1, §1.11, §8.4 — (a) each of the four `premise_process_unit` rows names a unit `unit_eligibility` admits for `kiln_pyroprocessing` at `Cement Works`, the 2004 parent's three children are distinct, and no `capacity_share` is given so the sum rule is vacuous; (b) each of the four capture trains has three `unit_abatement_host` rows, every host is a `converter` on `kiln_pyroprocessing`, and none hosts off itself; (c) `ccs_amine`'s remaining life at 2035 is the minimum over its three hosts — 9 years, equal on all three because §1.6 puts every cohort at 2004. Failure names the unit |
 

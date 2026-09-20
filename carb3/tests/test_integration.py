@@ -696,17 +696,83 @@ def test_disposal_is_reported_and_is_what_carbon_is_charged_on(
 
 
 @pytest.mark.parametrize("premise_id", SOLVING_PREMISES)
-def test_the_carbon_term_equals_the_disposal_table_charge(
-    runs: dict[str, Run], premise_id: str
+def test_the_carbon_term_equals_the_disposal_charge_less_the_biogenic_credit(
+    runs: dict[str, Run], reference: ReferenceTables, premise_id: str
 ) -> None:
-    """The two tables are computed from the same solution and must not drift apart."""
+    """§5.4 has two legs, and ``disposal`` can only ever hold one of them.
+
+    Z^carbon charges the venting **and** credits back the zero-rated CO2 an abatement unit
+    captures. A captured stream is a flow *into* a unit, not a disposal, so it appears in no
+    row of the disposal table, and the identity is
+
+        Z^carbon_t  =  sum_c d_{c,t} on the charged carriers  -  credit_t
+
+    Asserting the two tables equal outright was only ever true while nothing captured any
+    biogenic CO2 anywhere, which held until note 20 item 56 put the three dry cement kilns'
+    ``co2_process`` back on the kt-per-Mt basis spec 3.6 states. ``ccs_amine`` then became
+    worth building at ``mvp-cement`` and the objective's carbon term sat GBP 0.618m below
+    the disposal table at 2035 -- 2.0457 kt of captured biogenic CO2 at GBP 302.08/t, the
+    credit exactly.
+
+    The credit is recomputed here from the reference CSVs rather than from
+    :func:`carb3.build.biogenic_capture_weights`, so the two sides of the identity stay
+    independent: the ledger reads the function, this reads the data.
+    """
     run = runs[premise_id]
     costs = run.tables.cost_by_term
     carbon = costs[costs["term"] == "carbon"].set_index("period")["annual"]
     charged = (
         run.tables.disposal.groupby("period")["carbon_cost"].sum().reindex(carbon.index)
     )
-    assert (carbon - charged).abs().max() < TOLERANCE
+
+    price = (
+        reference.scenario_parameters.loc[
+            reference.scenario_parameters["parameter_id"].astype(str) == "carbon_price"
+        ]
+        .astype({"period": int, "value": float})
+        .set_index("period")["value"]
+        .reindex(carbon.index)
+    )
+    assert not price.isna().any(), "carbon_price is missing a period"
+
+    zero_rated = set(
+        reference.carrier.loc[
+            reference.carrier["carbon_charge"].astype(str).str.strip() == "zero_rated",
+            "carrier_id",
+        ].astype(str)
+    )
+    abatement = set(
+        reference.unit.loc[
+            reference.unit["unit_class"].astype(str).str.strip() == "abatement",
+            "unit_id",
+        ].astype(str)
+    )
+    io = reference.unit_input_output
+    taken = io[
+        io["unit_id"].astype(str).isin(abatement)
+        & (io["role"].astype(str).str.strip() == "emission_input")
+        & io["carrier_id"].astype(str).isin(zero_rated)
+    ]
+    weights = (
+        taken["coefficient"].astype(float).abs().groupby(taken["unit_id"].astype(str)).sum()
+    )
+
+    dispatch = run.tables.dispatch
+    credit = pd.Series(0.0, index=carbon.index)
+    for unit_id, weight in weights.items():
+        rows = dispatch[dispatch["unit_id"].astype(str) == unit_id]
+        if rows.empty:
+            continue
+        activity = (
+            rows.groupby("period")["activity"].sum().reindex(carbon.index).fillna(0.0)
+        )
+        credit = credit + activity * weight * build.CARBON_UNIT_CONVERSION * price
+
+    assert (carbon - (charged - credit)).abs().max() < TOLERANCE
+    # The premise that pays for the leg above: without it this test cannot tell a correct
+    # ledger from one that dropped the credit.
+    if premise_id == "mvp-cement":
+        assert credit.abs().max() > TOLERANCE
 
 
 # --------------------------------------------------------------------------------------

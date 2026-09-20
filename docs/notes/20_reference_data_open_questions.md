@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, and items
-51 and 53 on 2026-09-20 — **eleven of the fifty-eight**. Each carries the decision inline, with the work items 1 and 36 leave
+51, 53 and 56 on 2026-09-20 — **twelve of the fifty-nine**. Each carries the decision inline, with the work items 1 and 36 leave
 behind in items 1a and 1b, and the work item 4 leaves behind in items 44 and 45. The rest are
 undecided.
 
@@ -188,7 +188,8 @@ These are the ones with a consequence outside the reference data.
    `is_primary_output`, `is_reject` and `is_fuel_input` with one seven-value enum:
    `fuel_input`, `aux_input` and `emission_input` consume, `primary_output`, `coproduct`,
    `reject` and `emission` produce. `ccs_amine` now holds `co2_fuel_fossil` twice — the kiln's
-   at −0.35257 as `emission_input` and its reboiler's at +0.10659 as `emission` — so the cement
+   at −352.57000 as `emission_input` and its reboiler's at +106.59000 as `emission`, both in
+   kt per Mt of `co2_captured` (item 56 corrected the basis) — so the cement
    example's ⚠ is closed and its §13 item 10 with it. A store's charge leg is `aux_input` and
    its discharge leg `primary_output`.
 
@@ -634,9 +635,62 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     the breakeven tariff is £286/t and capture is built at 2035. **Not fixed here**: this
     lane was authorised one data edit and spent it on the tariff, and six coefficient rows
     are the data owner's call. *Note 21 §4.4; spec §3.6; cement worked example §8.1, §8.4.*
+
+    **Closed 2026-09-20. The six rows are corrected and a blocking check now guards the
+    basis.** The kilns' `co2_process` becomes **525** kt per Mt of clinker, which is spec
+    §3.6's derivation-table figure read literally. `ccs_amine`'s three `emission_input`
+    rows become **−557.55 `co2_process`, −352.57 `co2_fuel_fossil`, −89.88
+    `co2_fuel_biogenic`**, in kt per Mt of `co2_captured`. Those are not a blind ×1000:
+    they are the cement worked example's own §8.1 base-year stack — 446.25000, 282.18812
+    and 71.93446 of 800.37258 kt — expressed as shares (0.55755, 0.35257, 0.08988, summing
+    to 1) and then put on the kt-per-Mt basis the emission nodes use. The three rows still
+    sum to 1000 kt = the 1 Mt the train produces, so mass closes.
+
+    **The guard is `check_emission_coefficient_basis` in
+    [`validate_carb3_data.py`](examples/validate_carb3_data.py), and it is BLOCKING.** Every
+    coefficient on an emission carrier must sit inside a band derived from stoichiometry
+    rather than from the data: on a mass-denominated output, **[3.667, 3666.67] kt CO₂ per
+    Mt**, the ceiling being 1000 × 44/12 — a Mt of product that is pure carbon, every atom
+    released as CO₂ — and the floor being that ceiling divided by a thousand, which is the
+    largest coefficient that would *still* look admissible after being multiplied by 1000.
+    On an energy-denominated output it is **[1.118, 1117.89] kt CO₂ per PJ**, off pure
+    carbon at 32.8 GJ/t (111.79 kt/PJ, against coal's 94.6) at a 10% conversion floor. 38
+    coefficients are banded and all pass; before the fix the check named
+    `kiln_dry_coal`, `kiln_dry_gas`, `kiln_dry_wdf` and `ccs_amine` and said what ×1000
+    would give. This is the first blocking check on a *magnitude* rather than on a key, an
+    enum or a sign, and the band must not be widened to admit a row — the row is what is
+    wrong.
+
+    **Measured on `mvp-cement` at the central £40/t tariff, before and after:** the
+    objective moves from **£2,205.6742m to £4,557.0832m**, vented process CO₂ at 2021 from
+    **0.44625 kt/yr to 446.24977 kt/yr** — the cement worked example's §8.1 figure of
+    446.25 to within 2.3e-4 kt — and `ccs_amine`, which was **never built at any tariff
+    including zero**, is now **built at 2035** at 0.02493 Mt/yr of capacity. The breakeven
+    tariff is confirmed at **£286/t**: the train is still built at £285/t (at 2050) and is
+    not built at £286/t. Note 21 §4.4's scratch-copy figures reproduce exactly on the
+    corrected tables.
+
+    **One test changed, and it was completed rather than weakened.**
+    `test_the_carbon_term_equals_the_disposal_table_charge` asserted that the objective's
+    carbon term equals the sum of the disposal table's charge. §5.4 has two legs — it
+    charges the venting *and* credits back the zero-rated CO₂ an abatement unit captures —
+    and a captured stream is a flow into a unit rather than a disposal, so it can appear in
+    no disposal row. The equality was only ever true while nothing captured biogenic CO₂
+    anywhere, which is to say while item 56 was unfixed. The test now asserts
+    `Z^carbon = Σ d_{c,t} charged − credit`, recomputes the credit from the reference CSVs
+    rather than from `build.biogenic_capture_weights` so the two sides stay independent,
+    and requires the credit to be non-zero at `mvp-cement` so the new leg is actually
+    exercised. It is renamed to match. `make check` is green: 25 blocking data checks, up
+    from 24, and 180 tests.
+
+    **What the fix did not touch:** the *blend* is still wrong in the way item 57 describes,
+    and the capture volume is still capped at 0.02276 Mt/yr, 2.9% of the stack. Correcting
+    the basis does not make a fixed stream composition into per-stream capture rates. The
+    neighbour coefficients are item 59.
 57. **`ccs_amine` is written as a fixed stream composition, so it can only run at the
-    premise it was written for.** Its three `emission_input` coefficients sum to exactly 1
-    and state the *blend* the train takes: 55.755% `co2_process`, 35.257%
+    premise it was written for.** Its three `emission_input` coefficients — −557.55,
+    −352.57 and −89.88 kt per Mt of `co2_captured` since item 56 — sum to the 1000 kt the
+    train produces and state the *blend* it takes: 55.755% `co2_process`, 35.257%
     `co2_fuel_fossil`, 8.988% `co2_fuel_biogenic`. Those are the cement worked example's
     premise, which fires waste derived fuel and so has 71.93 kt/yr of biogenic CO₂ to
     offer. C8 makes the blend a hard requirement, so at any premise with a different fuel
@@ -658,3 +712,31 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     without one as outside every cluster — §3.7's own beyond-the-radius case — and records
     the gap here rather than adding a field to the specification from a lane.
     *Note 21 §2.3, §3.4; spec §3.1, §3.7.*
+59. **Four more `co2_process` rows are small enough to look like item 56 and are not, and
+    one of them is still hard to believe.** Item 56's fix raised the question of whether
+    `rolling_mill_reheat_gas` and `rolling_mill_reheat_hydrogen` at **7.24827** and
+    `refinery_fixed_mix_gas` and `refinery_flexible_mix_gas` at **4.93580** — the four
+    smallest surviving rows, both pairs on a mass denominator — carry the same thousandfold
+    error. **They do not, and the test is physical rather than editorial.** A ×1000 would
+    put the rolling mills at 7248 kt CO₂ per Mt of hot rolled steel and the refineries at
+    4936 kt per Mt of petroleum products; both exceed 3666.67, the CO₂ from a Mt of product
+    that is pure carbon fully oxidised, so neither reading is chemically available. The
+    rolling mills carry a second, independent confirmation: the gas unit and the hydrogen
+    unit declare the *same* 7.24827, which is what a genuine process figure does under D15
+    (process CO₂ is declared and cannot be touched by fuel switching) and what a mis-scaled
+    fuel number could not. Both pairs are therefore left as they are, and the new blocking
+    check passes them.
+
+    **What remains open is the refineries' magnitude, not their basis.** 4.93580 kt per Mt
+    of product is 0.0049 t CO₂ per t, which is very small for a site whose hydrogen plant
+    reformer and FCC catalyst regeneration are each a non-combustion CO₂ source in their own
+    right. **No comparison figure was sourced and none should be invented here** — that is
+    the whole reason this is an item and not an edit. The figure is `comit_reuse` from
+    `[COMIT_WB_140]` technology codes
+    `POILREF01` and `POILREF02` and was carried through unchanged, so the question belongs
+    upstream in the workbook rather than in this table. It sits 1.35× above the new check's
+    floor, so the check does not flag it. Both refinery units are already unsafe for another
+    reason recorded in `CLAUDE.md`: each declares a `fuel_carrier_id` and carries no
+    `fuel_input` row, so its declared fuel burns free. **Do not correct the magnitude from
+    a lane** — it needs the workbook, not a plausible substitute.
+    *Item 56; `docs/notes/data/unit_input_output.csv`; spec §3.6.*
