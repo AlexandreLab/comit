@@ -21,7 +21,7 @@ CARB3    := $(REPO)/carb3
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check docs-check docs-list data-check data-report docs-build carb3
+.PHONY: help check docs-check docs-list data-check data-report docs-build carb3 carb3-run
 
 help: ## Show available targets
 	@grep -hE '^[a-z0-9-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -48,3 +48,14 @@ docs-build: ## Regenerate the interface docs and spec diagrams
 
 carb3: ## Run the carb3 package tests
 	@$(UV) run --directory $(CARB3) pytest
+
+# Not part of `make check`: this solves and writes, where every other target only reads
+# and verifies. PREMISES overrides which premises run, OUT_DIR asks for the parquet ledger.
+#   make carb3-run PREMISES=mvp-dairy OUT_DIR=outputs/carb3
+#
+# It exits non-zero while any premise does not solve, so make reports `Error 1` after the
+# report. That is the intended signal, not a broken target: mvp-cement is blocked by note 20
+# item 51 and the whole report is printed above the error.
+carb3-run: ## Solve the synthetic premises and print the run report
+	@$(UV) run --directory $(CARB3) python -m carb3 $(PREMISES) \
+	  $(if $(OUT_DIR),--out-dir $(abspath $(OUT_DIR)))
