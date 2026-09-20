@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, and items 5 and 16 on 2026-09-17 — **nine
-of the forty-nine**. Each carries the decision inline, with the work items 1 and 36 leave
+of the fifty-four**. Each carries the decision inline, with the work items 1 and 36 leave
 behind in items 1a and 1b, and the work item 4 leaves behind in items 44 and 45. The rest are
 undecided.
 
@@ -462,6 +462,11 @@ Added 2026-09-19 by the `/plan-eng-review` of
 questions rather than reference-data ones, but they surfaced here and there is no other
 standing home for them.
 
+**Items 51–54 were added on 2026-09-20 by the build itself**, not by a review of the plan.
+They are what the running model found on contact with the real tables: one reference-data
+gap that stops `mvp-cement` solving (51), and three places where note 21's scope statement
+does not match what the data makes the model do (52–54).
+
 47. **The PyPSA / Calliope spike named as a prerequisite has never been run.** Note 08 §2 is
     phrased as a gate, not a suggestion: *"Evaluate before writing anything … a spike might
     show 70% of COMIT is configuration rather than code … The cheapest code is code not
@@ -501,3 +506,59 @@ standing home for them.
     first gap and five-year gaps thereafter. Every present-value factor and lifetime
     conversion from $t = 1$ onward is affected. Note 21 carries an explicit year vector; the
     specification is owed the correction. *Note 21 §6.4.*
+51. **`activity_process_duty_profile.csv` carries no mass carrier, so no D5 mass duty can be
+    derived.** Its 427 rows name 26 distinct `carrier_id` values and neither `cement` nor
+    `clinker` is among them; every row is an energy or service carrier. `Cement Works`'s
+    `cement_grinding` row is classified `MOT` on `motive_power` at `duty_share` 1.00000, so
+    note 21 §3.3's minimal A2 — which reads `activity_process_register` and this table and
+    nothing else — derives a 1.130000 "PJ/yr" motive-power duty from a `known_capacity` that
+    is 1.130000 **Mt/yr of cement**, and then finds no unit that can serve it:
+    `grinder_mixer_elec` and `grinder_mixer_clinker_sub_elec` both clear the §3.2 admission
+    screen and both have `cement` as their primary output. `mvp-cement` therefore does not
+    solve; §5.2's pre-solve diagnosis names the duty and no LP is built. The premise's
+    `premise_throughput.csv` row says of the same figure "this row is the premise's mass duty
+    under D5", so the premise tables and A2 disagree about where a mass duty comes from.
+    Closing it is a decision, not a fix: either the duty profile gains a `cement` row for
+    `cement_grinding` — and the `MOT` row is reinterpreted as that process's energy mix
+    rather than its duty — or A2 learns to read `premise_throughput` for the mass side of
+    D5's hybrid denominators. The same question is open for every mass-denominated process
+    in the table, not only cement. *Note 21 §3.3; `carb3/data/premises/README.md` finding 6;
+    `carb3/tests/test_integration.py`.*
+52. **On-site generation is live through the 23 `coproduct` rows, and note 21 says three
+    times that it is not.** §2.1 drops $Z^{\text{exp}}$ because "no on-site generation, so
+    nothing to export"; §6.3 says `MF-79` "cannot bite here: it exists because on-site
+    generation makes consumption exceed import, and there is no on-site generation"; §9
+    lists on-site generation, CHP and PV among the exclusions. Nothing enforces any of it.
+    `unit_input_output.csv` carries 23 rows with `role = coproduct`, four gas CHPs clear the
+    admission screen, and `chp_gas_ccgt` is eligible for `boiler_steam_hot_water` at `Food
+    Processing Centre` with `electricity` at `+1.3` per PJ of grade-3 heat. C8 credits that
+    coproduct like any other flow. Run `mvp-minimal` with `carbon_price` at zero and the
+    model builds a gas CHP, spends its coproduct electricity on heat pumps, and imports **no
+    electricity at all** — consumption exceeds import, which is precisely the condition
+    `MF-79` exists for. Two consequences: note 21 §4.2's two-unit contest is not the contest
+    the model faces at a premise whose $U_q$ holds eleven units, and `MF-79` may not be
+    deferrable on the stated grounds. Nothing here is wrong in the data; the plan's scope
+    statement is wrong about it. *Note 21 §2.1, §4.2, §6.3, §9.*
+53. **Every capture train is unbuildable while export is out, so `earliest_year` is untested
+    at the cement works.** `ccs_amine` clears the admission screen and carries `earliest_year`
+    2035 and `min_duty` 0.25 on `kiln_pyroprocessing`, which is why
+    `carb3/data/premises/README.md` says "the capture-train gate is live and testable". It is
+    not. `ccs_amine`'s primary output is `co2_captured`, whose `carrier.csv` row is
+    `may_dispose` FALSE and `may_export` **TRUE**; note 21 §2.2 leaves $x_{c,k,t}$ out, so C8
+    at that node has no sink and pins the train's activity to zero however cheap it is. The
+    gate is real in the data and unreachable in the slice. It becomes reachable when export
+    arrives, or sooner if a CO₂ transport-network carrier is modelled as a consumer.
+    *Note 21 §2.2; `carb3/data/premises/README.md`.*
+54. **A process whose duty D16 suppresses still needs an activity variable, and note 21 §2.2
+    removed the one that gives it.** §2.2 puts $z^{\circ}_{u,t}$ (undispatched primary
+    output) out of scope on the stated grounds that there are "no internal `product` carriers
+    in the synthetic premises". `mvp-cement`'s kilns make `clinker`, a `product` with
+    `may_export` FALSE, and §3.9's D16 rule therefore removes its premise-level duty row —
+    which the plan itself describes, adding that "C8 (carrier balance) pins the kiln through
+    the `clinker` balance instead". A unit that serves no duty has no $z_{u,q,t}$, so there
+    was nothing for C8 to pin: the node had no producer, the grinder was forced to zero and
+    the cement duty was infeasible on a second, independent count. `carb3.sets.internal_supply`
+    now names those units and `build.py` gives each a column on the dispatch dimension that
+    C1 does not select — the smallest restoration of $z^{\circ}$ that makes the plan's own
+    sentence true. Recorded because the specification should say which of the two it means.
+    *Note 21 §2.2; `carb3/src/carb3/sets.py`.*

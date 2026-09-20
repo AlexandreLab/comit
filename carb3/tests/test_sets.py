@@ -159,7 +159,20 @@ def test_d16_removes_the_kiln_duty_and_keeps_the_grinder(
     assert "cement_grinding" in processes
 
 
-def test_a2_fails_loud_without_a_magnitude(reference, premise_root: Path) -> None:
+def test_a2_reports_a_process_it_cannot_size_rather_than_raising(
+    reference, premise_root: Path
+) -> None:
+    """A blank ``known_capacity`` yields no duty, and the process is **named**.
+
+    This test asserted a raise until the synthetic premises met it. §3.10 requires
+    ``known_capacity > 0 if present``, so the column cannot state a *known* zero, and two
+    ``mvp-cement`` processes — ``clinker_cooling`` and ``site_services`` — have a genuine
+    duty of 0.00000 PJ/yr and are written blank with the reason in ``provenance``
+    (the premise README's finding 5). Raising made a legitimate premise unloadable, and
+    reading the blank as zero is the failure the §3.2 screen exists to prevent one table
+    along. The third answer is the one here: derive no duty, and make the silence
+    impossible by naming every process it happened to.
+    """
     root = write_premise_fixture(
         premise_root,
         premise_process_detail=(
@@ -168,8 +181,8 @@ def test_a2_fails_loud_without_a_magnitude(reference, premise_root: Path) -> Non
         ),
     )
     premise = load.load_premise_tables("fx-dairy", root)
-    with pytest.raises(sets.DutyDerivationError, match="no known_capacity"):
-        sets.derive_duties(reference, premise, load.PERIOD_YEARS)
+    assert sets.derive_duties(reference, premise, load.PERIOD_YEARS) == ()
+    assert sets.processes_without_magnitude(premise) == ("boiler_steam_hot_water",)
 
 
 def test_a2_fails_loud_with_no_process_valid_at_the_base_year(

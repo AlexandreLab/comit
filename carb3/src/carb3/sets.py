@@ -36,7 +36,7 @@ Owed by T4, T5 and T6.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pandas as pd
 
@@ -105,6 +105,14 @@ class ModelSets:
     max_share: Mapping[tuple[DutyKey, str], float]
     #: Floor below which the unit is screened out of the duty. 15 rows, 0.01 to 0.50.
     min_duty: Mapping[tuple[DutyKey, str], float]
+    #: Carrier -> the units that may supply it although it carries **no duty**, because D16
+    #: removed the premise-level row. See :func:`internal_supply`: without this the cement
+    #: kilns have no activity variable and the ``clinker`` node can never be met.
+    supply: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    #: Processes valid at the base year that yielded no duty because ``known_capacity`` is
+    #: blank. Reported by the run report rather than silently absorbed — see
+    #: :func:`derive_duties`.
+    no_magnitude: tuple[str, ...] = ()
 
 
 # ------------------------------------------------------------------- the minimal A2
@@ -234,10 +242,21 @@ def derive_duties(
     output is a ``product`` the site cannot export keeps its register and profile entries and
     is fixed by C8 (carrier balance) instead, so it yields no duty here.
 
+    **A process with a blank ``known_capacity`` yields no duty, and is reported rather than
+    raised on.** §3.10 requires ``known_capacity > 0 if present``, so the column cannot state
+    a *known* zero, and two ``mvp-cement`` processes — ``clinker_cooling`` and
+    ``site_services`` — have a genuine duty of 0.00000 PJ/yr and are written blank with the
+    reason in ``provenance``. That is the premise README's finding 5 and §3.1.1's
+    absence-is-not-zero trap in a table with no ``data_status`` column to resolve it. The
+    minimal A2 has no A4 back-solve, so it cannot recover a magnitude it was not given; a
+    duty it cannot size is one it must not invent. Silence is what would be wrong, so
+    :func:`processes_without_magnitude` names every one of them and the run report prints
+    them beside the screen's dropped units.
+
     Fails loud rather than yielding a thinner Q: an unknown activity, a process with no
-    profile row, a missing ``known_capacity``, a gradeable carrier with no ``grade_rank``
-    (§3.3's rule — a heat duty with no grade is invisible to C10 and fails silently), and a
-    duty key that collides with one already derived.
+    profile row, a gradeable carrier with no ``grade_rank`` (§3.3's rule — a heat duty with
+    no grade is invisible to C10 and fails silently), and a duty key that collides with one
+    already derived.
     """
     periods = tuple(int(p) for p in periods)
     activity, set_id = _activity_and_set(reference, premise)
@@ -270,10 +289,7 @@ def derive_duties(
 
         capacity = process["known_capacity"]
         if pd.isna(capacity):
-            raise DutyDerivationError(
-                f"{premise_id}: process {process_id!r} has no known_capacity, so the "
-                f"minimal A2 has no magnitude for its duties (§3.3, §3.10)"
-            )
+            continue  # no magnitude, so no duty; :func:`processes_without_magnitude` reports it
 
         for _, row in rows.iterrows():
             carrier_id = str(row["carrier_id"])
@@ -312,6 +328,76 @@ def derive_duties(
             duties[duty.key] = duty
 
     return tuple(duties.values())
+
+
+def processes_without_magnitude(premise: PremiseTables) -> tuple[str, ...]:
+    """Processes valid at the base year whose ``known_capacity`` is blank (§3.10).
+
+    :func:`derive_duties` derives no duty for these. They are named here so the run report
+    can print them: a duty that quietly does not exist is the failure mode, not the blank.
+    """
+    record = premise.premise_record.iloc[0]
+    processes = _processes_at(premise, int(record["data_year"]))
+    if processes.empty:
+        return ()
+    blank = processes[processes["known_capacity"].isna()]
+    return tuple(sorted({str(process_id) for process_id in blank["process_id"]}))
+
+
+def internal_supply(
+    reference: ReferenceTables, premise: PremiseTables, admitted: frozenset[str]
+) -> dict[str, frozenset[str]]:
+    """Carrier -> the units that may supply it although D16 gave it **no duty** (§3.9).
+
+    **The D16 branch of :func:`derive_duties` needs a matching branch here, and the plan
+    missed it.** Note 21 §2.2 puts z° (undispatched primary output) out of scope because
+    "no internal ``product`` carriers in the synthetic premises", and that premise is false:
+    ``mvp-cement``'s kilns make ``clinker``, a ``product`` with ``may_export`` false, and
+    §3.9 therefore removes its premise-level duty row. The plan's own words are that "C8
+    (carrier balance) pins the kiln through the ``clinker`` balance instead" — but a unit
+    that serves no duty has no z_{u,q,t} and so has no activity to pin. Without the set
+    returned here the ``clinker`` node has no producer, the grinder is forced to zero and C1
+    (duty satisfaction) on the 1.13 Mt cement duty is infeasible.
+
+    The set is the same three-table join U_q is: the eligible, admitted units of a
+    D16-suppressed process, narrowed to those whose primary output is an internal product.
+    ``ccs_amine`` is therefore **not** here — its ``co2_captured`` carries ``may_export``
+    true, so it is not internal, and with export out of the slice C8 would pin it to zero
+    anyway. The premise's own §3.10.2 children are unioned in, so named plant is never lost
+    to an eligibility gap.
+    """
+    activity, set_id = _activity_and_set(reference, premise)
+    record = premise.premise_record.iloc[0]
+    processes = _processes_at(premise, int(record["data_year"]))
+    if processes.empty:
+        return {}
+
+    io = reference.unit_input_output
+    outputs = io[io["role"] == "primary_output"]
+    primary_by_unit: dict[str, set[str]] = {}
+    for unit_id, carrier_id in zip(outputs["unit_id"], outputs["carrier_id"], strict=True):
+        primary_by_unit.setdefault(str(unit_id), set()).add(str(carrier_id))
+
+    supply: dict[str, set[str]] = {}
+    for _, process in processes.iterrows():
+        process_id = str(process["process_id"])
+        if _duty_profile_for(reference, activity, set_id, process_id).empty:
+            continue
+        runs = _units_run_by(
+            reference, premise, activity, process_id, int(process["valid_from_year"])
+        )
+        if not _makes_only_an_internal_product(reference, runs):
+            continue
+        candidates = {
+            str(unit_id)
+            for unit_id in _eligibility_rows(reference, activity, process_id)["unit_id"]
+        } | runs
+        for unit_id in sorted(candidates & admitted):
+            if not _makes_only_an_internal_product(reference, {unit_id}):
+                continue
+            for carrier_id in sorted(primary_by_unit.get(unit_id, set())):
+                supply.setdefault(carrier_id, set()).add(unit_id)
+    return {carrier_id: frozenset(units) for carrier_id, units in sorted(supply.items())}
 
 
 # ------------------------------------------------------------------------ U_q, the join
@@ -422,6 +508,10 @@ def build_sets(
 ) -> ModelSets:
     """Assemble Q, U, U_q and the three eligibility columns for one premise.
 
+    Two fields beyond Q, U and U_q: ``supply`` carries the D16-suppressed producers
+    :func:`internal_supply` finds, and ``no_magnitude`` the processes
+    :func:`processes_without_magnitude` could not size.
+
     ``min_duty`` is applied against the duty's largest quantity over the horizon: "below this
     the unit is not offered at all" (§3.5.1) is a statement about the duty, and U_q is not
     period-indexed. ``earliest_year`` and ``max_share`` are carried out to the LP instead,
@@ -463,6 +553,8 @@ def build_sets(
         earliest_year=earliest_year,
         max_share=max_share,
         min_duty=min_duty,
+        supply=internal_supply(reference, premise, screen.admitted),
+        no_magnitude=processes_without_magnitude(premise),
     )
 
 

@@ -133,6 +133,72 @@ def surviving_capacity(
     return pd.DataFrame.from_records(records, columns=list(SURVIVING_COLUMNS))
 
 
+def vintage_capacity(premise, unit: pd.DataFrame) -> pd.DataFrame:
+    """``premise_process_vintage`` with the ``capacity`` column :func:`surviving_capacity` needs.
+
+    §3.15 carries a ``capacity_share`` and no capacity: the magnitude lives one table up, in
+    ``premise_process_detail.known_capacity``, which the premise README states is "the
+    premise's annual magnitude for that process". That is an **activity** in PJ/yr or Mt/yr,
+    not a nameplate, so C2's ``a γ α`` has to be inverted to get the capacity behind it::
+
+        capacity = known_capacity / (γ_u α_u)
+
+    and :func:`surviving_capacity` then scales it by the cohort's ``capacity_share``.
+
+    **Reading ``known_capacity`` as a capacity instead would make ``mvp-minimal``
+    infeasible at the base year**, which is how the two readings are told apart: its single
+    incumbent covers a 0.100000 PJ/yr duty at ``availability_factor`` 0.9823, so taken as a
+    nameplate it delivers 0.098230 PJ/yr, C5 (no building in the start year) forbids topping
+    it up, and C1 (duty satisfaction) cannot close. Taken as an activity it delivers the
+    0.100000 the premise was written to need. The premise README's remark that the cement
+    kiln's 0.95 Mt/yr leaves 2% of headroom follows the other reading and is a shade
+    conservative; nothing in the model depends on which, because the kiln clears 0.85 Mt/yr
+    either way.
+
+    A process valid at the base year with a blank ``known_capacity`` contributes no
+    incumbent capacity, which is the same silence :func:`carb3.sets.derive_duties` gives its
+    duty. A vintage row whose process has no such row at all is an unresolvable reference
+    and raises.
+    """
+    vintages = premise.premise_process_vintage
+    if vintages is None or len(vintages) == 0:
+        return vintages.copy() if vintages is not None else pd.DataFrame()
+
+    detail = premise.premise_process_detail
+    data_year = int(premise.premise_record.iloc[0]["data_year"])
+    started = detail["valid_from_year"] <= data_year
+    not_ended = detail["valid_to_year"].isna() | (detail["valid_to_year"] >= data_year)
+    magnitude = {
+        str(row.process_id): row.known_capacity
+        for row in detail[started & not_ended].itertuples(index=False)
+    }
+
+    indexed = unit.set_index("unit_id")
+    rows = []
+    for row in vintages.itertuples(index=False):
+        process_id = str(row.process_id)
+        if process_id not in magnitude:
+            raise ValueError(
+                f"premise_process_vintage names process {process_id!r}, which has no "
+                "premise_process_detail row valid at the base year; §3.15's cohorts hang "
+                "off §3.10's intervals"
+            )
+        activity = magnitude[process_id]
+        if pd.isna(activity):
+            continue
+        unit_id = str(row.unit_id)
+        deliverable = float(indexed.loc[unit_id, "capacity_to_activity_factor"]) * float(
+            indexed.loc[unit_id, "availability_factor"]
+        )
+        if deliverable <= 0:
+            raise ValueError(
+                f"unit {unit_id!r} has a non-positive γα and cannot carry incumbent "
+                "capacity; the §3.2 admission screen should have dropped it"
+            )
+        rows.append({**row._asdict(), "capacity": float(activity) / deliverable})
+    return pd.DataFrame.from_records(rows, columns=[*vintages.columns, "capacity"])
+
+
 def _lifetimes(unit: pd.DataFrame) -> dict[str, int]:
     """``unit_id`` → ``lifetime`` in years, skipping units whose lifetime is blank.
 
@@ -156,7 +222,7 @@ def _share(value: object) -> float:
     A stated 0.0 is honoured — it is a cohort with no capacity, not a missing column — which
     is why this is not written as ``value or 1.0``.
     """
-    if value is None:
+    if value is None or pd.isna(value):
         return 1.0
     if isinstance(value, str):
         text = value.strip()
@@ -168,8 +234,14 @@ def _share(value: object) -> float:
 
 
 def _as_years(value: object) -> int | None:
-    """Coerce a lifetime cell to whole years, or ``None`` where it is blank."""
-    if value is None:
+    """Coerce a lifetime cell to whole years, or ``None`` where it is blank.
+
+    ``pd.NA`` is a blank too. 13 of ``unit.csv``'s 137 rows carry no ``lifetime`` and the
+    loader keeps the column ``Int64``, so the cell arrives as ``NAType`` rather than as
+    ``float('nan')`` — which ``float()`` refuses outright, so a real reference table turned
+    the intended "skip it" into a ``TypeError``.
+    """
+    if value is None or pd.isna(value):
         return None
     if isinstance(value, str):
         text = value.strip()

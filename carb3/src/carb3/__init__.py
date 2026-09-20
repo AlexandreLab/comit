@@ -19,8 +19,9 @@ Five modules, per plan §5.1 — the review reduced seven to five, so do not add
 ``ledger``
     Cost by term, carrier mix, dispatch, build, disposal -> parquet.
 
-Nothing below ``carb3`` is implemented yet. Every public function raises
-``NotImplementedError``; the signatures are the contract T2-T8 fill in.
+``carb3.__main__`` is the entry point — ``python -m carb3``, or ``make carb3-run`` — and is
+not a sixth module: it holds no model code, only the order the five stages run in and the
+run report §5.2 and §5.3 ask to be printed.
 """
 
 __all__ = ["__version__"]

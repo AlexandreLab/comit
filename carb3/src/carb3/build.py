@@ -6,8 +6,17 @@ features are removed, never added.
 Variables in: n_{u,t} new capacity, a_{u,t} capacity available, z_{u,q,t} activity
 dispatched to duty, e_{u,t} surviving incumbent capacity, m_{c,t} / m_{c,k,t} import, and
 d_{c,t} **disposal**. Out: h_{c->c',t} cascade (C10 is enforced by eligibility instead),
-z°_{u,t} undispatched primary output, r_{u,t} early retirement, x_{c,k,t} export, w_{k,t}
-reinforcement.
+r_{u,t} early retirement, x_{c,k,t} export, w_{k,t} reinforcement.
+
+**z°_{u,t} is in, but only for the D16 carriers, and note 21 §2.2 was wrong to put it
+out.** §2.2's reason is "no internal ``product`` carriers in the synthetic premises", and
+``mvp-cement``'s kilns make ``clinker`` — a ``product`` with ``may_export`` false, whose
+premise-level duty row §3.9 therefore removes. The plan says C8 pins those kilns through the
+``clinker`` balance, which is right, but a unit serving no duty has no z_{u,q,t} to be
+pinned: without a variable the node has no producer, the grinder is forced to zero and the
+1.13 Mt cement duty is infeasible. :func:`carb3.sets.internal_supply` names those units and
+they take a column on the ``dispatch`` dimension that C1 does not select. Nothing else about
+z° is restored — an ordinary unit's output is still fully dispatched and settled by C1.
 
 **d_{c,t} is not optional** (§2.2). 59 ``reject`` rows from 59 distinct units all run into
 ``heat_lt60``, which is grade 1 — the bottom, so there is nothing to cascade to — and exactly
@@ -40,8 +49,9 @@ nothing on site.
 silently builds a dense model rather than raising, and at three premises HiGHS solves either
 version in under a second, so the mistake would not surface until M5. z_{u,q,t} is therefore
 declared over a **flattened ``dispatch`` dimension** whose coordinates are the eligible
-(unit, duty) pairs — no mask is involved, and a pair that is not eligible has no coordinate
-to be masked out of. C1 and C2 recover the two groupings with ``groupby``, and C8 selects
+(unit, duty) pairs and the internal-supply columns above — no mask is involved, and a pair
+that is not eligible has no coordinate to be masked out of. C1 and C2 recover the two
+groupings with ``groupby`` (C1 selecting only the real duty labels), and C8 selects
 only the units that carry a coefficient on the carrier. The counts are asserted in the tests
 against the set sizes and printed per premise by :func:`solve`.
 
@@ -52,10 +62,13 @@ carriers are networked is not knowable here and ``m_{c,k,t}`` cannot be declared
 already records that the connection index carries no information while C11 (connection
 capacity), Z^net and export are all out, and ``import_price`` has no connection dimension, so
 the two forms are numerically identical in this slice — but restoring the index needs a
-connections argument, not a change here. Second, ``z°`` is out (§2.2), so a unit that serves
-no duty has no activity variable at all; that is deliberate for the capture trains, which
-§2.2 expects the cement premise to do without, and it is why the §5.4 biogenic credit below
-is structurally zero in this slice even though it is implemented in full.
+connections argument, not a change here. Second, ``z°`` is restored **only** for the D16
+carriers above, so a unit that serves no duty and supplies no internal product has no
+activity variable at all. That still holds for the capture trains, which §2.2 expects the
+cement premise to do without — ``ccs_amine``'s ``co2_captured`` is ``may_export`` true, so
+it is not an internal product, and with export out C8 would pin it to zero in any case — and
+it is why the §5.4 biogenic credit below is structurally zero in this slice even though it
+is implemented in full.
 
 Owed by T3, T6 and T7.
 """
@@ -81,9 +94,10 @@ from carb3.sets import ModelSets
 #: draw a ``primary`` carrier as ``aux_input`` and a secondary fuel is still a fuel.
 CONSUMING_ROLES: frozenset[str] = frozenset({"fuel_input", "aux_input", "emission_input"})
 
-#: The one role C8 reads through z° rather than through z (§5.5). z° is out of this slice, so
-#: a primary output reaches the balance only by not being dispatched — which cannot happen
-#: here — and these rows are excluded from the balance coefficients entirely.
+#: The one role C8 reads through z° rather than through z (§5.5). An ordinary unit's primary
+#: output is fully dispatched and settled by C1, so these rows are excluded from the balance
+#: coefficients — except on a D16 carrier, where there is no C1 row and the output *is* the
+#: balance. See ``supplied`` in :func:`_balance_coefficients`.
 PRIMARY_OUTPUT_ROLE: str = "primary_output"
 
 #: The disposal gate of §5.2. ``intermediate`` and ``emission`` carriers may be disposed of;
@@ -97,6 +111,10 @@ BIOGENIC_FUEL_CO2: str = "co2_fuel_biogenic"
 #: §5.4's unit conversion: emission factors are kt/PJ and the carbon price is £/t, and the
 #: objective is £m.
 CARBON_UNIT_CONVERSION: float = 1e-3
+
+#: Marks an internal-supply column on the ``dispatch`` dimension — a unit whose output D16
+#: left with no duty row. A duty label is three ``|``-joined parts, so this cannot collide.
+SUPPLY_PREFIX: str = "supply:"
 
 
 @dataclass(frozen=True)
@@ -237,15 +255,23 @@ def build_model(
     _check_axis_rate(reference, axis)
 
     pairs = _dispatch_pairs(sets)
-    model_units = sorted({unit_id for _, unit_id in pairs})
+    model_units = sorted({pair.unit_id for pair in pairs})
     parameters = _unit_parameters(reference, model_units)
     carrier_facts = _carrier_facts(reference)
-    coefficients = _balance_coefficients(reference, model_units, periods, carrier_facts)
+    # The primary output of an internal-supply unit is the only one C8 reads directly: every
+    # other unit's output is settled by C1 instead, and adding it to the balance as well
+    # would ask the site to both meet the duty and dispose of it.
+    supplied = {
+        carrier_id: frozenset(units & sets.units)
+        for carrier_id, units in sorted(sets.supply.items())
+        if units & sets.units
+    }
+    coefficients = _balance_coefficients(
+        reference, model_units, periods, carrier_facts, supplied
+    )
 
     period_index = pd.Index(periods, name="period")
-    dispatch_index = pd.Index(
-        [_pair_label(duty_key, unit_id) for duty_key, unit_id in pairs], name="dispatch"
-    )
+    dispatch_index = pd.Index([pair.coordinate for pair in pairs], name="dispatch")
     unit_index = pd.Index(model_units, name="unit")
 
     duty_by_key = {duty.key: duty for duty in sets.duties}
@@ -312,10 +338,10 @@ def build_model(
 
     # --- groupings ---------------------------------------------------------------------
     unit_of = xr.DataArray(
-        [unit_id for _, unit_id in pairs], coords=[dispatch_index], name="unit"
+        [pair.unit_id for pair in pairs], coords=[dispatch_index], name="unit"
     )
     duty_of = xr.DataArray(
-        [_duty_label(duty_key) for duty_key, _ in pairs], coords=[dispatch_index], name="duty"
+        [pair.label for pair in pairs], coords=[dispatch_index], name="duty"
     )
     # z_{u,t} of §5.2, the total activity C2 and C8 read. z° is out, so this is the whole of
     # it; groupby keeps the sum sparse — one term per eligible pair, never |U| x |Q|.
@@ -529,6 +555,23 @@ def check_constraint_rows(
 
 
 @dataclass(frozen=True)
+class _Pair:
+    """One column of the flattened ``dispatch`` dimension.
+
+    ``duty_key`` is ``None`` for an internal-supply column — a unit producing a carrier D16
+    left with no duty row — which is how C1 (duty satisfaction) tells the two apart.
+    """
+
+    duty_key: tuple[str, str, str] | None
+    label: str
+    unit_id: str
+
+    @property
+    def coordinate(self) -> str:
+        return f"{self.unit_id}@{self.label}"
+
+
+@dataclass(frozen=True)
 class _UnitParameters:
     """The §5.3 parameters the objective and C2/C3 read, per unit.
 
@@ -557,26 +600,42 @@ class _CarrierFacts:
     may_import: bool
 
 
-def _dispatch_pairs(sets: ModelSets) -> tuple[tuple[tuple[str, str, str], str], ...]:
-    """The eligible (duty, unit) pairs — the coordinates of the flattened ``dispatch`` dim.
+def _dispatch_pairs(sets: ModelSets) -> tuple[_Pair, ...]:
+    """The coordinates of the flattened ``dispatch`` dimension.
+
+    Two kinds of column sit on it. Most are the eligible **(duty, unit)** pairs and are
+    summed into C1 (duty satisfaction) by ``groupby``. The rest are the **internal-supply**
+    columns :func:`carb3.sets.internal_supply` found — a unit producing a carrier that D16
+    left with no duty row — and they carry ``duty_key`` ``None``, so C1 never selects their
+    label and their level is settled by C8 (carrier balance) alone. That is exactly what
+    note 21 §2.2 means by "C8 pins the kiln through the ``clinker`` balance instead", and it
+    is the smallest restoration of z° that makes the sentence true.
 
     A duty with an empty U_q is refused here rather than silently dropped. C1 built by
     ``groupby`` would simply not emit a row for it, and the duty would go unmet with the
     solver reporting ``optimal`` — the silent wrong answer §5.2 sends to the diagnosis step.
     """
-    pairs: list[tuple[tuple[str, str, str], str]] = []
+    pairs: list[_Pair] = []
     unservable: list[tuple[str, str, str]] = []
     for duty in sets.duties:
         eligible = sorted(sets.eligible.get(duty.key, frozenset()) & sets.units)
         if not eligible:
             unservable.append(duty.key)
             continue
-        pairs.extend((duty.key, unit_id) for unit_id in eligible)
+        pairs.extend(
+            _Pair(duty_key=duty.key, label=_duty_label(duty.key), unit_id=unit_id)
+            for unit_id in eligible
+        )
     if unservable:
         raise ValueError(
             "these duties have an empty eligible-unit set and cannot be built into the LP: "
             f"{unservable}. §5.2 makes this an expected outcome — call "
             "carb3.sets.diagnose_unservable_duties before building"
+        )
+    for carrier_id, units in sorted(sets.supply.items()):
+        pairs.extend(
+            _Pair(duty_key=None, label=_supply_label(carrier_id), unit_id=unit_id)
+            for unit_id in sorted(units & sets.units)
         )
     if not pairs:
         raise ValueError("no duty has an eligible unit; there is no problem to build")
@@ -606,8 +665,10 @@ def _duty_label(duty_key: tuple[str, str, str]) -> str:
     return "|".join(str(part) for part in duty_key)
 
 
-def _pair_label(duty_key: tuple[str, str, str], unit_id: str) -> str:
-    return f"{unit_id}@{_duty_label(duty_key)}"
+def _supply_label(carrier_id: str) -> str:
+    """The label of an internal-supply column. ``|`` separates a duty key's three parts, so
+    a single-segment label cannot collide with one however a duty is named."""
+    return f"{SUPPLY_PREFIX}{carrier_id}"
 
 
 def _duty_quantity(duty, year: int) -> float:
@@ -622,7 +683,7 @@ def _duty_quantity(duty, year: int) -> float:
 
 def _dispatch_upper_bounds(
     sets: ModelSets,
-    pairs: Sequence[tuple[tuple[str, str, str], str]],
+    pairs: Sequence[_Pair],
     duty_by_key: dict[tuple[str, str, str], object],
     periods: Sequence[int],
     dispatch_index: pd.Index,
@@ -631,14 +692,17 @@ def _dispatch_upper_bounds(
     """``max_share`` as an upper bound on z_{u,q,t}: the unit's share of that duty (§3.1).
 
     Four rows carry one, and one of them is ``boiler_lt_coal`` at ``Food Processing Centre``
-    at 0.00 — a hard prohibition, which this turns into an upper bound of exactly zero.
+    at 0.00 — a hard prohibition, which this turns into an upper bound of exactly zero. An
+    internal-supply column has no duty and so no share: it is bounded by C2 and C8 alone.
     """
     bounds = np.full((len(pairs), len(periods)), np.inf)
-    for row, (duty_key, unit_id) in enumerate(pairs):
-        share = sets.max_share.get((duty_key, unit_id))
+    for row, pair in enumerate(pairs):
+        if pair.duty_key is None:
+            continue
+        share = sets.max_share.get((pair.duty_key, pair.unit_id))
         if share is None:
             continue
-        duty = duty_by_key[duty_key]
+        duty = duty_by_key[pair.duty_key]
         for column, year in enumerate(periods):
             bounds[row, column] = float(share) * _duty_quantity(duty, year)
     return xr.DataArray(bounds, coords=[dispatch_index, period_index])
@@ -766,7 +830,7 @@ def _unit_parameters(
             lifetime=int(round(_required_float(row, "lifetime", unit_id))),
             alpha=_required_float(row, "availability_factor", unit_id),
             gamma=_required_float(row, "capacity_to_activity_factor", unit_id),
-            unit_class=str(row.get("unit_class", "") or "").strip(),
+            unit_class=_as_text(row.get("unit_class")),
         )
     return parameters
 
@@ -798,10 +862,10 @@ def _carrier_facts(reference: ReferenceTables) -> dict[str, _CarrierFacts]:
     facts: dict[str, _CarrierFacts] = {}
     for row in table.itertuples(index=False):
         facts[str(row.carrier_id)] = _CarrierFacts(
-            kind=str(row.carrier_kind or "").strip(),
+            kind=_as_text(row.carrier_kind),
             is_indirect=_as_bool(row.is_indirect),
             biogenic_fraction=_as_float(row.biogenic_fraction),
-            carbon_charge=str(row.carbon_charge or "").strip(),
+            carbon_charge=_as_text(row.carbon_charge),
             may_dispose=_as_bool(row.may_dispose),
             may_import=_as_bool(row.may_import),
         )
@@ -813,6 +877,7 @@ def _balance_coefficients(
     model_units: Sequence[str],
     periods: Sequence[int],
     carrier_facts: dict[str, _CarrierFacts],
+    supplied: dict[str, frozenset[str]] | None = None,
 ) -> dict[str, dict[str, np.ndarray]]:
     """C8's coefficient set: carrier → unit → ι over the periods.
 
@@ -821,6 +886,12 @@ def _balance_coefficients(
     settled by C1 instead. The inner sum is over **roles**, per §5.5: a store holding a charge
     row and a discharge row on one carrier, or a fired capture train holding an
     ``emission_input`` and a derived ``emission`` row on ``co2_fuel_fossil``, sums both here.
+
+    **``supplied`` is the one exception, and it is the D16 case.** A carrier D16 left with no
+    duty row has no C1 row to settle its producers against, so for those (carrier, unit)
+    pairs the ``primary_output`` coefficient *is* the balance: the kiln's ``+1`` clinker
+    against the grinder's ``−0.752212`` draw. Including it for anything else would ask the
+    site to meet the duty and dispose of the same output twice over.
 
     A6's two derived rows (§3.6, D15) are added on top, and they are period-dependent because
     the emission factor is a ``scenario_parameters`` series.
@@ -853,7 +924,8 @@ def _balance_coefficients(
                 f"unit_input_output row ({unit_id}, {carrier_id}, {role}) has a blank "
                 "coefficient; a blank is read as zero and the flow becomes free"
             )
-        if role != PRIMARY_OUTPUT_ROLE:
+        reads_output = unit_id in (supplied or {}).get(carrier_id, frozenset())
+        if role != PRIMARY_OUTPUT_ROLE or reads_output:
             slot = coefficients.setdefault(carrier_id, {})
             slot[unit_id] = slot.get(unit_id, np.zeros(n_periods)) + value
         facts = carrier_facts[carrier_id]
@@ -1145,6 +1217,23 @@ def _as_float(value: object) -> float | None:
     except (TypeError, ValueError):
         return None
     return None if math.isnan(number) else number
+
+
+def _as_text(value: object) -> str:
+    """A cell as stripped text, with a blank for a missing one.
+
+    ``str(value or "")`` will not do: a blank ``carbon_charge`` arrives as ``float('nan')``,
+    which is **truthy**, so the idiom yields the string ``"nan"``. It compares unequal to
+    ``"charged"`` either way, so nothing was mispriced — but it reached the ledger, where a
+    carrier's charge status is printed beside the quantity it was charged on.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, float) and math.isnan(value):
+        return ""
+    if value is pd.NA or (not isinstance(value, str) and pd.isna(value)):
+        return ""
+    return str(value).strip()
 
 
 def _as_bool(value: object) -> bool:

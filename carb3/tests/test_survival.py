@@ -213,3 +213,147 @@ def test_a_unit_table_without_a_lifetime_column_fails_loud() -> None:
         survival.surviving_capacity(
             vintages, pd.DataFrame([{"unit_id": "boiler_lt_gas"}]), PERIODS
         )
+
+
+# --------------------------------------------------------------------------------- the
+# magnitude behind a cohort
+# ---------------------------------------------------------------------------------------
+
+
+def _premise(detail_rows, vintage_rows):
+    """A minimal :class:`~carb3.load.PremiseTables` stand-in for ``vintage_capacity``."""
+    from carb3.load import PremiseTables
+
+    return PremiseTables(
+        premise_record=pd.DataFrame([{"premise_id": "fx", "data_year": 2024}]),
+        premise_process_detail=pd.DataFrame(detail_rows),
+        premise_process_unit=pd.DataFrame(),
+        premise_process_vintage=pd.DataFrame(vintage_rows),
+    )
+
+
+def _costed_unit_table() -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "unit_id": "boiler_lt_gas",
+                "lifetime": 25,
+                "capacity_to_activity_factor": 1.0,
+                "availability_factor": 0.9823,
+            }
+        ]
+    )
+
+
+def test_vintage_capacity_inverts_gamma_alpha_to_get_the_capacity_behind_a_duty() -> None:
+    """``known_capacity`` is the process's annual **activity**, and C2 reads a capacity.
+
+    §3.15 carries a ``capacity_share`` and no capacity; the magnitude is one table up. C2
+    is ``z <= a γ α``, so the capacity behind an annual magnitude of ``D`` is ``D/(γα)``.
+
+    **Reading ``known_capacity`` as a capacity instead makes ``mvp-minimal`` infeasible at
+    the base year**, which is how the two readings are told apart: 0.100000 PJ/yr at
+    ``availability_factor`` 0.9823 delivers only 0.098230, C5 (no building in the start
+    year) forbids topping it up, and C1 (duty satisfaction) cannot close.
+    """
+    premise = _premise(
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "valid_from_year": 2009,
+                "valid_to_year": None,
+                "known_capacity": 0.1,
+            }
+        ],
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "unit_id": "boiler_lt_gas",
+                "commissioned_year": 2009,
+                "capacity_share": 1.0,
+            }
+        ],
+    )
+    unit = _costed_unit_table()
+    frame = survival.vintage_capacity(premise, unit)
+    assert float(frame.loc[0, "capacity"]) == pytest.approx(0.1 / 0.9823)
+
+    standing = survival.surviving_capacity(frame, unit, PERIODS)
+    deliverable = float(standing.loc[0, "capacity"]) * 0.9823
+    assert deliverable == pytest.approx(0.1), "the incumbent must just cover its own duty"
+
+
+def test_vintage_capacity_skips_a_process_with_no_magnitude() -> None:
+    """A blank ``known_capacity`` gives no duty, so it must give no incumbent either.
+
+    ``mvp-cement``'s ``clinker_cooling`` and ``site_services`` are the case. Giving them a
+    capacity while A2 gives them no duty would add fixed opex for plant with nothing to do.
+    """
+    premise = _premise(
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "valid_from_year": 2009,
+                "valid_to_year": None,
+                "known_capacity": None,
+            }
+        ],
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "unit_id": "boiler_lt_gas",
+                "commissioned_year": 2009,
+                "capacity_share": 1.0,
+            }
+        ],
+    )
+    assert survival.vintage_capacity(premise, _costed_unit_table()).empty
+
+
+def test_vintage_capacity_refuses_a_cohort_whose_process_is_not_valid_at_the_base_year() -> None:
+    """§3.15's cohorts hang off §3.10's intervals; an orphan is a broken input."""
+    premise = _premise(
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "valid_from_year": 2009,
+                "valid_to_year": None,
+                "known_capacity": 0.1,
+            }
+        ],
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "direct_heating",
+                "unit_id": "boiler_lt_gas",
+                "commissioned_year": 2009,
+                "capacity_share": 1.0,
+            }
+        ],
+    )
+    with pytest.raises(ValueError, match="no premise_process_detail row"):
+        survival.vintage_capacity(premise, _costed_unit_table())
+
+
+def test_a_blank_lifetime_arrives_as_pd_na_from_a_real_reference_table() -> None:
+    """The loader keeps ``lifetime`` ``Int64``, so a blank is ``pd.NA``, not ``nan``.
+
+    ``float(pd.NA)`` raises outright, so the intended "skip a unit with no lifetime" became
+    a ``TypeError`` the moment the function met ``unit.csv`` instead of a fixture.
+    """
+    unit = pd.DataFrame(
+        {
+            "unit_id": ["boiler_lt_gas", "heat_exchanger_lt_steam"],
+            "lifetime": pd.array([25, None], dtype="Int64"),
+        }
+    )
+    vintages = pd.DataFrame(
+        [{"unit_id": "boiler_lt_gas", "commissioned_year": 2010, "capacity": 4.0}]
+    )
+    standing = survival.surviving_capacity(vintages, unit, PERIODS)
+    assert set(standing["unit_id"]) == {"boiler_lt_gas"}
