@@ -24,6 +24,7 @@ heat_400_1000,Heat 400-1000 C,intermediate,TRUE,5,400-1000C,FALSE,,,,energy,TRUE
 heat_gt1000,Heat above 1000 C,intermediate,TRUE,6,>1000C,FALSE,,,,energy,TRUE,FALSE,FALSE,,,
 motive_power,Motive power (shaft work),intermediate,FALSE,,,FALSE,,,,energy,TRUE,FALSE,FALSE,,,
 cooling,Cooling and refrigeration,intermediate,FALSE,,,FALSE,,,,energy,TRUE,FALSE,FALSE,,,
+electric_service,"Electric end-use service (not shaft work, heat or cooling)",intermediate,FALSE,,,FALSE,,,,energy,TRUE,FALSE,FALSE,,,"Service carrier added 2026-09-24 (spec section 3.4, note 22 section 2): lighting, instruments, process tools, welding, electrochemistry and battery charging. Keeps C8 non-circular where a duty would otherwise sit on electricity"
 co2_process,Process CO2 (chemistry),emission,FALSE,,,FALSE,,,charged,mass,TRUE,FALSE,FALSE,,INDCO2P,
 co2_fuel_fossil,Fuel CO2 (fossil carbon),emission,FALSE,,,FALSE,,,charged,mass,TRUE,FALSE,FALSE,,,
 co2_fuel_biogenic,Fuel CO2 (biogenic carbon),emission,FALSE,,,FALSE,,,zero_rated,mass,TRUE,FALSE,FALSE,,,

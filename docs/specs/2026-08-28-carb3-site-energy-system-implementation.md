@@ -702,7 +702,7 @@ circular. Every duty family therefore resolves to a carrier that represents the 
 | `LTH`, `HTH`, `STM`, `DRY`, `SPC`, `PHEAT` | graded heat, `heat@band` (`grade_family` heat) | intermediate, gradeable | **internal** — `may_import` and `may_export` both false |
 | `MOT` | **`motive_power`** | intermediate, not gradeable | **internal** |
 | `REF` | graded cooling, **`cooling@band`** (`grade_family` cooling) | intermediate, gradeable | **internal** |
-| `OTH` | resolves to whichever of the above the underlying service is | — | **internal** |
+| `OTH` | whichever of the above the underlying service is, or **`electric_service`** where it is none of them | intermediate, not gradeable | **internal** |
 
 **An `OTH` row on a fuel is invalid, not a shortcut.** `OTH` is a bucket for a service the
 other families do not name; it never licenses the carrier rule above to be skipped. A duty row
@@ -710,6 +710,15 @@ of any family whose `carrier_id` is a `primary` carrier — `electricity` includ
 `emission` carrier is rejected at load by V34 (duties are services at a grade). Where the
 underlying service is genuinely not one of heat, cooling or motive power, the fix is a new
 service carrier declared in this table, not a fuel standing in for one.
+
+**`electric_service` is that carrier for electricity-only end uses.** Lighting, laboratory
+instruments, semiconductor process tools, resistance and arc welding, platemaking,
+electrochemistry and battery charging are neither shaft work, heat nor cooling, and nothing
+but electricity supplies them. Filing them under `motive_power` would offer motor-efficiency
+options to lighting and overstate the motive duty by the same amount. `electric_service` is
+produced by `generic_process_elec` at COMIT's coefficient (1.0101 PJ of electricity per PJ
+of service), so the duty is visible as a duty, C8 (carrier balance) at `electricity` stays
+non-circular, and end-use efficiency options have a carrier to attach to later.
 
 Every service carrier is internal by construction: a service is produced and consumed on the
 premise, so neither $m$ nor $x$ is ever declared on one. A duty may also sit on a `product`

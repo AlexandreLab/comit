@@ -193,15 +193,15 @@ at the archived baseline's §6, lines 2126–2127.
   `unit_eligibility.csv`, `scenario_parameters.csv`, `activity_process_duty_profile.csv`,
   `activity_process_register.csv` and `infrastructure_scenario.csv` as inputs, through a
   configurable reference root whose default is this directory.
-- **41 of `unit.csv`'s 137 units cannot be fully costed, and a cost minimiser reads the gaps
+- **40 of `unit.csv`'s 137 units cannot be fully costed, and a cost minimiser reads the gaps
   as free energy.** 15 have a blank `capex`, 13 a blank `lifetime`, 15 a blank `fixed_opex`,
-  13 each a blank `availability_factor` and `capacity_to_activity_factor`, and 26 carry no
-  `unit_input_output` rows at all — 38 distinct units. Three more belong to the same defect
+  13 each a blank `availability_factor` and `capacity_to_activity_factor`, and 25 carry no
+  `unit_input_output` rows at all — 37 distinct units. Three more belong to the same defect
   class and are easy to miss because their cost fields are complete:
   `lime_kiln_fluidbed_wdf`, `refinery_fixed_mix_gas` and `refinery_flexible_mix_gas` each
   declare a `fuel_carrier_id` in `unit.csv` and carry no `fuel_input` row in
-  `unit_input_output.csv`, so the declared fuel burns free. The 41 are reachable through 387
-  of `unit_eligibility.csv`'s 2612 rows. `unit.csv:12`, `heat_exchanger_lt_steam`, is the
+  `unit_input_output.csv`, so the declared fuel burns free. The 40 are reachable through 363
+  of `unit_eligibility.csv`'s 2613 rows. `unit.csv:12`, `heat_exchanger_lt_steam`, is the
   sharpest: `capex` 0, `fixed_opex` 0 and no coefficients, so it makes low-temperature heat
   from nothing.
 - **The price test is a price in *every* period, and only 4 of the 15 `may_import` carriers
@@ -212,7 +212,7 @@ at the archived baseline's §6, lines 2126–2127.
   `petroleum_products_misc` — and **`heavy_fuel_oil` has exactly one row, at 2021**. The
   partial case is the dangerous one: it looks present until you index it by year, and a
   test that asks only whether a carrier has *a* price counts 5 and misses it. Widen the
-  reach to every unit burning an unpriced or part-priced fuel and it is 1178 of the 2612
+  reach to every unit burning an unpriced or part-priced fuel and it is 1154 of the 2613
   eligibility rows. Screen for cost completeness before pointing any optimiser at these
   tables. Detail in [note 20](docs/notes/20_reference_data_open_questions.md) items 48
   and 49.
@@ -225,9 +225,9 @@ at the archived baseline's §6, lines 2126–2127.
   to `activity_process_duty_profile.csv` for the duty and to `unit.grade_out` for C10 (the
   grade cascade, heat and cooling).
 - **A green `make check` is not evidence the data is sound.** `make data-check`'s blocking
-  checks pass on all 41 uncostable units and on every unpriced and part-priced carrier
+  checks pass on all 40 uncostable units and on every unpriced and part-priced carrier
   above. `make data-report` carries an advisory count for them, and advisory is deliberate
-  — making it blocking would turn 41 units red. Green means the keys join, not that a model
+  — making it blocking would turn 40 units red. Green means the keys join, not that a model
   can be run on the tables.
 - The public workbook's `commodities` and `Fuel_emissions` sheets are labelled *dummy
   figures*. The classification and method are real; the absolute intensities are not.

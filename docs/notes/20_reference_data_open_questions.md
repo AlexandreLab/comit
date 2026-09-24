@@ -778,6 +778,12 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     the data side:** the 11 `OTH` rows on `electricity` each need a service, and
     `validate_carb3_data.py` still admits `EN` as a duty family. Both are tasks in
     [note 22](22_duty_family_gap_plan.md).
+
+    **Further progress 2026-09-24:** a new service carrier, `electric_service`, now holds
+    electricity-only end uses (§3.4). Seven of the 11 rows and Chemical Works
+    `electrochemical_processes` are on it, served by `generic_process_elec` at COMIT's
+    coefficient of 1.0101. **Three rows remain:** Mill and Works `other_process` to
+    `motive_power`, and Mineral Production - Gas `power_generation` to be deleted (item 37).
 61. **Should `cooling` be graded?** §3.4 makes it one ungraded carrier. The 17 `REF` duties span
     very different temperatures: cold stores and chilling at an abattoir or creamery, glycol
     at a brewery, chilled water for a wafer fab's HVAC, and cooling-tower water at a

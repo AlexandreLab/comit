@@ -26,9 +26,9 @@ them, and routes the other coverage gaps to the note 20 items that own them.
 
 **Nine tasks in six lanes.** The first one — teaching the validator that ranks are unique
 per grade family — has to land before any cooling carrier is added, or `make data-check`
-goes red on the first row. The one decision that needs Alexandre before its task can start
-is whether a new service carrier for non-motive electric end uses (lighting, instruments,
-welding, fab tools) is acceptable; Task 5 carries the recommendation.
+goes red on the first row. The new service carrier for non-motive electric end uses
+(lighting, instruments, welding, fab tools), `electric_service`, was accepted on 2026-09-24
+and is applied; three `OTH` rows remain for Task 5.
 
 ---
 
@@ -102,13 +102,20 @@ the motive duty would be overstated by exactly the error §3.3 warns about for o
 plasma cutting. **Why not leave them on `electricity`.** C8 (carrier balance) goes circular
 at the `electricity` node, which is the reason §3.4's rule exists.
 
-**The recommendation is a new service carrier, `electric_service`**: `intermediate`,
-internal, not gradeable, produced by one unit (`electric_end_use`, electricity −1.0 per unit,
-`capex` 0) whose only purpose is to keep the node non-circular and make the load visible as a
-duty. It adds one row to §3.4's table and one carrier row, and it is where lighting and ICT
-efficiency options can later attach. **Decision needed from Alexandre** before Task 5 starts;
-the fallback, if the new carrier is declined, is `motive_power` for rows 4 and 10 and a
-register split for the others.
+**Decided 2026-09-24: a new service carrier, `electric_service`**: `intermediate`,
+internal, not gradeable. It adds one row to §3.4's table and one carrier row, and it is where
+lighting and ICT efficiency options can later attach. **The producer is the existing
+`generic_process_elec`, not a new `electric_end_use` unit** as first proposed: it is already
+the incumbent in `activity_default_unit.csv` for these processes and already eligible for
+all but one, and COMIT gives it a sourced coefficient — 1.0101 PJ of electricity per PJ of
+service (`IFDOTHELC01` and eight other sector copies; `INFOTHELC01` is 1.1765). Giving it
+that coefficient pair also takes it off the uncostable list. **Applied 2026-09-24:** the
+seven rows marked `electric_service` above and Chemical Works `electrochemical_processes`
+are on the new carrier; `generic_process_elec` gained its two `unit_input_output` rows and
+an eligibility row at Wafer Fabrication `process_tools`; the default unit at Wafer
+Fabrication `process_tools` (was `motor_elec`) and at Large industrial NEC `other_process`
+(was `generic_process_gas`) is now `generic_process_elec`. Rows 4, 5 and 10 are not yet
+done.
 
 **The four `OTH` rows on `motive_power` get the same scrutiny.** Aircraft works, Factory and
 Industrial NEC `other_process` are plausibly shaft work. Chemical Works
@@ -365,15 +372,15 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 - **Lane:** duties, with a specification edit to §3.4 if the decision is yes.
 - **Goal:** no duty row sits on a fuel.
 - **Inputs:** §2 of this note; note 20 items 8, 37 and 1a.
-- **Change:** if `electric_service` is accepted — a row in §3.4's table, the carrier, the
-  `electric_end_use` unit, and seven rows moved to it plus Chemical Works
-  `electrochemical_processes`; rows 4 and 10 to `motive_power`; row 5 deleted, with the
-  generator admitted as a unit at that activity. If it is declined, the fallback in §2.
+- **Change:** `electric_service` was accepted and its part is **done** (§2): the §3.4 row, the
+  carrier, `generic_process_elec` as its producer, and seven rows plus Chemical Works
+  `electrochemical_processes` moved. **Still to do:** rows 4 and 10 to `motive_power`; row 5
+  deleted, with the generator admitted as a unit at that activity.
 - **Evidence rule:** a row moves to `motive_power` only where its source names motors, fans,
   pumps or compressed air.
 - **Verification:** V34 (a) turns blocking and passes; the `OTH` unservable count falls to 0
-  once `motor_elec` and `electric_end_use` are admitted where their rows now point.
-- **Depends on:** Alexandre's decision on `electric_service`.
+  once `motor_elec` and `generic_process_elec` are admitted where their rows now point.
+- **Depends on:** nothing now; the `electric_service` decision was taken on 2026-09-24.
 
 ### Task 6 — Repair the four inconsistent `grade_out` values
 
@@ -436,7 +443,7 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 - **The heat band set and its placement rule** remain note 20 items 23 and 27. §3.4 now
   states the rule the reference build used; confirming or reversing it moves the cooling rule
   with it.
-- **`electric_service`** needs Alexandre's yes or no (§2).
+- **`electric_service`** was accepted on 2026-09-24 and is applied (§2); rows 4, 5 and 10 remain.
 - **Compressed air** stays under `motive_power`, as §3.4 defers it.
 - **Refrigerant emissions** — HFC leakage, which is what separates the two chillers in COMIT —
   are outside the carrier set and outside this plan.
