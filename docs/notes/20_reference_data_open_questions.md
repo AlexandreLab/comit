@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, and items 5 and 16 on 2026-09-17 — **nine
-of the forty-nine**. Each carries the decision inline, with the work items 1 and 36 leave
+of the fifty-two**. Each carries the decision inline, with the work items 1 and 36 leave
 behind in items 1a and 1b, and the work item 4 leaves behind in items 44 and 45. The rest are
 undecided.
 
@@ -501,3 +501,41 @@ standing home for them.
     first gap and five-year gaps thereafter. Every present-value factor and lifetime
     conversion from $t = 1$ onward is affected. Note 21 carries an explicit year vector; the
     specification is owed the correction. *Note 21 §6.4.*
+
+## G. Questions raised reading the specification
+
+51. **§3.4's duty-family-to-carrier table covers eight of the twelve families, and the data
+    already disagrees with it.** The table maps `LTH`, `HTH`, `STM`, `DRY`, `SPC`, `MOT`, `REF`
+    and `OTH`, and §3.4 then explains away `NEUOTH` and `HRS`. That leaves two families with no
+    stated carrier:
+    - **`PHEAT` (process heating).** It has 14 rows in `activity_process_duty_profile.csv`, all on
+      graded heat at bands 3 to 5 (`heat_100_150`, `heat_150_400`, `heat_400_1000`). The data
+      treats it as a heat family, and the table should say so.
+    - **`EN`.** It has no rows at all and nothing in the spec says what it means. Either define
+      it and give it a carrier, or drop it from §3.3's enum and from the architecture document's
+      list of twelve.
+
+    Separately, **11 `OTH` rows sit on `electricity`**. That breaks §3.4's own rule ("a duty's
+    carrier is a service, never a fuel"): a unit serving that duty would consume and produce the
+    same carrier, and the C8 (carrier balance) node at `electricity` would go in a circle. Each
+    of the 11 needs resolving to the service it actually is, which is usually `motive_power`.
+    *Raised 2026-09-24 reading §3.3 and §3.4.*
+52. **Should `cooling` be graded?** §3.4 makes it one ungraded carrier. The 17 `REF` duties span
+    very different temperatures: cold stores and chilling at an abattoir or creamery, glycol
+    at a brewery, chilled water for a wafer fab's HVAC, and cooling-tower water at a
+    distillery. With one carrier, any cooling unit can serve any cooling duty. So when both
+    exist, the LP will meet a freezer duty with whatever gives the cheapest "cooling": the same
+    silent failure that `grade_rank` prevents for heat (data-migration mode #6). A chiller's
+    COP also depends on how cold it has to go, so an ungraded carrier forces one coefficient
+    onto duties that need different ones.
+    - **If graded**, the cascade runs the other way from heat: a colder band can serve a warmer
+      duty, never the reverse. C10 (the heat grade cascade) would need a direction per carrier,
+      or a sister constraint.
+    - **The cheapest version** is two or three bands: sub-zero refrigeration, chilled water
+      (about 0–15 °C) and ambient heat rejection. A cooling tower then cannot serve a freezer.
+    - **The units are not ready for it either way.** Only `chiller_electric` (COP 3.0) and
+      `chiller_electric_hfo` (COP 0.9) produce `cooling`. They differ by refrigerant, not by
+      temperature. The "advanced" unit's COP being a third of the standard one's looks like a
+      coefficient error in its own right.
+
+    *Raised 2026-09-24.*
