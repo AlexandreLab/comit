@@ -79,6 +79,13 @@ reject heat is a low-grade supply, which is exactly the source a heat pump needs
 current situation where `IFDSTMHP01` (steam) carries the same `33.333` coefficient as
 `IFDLTHELCHP01` (low-temperature hot water) cannot recur.
 
+**Cooling is graded the same way, with the cascade reversed.** `cooling@band` has three bands —
+sub-zero refrigeration, chilled water at about 0–15 °C, and ambient heat rejection above 15 °C —
+and there the *colder* band is the higher grade: a brine chiller may serve a chilled-water
+duty, a cooling tower may not serve a freezer store. The ordering never crosses between the two
+families. The implementation specification's §3.4 declares both band sets and its C10 (the
+grade cascade) reads the direction from the carrier.
+
 ### Unit spine — split by denominator
 
 The 94 process codes are sector-prefixed. Stripping the 3-character prefix, and excluding
@@ -90,6 +97,11 @@ two-denominator line:
 |---|---|---|---|
 | **Energy services** | Family-keyed generic units | 12: `DRY`, `EN`, `HRS`, `HTH`, `LTH`, `MOT`, `NEUOTH`, `OTH`, `PHEAT`, `REF`, `SPC`, `STM` | PJ |
 | **Chemistry** | Node-keyed per-process units | 14: `IAM`, `ICMCLK`, `IGLMRG`, `IHVC`, `IISHRS`, `IISLST`, `IISPIR`, `IISSNT`, `ILMCLK`, `INDHFCOTH`, `IPPBPA`, `IPPPBD`, `IPPPBP`, `PRCOIL` | Mt |
+
+**Twelve families key units; eleven are duty families.** `EN` is hydrogen production: it groups
+the electrolysers, reformers and gasifiers, whose output is the `hydrogen` carrier, and no
+process presents an `EN` duty. The implementation specification's §3.3 therefore admits eleven
+duty families, and its §3.4 notes that two of those — `NEUOTH` and `HRS` — take no carrier.
 
 Sector specificity moves out of the unit identity and into `unit_eligibility`.
 

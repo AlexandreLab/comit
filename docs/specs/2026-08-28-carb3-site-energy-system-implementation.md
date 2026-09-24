@@ -19,7 +19,7 @@
 
 ## 1. Scope, inputs, conventions, and how to read this
 
-*Section last updated: 2026-09-17*
+*Section last updated: 2026-09-24*
 
 ### 1.1 What this document is
 
@@ -77,7 +77,7 @@ Label families in this document, and where each is defined:
 | `C1`–`C12` | Constraints | §5.5 |
 | `A1`–`A9` | Algorithms | §4 |
 | `S0`–`S9` | Pipeline stages | §2.1 |
-| `V1`–`V33` | Validation tests | §10 |
+| `V1`–`V34` | Validation tests | §10 |
 | `G1`–`G4` | Scale gates | §9 |
 | `D1`–`D16` | Design decisions | §1.6 |
 | `PD1`–`PD2` | Programme decisions | the [overview](2026-08-28-carb3-site-energy-system-overview.md) |
@@ -87,7 +87,7 @@ Label families in this document, and where each is defined:
 | Term | Meaning |
 |---|---|
 | **Carrier** | Anything that flows and balances: gas, electricity, hydrogen, biomethane, CO₂, and heat at a grade |
-| **Grade** | A temperature band on a heat carrier. Ordered, and the cascade runs one way only |
+| **Grade** | A temperature band on a heat or a cooling carrier. Ordered within its family, and the cascade runs one way only: down the heat bands, up the cooling bands (C10, the grade cascade) |
 | **Duty** | What a process requires: a quantity of a carrier at a grade. The demand side |
 | **Unit** | What converts between carriers. The supply side. Boiler, heat pump, kiln, CHP, PV, battery |
 | **Hybrid unit** | A co-located package at a **fixed sizing ratio**, e.g. `pv_battery_2h`. One unit, one capex, one coefficient set (PD2) |
@@ -199,7 +199,7 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-09-17*
+*Section last updated: 2026-09-24*
 
 **Twenty-six entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, nine by the
@@ -498,9 +498,9 @@ This is the demand side of the carrier model, and **nothing holds it today** —
 | `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
 | `process_set_id` | string | — | yes | PK part | → `activity_process_register`. `default` unless a named route |
 | `process_id` | string | — | yes | PK part | → `activity_process_register` |
-| `duty_family` | enum{DRY, EN, HRS, HTH, LTH, MOT, NEUOTH, OTH, PHEAT, REF, SPC, STM} | — | yes | PK part | The 12 service families |
-| `carrier_id` | string | — | yes | → `carrier` | What the duty is *for* |
-| `grade_rank` | integer | — | no | PK part → `carrier` | **Required where `carrier.is_gradeable`.** Non-nullable for heat |
+| `duty_family` | enum{DRY, HRS, HTH, LTH, MOT, NEUOTH, OTH, PHEAT, REF, SPC, STM} | — | yes | PK part | The 11 duty families. Each resolves to a service carrier by §3.4's table; `NEUOTH` and `HRS` take none |
+| `carrier_id` | string | — | yes | → `carrier` | What the duty is *for*. A service carrier (§3.4) or a `product` with `may_export` true (§3.9); never a `primary` or `emission` carrier |
+| `grade_rank` | integer | — | no | PK part → `carrier` | **Required where `carrier.is_gradeable`.** Non-nullable for heat and for cooling |
 | `duty_share` | real | fraction | yes | — | ∈ [0, 1]. Share of this process's energy that is this duty |
 | `share_low` | real | fraction | no | — | ≤ `duty_share` if present |
 | `share_high` | real | fraction | no | — | ≥ `duty_share` if present |
@@ -513,10 +513,14 @@ This is the demand side of the carrier model, and **nothing holds it today** —
 [`../notes/data/activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv)
 is already validated against, so a single check covers both tables.
 
-**Rule (a heat duty must have a grade).** Where the carrier is gradeable, `grade_rank` is
-non-nullable. A heat duty with no grade is invisible to C10's cascade: it can be served by
-any grade at all, including one far below what the process needs, and the LP will take the
-cheapest. This is the failure the data-migration plan flags as mode #6, and it fails silently.
+**Rule (a heat or cooling duty must have a grade).** Where the carrier is gradeable,
+`grade_rank` is non-nullable, and it equals the carrier's own `grade_rank`. A heat duty with
+no grade is invisible to C10's cascade (the grade cascade): it can be served by any grade at
+all, including one far below what the process needs, and the LP will take the cheapest. A
+cooling duty with no band fails the same way in the other direction — a cooling tower's
+ambient-temperature water would meet a freezer store. This is the failure the data-migration
+plan flags as mode #6, and it fails silently. V34 (duties are services at a grade) asserts it
+at load.
 
 **Rule (inheritance).** A non-default process set need not restate every row; where a
 `(process_id, duty_family, grade_rank)` is absent it inherits the default set's value.
@@ -624,9 +628,10 @@ Anything that flows and balances: a fuel, electricity, hydrogen, CO₂, or heat 
 | `carrier_id` | string | — | yes | PK | — |
 | `carrier_name` | string | — | yes | — | — |
 | `carrier_kind` | enum{primary, intermediate, product, emission} | — | yes | — | Decides emissions attribution (§7) |
-| `is_gradeable` | boolean | — | yes | — | True only for heat |
-| `grade_rank` | integer | — | no | — | Required if `is_gradeable`. Higher serves lower |
-| `grade_label` | string | °C | no | — | Required if `is_gradeable`, e.g. `150-400C` |
+| `is_gradeable` | boolean | — | yes | — | True only for heat and cooling |
+| `grade_family` | enum{heat, cooling} | — | no | — | Required if `is_gradeable`, absent otherwise. Decides which way the family's cascade runs (C10) |
+| `grade_rank` | integer | — | no | — | Required if `is_gradeable`. Ordered by temperature within `grade_family`, rank 1 coldest, unique within the family. Heat: higher serves lower. Cooling: lower serves higher |
+| `grade_label` | string | °C | no | — | Required if `is_gradeable`, e.g. `150-400C`, `0-15C` |
 | `is_indirect` | boolean | — | yes | — | Emissions counted as indirect. **Config, not a hardcoded list** |
 | `emission_factor_source` | string | — | no | — | → `scenario_parameters` series. Required on a `primary` carrier |
 | `biogenic_fraction` | real | fraction | no | — | ∈ [0, 1]. Share of the carrier's carbon that is biogenic. Required where > 0; absent reads as 0. Splits a fuel's derived CO₂ between the fossil and biogenic carriers (D15, §7.3) |
@@ -637,8 +642,10 @@ Anything that flows and balances: a fuel, electricity, hydrogen, CO₂, or heat 
 | `may_export` | boolean | — | yes | — | Whether the carrier may cross the site boundary outwards (D16). $x_{c,k,t}$ is declared only where this is true **and** a `premise_connection` row carries $c$ (§5.2) — an export always goes onto a network. True on `electricity`, on a `product` with an outside market, and on `co2_captured`, which leaves through the CO₂ transport network under C9 (infrastructure availability); false on `intermediate`, `emission` and internal `product` carriers |
 
 **Grades are carriers, not an attribute of one.** `heat@60-150C` and `heat@150-400C` are two
-`carrier` rows with different `grade_rank`. This is what lets C8 balance them independently
-and C10 order them, without a special case in either.
+`carrier` rows with different `grade_rank`, and so are `cooling@<0C` and `cooling@0-15C`. This
+is what lets C8 (carrier balance) balance them independently and C10 (the grade cascade) order
+them, without a special case in either. The order never crosses a family: a heat band and a
+cooling band are unrelated carriers, whatever their ranks.
 
 **`carrier_kind` is load-bearing for emissions.** Fuel emissions attach only to units
 consuming a `primary` carrier that is **not** `is_indirect`. A unit consuming an
@@ -692,10 +699,17 @@ circular. Every duty family therefore resolves to a carrier that represents the 
 
 | Duty family | Carrier | Kind | Boundary |
 |---|---|---|---|
-| `LTH`, `HTH`, `STM`, `DRY`, `SPC` | graded heat, `heat@band` | intermediate, gradeable | **internal** — `may_import` and `may_export` both false |
+| `LTH`, `HTH`, `STM`, `DRY`, `SPC`, `PHEAT` | graded heat, `heat@band` (`grade_family` heat) | intermediate, gradeable | **internal** — `may_import` and `may_export` both false |
 | `MOT` | **`motive_power`** | intermediate, not gradeable | **internal** |
-| `REF` | **`cooling`** | intermediate, not gradeable | **internal** |
+| `REF` | graded cooling, **`cooling@band`** (`grade_family` cooling) | intermediate, gradeable | **internal** |
 | `OTH` | resolves to whichever of the above the underlying service is | — | **internal** |
+
+**An `OTH` row on a fuel is invalid, not a shortcut.** `OTH` is a bucket for a service the
+other families do not name; it never licenses the carrier rule above to be skipped. A duty row
+of any family whose `carrier_id` is a `primary` carrier — `electricity` included — or an
+`emission` carrier is rejected at load by V34 (duties are services at a grade). Where the
+underlying service is genuinely not one of heat, cooling or motive power, the fix is a new
+service carrier declared in this table, not a fuel standing in for one.
 
 Every service carrier is internal by construction: a service is produced and consumed on the
 premise, so neither $m$ nor $x$ is ever declared on one. A duty may also sit on a `product`
@@ -705,17 +719,57 @@ Compressed air is a candidate for a carrier of its own rather than `motive_power
 distribution losses and is storable, and motive power is neither. Deferred until the duty
 families are populated.
 
-**Two of the twelve families are not energy services and take no carrier.** `NEUOTH` is
+**Two of the eleven families are not energy services and take no carrier.** `NEUOTH` is
 non-energy use — fuel consumed as feedstock, which presents no duty and must not be charged
 combustion emissions (§7.1). `HRS` is `IISHRS`, hot rolling, which is one of the fourteen
-**chemistry** nodes and is keyed per process, not per family. Both are listed among the twelve
-in the architecture document and neither belongs there.
+**chemistry** nodes and is keyed per process, not per family. Both are listed among the
+architecture document's service families and neither presents a service duty.
 
-**The grade band set is not declared anywhere, and it decides eligibility.** `grade_rank` and
-`grade_label` are fields; the list of bands is reference data nobody owns. Where the lines are
-drawn decides which units are eligible for which duty — two bands let one heat pump serve an
-80 °C duty and a 120 °C one, four bands separate them. Owned by the duty-family and heat-grade
-data work.
+**`EN` is not a duty family.** It is the COMIT family code for hydrogen production, and in the
+reference data it labels only units — the electrolysers, reformers and gasifiers, and the
+electrolyser-battery hybrids — whose primary output is the `hydrogen` carrier. That output is
+released into C8 (carrier balance) through $z^{\circ}$ and drawn by whatever burns hydrogen; no
+process presents an `EN` duty, and §3.3's enum does not admit one. It survives as a
+`unit.duty_family` value (§3.5), which groups units and implies no duty.
+
+**The grade band sets decide eligibility.** Where the lines are drawn decides which units are
+eligible for which duty — two bands let one heat pump serve an 80 °C duty and a 120 °C one,
+four bands separate them. There are two families, and each is a set of `carrier` rows:
+
+| `grade_family` | `carrier_id` | `grade_rank` | `grade_label` | What sits there |
+|---|---|---|---|---|
+| heat | `heat_lt60` | 1 | `<60C` | Low-grade reject heat, washing water |
+| heat | `heat_60_100` | 2 | `60-100C` | Space heat, hot water, pasteurising |
+| heat | `heat_100_150` | 3 | `100-150C` | Low-pressure steam, process heating |
+| heat | `heat_150_400` | 4 | `150-400C` | Medium- and high-pressure steam, dryers, fired heaters |
+| heat | `heat_400_1000` | 5 | `400-1000C` | Furnaces, reformers, calcination below 1000 °C |
+| heat | `heat_gt1000` | 6 | `>1000C` | Kilns, melting, ironmaking |
+| cooling | `cooling_lt0` | 1 | `<0C` | Refrigeration: freezer and cold stores, brine and glycol below 0 °C, ammonia plant |
+| cooling | `cooling_0_15` | 2 | `0-15C` | Chilled water: process chilling, fermentation jackets, cleanroom and process HVAC |
+| cooling | `cooling_gt15` | 3 | `>15C` | Ambient heat rejection: cooling-tower and dry-cooler water, condenser water |
+
+**Band edges read as the labels read.** A band includes its lower edge and excludes its upper
+one, so `60-100C` is 60 ≤ T < 100 and `0-15C` is 0 ≤ T < 15; `<60C` and `<0C` are open
+below, `>1000C` and `>15C` open above.
+
+**A duty sits in the band of its most demanding temperature, and the two families mirror each
+other.** A heat duty takes the band containing the **hottest** temperature it requires; a
+cooling duty takes the band containing the **coldest**. A unit's `grade_out` follows the same
+rule from the supply side: the band of the hottest heat, or the coldest cooling, it can
+deliver. Placing a duty by its mean temperature instead would let a unit that cannot reach the
+process's hardest point serve it.
+
+**The cascade runs opposite ways in the two families, and never between them.** Heat at a
+higher rank may serve a heat duty at a lower rank — a 150–400 °C steam boiler serves a 120 °C
+duty. Cooling at a **lower** rank may serve a cooling duty at a higher rank — a −25 °C brine
+chiller can meet a 7 °C chilled-water duty, while a cooling tower's 25 °C water cannot meet a
+freezer store. C10 (the grade cascade) states both through `grade_family`.
+
+**The six heat bands are the reference build's set, open for review**, and the placement rule
+above is the one that build used; both are in
+[notes/20](../notes/20_reference_data_open_questions.md) §C. The three cooling bands are the
+minimum that keeps an ambient-temperature supply off a sub-zero duty and gives a chiller a
+coefficient per band rather than one for all.
 
 ### 3.5 `unit`
 
@@ -730,8 +784,8 @@ the unit's carrier bindings in §3.6.
 | `spine` | enum{service, chemistry} | — | yes | — | Service units are family-keyed, chemistry node-keyed |
 | `duty_family` | string | — | no | — | Required if `spine` = service |
 | `process_id` | string | — | no | → `activity_process_register` | Required if `spine` = chemistry |
-| `grade_out` | integer | — | no | → `carrier` | Max grade rank it can produce |
-| `grade_in_max` | integer | — | no | → `carrier` | Max grade rank it can consume as a source |
+| `grade_out` | integer | — | no | → `carrier` | The furthest band it can deliver, in the `grade_family` of its primary output: the **highest** heat rank, or the **lowest** (coldest) cooling rank (§3.4). Required where the primary output is gradeable |
+| `grade_in_max` | integer | — | no | → `carrier` | Max heat grade rank it can consume as a source. Heat only |
 | `capex` | real | £m per capacity unit | yes | — | ≥ 0. **Levelised over components if hybrid** |
 | `fixed_opex` | real | £m/yr per capacity unit | yes | — | ≥ 0 |
 | `lifetime` | integer | years | yes | — | > 0. One value even for a hybrid |
@@ -1597,7 +1651,7 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-09-19*
+*Section last updated: 2026-09-24*
 
 **This section is authoritative.** Everything else serves it.
 
@@ -1621,7 +1675,10 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 | $\mathcal{C}^{\text{prim}}$ | Primary carriers |
 | $\mathcal{C}^{\text{burn}}_u$ | Carriers $u$ consumes that are `primary` and not `is_indirect`. **Fuel emissions attach here and nowhere else**, whatever role the row carries (§3.6) |
 | $\mathcal{K}$ | The premise's connections |
-| $g(c)$ | Grade rank of carrier $c$, where gradeable |
+| $g(c)$ | Grade rank of carrier $c$, where gradeable. Ordered by temperature, rank 1 coldest (§3.4) |
+| $f(c)$ | Grade family of carrier $c$ — `carrier.grade_family`, heat or cooling — where gradeable |
+| $\omega_f$ | Serving direction of grade family $f$: $\omega_{\text{heat}} = +1$, $\omega_{\text{cooling}} = -1$ |
+| $\hat g(c)$ | **Service rank**, $\hat g(c) = \omega_{f(c)}\,g(c)$. Within one family, a higher service rank may serve a lower one: hotter heat, colder cooling |
 
 **The periods are data, not a formula.** $\mathbf{y}$ is an input to the model — the
 scenario's own list of calendar years — and nothing may reconstruct it from a step. The
@@ -1680,7 +1737,7 @@ All continuous and non-negative. **The problem is a pure LP and must stay one.**
 | $a_{u,t}$ | Capacity of $u$ available in $t$ | capacity units |
 | $z_{u,q,t}$ | Activity of $u$ dispatched to duty $q$, declared over $u \in U_q$ only | output units of $u$ |
 | $z^{\circ}_{u,t}$ | Activity of $u$ whose primary output is released into the carrier balance rather than dispatched to a duty. **For a unit whose primary output is an internal `product` (D16), this carries the unit's whole activity, because no duty exists to dispatch to** | output units of $u$ |
-| $h_{c \to c',t}$ | Heat cascaded from carrier $c$ down to carrier $c'$, declared only where both are gradeable and $g(c') < g(c)$ | PJ/yr |
+| $h_{c \to c',t}$ | Graded energy cascaded from carrier $c$ to carrier $c'$ — heat down a band, cooling up one. Declared only where both are gradeable, $f(c') = f(c)$ and $\hat g(c') < \hat g(c)$ | PJ/yr |
 | $e_{u,t}$ | Surviving incumbent capacity of $u$ (D11), declared over $U^0$ only | capacity units |
 | $r_{u,t}$ | Incumbent capacity retired early in $t$ (D11), over $U^0$ only | capacity units |
 | $m_{c,k,t}$ | **Connection-indexed** import of carrier $c$ at connection $k$. Declared where `carrier.may_import` (§3.4) is true **and** a `premise_connection` row carries $c$ | PJ/yr |
@@ -1704,7 +1761,8 @@ read. **The duty index is what stops one unit being credited twice.** §3.5 make
 units family-keyed, so one boiler at one premise sits in several $U_q$; with a single
 activity variable it would be credited in full against every duty it is eligible for.
 Dispatch is per duty, capacity is shared through C2, and a high-grade unit serving a
-low-grade duty is simply a dispatch to a $q$ below its `grade_out` (C10).
+low-grade duty — or a cold chiller serving a warmer cooling duty — is simply a dispatch to a
+$q$ of lower service rank than its `grade_out` (C10, the grade cascade).
 
 **Activity is $z$, not $u$.** $u$ indexes units throughout this document, so the activity
 variable takes a different letter. The separation is deliberate and is the kind of clash the
@@ -1838,7 +1896,7 @@ $\bar z_{u,t} = a_{u,t}\gamma_u\alpha_u$, not against installed capacity.
 premise:
 
 $$\sum_{u \in U} \;\sum_{\theta \,\in\, \Theta_{u,c}} \Big( \mathbb{1}[\theta \neq \texttt{primary\_output}]\, z_{u,t} \;+\; \mathbb{1}[\theta = \texttt{primary\_output}]\, z^{\circ}_{u,t} \Big)\,\iota_{u,c,\theta}
-\;+\; \sum_{c'' :\, g(c'') > g(c)} h_{c'' \to c,t} \;-\; \sum_{c' :\, g(c') < g(c)} h_{c \to c',t}
+\;+\; \sum_{c'' :\, f(c'') = f(c),\ \hat g(c'') > \hat g(c)} h_{c'' \to c,t} \;-\; \sum_{c' :\, f(c') = f(c),\ \hat g(c') < \hat g(c)} h_{c \to c',t}
 \;+\; \sum_{k \in \mathcal{K}} \big(m_{c,k,t} - x_{c,k,t}\big) \;+\; m_{c,t} \;-\; d_{c,t} \;=\; 0 \qquad \forall c \in \mathcal{C},\, t$$
 
 with $m_{c,k,t} = m_{c,t} = 0$ where `carrier.may_import` is false and $x_{c,k,t} = 0$ where
@@ -1860,7 +1918,8 @@ sum on $c = c^{\star}_u$ instead would misread every store, whose charge row and
 sit on the same carrier and scale with different activity variables. And $h$ is the cascade
 the architecture calls a one-way ordering in the balance: heat may flow down a grade at no
 cost, never up, which is what lets a kiln's reject heat at one band be drawn by a heat pump
-whose input row sits at a lower one.
+whose input row sits at a lower one. Cooling runs the other way — sub-zero cooling may flow up
+to the chilled-water node, never down — and no $h$ joins a heat carrier to a cooling one.
 
 **An internal product reaches its consumer here, and only here.** Because D16 gives it no duty,
 its maker's whole activity enters this balance through $z^{\circ}$ and the downstream unit's
@@ -1875,22 +1934,34 @@ in a period cannot run, and where a cap is specified the premise's draw respects
 covers `biomethane` as well as hydrogen and CO₂ transport: biomethane's real constraint is a
 shared catchment, which D2 forbids modelling per premise.
 
-**C10 — Heat grade cascade.** A unit may serve a duty only at or below its output grade:
+**C10 — Grade cascade, heat and cooling.** A unit may serve a graded duty only in its own grade
+family and only at or below its output grade in service rank:
 
-$$z_{u,q,t} = 0 \quad \text{where } \text{grade\_out}(u) < g\big(\text{carrier}(q)\big), \qquad\qquad h_{c \to c',t} \text{ exists only where } g(c') < g(c)$$
+$$z_{u,q,t} = 0 \quad \text{where } f\big(c^{\star}_u\big) \neq f\big(\text{carrier}(q)\big) \;\text{ or }\; \omega_{f}\,\text{grade\_out}(u) < \hat g\big(\text{carrier}(q)\big), \qquad h_{c \to c',t} \text{ exists only where } f(c') = f(c),\ \hat g(c') < \hat g(c)$$
 
-In practice the first is enforced by **eligibility at load** rather than as a row in the LP —
-a unit whose `grade_out` is below the duty's grade is not in $U_q$, so the variable is never
-created — which is why V19 is a load-scope test. The second is the declaration set of $h$,
-so no upward variable exists to relax. Stating both as constraints keeps §5 complete;
-implementing them as filters keeps the problem small.
+with $f$ the duty carrier's family. For heat, $\omega_f = +1$ and the test is the familiar
+$\text{grade\_out}(u) < g$; for cooling, $\omega_f = -1$ and it becomes
+$\text{grade\_out}(u) > g$ — a chiller whose coldest band is warmer than the duty's cannot
+serve it. In practice the first is enforced by **eligibility at load** rather than as a row in
+the LP — a unit failing it is not in $U_q$, so the variable is never created — which is why
+V19 (no unit eligible beyond its `grade_out`) is a load-scope test. The second is the
+declaration set of $h$, so no variable against the cascade exists to relax. Stating both as
+constraints keeps §5 complete; implementing them as filters keeps the problem small.
 
-**High grade may serve a low-grade duty, never the reverse.** A steam boiler at 150–400 °C
-serves a 120 °C duty; a heat pump capped at 100 °C does not. Stating it as physics rather
-than as a technology-to-process mapping is what lets a new unit be added without editing a
-mapping table. The cascade has two sides and the algebra covers both: on the duty side a
-unit in several $U_q$ serves each through its own $z_{u,q,t}$, sharing one capacity through
-C2; on the carrier side $h$ in C8 carries heat down the grade ladder and nothing carries it up.
+**High grade may serve a low-grade duty, never the reverse — and for cooling, cold is high
+grade.** A steam boiler at 150–400 °C serves a 120 °C duty; a heat pump capped at 100 °C does
+not. A −25 °C brine chiller serves a 7 °C chilled-water duty; a cooling tower does not serve a
+freezer store. Stating it as physics rather than as a technology-to-process mapping is what
+lets a new unit be added without editing a mapping table. The cascade has two sides and the
+algebra covers both: on the duty side a unit in several $U_q$ serves each through its own
+$z_{u,q,t}$, sharing one capacity through C2; on the carrier side $h$ in C8 carries heat down
+the heat ladder and cooling up the cooling ladder, and nothing carries either the other way.
+
+**The direction is data, not code.** It is read from `carrier.grade_family` through
+$\omega_f$, so an implementation holds one comparison on $\hat g$ rather than a branch per
+family. A heat-family `grade_out` compared against a cooling duty's rank is meaningless, and
+the family test above is what stops it: without it a boiler with `grade_out` 3 would pass the
+heat test against a rank-2 cooling duty.
 
 **C11 — Connection capacity.** Per connection, never summed across connections, and over
 **connection-indexed flows only** — a delivered fuel arriving at $m_{c,t}$ with no connection
@@ -2076,7 +2147,7 @@ degeneracy that would otherwise let the solver report either of two equal-cost a
 
 ## 10. Validation
 
-*Section last updated: 2026-09-17*
+*Section last updated: 2026-09-24*
 
 ### 10.1 Scopes
 
@@ -2150,7 +2221,7 @@ pass mark.
 | V16 | batch | yes | Connection peak is rebuilt correctly from the solved pathway |
 | V17 | premise | yes | Vintage and stranding per unit. An abatement unit inherits the **minimum** remaining life over the hosts named in `unit_abatement_host` (§3.5.3), and strands nothing while any of them stands |
 | **V18** | premise | yes | **Carrier balance closes to 1e-6 at every carrier node, every period** |
-| **V19** | load | yes | No unit is eligible for a duty above its `grade_out`. Asserted at load, not per premise |
+| **V19** | load | yes | No unit is eligible for a duty beyond its `grade_out` in service rank, nor for a graded duty outside the `grade_family` of its primary output (C10, the grade cascade): no heat unit above its rank, no cooling unit at a band colder than it reaches. Asserted at load, not per premise |
 | **V20** | load | yes | Five legs, all on the archetype and hybrid-unit data — see below |
 | **V21** | load | yes | The price wedge $p^{\text{exp}} < p^{\text{imp}}$ holds strictly for every carrier and period |
 | **V22** | premise | yes | Emissions attribution closes across a carrier chain — four legs, see below |
@@ -2165,6 +2236,7 @@ pass mark.
 | **V31** | load | yes | **Role and sign agree (§3.6).** `(unit_id, carrier_id, role)` is unique; `fuel_input`, `aux_input` and `emission_input` carry a negative coefficient and `primary_output`, `coproduct`, `reject` and `emission` a positive one; `emission` and `emission_input` appear on an emission carrier and no other role does. Exactly one `primary_output` per unit with coefficients |
 | **V32** | load + premise | yes | **The site boundary is honoured (D16).** (a) connection-indexed $m_{c,k,t}$ and $x_{c,k,t}$ are declared only where `carrier.may_import` / `carrier.may_export` is true **and** a `premise_connection` row carries the carrier; site-level $m_{c,t}$ only where `may_import` is true and **no** connection carries it; nothing of either kind where the flag is false; (b) no `process_duty` row and no `activity_process_duty_profile` row names a `product` carrier whose `may_export` is false; (c) `may_import` and `may_export` are both false on every `emission` and every `intermediate` carrier. Failure names the carrier |
 | **V33** | load + premise | yes | **Plant is named one unit at a time.** (a) every `premise_process_unit` row (§3.10.2) names a unit that `unit_eligibility` admits for that process at the premise's activity, the rows of one parent name distinct units, and `capacity_share` where given is present on every row of that parent and sums to 1 within 1e-6; (b) every `abatement` unit has at least one `unit_abatement_host` row (§3.5.3), each host is a `converter` on the same `process_id`, and no unit hosts itself; (c) the remaining life used for an abatement unit equals the **minimum** over its hosts. Failure names the unit |
+| **V34** | load | yes | **Duties are services at a grade (§3.3, §3.4).** (a) no `activity_process_duty_profile` or `process_duty` row names a `primary` or `emission` carrier, whatever its family — an `OTH` row on `electricity` fails here; (b) every row on a gradeable carrier carries a `grade_rank`, equal to that carrier's own, and no row on a non-gradeable carrier carries one; (c) each family's rows sit on the carrier §3.4's table names for it — `REF` on a cooling band, the six heat families on a heat band, `MOT` on `motive_power` — and no row carries `EN`, `NEUOTH` or `HRS`; (d) every gradeable carrier has a `grade_family`, and `grade_rank` is unique within it. Failure names the row |
 
 **V20's five legs.**
 
@@ -2207,7 +2279,8 @@ write. Its scope is the whole built problem, not just A3 and A4: the archetype m
   MECHANISM                             GUARDED BY        SCOPE
   ─────────────────────────────────────────────────────────────────
   carrier balance closure          ───▶ V18               premise
-  heat grade cascade (C10)         ───▶ V19               load
+  grade cascade, both ways (C10)   ───▶ V19               load
+  duties are services at a grade   ───▶ V34               load
   archetype coefficients ψ/β/χ/ε   ───▶ V20 (a)           load
   hybrid unit bill of materials    ───▶ V20 (b)           load
   hybrid unit capex levelisation   ───▶ V20 (c)           load
@@ -2261,7 +2334,7 @@ Widening a range is a manual step in the same commit as the label.
 | 3 | A hybrid unit's capex is not levelised over component lifetimes, so C3's capacity window and C4's stranding charge both key on a wrong $L$ | V20 (c) | Load assertion |
 | 4 | Export price ≥ import price in a scenario, giving non-reproducible onsite capacity | V21 | Load assertion |
 | 5 | A premise matches no archetype | §3.17 `evidence_tier` | Substitution ladder: `fitted` → `substituted` → `default`, recorded on every output row |
-| 6 | Heat grade unset on a process, making C10 vacuous so a heat pump can fire a kiln | V19 | Load assertion, and `grade_rank` is non-nullable wherever the carrier is gradeable (§3.3) |
+| 6 | Heat or cooling grade unset on a process, making C10 (the grade cascade) vacuous so a heat pump can fire a kiln or a cooling tower can serve a freezer store | V19 + V34 | Load assertion, and `grade_rank` is non-nullable wherever the carrier is gradeable (§3.3) |
 | 7 | The option-to-unit join is broken in the reference data | `make data-check` | Load-time validator |
 | 8 | ε unset on a flexible-load hybrid, so `electrolyser_battery` is strictly dominated by a bare electrolyser and never built | V20 (a) | Load assertion, and ε is non-nullable on flexible-load hybrids (§3.17) |
 | 9 | Two years of the same carrier are averaged, or the later one silently wins, so the back-solve runs on a snapshot that never existed. Or a carrier metered on a different vintage is read as absent, and the site's baseline emissions fall | V24 + V25 | Load and premise assertions, plus §3.1.1's substitution ladder |
