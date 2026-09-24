@@ -1,8 +1,9 @@
 # The pre-M2 demonstration slice — implementation plan
 
-*Written 2026-09-18, revised 2026-09-19 after `/plan-eng-review`. Plans the first Python
-build of the CaRB3 site energy system: a running least-cost model over three synthetic
-premises, on the real reference tables.*
+*Written 2026-09-18, revised 2026-09-19 after `/plan-eng-review`, and again 2026-09-20
+once the cement premise actually ran. Plans the first Python build of the CaRB3 site energy
+system: a running least-cost model over three synthetic premises, on the real reference
+tables.*
 
 This note plans **code**, not specification. The specification it builds against is the
 live [implementation spec](../specs/2026-08-28-carb3-site-energy-system-implementation.md)
@@ -14,6 +15,14 @@ with one exception recorded in §6.4.
 > charged carbon on fuel. Both were wrong, and together they made the slice unsolvable at
 > both example premises. §2 and §4 below are rewritten. The review's full finding list is in
 > the report at the foot of this file.
+>
+> **Revised again, 2026-09-20, after contact with the cement premise.** Two more things
+> were wrong and each stopped `mvp-cement` solving on its own. §3.3's minimal A2 read two
+> tables and needed three: the duty profile carries no mass carrier, so 1.13 Mt of cement
+> arrived as 1.13 PJ of motive power, and §3.1.2 had already said the duty comes from
+> `premise_throughput`. And §2.2 dropped $x_{c,k,t}$, which pinned `co2_captured` to zero
+> and made every capture train unbuildable — the cement works' whole decarbonisation
+> option. §2.2, §2.3, §3.1, §3.3, §3.4, §9 and §11 are amended and §4.4 is new.
 
 ---
 
@@ -38,7 +47,8 @@ checked by hand.** It is the rung below M2, and M2's gate is what it hands off t
 | Answer trusted to | Hand-computed arithmetic, plus a post-solve constraint-row check | `MF-58` tolerances against `MF-22`'s expected tables |
 | Determinism | Not addressed; degenerate optima left visible | V10 on two machines, tie-break as a second-objective solve |
 | Emissions | Carbon priced on disposal; no attribution layer, no evidence tiers | `MF-52`, `MF-53`, `MF-79`, `MF-80`; V29 and V30 |
-| On-site generation | None | CHP, PV, export |
+| On-site generation | None, though nothing enforces it (item 52) | CHP, PV, export |
+| Export | `co2_captured` only, where a connection and a price exist | Every `may_export` carrier |
 
 **Three premises rather than M2's one is a breadth gain, not a depth gain.** Once one premise
 solves, a second is a loop rather than a structure. It is in scope because the demonstration
@@ -68,7 +78,7 @@ with $\delta_t$ the present-value factor at the `discount_rate` of 0.035 held in
 | $Z^{\text{carbon}}$ | **In**, charged on **disposal**, per §5.4 as written | The only dynamic input in the dataset; see §4 |
 | $Z^{\text{infra}}$ | Out | No reinforcement variable; C11 (connection capacity) is out |
 | $Z^{\text{net}}$ | Out | Tariffs are a refinement on a cost already dominated by carbon |
-| $Z^{\text{exp}}$ | Out | No on-site generation, so nothing to export |
+| $Z^{\text{exp}}$ | **In**, narrowly | Captured CO₂ has to leave, and exporting it is a **cost**. See §2.2 |
 | $Z^{\text{strand}}$ | Out | No early retirement, so nothing strands |
 
 **Carbon is charged on venting, not on fuel.** $Z^{\text{carbon}}_t$ reads $d_{c,t}$ over
@@ -92,9 +102,9 @@ the §7.7 allocation layer rather than to the objective.
 | $m_{c,t}$ / $m_{c,k,t}$ import | **In** | Site-level for delivered fuels, connection-indexed for networked carriers, per D16 (the site boundary on the carrier) |
 | $d_{c,t}$ **disposal** | **In** | **Restored after review.** Without it C8 has no sink and the model cannot solve; see below |
 | $h_{c \to c',t}$ heat cascaded | Out | C10 (heat grade cascade) is enforced by eligibility instead — see §6.2 |
-| $z^{\circ}_{u,t}$ undispatched primary output | Out | No internal `product` carriers in the synthetic premises |
+| $z^{\circ}_{u,t}$ undispatched primary output | **In**, for carriers with no duty | `mvp-cement`'s kilns make `clinker` and `ccs_amine` makes `co2_captured`; neither carries a duty, so neither had an activity variable |
 | $r_{u,t}$ early retirement | Out | Retirement is by survival function only |
-| $x_{c,k,t}$ export | Out | No on-site generation |
+| $x_{c,t}$ export | **In**, narrowly | Restored 2026-09-20. Without it no capture train can ever be built; see below. Site-level, for the same reason $m_{c,t}$ is |
 | $w_{k,t}$ reinforcement | Out | C11 out |
 
 **Why $d_{c,t}$ is not optional.** `unit_input_output.csv` carries **59 rows with
@@ -116,6 +126,47 @@ Otherwise the model could import gas and dump it.
 derived fuel-CO₂ coefficients and the fossil/biogenic split are now in scope. This is the
 largest single change the review made to the slice's size, and it is not optional.
 
+**Why $x_{c,t}$ is not optional either.** `co2_captured` appears exactly once in
+`unit_input_output.csv`, as `ccs_amine`'s `primary_output`, and **nothing consumes it**. It
+is `carrier_kind` `product`, so the §5.2 disposal gate above forbids disposing of it — and
+rightly, since a model that could dump captured CO₂ would capture it for nothing. Its
+`may_export` is TRUE and the first draft of this slice dropped the export variable, so C8
+pinned that node, and with it every capture train, to **zero however cheap it was**. The
+cement premise's whole decarbonisation option was unreachable, and `ccs_amine`'s
+`earliest_year` 2035 was untestable because it gated a unit that could never be built. That
+was [note 20](20_reference_data_open_questions.md) item 53.
+
+The variable is declared narrowly, on three tests, each of which closes a hole:
+
+| Test | Source | What it stops |
+|---|---|---|
+| `carrier.may_export` is TRUE | §3.4 | Exporting a carrier the site may not sell |
+| A `premise_connection` row carries the carrier | §3.1.3, §5.2 | "Leaving the site means going onto a network" |
+| A complete price series covers **every** period | §3.8 | An unpriced export is **free disposal**, and §5.2 forbids disposing of a `primary` carrier at all |
+
+The third is the one that bites today. `export_price` covers `electricity` at six of the
+seven periods and **not 2021**, which is `heavy_fuel_oil`'s single `import_price` row one
+table away — the partial case that looks present until it is indexed. So electricity export
+is refused at all three premises and reported, rather than becoming a sink a CHP could
+overbuild into.
+
+**Exporting CO₂ costs money; it does not earn it.** §5.4 writes $Z^{\text{exp}}$ as a
+revenue entering with a negative sign, and captured CO₂ inverts that: the site pays a
+transport-and-storage tariff. §3.7 already has the column for it, `unit_tariff`, and it is
+**blank on all 63 `co2_transport` rows**, as is `capacity_limit`; there is no `export_price`
+for `co2_captured` either. `scenario_parameters.csv` therefore carries a new, clearly
+synthetic `co2_transport_tariff` — £40/t flat, from the reported Track-1 cluster expectation
+at start of operations — and §4.4 reports the sensitivity, because the number is an
+assumption and the reader needs to know how much the answer leans on it. The unit cost of an
+export is $\tau_{c,t} - p^{\text{exp}}_{c,t}$, so the term carries whichever sign the data
+gives it.
+
+**What leaves through the pipe is not vented, and so is not charged.** Carbon is charged on
+$d_{c,t}$ (§5.4) and on nothing else. Getting that wrong inverts the result — it would make
+capture pay the carbon price twice, or not at all — so it is asserted algebraically at every
+CO₂ node rather than inferred from a total: production splits into what the train draws and
+what is vented, and only the vented half carries a charge.
+
 ### 2.3 Constraints
 
 | §5.5 constraint | In this slice | Why |
@@ -129,9 +180,25 @@ largest single change the review made to the slice's size, and it is not optiona
 | C10 heat grade cascade | **In**, via eligibility | Without it the gas boiler and the heat pump never contend; see §6.2 |
 | C6 unit stability | Out | `MF-51`, a Could, deferred by note 18's temporal-coverage review |
 | C7 known changes | Out | No announced commitments in synthetic premises |
-| C9 infrastructure availability | Out | No scenario gating in the slice |
+| C9 infrastructure availability | **Partly in** | For the export of CO₂ only, as a bound of zero on $x_{c,t}$. Real, sourced data, and better evidence than the `earliest_year` column; see below |
 | C11 connection capacity | Out | Needs the §5.6 peak rebuild, which is a milestone of its own |
 | C12 siting cap | Out | Exists because PV is otherwise unbounded; no area-bound units in scope |
+
+**C9 is partly in, and it is the better-sourced gate.** `infrastructure_scenario.csv`
+carries 63 `co2_transport` rows across nine clusters: **four turn available at 2030 —
+`teesside`, `humber`, `humber2`, `mersey` — and five never do.** That is a real statement,
+with provenance, about when a premise can send CO₂ anywhere, and it is stronger evidence
+than `unit_eligibility.earliest_year`, which says only that a technology exists. Both are
+now applied. At `mvp-cement`, which sits at `humber`, C9 opens at 2030 and `earliest_year`
+2035 binds first; at a premise in `grangemouth` or `south_wales` the export window never
+opens at all and the variable is bounded to zero throughout, which is the honest answer for
+a site with no pipeline.
+
+**`earliest_year` had to be taught to reach a unit with no duty.** The column is keyed by
+duty and every capture train sits in no $U_q$, so `ccs_amine`'s 2035 row — the only
+`earliest_year` in the table that gates a train at a premise that can host one — reached
+nothing. Nothing else about C9 is in: no `capacity_limit`, because §3.7 leaves it blank on
+every one of those 63 rows, and no hydrogen or `grid_headroom` gating.
 
 **The problem is a pure LP and must stay one.** No binaries, per §5.2. Minimum viable scale
 is handled by the `min_duty` screen at load (§3.1), never by a fixed-charge binary.
@@ -159,8 +226,9 @@ reads it" is corrected in the same commit**: the directory is now an input to `c
 | `scenario_parameters.csv` | 155 | `import_price`, `carbon_price`, `discount_rate`, `ef_natural_gas`, `ef_electricity` |
 | `activity_process_duty_profile.csv` | 427 | Duty structure: which duties, on which carrier, at which `grade_rank` |
 | `activity_process_register.csv` | 376 | The process set behind each `carb3_activity` |
+| `infrastructure_scenario.csv` | 189 | C9's gate on CO₂ transport: 63 `co2_transport` rows, `available` by cluster and period |
 
-Row counts are as at 2026-09-19 and are descriptive, not asserted.
+Row counts are as at 2026-09-19 and are descriptive, not asserted. `infrastructure_scenario.csv` was added on 2026-09-20 with C9's partial return (§2.3); `scenario_parameters.csv` gained seven `co2_transport_tariff` rows on the same day and is now 162.
 
 **`unit_eligibility.csv` is a three-table join, not a lookup.** It is keyed
 `(unit_id, carb3_activity, process_id)` — by *process*, not by duty — with no carrier or
@@ -224,6 +292,36 @@ on which carrier, at which `grade_rank`. **Only `quantity` is hand-written**, ta
 worked examples. No premise energy allocation, no A3, no A4 back-solve, no D10 refinement
 ladder.
 
+**Two tables are not enough, and this plan was wrong to say they were.**
+`activity_process_duty_profile.csv` carries **no mass carrier anywhere** — 427 rows, 26
+distinct `carrier_id` values, and neither `cement` nor `clinker` among them. A cement
+works' duty is a mass: 1.13 Mt/yr of cement. Read from those two tables alone, A2 took the
+1.13 off the `MOT` row at `cement_grinding` and stated it as 1.13 **PJ/yr of motive
+power** — a weight labelled as an energy, which the grinders (whose primary output is
+`cement`) could not serve, so the duty was unservable and `mvp-cement` did not solve at
+all. That was [note 20](20_reference_data_open_questions.md) item 51.
+
+**The specification already resolved it and this plan simply omitted it.** §3.1.2: "A row
+is a duty or it is evidence, and `may_export` decides which (D16). Where the `carrier_id`
+is a product with `may_export` true, the row is the premise's **duty** on that product
+under D5 — a cement works' 1.13 Mt/yr of cement is what C1 makes it produce. Where the
+carrier is an **internal** product (`may_export` false), there is no duty to state (§3.9)
+and the row is **evidence** instead." So the minimal A2 reads a **third** table,
+`premise_throughput`, and:
+
+| Row | Becomes |
+|---|---|
+| A product with `may_export` TRUE — `cement`, 1.130000 Mt/yr | A C1 (duty satisfaction) duty at that quantity, on the process whose units make it |
+| A product with `may_export` FALSE — `clinker`, 0.850000 Mt/yr | **Evidence only.** No duty; C8 (carrier balance) pins its maker through the internal-supply mechanism instead |
+
+Only the base year is read, per D12; units are Mt/yr and the carrier's `denominator_kind`
+decides, per D5 (hybrid denominators). A process that makes a `product` therefore yields
+**no duty from the profile at all** — its `MOT` or `HTH` row classifies its energy need for
+eligibility and grouping, exactly as §3.9 says, and that need reaches C8 through the unit's
+own input coefficients. `cement_grinding`'s electricity is 1.130000 × 0.14124 = 0.159601
+PJ/yr, drawn in C8, and is not a duty; the works' four remaining motive-power duties sum to
+0.168000 PJ/yr, which is the figure the premise README was written against.
+
 This keeps the duty-profile table genuinely read, so the slice proves the grade bands, carrier
 bindings and process keys resolve — which is the integration finding worth having. Both
 worked-example activities exist in the register: `Cement Works` and `Food Processing Centre`,
@@ -245,9 +343,26 @@ Four premise-side tables, three premises, **CSV** so every file a human edits st
 | `premise_process_detail` | §3.10 | Which processes run at the premise, and at what capacity |
 | `premise_process_unit` | §3.10.2 | Which units each process runs — the one-row-per-unit table from the 2026-09-17 pass |
 | `premise_process_vintage` | §3.15 | Install year per unit. Mechanism input for C4; see §4.3 for why it changes no result |
+| `premise_throughput` | §3.1.2 | Base-year physical output. **Read from 2026-09-20**: it is where the cement works' mass duty comes from (§3.3) |
+| `premise_connection` | §3.1.3 | One row per networked connection. **Read from 2026-09-20**: §5.2 declares an export only where one carries the carrier |
 
 `process_duty` is **not** in this list. It is derived (§3.3). Outputs and any fixture written
 for M2 are **parquet**.
+
+**Six tables, not the four this plan commissioned.** The premise lane wrote
+`premise_throughput`, `premise_connection` and `premise_energy` anyway, on the grounds that
+§3.1 declares the first two required; the plan named four and read four. Two of the three
+are now read, and each closed one of the two reasons `mvp-cement` did not solve.
+`premise_energy` remains written and unread: nothing in this slice consumes a base-year
+metered total.
+
+**`premise_record` carries a `cluster_id`, and §3 has no field for it.** §3.7's rule is that
+"a premise is assigned to the nearest in-scope cluster on ingest (A1)", and A1 is out of
+scope here, so C9 has nothing to read unless the assignment is written down. It is optional
+and a premise without one is treated as outside every cluster, which is §3.7's own
+beyond-the-radius case. Recorded as a specification gap in
+[note 20](20_reference_data_open_questions.md) item 58: §3 states the rule and provides
+nowhere to keep its output.
 
 ---
 
@@ -322,6 +437,78 @@ $\eta_{u,t}$ says — not that a build waits for it.
 **What would make the pathway gradual is C6 (unit stability), not C4.** C6 is `MF-51`, a
 Could, and stays out. The slice's honest expected answer is a step at the first buildable
 period, staggered only where `earliest_year` gates a technology.
+
+### 4.4 The CO₂ transport tariff, and how much the answer leans on it
+
+The tariff is an assumption, not a lookup (§2.2), so the number that matters is not the
+objective at £40/t — it is the tariff at which capture stops paying. **Against the
+reference tables as this section was first written, that number did not exist: capture was
+never built, at any tariff, including zero.**
+
+| `co2_transport_tariff` | `mvp-cement` objective, before the fix below | Capture built? |
+|---|---|---|
+| £20/t | £2,205.6742m | no |
+| £40/t (central) | £2,205.6742m | no |
+| £60/t | £2,205.6742m | no |
+| £0/t | £2,205.6742m | no |
+
+An answer that does not move with the assumption is not a robust answer, it is a broken
+model or broken data, and here it was the data. **`kiln_dry_coal`, `kiln_dry_gas` and
+`kiln_dry_wdf` declared `co2_process` at 0.52500 where spec §3.6 says the figure is "525 kt
+CO₂ per Mt of clinker".** Every other kiln in `unit_input_output.csv` was already on the
+kt basis — `kiln_dry_oil` and `kiln_calcium_looping_coal` at 602.53064, `kiln_fluidbed_wdf` at
+616.92145, `lime_kiln_dry_gas` at 159.51915 — so the three dry-kiln rows were a
+thousandfold under-statement, and `ccs_amine`'s three `emission_input` rows were on the same
+wrong basis. At the cement works this made process CO₂ **0.44625 kt/yr against a true
+446.25**, so the capture route had almost nothing worth capturing and £55m/yr of reboiler
+gas, auxiliary power, capex and opex to pay for it. Recorded as
+[note 20](20_reference_data_open_questions.md) item 56, with the six rows named.
+
+**The six rows were corrected on 2026-09-20** — the three kilns to 525, `ccs_amine` to
+−557.55, −352.57 and −89.88 kt per Mt of `co2_captured` — and a blocking check in
+`validate_carb3_data.py` now bands every emission coefficient against what stoichiometry
+permits, so the basis cannot silently slip again. Item 56 carries the detail.
+
+**Against the corrected tables the tariff sensitivity is legible.** The figures below were
+first measured on a scratch copy of the reference root and are unchanged when re-measured
+on the corrected tables themselves.
+
+| `co2_transport_tariff` | Objective | Capture first built | Captured, Mt CO₂/yr |
+|---|---|---|---|
+| £20/t | £4,552.9458m | 2035 | 0.02276 |
+| £40/t (central) | £4,557.0832m | 2035 | 0.02276 |
+| £60/t | £4,561.2205m | 2035 | 0.02276 |
+
+**The breakeven is a staircase, because the carbon price rises through the horizon.**
+Capture is worth doing later before it is worth doing at all:
+
+| Tariff | Capture first built |
+|---|---|
+| ≤ £217/t | 2035, the first period `earliest_year` allows |
+| £218–£239/t | 2040 |
+| £240–£261/t | 2045 |
+| £262–£285/t | 2050 |
+| **≥ £286/t** | **never** |
+
+So **£286/t is the breakeven** and the central £40/t sits at about a seventh of it. The
+answer does not lean on the tariff at all in the range anyone would argue about: capture
+pays at £20, £40 and £60 by a factor of seven, and the assumption would have to be wrong by
+600% to change the decision. What the answer *does* lean on, heavily, is the coefficient
+above and the volume below.
+
+**The volume is capped at 3% of the stack, and that is a second data finding.**
+`ccs_amine`'s three `emission_input` coefficients — −557.55 `co2_process`, −352.57
+`co2_fuel_fossil`, −89.88 `co2_fuel_biogenic`, in kt per Mt of `co2_captured` — are a
+**fixed stream composition**, and they sum to 1000 kt, which is the one Mt of CO₂ the
+train produces: the shares themselves are 0.55755, 0.35257 and 0.08988, summing to 1.
+They match the cement worked example's premise, which fires waste
+derived fuel and so has 71.93 kt/yr of biogenic CO₂ to offer. `mvp-cement` has no WDF
+kiln — `waste_derived_fuel` carries no `import_price` and the §3.2 screen drops
+`kiln_dry_wdf` — so its only biogenic CO₂ is natural gas's 1.15% `biogenic_fraction`:
+2.02061 kt/yr from the kiln, plus 0.02541 from the train's own reboiler gas, 2.04602 in
+all. C8 at that node caps the train at 2.04602 ÷ 89.88 = **0.02276 Mt/yr, against 773.92
+kt/yr of charged emissions at the base year — 2.9% of the stack.** A capture train written
+as a fixed blend can only run at the premise it was written for. Recorded as item 57.
 
 ---
 
@@ -406,6 +593,9 @@ Counts and solve time per premise are printed, which also starts the `G1` measur
 - All three premises solve, and a non-optimal status would be reported rather than thrown.
 - C8 closes at every carrier node in every period, checked post-solve against the built matrix.
 - `mvp-dairy` switches and `mvp-cement` does not, and both are explicable from §4.2.
+  **Reached 2026-09-20, and `mvp-cement` now solves too** — it switches its kiln from
+  coal to gas and substitutes clinker in the grinder, and it does not build capture,
+  for the reasons §4.4 gives.
 - The screen's dropped-unit list is written to the run report and folded into note 20.
 - `make check` is still green, and no file under `docs/notes/data/` has changed.
 
@@ -491,8 +681,10 @@ specification a change.
 | A7 relaxation ladder | Only two of eight rungs exist here; diagnosis beats automatic relaxation at three premises |
 | Determinism (`MF-45`, `MF-74`) | Degenerate optima are more useful visible than hidden at this rung |
 | Emissions attribution (`MF-52`, `MF-53`, `MF-79`, `MF-80`) | Reporting layers; none changes a pathway |
-| C6, C7, C9, C11, C12 | Each needs machinery the slice has no use for; C12 exists for PV, which is out |
-| On-site generation, CHP, PV, export, storage | The exclusion that makes `MF-42`, `MF-79` and `MF-80` moot rather than skipped |
+| C6, C7, C11, C12 | Each needs machinery the slice has no use for; C12 exists for PV, which is out |
+| ~~C9~~ | **Partly in scope from 2026-09-20** (§2.3). The export of CO₂ is bounded to zero where `infrastructure_scenario` marks the premise's cluster unavailable. Still out: `capacity_limit` (blank on all 63 `co2_transport` rows), hydrogen, and `grid_headroom` |
+| On-site generation, CHP, PV, storage | The exclusion that was meant to make `MF-42`, `MF-79` and `MF-80` moot rather than skipped. **Nothing enforces it** — 23 `coproduct` rows are live and four gas CHPs clear the screen; see [note 20](20_reference_data_open_questions.md) item 52 |
+| ~~Export~~ | **In scope from 2026-09-20** (§2.2), for carriers that pass the connection and price tests. Today that is `co2_captured` at `mvp-cement` and nothing else: electricity is refused because its `export_price` misses 2021 |
 | Collapsing $m_{c,k,t}$ to $m_{c,t}$ | The connection index carries no information while C11, $Z^{\text{net}}$ and export are all out, and `import_price` has no connection dimension. Left as-is to stay close to §5.2; see the TODO |
 | A PyPSA / Calliope spike | Note 08 §2 names it as a prerequisite — "a spike might show 70% of COMIT is configuration rather than code" — and it has never been run. Not blocking a first slice, but it is owed before the architecture hardens |
 | CI, packaging, distribution | No `.github/` exists and `make check` has no `carb3` target. The package's tests would sit outside every gate in the repo. A separate call, flagged rather than silently dropped |
@@ -567,6 +759,25 @@ Synthesized from the review's findings. Each derives from a specific finding abo
   - Surfaced by: §6.4
   - Files: `docs/specs/2026-08-28-carb3-site-energy-system-implementation.md`
   - Verify: `make docs-check` green after the edit
+
+- [x] **T12 (P0)** — sets — Minimal A2 reads `premise_throughput` for product duties (§3.3);
+      a process that makes a `product` yields no profile duty
+  - Surfaced by: [note 20](20_reference_data_open_questions.md) item 51 — the duty profile
+    carries no mass carrier, so 1.13 Mt of cement was stated as 1.13 PJ of motive power
+  - Files: `carb3/src/carb3/sets.py`, `carb3/src/carb3/load.py`
+  - Verify: `mvp-cement` derives a `cement` duty of 1.130000 Mt/yr and solves
+- [x] **T13 (P0)** — build — Restore $x_{c,t}$ (§2.2); its term in C8 and its tariff in the
+      objective; C9's availability bound; the export price screen
+  - Surfaced by: item 53 — `co2_captured` has no sink, so no capture train is buildable
+  - Files: `carb3/src/carb3/build.py`, `carb3/src/carb3/sets.py`, `carb3/src/carb3/ledger.py`
+  - Verify: export is zero before 2030 at `humber` and throughout at `grangemouth`;
+    exported CO₂ carries no carbon charge; `cost_by_term` sums to the objective
+- [x] **T14 (P1)** — data — A synthetic `co2_transport_tariff` in `scenario_parameters.csv`,
+      £40/t flat, with its provenance and its `references.csv` row
+  - Surfaced by: `unit_tariff` blank on all 63 `co2_transport` rows; no `export_price` for
+    `co2_captured`
+  - Files: `docs/notes/data/scenario_parameters.csv`, `docs/notes/data/references.csv`
+  - Verify: `make data-check` still reports 24 blocking checks green
 
 ---
 

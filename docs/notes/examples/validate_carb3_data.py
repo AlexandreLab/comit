@@ -830,6 +830,126 @@ def check_units(unit: list[dict], io: list[dict], bom: list[dict], car: list[dic
     return r
 
 
+# ------------------------------------------- the emission-coefficient basis (2026-09-20)
+#
+# A §3.6 coefficient is "per unit of the unit's output", and the *unit* of that output is
+# the `denominator_kind` of the unit's `primary_output` carrier — Mt for a mass carrier, PJ
+# for an energy one. Emission carriers are themselves denominated in kt, because A6 derives
+# fuel CO2 from an emission factor in kt/PJ. Nothing in the file records any of this, so a
+# row authored on a Mt-per-Mt basis is indistinguishable from a legitimately tiny kt-per-Mt
+# one, and every blocking check passes over it.
+#
+# That is exactly what happened. `kiln_dry_coal`, `kiln_dry_gas` and `kiln_dry_wdf`
+# declared `co2_process` at 0.52500 where spec §3.6's derivation table says "525 kt CO2 per
+# Mt of clinker is chemistry, not a scenario assumption", and `ccs_amine`'s three
+# `emission_input` rows were shares of the same Mt-denominated stream. `mvp-cement` vented
+# 0.44625 kt/yr of process CO2 where the cement worked example's §8.1 says 446.25, a cement
+# works' carbon bill came out 58% low, and no capture train paid for itself at any tariff
+# including zero. Note 20 item 56.
+#
+# THE BAND IS STOICHIOMETRIC, NOT EMPIRICAL. It is derived from what chemistry permits, not
+# fitted to the rows in the file today, and widening it to admit a row is the wrong move —
+# the row is what is wrong. Both bounds, per denominator:
+#
+#   mass output (kt CO2 per Mt of product)
+#     ceiling  3666.67 = 1000 x 44/12. One Mt of product that is pure carbon, every atom of
+#              it released as CO2. No chemistry puts more CO2 against a Mt of product than
+#              the product's own mass in carbon, fully oxidised. The largest row in the
+#              table is `ammonia_smr_gas` at 1489.354, well inside it.
+#     floor       3.67 = the ceiling / 1000.
+#
+#   energy output (kt CO2 per PJ of product)
+#     ceiling  1117.93 = 111.793 x 10. Pure carbon at 32.8 GJ/t releases 111.793 kt CO2 per
+#              PJ burnt — compare coal's 94.6 kt/PJ in `scenario_parameters` — and no real
+#              conversion delivers a PJ of product off more than ten PJ of feedstock. The
+#              largest row is `gasifier_biomass_ccs` at 153.5423.
+#     floor       1.118 = the ceiling / 1000.
+#
+# The floor is the ceiling divided by a thousand in both cases, and that is the whole
+# argument: it is the largest coefficient that would *still* sit inside the band after
+# being multiplied by 1000, so anything at or below it cannot be told apart from a row
+# written a thousand times too small. A row below the floor also declares under one part in
+# a thousand of its denominator as CO2, which is a zero rather than a declaration — a unit
+# with no process chemistry carries no row at all, not a small one.
+
+CARBON_TO_CO2 = 44.0 / 12.0          # kg CO2 per kg of carbon fully oxidised
+KT_PER_MT = 1000.0
+CARBON_LHV_GJ_PER_T = 32.8           # pure carbon, the most carbon-dense fuel there is
+MIN_CONVERSION_EFFICIENCY = 0.10     # PJ of product per PJ of feedstock, a floor on any
+                                     # real unit; below it nothing is a process
+
+# kt CO2 released per PJ of pure carbon burnt: (1e6 GJ / 32.8 GJ/t) t of C, x 44/12, / 1e3.
+CO2_PER_PJ_PURE_CARBON = (1e6 / CARBON_LHV_GJ_PER_T) * CARBON_TO_CO2 / 1e3
+
+# The ceiling per denominator, and the floor as the ceiling one basis down. Writing the
+# floor as `ceiling / KT_PER_MT` rather than as a literal is the point: it is the same
+# thousandfold the defect was, not an independently chosen number.
+_EMISSION_COEFFICIENT_CEILING = {
+    "mass": CARBON_TO_CO2 * KT_PER_MT,                                   # kt CO2 per Mt
+    "energy": CO2_PER_PJ_PURE_CARBON / MIN_CONVERSION_EFFICIENCY,        # kt CO2 per PJ
+}
+EMISSION_COEFFICIENT_BAND = {
+    d: (hi / KT_PER_MT, hi) for d, hi in _EMISSION_COEFFICIENT_CEILING.items()
+}
+
+
+def check_emission_coefficient_basis(io: list[dict], car: list[dict]) -> Result:
+    """BLOCKING. Every emission-carrier coefficient sits inside its stoichiometric band.
+
+    Catches a coefficient written on the wrong basis — the thousandfold error of note 20
+    item 56 — which no key, enum or sign check can see.
+    """
+    r = Result("emission coefficients on the kt basis (§3.6)")
+    kind = {c["carrier_id"]: c["carrier_kind"] for c in car}
+    denom = {c["carrier_id"]: c["denominator_kind"] for c in car}
+    emission_carriers = {cid for cid, k in kind.items() if k == "emission"}
+
+    primary: dict[str, str] = {}
+    for row in io:
+        if row["role"] == "primary_output":
+            primary[row["unit_id"]] = row["carrier_id"]
+
+    checked = 0
+    for i, row in enumerate(io, start=2):
+        cid = row["carrier_id"]
+        if cid not in emission_carriers:
+            continue
+        uid = row["unit_id"]
+        out = primary.get(uid)
+        if out is None:
+            r.fail(f"{uid}: {cid} {row['role']} row, but the unit has no primary_output "
+                   f"row, so the coefficient's basis cannot be established")
+            continue
+        d = denom.get(out)
+        band = EMISSION_COEFFICIENT_BAND.get(d)
+        if band is None:
+            r.fail(f"{uid}: primary_output {out} has denominator_kind {d!r}, "
+                   f"which has no stoichiometric band")
+            continue
+        c = _f(row["coefficient"])
+        if c is None:
+            r.fail(f"row {i}: {uid}/{cid}/{row['role']} has no readable coefficient")
+            continue
+        lo, hi = band
+        mag = abs(c)
+        checked += 1
+        if not (lo <= mag <= hi):
+            per = "Mt" if d == "mass" else "PJ"
+            side = "below" if mag < lo else "above"
+            r.fail(f"{uid}: {cid} {row['role']} = {c} is {side} the {d} band "
+                   f"[{lo:.3f}, {hi:.2f}] kt CO2 per {per} of {out}"
+                   + (f" — x1000 would give {mag * 1000:.5f}, inside it; "
+                      f"read spec §3.6 before changing the band"
+                      if mag < lo and lo <= mag * 1000 <= hi else ""))
+
+    mass_lo, mass_hi = EMISSION_COEFFICIENT_BAND["mass"]
+    energy_lo, energy_hi = EMISSION_COEFFICIENT_BAND["energy"]
+    r.note = (f"{checked} emission-carrier coefficients banded; "
+              f"mass [{mass_lo:.3f}, {mass_hi:.2f}] kt/Mt, "
+              f"energy [{energy_lo:.3f}, {energy_hi:.2f}] kt/PJ")
+    return r
+
+
 def check_eligibility_and_join(elig: list[dict], join: list[dict], unit: list[dict],
                                reg: list[dict], lib: list[dict]) -> Result:
     r = Result("eligibility and option→unit join: keys resolve")
@@ -1180,6 +1300,7 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
                     tables["unit_bill_of_materials.csv"], car, reg),
         check_eligibility_and_join(elig, tables["decarbonisation_option_unit.csv"],
                                    unit, reg, lib),
+        check_emission_coefficient_basis(tables["unit_input_output.csv"], car),
         check_lineage(tables["comit_technology_lineage.csv"], unit, car),
         check_load_shape(tables["process_load_shape.csv"], reg),
         check_scenario(tables["scenario_parameters.csv"],

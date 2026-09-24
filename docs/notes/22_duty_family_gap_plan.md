@@ -1,7 +1,7 @@
 # Duty families and processes — the plan to fill the gaps
 
 *Written 2026-09-24. A plan, not the work: nothing in `docs/notes/data/` changes here.
-Answers the data side of [note 20](20_reference_data_open_questions.md) items 51 and 52, whose
+Answers the data side of [note 20](20_reference_data_open_questions.md) items 60 and 61, whose
 specification side landed the same day in the live
 [implementation spec](../specs/2026-08-28-carb3-site-energy-system-implementation.md).*
 

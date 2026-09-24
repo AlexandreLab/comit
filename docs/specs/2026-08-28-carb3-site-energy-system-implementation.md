@@ -941,7 +941,7 @@ families need this and neither could be written down when the key was the pair:
 | Case | The two rows |
 |---|---|
 | **Storage** | A battery charges and discharges on `electricity`; a hot-water store on the same heat band. `aux_input` for the charge leg, `primary_output` for the discharge leg, and the round-trip loss is the difference between them |
-| **A capture train with a fired reboiler** | `ccs_amine` takes its host's `co2_fuel_fossil` at −0.35257 as `emission_input` and makes its own from the reboiler at +0.10659 as `emission` |
+| **A capture train with a fired reboiler** | `ccs_amine` takes its host's `co2_fuel_fossil` at −352.57000 as `emission_input` and makes its own from the reboiler at +106.59000 as `emission`, both in kt per Mt of `co2_captured` |
 
 Netting the two legs into one coefficient is **not** an alternative. It makes the unit load and
 destroys the number: a train that recirculates its flue gas and one that does not become the

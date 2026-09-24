@@ -21,7 +21,7 @@ CARB3    := $(REPO)/carb3
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check docs-check docs-list data-check data-report docs-build carb3
+.PHONY: help check docs-check docs-list data-check data-report docs-build carb3 carb3-run
 
 help: ## Show available targets
 	@grep -hE '^[a-z0-9-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -48,3 +48,18 @@ docs-build: ## Regenerate the interface docs and spec diagrams
 
 carb3: ## Run the carb3 package tests
 	@$(UV) run --directory $(CARB3) pytest
+
+# Not part of `make check`: this solves and writes, where every other target only reads
+# and verifies. PREMISES overrides which premises run, OUT_DIR asks for the parquet ledger.
+#   make carb3-run PREMISES=mvp-dairy OUT_DIR=outputs/carb3
+#
+# PREMISES also carries the CLI's own switches, which is how the note 21 §4.4 sensitivity
+# is run:
+#   make carb3-run PREMISES="mvp-cement --co2-tariff 60"
+#
+# All three premises solve as of 2026-09-20, so it exits zero. It still exits non-zero if
+# any premise does not solve — §5.2 makes that a reported outcome, and the whole report is
+# printed above the error rather than swallowed by it.
+carb3-run: ## Solve the synthetic premises and print the run report
+	@$(UV) run --directory $(CARB3) python -m carb3 $(PREMISES) \
+	  $(if $(OUT_DIR),--out-dir $(abspath $(OUT_DIR)))

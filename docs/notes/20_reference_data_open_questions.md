@@ -8,11 +8,12 @@ what has to change to answer them, so they can be worked through in one sitting.
 names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
-2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, and item
-52 on 2026-09-24 — **ten of the fifty-two**. Item 51 is **partly settled**: its specification
-side is done, and its data side is planned in [note 22](22_duty_family_gap_plan.md). Each
-carries the decision inline, with the work items 1 and 36 leave behind in items 1a and 1b, and
-the work item 4 leaves behind in items 44 and 45. The rest are undecided.
+2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
+51, 53 and 56 on 2026-09-20, and item 61 on 2026-09-24 — **thirteen of the sixty-one**.
+Item 60 is **partly settled**: its specification side is done, and its data side is planned
+in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
+items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
+and 45. The rest are undecided.
 
 ## A. Questions that change the specification
 
@@ -189,7 +190,8 @@ These are the ones with a consequence outside the reference data.
    `is_primary_output`, `is_reject` and `is_fuel_input` with one seven-value enum:
    `fuel_input`, `aux_input` and `emission_input` consume, `primary_output`, `coproduct`,
    `reject` and `emission` produce. `ccs_amine` now holds `co2_fuel_fossil` twice — the kiln's
-   at −0.35257 as `emission_input` and its reboiler's at +0.10659 as `emission` — so the cement
+   at −352.57000 as `emission_input` and its reboiler's at +106.59000 as `emission`, both in
+   kt per Mt of `co2_captured` (item 56 corrected the basis) — so the cement
    example's ⚠ is closed and its §13 item 10 with it. A store's charge leg is `aux_input` and
    its discharge leg `primary_output`.
 
@@ -468,6 +470,16 @@ Added 2026-09-19 by the `/plan-eng-review` of
 questions rather than reference-data ones, but they surfaced here and there is no other
 standing home for them.
 
+**Items 51–54 were added on 2026-09-20 by the build itself**, not by a review of the plan.
+They are what the running model found on contact with the real tables: one reference-data
+gap that stops `mvp-cement` solving (51), and three places where note 21's scope statement
+does not match what the data makes the model do (52–54).
+
+**Items 55–58 were added later the same day**, when 51 and 53 were closed and the cement
+premise solved for the first time. Three are the gaps the CO₂ export route had to be built
+around (55) and two coefficient defects it exposed (56, 57); the fourth is a specification
+gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
+
 47. **The PyPSA / Calliope spike named as a prerequisite has never been run.** Note 08 §2 is
     phrased as a gate, not a suggestion: *"Evaluate before writing anything … a spike might
     show 70% of COMIT is configuration rather than code … The cheapest code is code not
@@ -507,10 +519,238 @@ standing home for them.
     first gap and five-year gaps thereafter. Every present-value factor and lifetime
     conversion from $t = 1$ onward is affected. Note 21 carries an explicit year vector; the
     specification is owed the correction. *Note 21 §6.4.*
+51. **`activity_process_duty_profile.csv` carries no mass carrier, so no D5 mass duty can be
+    derived.** Its 427 rows name 26 distinct `carrier_id` values and neither `cement` nor
+    `clinker` is among them; every row is an energy or service carrier. `Cement Works`'s
+    `cement_grinding` row is classified `MOT` on `motive_power` at `duty_share` 1.00000, so
+    note 21 §3.3's minimal A2 — which reads `activity_process_register` and this table and
+    nothing else — derives a 1.130000 "PJ/yr" motive-power duty from a `known_capacity` that
+    is 1.130000 **Mt/yr of cement**, and then finds no unit that can serve it:
+    `grinder_mixer_elec` and `grinder_mixer_clinker_sub_elec` both clear the §3.2 admission
+    screen and both have `cement` as their primary output. `mvp-cement` therefore does not
+    solve; §5.2's pre-solve diagnosis names the duty and no LP is built. The premise's
+    `premise_throughput.csv` row says of the same figure "this row is the premise's mass duty
+    under D5", so the premise tables and A2 disagree about where a mass duty comes from.
+    Closing it is a decision, not a fix: either the duty profile gains a `cement` row for
+    `cement_grinding` — and the `MOT` row is reinterpreted as that process's energy mix
+    rather than its duty — or A2 learns to read `premise_throughput` for the mass side of
+    D5's hybrid denominators. The same question is open for every mass-denominated process
+    in the table, not only cement. *Note 21 §3.3; `carb3/data/premises/README.md` finding 6;
+    `carb3/tests/test_integration.py`.*
+
+    **Closed 2026-09-20, the second way, and it was never a decision.** §3.1.2 had already
+    settled it: "A row is a duty or it is evidence, and `may_export` decides which (D16).
+    Where the `carrier_id` is a product with `may_export` true, the row is the premise's
+    **duty** on that product under D5 — a cement works' 1.13 Mt/yr of cement is what C1
+    makes it produce." The minimal A2 now reads `premise_throughput` for product duties,
+    at the base year only (D12), and a process whose units make a `product` yields no duty
+    from the duty profile at all — its `MOT` or `HTH` row classifies the process's energy
+    need, exactly as §3.9 says, and that need reaches C8 through the unit's own input
+    coefficients. `mvp-cement` derives a `cement` duty of 1.130000 Mt/yr and solves. The
+    duty profile is **not** changed and gains no `cement` row. *Note 21 §3.3, T12.*
+52. **On-site generation is live through the 23 `coproduct` rows, and note 21 says three
+    times that it is not.** §2.1 drops $Z^{\text{exp}}$ because "no on-site generation, so
+    nothing to export"; §6.3 says `MF-79` "cannot bite here: it exists because on-site
+    generation makes consumption exceed import, and there is no on-site generation"; §9
+    lists on-site generation, CHP and PV among the exclusions. Nothing enforces any of it.
+    `unit_input_output.csv` carries 23 rows with `role = coproduct`, four gas CHPs clear the
+    admission screen, and `chp_gas_ccgt` is eligible for `boiler_steam_hot_water` at `Food
+    Processing Centre` with `electricity` at `+1.3` per PJ of grade-3 heat. C8 credits that
+    coproduct like any other flow. Run `mvp-minimal` with `carbon_price` at zero and the
+    model builds a gas CHP, spends its coproduct electricity on heat pumps, and imports **no
+    electricity at all** — consumption exceeds import, which is precisely the condition
+    `MF-79` exists for. Two consequences: note 21 §4.2's two-unit contest is not the contest
+    the model faces at a premise whose $U_q$ holds eleven units, and `MF-79` may not be
+    deferrable on the stated grounds. Nothing here is wrong in the data; the plan's scope
+    statement is wrong about it. *Note 21 §2.1, §4.2, §6.3, §9.*
+53. **Every capture train is unbuildable while export is out, so `earliest_year` is untested
+    at the cement works.** `ccs_amine` clears the admission screen and carries `earliest_year`
+    2035 and `min_duty` 0.25 on `kiln_pyroprocessing`, which is why
+    `carb3/data/premises/README.md` says "the capture-train gate is live and testable". It is
+    not. `ccs_amine`'s primary output is `co2_captured`, whose `carrier.csv` row is
+    `may_dispose` FALSE and `may_export` **TRUE**; note 21 §2.2 leaves $x_{c,k,t}$ out, so C8
+    at that node has no sink and pins the train's activity to zero however cheap it is. The
+    gate is real in the data and unreachable in the slice. It becomes reachable when export
+    arrives, or sooner if a CO₂ transport-network carrier is modelled as a consumer.
+    *Note 21 §2.2; `carb3/data/premises/README.md`.*
+
+    **Closed 2026-09-20.** $x_{c,t}$ is restored, narrowly: declared where
+    `carrier.may_export` is true, a `premise_connection` row carries the carrier, and a
+    complete price series covers every period. C8 carries its term and the objective its
+    tariff; what leaves through the pipe is not vented, so it attracts no carbon charge.
+    `ccs_amine` also needed an activity variable, which item 54's mechanism now gives it,
+    and its `earliest_year` 2035 had to be taught to reach a unit that sits in no $U_q$.
+    Two further gates are live: C9 (infrastructure availability) came partly back into
+    scope for this one carrier, and the price screen refuses electricity because its
+    `export_price` misses 2021. The train is now buildable — and is still not built on the
+    reference data as it stands, for the reasons in items 56 and 57. *Note 21 §2.2, §2.3,
+    §4.4, T13.*
+54. **A process whose duty D16 suppresses still needs an activity variable, and note 21 §2.2
+    removed the one that gives it.** §2.2 puts $z^{\circ}_{u,t}$ (undispatched primary
+    output) out of scope on the stated grounds that there are "no internal `product` carriers
+    in the synthetic premises". `mvp-cement`'s kilns make `clinker`, a `product` with
+    `may_export` FALSE, and §3.9's D16 rule therefore removes its premise-level duty row —
+    which the plan itself describes, adding that "C8 (carrier balance) pins the kiln through
+    the `clinker` balance instead". A unit that serves no duty has no $z_{u,q,t}$, so there
+    was nothing for C8 to pin: the node had no producer, the grinder was forced to zero and
+    the cement duty was infeasible on a second, independent count. `carb3.sets.internal_supply`
+    now names those units and `build.py` gives each a column on the dispatch dimension that
+    C1 does not select — the smallest restoration of $z^{\circ}$ that makes the plan's own
+    sentence true. Recorded because the specification should say which of the two it means.
+    *Note 21 §2.2; `carb3/src/carb3/sets.py`.* **Widened 2026-09-20**: the rule is no longer
+    about *internal* products. `ccs_amine` makes `co2_captured`, a `product` with
+    `may_export` **true** and still no duty, because no premise states a throughput of
+    captured CO₂. The function is now `carb3.sets.undutied_supply` and its test is "a
+    `product` carrier that carries no duty at this premise", which covers both.
+55. **The CO₂ export route has no price anywhere in the reference data, in three places at
+    once.** Each was worked around rather than filled, and each is still owed:
+
+    | Gap | Extent | Worked around by |
+    |---|---|---|
+    | `infrastructure_scenario.unit_tariff` is **blank on all 63 `co2_transport` rows** | 9 clusters × 7 periods | A synthetic `co2_transport_tariff` in `scenario_parameters.csv`, £40/t flat, labelled SYNTHETIC with full provenance and a `references.csv` row |
+    | `infrastructure_scenario.capacity_limit` is **blank on all 63** | the same 63 rows | Nothing. The export is unbounded above, which is safe only because C8 and the capture train's own coefficients bound it far below any plausible pipeline limit. It would not be safe at a premise that could capture its whole stack |
+    | There is **no `export_price` row for `co2_captured`** | the only 6 `export_price` rows in the dataset are electricity | Not needed: CO₂ export is a cost, not a revenue, so the tariff alone prices it. The absence is correct rather than a gap, and it is recorded so that nobody adds one by analogy with electricity |
+
+    §3.7 marks `unit_tariff` **required** and the lane brief that built the table overrode
+    it with "tariffs blank unless published", which is the right call for a sourced table
+    and leaves the model with nothing to read. The tariff belongs in
+    `infrastructure_scenario` when a published figure exists; it sits in
+    `scenario_parameters` today because that is where a carrier-and-period series with no
+    cluster dimension fits, and because the model has no cluster index. **Note the
+    electricity gap while you are here**: `export_price` covers 2025–2050 and **not 2021**,
+    so `carb3.sets.export_windows` refuses electricity an export variable at all three
+    premises — the partial-series trap of item 48, one table across. *Note 21 §2.2, §4.4.*
+56. **Three cement kilns declare `co2_process` a thousandfold too small, and the capture
+    train's three `emission_input` rows are on the same wrong basis.** Spec §3.6 states the
+    figure outright: "525 kt CO₂ per Mt of clinker is chemistry, not a scenario
+    assumption." `unit_input_output.csv` gives `kiln_dry_coal`, `kiln_dry_gas` and
+    `kiln_dry_wdf` **0.52500**. Every other kiln in the table is on the kt basis —
+    `kiln_dry_oil` and `kiln_calcium_looping_coal` 602.53064, `kiln_fluidbed_wdf`
+    616.92145, the six `lime_kiln_*` rows 159.51915, `ammonia_smr_gas` 1489.354 — so the
+    three dry-kiln rows are the outliers, not the convention. `ccs_amine`'s
+    `emission_input` rows (−0.55755 `co2_process`, −0.35257 `co2_fuel_fossil`, −0.08988
+    `co2_fuel_biogenic`) are shares of a Mt-denominated stream against kt-denominated
+    nodes, so they need the same ×1000. Six rows in all.
+
+    **The consequence is not cosmetic.** A6 derives fuel CO₂ from an emission factor in
+    kt/PJ, so `co2_fuel_fossil` is in kt and `co2_process` is not: at `mvp-cement` the model
+    vents **0.44625 kt/yr of process CO₂ where the cement worked example's own §8.1 says
+    446.25 kt/yr**, and the carbon bill of a cement works is understated by 58%. Capture
+    then has almost nothing worth capturing against £55m/yr of reboiler gas, auxiliary
+    power, capex and opex, so it is **never built at any tariff, including zero**, and
+    note 21 §4.4's sensitivity is flat. Corrected in a scratch copy of the reference root,
+    the breakeven tariff is £286/t and capture is built at 2035. **Not fixed here**: this
+    lane was authorised one data edit and spent it on the tariff, and six coefficient rows
+    are the data owner's call. *Note 21 §4.4; spec §3.6; cement worked example §8.1, §8.4.*
+
+    **Closed 2026-09-20. The six rows are corrected and a blocking check now guards the
+    basis.** The kilns' `co2_process` becomes **525** kt per Mt of clinker, which is spec
+    §3.6's derivation-table figure read literally. `ccs_amine`'s three `emission_input`
+    rows become **−557.55 `co2_process`, −352.57 `co2_fuel_fossil`, −89.88
+    `co2_fuel_biogenic`**, in kt per Mt of `co2_captured`. Those are not a blind ×1000:
+    they are the cement worked example's own §8.1 base-year stack — 446.25000, 282.18812
+    and 71.93446 of 800.37258 kt — expressed as shares (0.55755, 0.35257, 0.08988, summing
+    to 1) and then put on the kt-per-Mt basis the emission nodes use. The three rows still
+    sum to 1000 kt = the 1 Mt the train produces, so mass closes.
+
+    **The guard is `check_emission_coefficient_basis` in
+    [`validate_carb3_data.py`](examples/validate_carb3_data.py), and it is BLOCKING.** Every
+    coefficient on an emission carrier must sit inside a band derived from stoichiometry
+    rather than from the data: on a mass-denominated output, **[3.667, 3666.67] kt CO₂ per
+    Mt**, the ceiling being 1000 × 44/12 — a Mt of product that is pure carbon, every atom
+    released as CO₂ — and the floor being that ceiling divided by a thousand, which is the
+    largest coefficient that would *still* look admissible after being multiplied by 1000.
+    On an energy-denominated output it is **[1.118, 1117.89] kt CO₂ per PJ**, off pure
+    carbon at 32.8 GJ/t (111.79 kt/PJ, against coal's 94.6) at a 10% conversion floor. 38
+    coefficients are banded and all pass; before the fix the check named
+    `kiln_dry_coal`, `kiln_dry_gas`, `kiln_dry_wdf` and `ccs_amine` and said what ×1000
+    would give. This is the first blocking check on a *magnitude* rather than on a key, an
+    enum or a sign, and the band must not be widened to admit a row — the row is what is
+    wrong.
+
+    **Measured on `mvp-cement` at the central £40/t tariff, before and after:** the
+    objective moves from **£2,205.6742m to £4,557.0832m**, vented process CO₂ at 2021 from
+    **0.44625 kt/yr to 446.24977 kt/yr** — the cement worked example's §8.1 figure of
+    446.25 to within 2.3e-4 kt — and `ccs_amine`, which was **never built at any tariff
+    including zero**, is now **built at 2035** at 0.02493 Mt/yr of capacity. The breakeven
+    tariff is confirmed at **£286/t**: the train is still built at £285/t (at 2050) and is
+    not built at £286/t. Note 21 §4.4's scratch-copy figures reproduce exactly on the
+    corrected tables.
+
+    **One test changed, and it was completed rather than weakened.**
+    `test_the_carbon_term_equals_the_disposal_table_charge` asserted that the objective's
+    carbon term equals the sum of the disposal table's charge. §5.4 has two legs — it
+    charges the venting *and* credits back the zero-rated CO₂ an abatement unit captures —
+    and a captured stream is a flow into a unit rather than a disposal, so it can appear in
+    no disposal row. The equality was only ever true while nothing captured biogenic CO₂
+    anywhere, which is to say while item 56 was unfixed. The test now asserts
+    `Z^carbon = Σ d_{c,t} charged − credit`, recomputes the credit from the reference CSVs
+    rather than from `build.biogenic_capture_weights` so the two sides stay independent,
+    and requires the credit to be non-zero at `mvp-cement` so the new leg is actually
+    exercised. It is renamed to match. `make check` is green: 25 blocking data checks, up
+    from 24, and 180 tests.
+
+    **What the fix did not touch:** the *blend* is still wrong in the way item 57 describes,
+    and the capture volume is still capped at 0.02276 Mt/yr, 2.9% of the stack. Correcting
+    the basis does not make a fixed stream composition into per-stream capture rates. The
+    neighbour coefficients are item 59.
+57. **`ccs_amine` is written as a fixed stream composition, so it can only run at the
+    premise it was written for.** Its three `emission_input` coefficients — −557.55,
+    −352.57 and −89.88 kt per Mt of `co2_captured` since item 56 — sum to the 1000 kt the
+    train produces and state the *blend* it takes: 55.755% `co2_process`, 35.257%
+    `co2_fuel_fossil`, 8.988% `co2_fuel_biogenic`. Those are the cement worked example's
+    premise, which fires waste derived fuel and so has 71.93 kt/yr of biogenic CO₂ to
+    offer. C8 makes the blend a hard requirement, so at any premise with a different fuel
+    mix the train is capped by whichever CO₂ carrier is scarcest relative to it.
+    `mvp-cement` has no WDF kiln — `waste_derived_fuel` carries no `import_price` and the
+    §3.2 screen drops `kiln_dry_wdf` — so its only biogenic CO₂ is natural gas's 1.15%
+    `biogenic_fraction`, 2.04602 kt/yr including the train's own reboiler, and the train is
+    capped at 2.04602 ÷ 89.88 = **0.02276 Mt/yr against 773.92 kt/yr of charged emissions,
+    2.9% of the stack.** Physically a capture train takes a *fraction* of each stream
+    independently; three fixed shares cannot express that. Either the coefficients become
+    per-stream capture rates, or a train is authored per premise, and the first is the only
+    one that scales. *Note 21 §4.4; `docs/notes/data/unit_input_output.csv`.*
+58. **§3.7 says A1 assigns each premise to a cluster and §3 gives that assignment nowhere
+    to live.** "A premise is assigned to the nearest in-scope cluster on ingest (A1). Its
+    availability is read from that cluster's rows." `premise_record` (§3.1) has no
+    `cluster_id` field, and neither does any other §3 entity, so C9 (infrastructure
+    availability) has nothing to read unless the implementation invents a place to keep
+    it. The slice carries an optional `cluster_id` on `premise_record`, treats a premise
+    without one as outside every cluster — §3.7's own beyond-the-radius case — and records
+    the gap here rather than adding a field to the specification from a lane.
+    *Note 21 §2.3, §3.4; spec §3.1, §3.7.*
+59. **Four more `co2_process` rows are small enough to look like item 56 and are not, and
+    one of them is still hard to believe.** Item 56's fix raised the question of whether
+    `rolling_mill_reheat_gas` and `rolling_mill_reheat_hydrogen` at **7.24827** and
+    `refinery_fixed_mix_gas` and `refinery_flexible_mix_gas` at **4.93580** — the four
+    smallest surviving rows, both pairs on a mass denominator — carry the same thousandfold
+    error. **They do not, and the test is physical rather than editorial.** A ×1000 would
+    put the rolling mills at 7248 kt CO₂ per Mt of hot rolled steel and the refineries at
+    4936 kt per Mt of petroleum products; both exceed 3666.67, the CO₂ from a Mt of product
+    that is pure carbon fully oxidised, so neither reading is chemically available. The
+    rolling mills carry a second, independent confirmation: the gas unit and the hydrogen
+    unit declare the *same* 7.24827, which is what a genuine process figure does under D15
+    (process CO₂ is declared and cannot be touched by fuel switching) and what a mis-scaled
+    fuel number could not. Both pairs are therefore left as they are, and the new blocking
+    check passes them.
+
+    **What remains open is the refineries' magnitude, not their basis.** 4.93580 kt per Mt
+    of product is 0.0049 t CO₂ per t, which is very small for a site whose hydrogen plant
+    reformer and FCC catalyst regeneration are each a non-combustion CO₂ source in their own
+    right. **No comparison figure was sourced and none should be invented here** — that is
+    the whole reason this is an item and not an edit. The figure is `comit_reuse` from
+    `[COMIT_WB_140]` technology codes
+    `POILREF01` and `POILREF02` and was carried through unchanged, so the question belongs
+    upstream in the workbook rather than in this table. It sits 1.35× above the new check's
+    floor, so the check does not flag it. Both refinery units are already unsafe for another
+    reason recorded in `CLAUDE.md`: each declares a `fuel_carrier_id` and carries no
+    `fuel_input` row, so its declared fuel burns free. **Do not correct the magnitude from
+    a lane** — it needs the workbook, not a plausible substitute.
+    *Item 56; `docs/notes/data/unit_input_output.csv`; spec §3.6.*
 
 ## G. Questions raised reading the specification
 
-51. **§3.4's duty-family-to-carrier table covers eight of the twelve families, and the data
+60. **§3.4's duty-family-to-carrier table covers eight of the twelve families, and the data
     already disagrees with it.** The table maps `LTH`, `HTH`, `STM`, `DRY`, `SPC`, `MOT`, `REF`
     and `OTH`, and §3.4 then explains away `NEUOTH` and `HRS`. That leaves two families with no
     stated carrier:
@@ -538,7 +778,7 @@ standing home for them.
     the data side:** the 11 `OTH` rows on `electricity` each need a service, and
     `validate_carb3_data.py` still admits `EN` as a duty family. Both are tasks in
     [note 22](22_duty_family_gap_plan.md).
-52. **Should `cooling` be graded?** §3.4 makes it one ungraded carrier. The 17 `REF` duties span
+61. **Should `cooling` be graded?** §3.4 makes it one ungraded carrier. The 17 `REF` duties span
     very different temperatures: cold stores and chilling at an abattoir or creamery, glycol
     at a brewery, chilled water for a wafer fab's HVAC, and cooling-tower water at a
     distillery. With one carrier, any cooling unit can serve any cooling duty. So when both
