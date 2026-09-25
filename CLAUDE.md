@@ -200,8 +200,10 @@ at the archived baseline's §6, lines 2126–2127.
   class and are easy to miss because their cost fields are complete:
   `lime_kiln_fluidbed_wdf`, `refinery_fixed_mix_gas` and `refinery_flexible_mix_gas` each
   declare a `fuel_carrier_id` in `unit.csv` and carry no `fuel_input` row in
-  `unit_input_output.csv`, so the declared fuel burns free. The 40 are reachable through 363
-  of `unit_eligibility.csv`'s 2630 rows. `unit.csv:12`, `heat_exchanger_lt_steam`, is the
+  `unit_input_output.csv`, so the declared fuel burns free. The 40 are reachable through 50
+  of `unit_eligibility.csv`'s 3207 rows — worked-example and options rows only, since the
+  family rows are rebuilt from the join and admit no uncostable unit (note 22 Task 10,
+  `build/rebuild_eligibility_join.py`). `unit.csv:12`, `heat_exchanger_lt_steam`, is the
   sharpest: `capex` 0, `fixed_opex` 0 and no coefficients, so it makes low-temperature heat
   from nothing.
 - **The price test is a price in *every* period, and only 4 of the 15 `may_import` carriers
@@ -212,7 +214,7 @@ at the archived baseline's §6, lines 2126–2127.
   `petroleum_products_misc` — and **`heavy_fuel_oil` has exactly one row, at 2021**. The
   partial case is the dangerous one: it looks present until you index it by year, and a
   test that asks only whether a carrier has *a* price counts 5 and misses it. Widen the
-  reach to every unit burning an unpriced or part-priced fuel and it is 1154 of the 2630
+  reach to every unit burning an unpriced or part-priced fuel and it is 1378 of the 3207
   eligibility rows. Screen for cost completeness before pointing any optimiser at these
   tables. Detail in [note 20](docs/notes/20_reference_data_open_questions.md) items 48
   and 49.

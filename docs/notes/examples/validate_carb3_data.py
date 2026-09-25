@@ -894,7 +894,12 @@ def _eligible_sets(elig: list[dict]) -> tuple[dict[tuple, set[str]], dict[str, s
 def check_unsourced_draws(elig: list[dict], io: list[dict], car: list[dict],
                           duty: list[dict]) -> Result:
     """ADVISORY. A unit eligible at a process draws an `intermediate` carrier that no unit
-    eligible there produces, under any output role.
+    eligible anywhere at the same activity produces, under any output role.
+
+    The scope is the activity, not the process, because C8 (carrier balance) is written per
+    premise: a dryer's reject heat at one process feeds a heat pump at another. It was the
+    process until note 22 Task 10 (2026-09-25), which overstated the gap — the reject heat
+    at a dairy's dryer did not count for the heat pump on its hot-water loop.
 
     The carrier is matched exactly, not through the heat cascade. C8 (carrier balance)
     lets hotter heat cascade into a colder band's node, so a boiler can in LP terms feed
@@ -930,10 +935,15 @@ def check_unsourced_draws(elig: list[dict], io: list[dict], car: list[dict],
         return False
 
     per_process, per_activity = _eligible_sets(elig)
+    at_activity: dict[str, set[str]] = defaultdict(set)
+    for (a, _p), us in per_process.items():
+        at_activity[a] |= us
+    for a, us in per_activity.items():
+        at_activity[a] |= us
     gaps: list[tuple[str, str, str, str]] = []
     under_cascade = 0
-    scopes = [((a, p), us, us | per_activity.get(a, set())) for (a, p), us in per_process.items()]
-    scopes += [((a, ""), us, us) for a, us in per_activity.items()]
+    scopes = [((a, p), us, at_activity[a]) for (a, p), us in per_process.items()]
+    scopes += [((a, ""), us, at_activity[a]) for a, us in per_activity.items()]
     for (a, p), drawers, here in scopes:
         produced = set().union(*(makes[u] for u in here)) if here else set()
         for u in sorted(drawers):
@@ -983,6 +993,8 @@ UNSERVABLE_CAUSES = {
                       "grade family) as its primary output",
     "grade_ceiling": "units of the right carrier family are admitted, but none has a "
                      "grade_out that reaches the duty's band",
+    "beyond_library": "no unit anywhere in the library reaches the duty's band in its grade "
+                      "family, so no eligibility row could serve it",
 }
 
 UNSERVABLE_COLUMNS = [
@@ -999,6 +1011,9 @@ _MOBILE_PLANT = re.compile(r"mobile|haulage|drilling|loading|loaders|windrow|cru
 def _unservable_owner(row: dict, cause: str) -> str:
     """The note 20 item, or note 22 task, that owns an unservable row (note 22 §5's table)."""
     f, p = row["duty_family"], row["process_id"]
+    if cause == "beyond_library":
+        return ("note 20 item 27 (no unit reaches heat rank 6, >1000 C: the band boundary, or "
+                "a furnace rated above it; at a chemistry node, item 30's missing node unit)")
     if cause == "duty_on_fuel":
         if p == "power_generation":
             return "note 20 item 37; note 22 Task 5 (delete the row, admit the generator)"
@@ -1008,22 +1023,14 @@ def _unservable_owner(row: dict, cause: str) -> str:
     if f == "HTH" and cause == "grade_ceiling":
         return "note 20 item 27 (rank 6 or 5, and no admitted unit reaches it)"
     if f == "HTH":
-        return ("note 20 item 27 (no admitted unit outputs heat here; a chemistry-node unit "
-                "outputs its product)")
+        return "note 20 item 30 (a chemistry node with no unit in the library)"
     if f == "STM":
         return "note 20 item 25 (refinery steam at rank 4, CHPs at 3)"
     if f == "REF":
         return "note 22 Task 4 (cooling units and eligibility)"
     if f == "MOT" and _MOBILE_PLANT.search(p):
         return "note 20 item 30 (diesel mobile plant has no unit)"
-    if f == "MOT":
-        return "note 22 Task 10 (motor_elec not admitted at this process)"
-    if f == "PHEAT":
-        return "note 22 §5, Task 10 (furnace_ht_hydrogen not admitted here)"
-    if f == "OTH":
-        return ("note 22 Task 10 (generic_process_* carry no coefficients, note 20 item 49; "
-                "motor_elec not admitted)")
-    return "note 22 Task 10"
+    return "unowned: rerun build/rebuild_eligibility_join.py, then raise it in note 20"
 
 
 def unservable_duties(duty: list[dict], elig: list[dict], unit: list[dict],
@@ -1031,7 +1038,14 @@ def unservable_duties(duty: list[dict], elig: list[dict], unit: list[dict],
     """Every duty-profile row no eligible unit can serve, with its cause and owner.
 
     Returned as dicts keyed by UNSERVABLE_COLUMNS, in duty-profile order, so the same list
-    feeds the advisory check and the `--unservable-csv` work list note 22 Task 10 reads."""
+    feeds the advisory check and the `--unservable-csv` work list note 22 Task 10 reads.
+
+    **A row at a process whose admitted units make a `product` is not a duty** (§3.1.2,
+    §3.9; note 20 item 51): what the process makes is a substance, its duty is a mass from
+    `premise_throughput`, and its `MOT` or `HTH` row classifies the energy need that reaches
+    C8 (carrier balance) through the node unit's own input coefficients. `carb3` skips such
+    a row when it derives duties, so it is not counted unservable here; see
+    `classified_rows`."""
     carriers = {c["carrier_id"]: c for c in car}
     units = {u["unit_id"]: u for u in unit}
     prim = _primary_output(io)
@@ -1048,6 +1062,14 @@ def unservable_duties(duty: list[dict], elig: list[dict], unit: list[dict],
     def reach(uid: str) -> int | None:
         g = units[uid]["grade_out"].strip()
         return int(g) if g else fam_rank(prim[uid])[1]
+
+    def library_reaches(dfam: str, drank: int) -> bool:
+        for uid in prim:
+            if uid in units and fam_rank(prim[uid])[0] == dfam:
+                g = reach(uid)
+                if g is not None and (g >= drank if dfam == "heat" else g <= drank):
+                    return True
+        return False
 
     out: list[dict] = []
     for row in duty:
@@ -1074,6 +1096,12 @@ def unservable_duties(duty: list[dict], elig: list[dict], unit: list[dict],
             detail = f"{cid} is a {kind} carrier"
         elif any(serves(u) for u in family_units):
             continue
+        elif any(u in prim and carriers.get(prim[u], {}).get("carrier_kind") == "product"
+                 for u in admitted):
+            continue  # a node that makes a product: the row classifies, it is not a duty
+        elif dfam and drank is not None and not library_reaches(dfam, drank):
+            cause = "beyond_library"
+            detail = f"duty at {dfam} rank {drank}"
         elif not admitted:
             cause = "no_unit"
         elif family_units:
@@ -1103,6 +1131,126 @@ def unservable_duties(duty: list[dict], elig: list[dict], unit: list[dict],
     return out
 
 
+def classified_rows(duty: list[dict], elig: list[dict], io: list[dict],
+                    car: list[dict]) -> int:
+    """Duty rows at a process whose admitted units make a `product`: classifications of a
+    node's energy need rather than duties (§3.9), which `unservable_duties` does not count."""
+    kinds = {c["carrier_id"]: c["carrier_kind"] for c in car}
+    prim = _primary_output(io)
+    per_process, per_activity = _eligible_sets(elig)
+    n = 0
+    for row in duty:
+        a = row["carb3_activity"]
+        here = per_process.get((a, row["process_id"]), set()) | per_activity.get(a, set())
+        if kinds.get(row["carrier_id"]) != "product" and any(
+                kinds.get(prim.get(u, "")) == "product" for u in here):
+            n += 1
+    return n
+
+
+def check_v19_grade_out(elig: list[dict], duty: list[dict], unit: list[dict],
+                        io: list[dict], car: list[dict]) -> Result:
+    """V19 (no unit eligible beyond its `grade_out`), at the reference data's own grain.
+
+    `unit_eligibility` is keyed per process, not per duty, so the test here is: a unit with a
+    gradeable primary output, offered at a process with duty rows in that grade family, must
+    reach at least one of them in C10's direction (the grade cascade: at or above for heat,
+    at or below for cooling). A unit that reaches none is eligible only beyond its
+    `grade_out` - a heat pump offered where every heat duty is hotter than it can make.
+
+    BLOCKING on the rows rebuilt from the join (`provenance` proxy, note 22 Task 10), which
+    must pass by construction. The evidence rows - worked examples, options join, chemistry
+    - are reported, not failed: an option can name a unit for a process whose duties it
+    cannot reach, and `carb3` drops it from U_q at load, which is where §10.3 asserts V19."""
+    r = Result("V19 (no unit eligible beyond its grade_out): eligibility against the duties")
+    carriers = {c["carrier_id"]: c for c in car}
+    units = {u["unit_id"]: u for u in unit}
+    prim = _primary_output(io)
+    ranks: dict[tuple, dict[str, set[int]]] = defaultdict(lambda: defaultdict(set))
+    for d in duty:
+        c = carriers.get(d["carrier_id"])
+        fam = grade_family(c) if c else None
+        if fam and d["grade_rank"].strip():
+            ranks[(d["carb3_activity"], d["process_id"])][fam].add(int(d["grade_rank"]))
+    evidence_beyond = 0
+    checked = 0
+    for i, row in enumerate(elig, start=2):
+        uid, p = row["unit_id"], row["process_id"]
+        out = prim.get(uid)
+        c = carriers.get(out or "")
+        fam = grade_family(c) if c else None
+        if not p.strip() or fam is None or uid not in units:
+            continue
+        need = ranks.get((row["carb3_activity"], p), {}).get(fam)
+        if not need:
+            continue
+        g = units[uid]["grade_out"].strip()
+        g = int(g) if g else int(c["grade_rank"])
+        checked += 1
+        if any(g >= n if fam == "heat" else g <= n for n in need):
+            continue
+        msg = (f"unit_eligibility.csv:{i} {uid} at {row['carb3_activity']} / {p}: grade_out "
+               f"{g} reaches none of the {fam} duties there (ranks "
+               f"{', '.join(map(str, sorted(need)))})")
+        if row["provenance"] == "proxy":
+            r.fail(msg + " (V19)")
+        else:
+            evidence_beyond += 1
+            r.detail("  " + msg)
+    r.note = (f"{checked} rows with a graded output at a process with duties in its family; "
+              f"{evidence_beyond} evidence rows (worked example, options) offer a unit beyond "
+              "its grade_out, dropped from U_q by carb3 at load")
+    return r
+
+
+def check_default_unit_serves(du: list[dict], duty: list[dict], unit: list[dict],
+                              io: list[dict], car: list[dict]) -> Result:
+    """ADVISORY. Note 22 Task 10: each base-year default unit (§3.16) produces its duty's
+    carrier - the carrier itself, or for a graded duty a band of the same family that its
+    `grade_out` reaches under C10 (the grade cascade). A default that cannot serve its duty
+    asserts plant that could not have met the duty in the base year."""
+    r = Result("activity_default_unit: the default serves its duty (advisory)", blocking=False)
+    carriers = {c["carrier_id"]: c for c in car}
+    units = {u["unit_id"]: u for u in unit}
+    prim = _primary_output(io)
+    rows_by_key: dict[tuple, list[dict]] = defaultdict(list)
+    for d in duty:
+        rows_by_key[key(d) + (d["duty_family"],)].append(d)
+    bad: list[str] = []
+    node = 0
+    for i, row in enumerate(du, start=2):
+        uid = row["unit_id"]
+        out = prim.get(uid)
+        if out and carriers.get(out, {}).get("carrier_kind") == "product":
+            node += 1  # a node unit making a product: the row classifies its need (§3.9)
+            continue
+        ok = False
+        for d in rows_by_key.get(key(row) + (row["duty_family"],), []):
+            c = carriers.get(d["carrier_id"])
+            fam = grade_family(c) if c else None
+            if out is None:
+                break
+            if fam is None:
+                ok = ok or out == d["carrier_id"]
+                continue
+            oc = carriers.get(out)
+            if oc is None or grade_family(oc) != fam:
+                continue
+            g = units[uid]["grade_out"].strip()
+            g = int(g) if g else int(oc["grade_rank"])
+            n = int(d["grade_rank"])
+            ok = ok or (g >= n if fam == "heat" else g <= n)
+        if not ok:
+            bad.append(f"row {i} {row['carb3_activity']} / {row['process_id']} "
+                       f"{row['duty_family']}: {uid} "
+                       + ("has no coefficients" if out is None else f"makes {out}"))
+    r.note = (f"{len(du)} rows; {len(bad)} name a unit that cannot serve the duty, "
+              f"{node} name a node unit that makes a product (§3.9, not judged)")
+    for b in bad:
+        r.detail("  " + b)
+    return r
+
+
 def check_duty_coverage(duty: list[dict], elig: list[dict], unit: list[dict],
                         io: list[dict], car: list[dict]) -> Result:
     """ADVISORY, permanently for now (note 22 §7). Every duty has at least one eligible
@@ -1117,7 +1265,8 @@ def check_duty_coverage(duty: list[dict], elig: list[dict], unit: list[dict],
     for x in rows:
         by_family[x["duty_family"]] += 1
         by_cause[x["cause"]] += 1
-    r.note = (f"{len(rows)}/{len(duty)} duty rows unservable — "
+    r.note = (f"{len(rows)}/{len(duty)} duty rows unservable, "
+              f"{classified_rows(duty, elig, io, car)} more classify a product node (§3.9) — "
               + ", ".join(f"{f} {n}" for f, n in sorted(by_family.items(),
                                                         key=lambda kv: (-kv[1], kv[0]))))
     r.detail("by cause: " + ", ".join(f"{c} {n}" for c, n in sorted(
@@ -1743,6 +1892,7 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
                     tables["unit_bill_of_materials.csv"], car, reg),
         check_eligibility_and_join(elig, tables["decarbonisation_option_unit.csv"],
                                    unit, reg, lib),
+        check_v19_grade_out(elig, duty, unit, tables["unit_input_output.csv"], car),
         check_emission_coefficient_basis(tables["unit_input_output.csv"], car),
         check_lineage(tables["comit_technology_lineage.csv"], unit, car),
         check_load_shape(tables["process_load_shape.csv"], reg),
@@ -1762,6 +1912,9 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
         check_unsourced_draws(elig, tables["unit_input_output.csv"], car, duty),
         check_duty_coverage(duty, elig, unit, tables["unit_input_output.csv"], car),
     ]
+    if "activity_default_unit.csv" in tables:
+        results.append(check_default_unit_serves(tables["activity_default_unit.csv"], duty,
+                                                 unit, tables["unit_input_output.csv"], car))
     return results, tables
 
 

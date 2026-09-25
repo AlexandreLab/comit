@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, and item 61 on 2026-09-24 — **thirteen of the sixty-two**.
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24 and item 24 on 2026-09-25 — **fourteen of the sixty-six**.
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -307,6 +307,11 @@ These are the ones with a consequence outside the reference data.
     60 °C, so a space-heat heat pump cannot serve an LPHW duty — a real limit, not a data
     gap. The 19 `SPC` rows this item made unservable are servable.
 25. **Refinery steam is band 4 and every CHP tops out at band 3.** *`DONE_default_unit.md`, Q2.*
+    **Still open, 2026-09-25:** two rows now, `utilities_steam` and `alkylation`'s steam share.
+    The eligibility rebuild (note 22 Task 10) no longer lets `refinery_process_heat_gas`, a
+    fired process heater, stand in for a steam raiser, so no unit reaches either. Either the
+    CHPs and boilers get a sourced rating above 150 °C, or the refinery's steam is placed at
+    band 3.
 26. **`heat_exchanger_lt_steam` consumes and produces the same band** (LTH and STM both at
     rank 3), so it has no coefficients. *`DONE_units.md`, G10.*
 27. **Lime calcination at band 5 or 6? Non-ferrous foundry melting at 6?** *`DONE_duty_a.md`,
@@ -315,7 +320,10 @@ These are the ones with a consequence outside the reference data.
     placement rule this build used — a heat duty takes the band holding the hottest temperature
     it needs, a cooling duty the band holding the coldest — and reads band edges as the labels
     do (lower edge in, upper edge out). Confirm or reverse; the cooling rule mirrors whichever
-    stands.
+    stands. **13 duty rows hang on it (2026-09-25):** every `HTH` row at rank 6 is unservable
+    because no unit in the library reaches rank 6 — the furnaces stop at 5. Confirming the rule
+    needs a furnace rated above 1000 °C with a source; moving the boundary would re-band the
+    rows instead. Note 22 Task 10 records them as a named gap.
 
 ## D. Questions about units and costs
 
@@ -328,6 +336,9 @@ These are the ones with a consequence outside the reference data.
 30. **Seventeen units the option join needs and the library lacks**, headed by any diesel
     mobile-plant unit (13 register processes have no unit at all), an aluminium electrolysis
     cell, vapour recompression and an electrode steam boiler. *`DONE_eligibility.md`, §2.*
+    **22 duty rows hang on it (2026-09-25):** 20 mobile-plant `MOT` rows and two chemistry
+    nodes with no unit (aluminium potlines, the beet-sugar lime kiln). The eligibility rebuild
+    offers them nothing rather than a stationary motor or a generic furnace as a stand-in.
 31. **Nine COMIT technologies are `unmapped`** (three lime and two chemicals capture variants,
     two gas-fired boilers on works gases, two finishing processes): build the units or record
     them out of scope. *`DONE_lineage.md`, Q6.*
@@ -374,7 +385,12 @@ These are the ones with a consequence outside the reference data.
     four sectors only, splitting everywhere else; or add `SPC` nodes to the four sectors, which is
     a change to COMIT itself and not to CaRB3.
 37. **`Mineral Production - Gas / power_generation` is a conversion unit, not a demand**, and
-    should arguably leave the register. *`DONE_duty_b.md`, Q4.*
+    should arguably leave the register. *`DONE_duty_b.md`, Q4.* **Still the one `OTH` row
+    on a fuel (2026-09-25).** Note 22 Task 5 planned to delete its duty row; that cannot be
+    done alone, because `make data-check` requires every register process to carry a duty row,
+    and deleting the register row moves the activity's gas energy shares (0.25 of them), the
+    load shape, the crosswalk and four option mappings. Decide whether the process leaves the
+    register — and how the 0.25 is redistributed — and the row goes with it.
 38. **SMR feedstock at oil refineries needs a `NEUOTH` row with a published feedstock/fuel
     split**; none was found. *`DONE_duty_b.md`, Q5.*
 39. **`Mill`, Laboratory, Post Office Sorting Centre and Vehicle repair cannot be crosswalked** to
@@ -519,7 +535,9 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     green on all of it; note 21 adds an advisory count to `make data-report`. Some of these
     may be legitimately costless placeholders and the list needs triaging rather than
     filling wholesale. *Note 21 §3.2; learning `comit-make-check-is-green-but-blind`,
-    2026-09-16.*
+    2026-09-16.* **Reach narrowed 2026-09-25:** the family rows of `unit_eligibility.csv` are
+    rebuilt from the join and admit no incomplete unit, so the 40 units now reach 50 of its
+    3,207 rows, all of them worked-example or options rows (note 22 Task 10).
 50. **§5.1's uniform timestep does not hold against the data.** The spec writes
     $y_t = y_{t_0} + \Delta t$ and $\ell_u = \lceil L_u / \Delta \rceil$, but
     `scenario_parameters.csv` runs 2021, 2025, 2030, 2035, 2040, 2045, 2050 — a four-year
@@ -866,3 +884,28 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     duty a cooling tower could meet. A split is an uncoupled two-row share under §3.2 and needs
     a published share; `BALMENACH_CS` names the end uses without quantifying them, and no
     other source was found. Until one is, the row stays whole. *Note 22 Task 3, 2026-09-25.*
+63. **Works `other_process`: electric service or motive power?** The register names test rigs
+    and fume extraction. Note 22 §2 proposed `motive_power` (fume extraction is fan load), but
+    the cited MECS Table 5.2 "other process use" names no motor, fan, pump or compressed air,
+    so Task 5's evidence rule refused the move and the row went to `electric_service`, as
+    Workshop `other_process` did on the same source. A source for the fan share would split
+    it, or move it whole. *Note 22 Task 10, 2026-09-25.*
+64. **`dryer_steam` makes hotter heat than it draws, for nothing.** Its coefficients
+    (`ICHDRYSTM01`) are heat_150_400 +1 from heat_100_150 −1, with no work input and capex 0: a
+    free grade-up, which C10 (the grade cascade) is meant to make impossible. The eligibility
+    rebuild withholds it from the join rows; its worked-example and options rows remain. Either
+    the input is steam at band 4 — there is no steam carrier (item 21) — or the grade_out is 3.
+    *Note 22 Task 10, 2026-09-25.*
+65. **Three `OTH` rows on `motive_power` sit at gas-only processes.** Aircraft works, Factory and
+    Industrial NEC `other_process` carry a bundled overhead as motive power, and their energy
+    profile says the process burns only gas (engine test cells). `motor_elec` now serves them as
+    a candidate, but the base-year default is `generic_process_gas`, which has no coefficients,
+    and the library has no gas-fired motive unit to replace it. Either the duty is not motive
+    power, or a gas engine unit is needed. *Note 22 Task 10, 2026-09-25.*
+66. **Confirm the family rule behind the eligibility rebuild.** C10 (the grade cascade) sees
+    temperature only, not the medium, so a join on grade alone would offer a direct-fired dryer
+    or a furnace to a hot-water duty. `build/rebuild_eligibility_join.py` therefore keeps the
+    duty family, lets `LTH`, `SPC` and `STM` (hot water and steam) serve one another by grade,
+    and lets `HTH` serve `PHEAT` (fired process heat). The spec states none of these groups;
+    either §3.4 or §3.5.1 says so, or the rule changes and the script with it.
+    *Note 22 Task 10, 2026-09-25.*

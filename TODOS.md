@@ -18,9 +18,19 @@ Open work on the CaRB3 duty families and cooling grades. The full plan is
   do. Note 20 item 27 had left this open. Confirm or reverse it; the cooling rule (the band of
   the coldest temperature) mirrors whichever stands.
 
+## Decisions for Alexandre, from note 22 Task 10
+
+- [ ] Note 20 item 27: 13 `HTH` rows at rank 6 have no unit (a >1000 °C furnace, or move the boundary).
+- [ ] Note 20 item 30: 20 mobile-plant rows and two chemistry nodes have no unit.
+- [ ] Note 20 item 25: refinery steam at rank 4, two rows.
+- [ ] Note 20 item 37: does Mineral Production - Gas `power_generation` leave the register?
+- [ ] Note 20 items 62–66: distillery split, Works fan share, `dryer_steam`, gas-only motive rows, the rebuild's family groups.
+
 ## Data
 
-- [ ] **The last three `OTH` rows on `electricity`.** Mill and Works `other_process` to
+- [x] **The last three `OTH` rows on `electricity`** — two done 2026-09-25 (Mill to
+  `motive_power`, Works to `electric_service`, note 20 item 63); Mineral Production - Gas
+  `power_generation` waits on note 20 item 37. Mill and Works `other_process` to
   `motive_power` (screening lines, fans); Mineral Production - Gas `power_generation` deleted,
   because a generator is a unit, not a demand (note 20 item 37). V34 (duties are services at
   a grade) rejects all three. *Note 22 Task 5.*
@@ -38,25 +48,30 @@ Open work on the CaRB3 duty families and cooling grades. The full plan is
   each citing a temperature source or, under the task's fallback rule, the equipment that
   decided it; both chillers on `cooling_0_15` at `grade_out` 2; the ungraded `cooling` carrier
   retired; V34 (duties are services at a grade) leg (c) blocking. *Note 22 Task 3.*
-- [ ] **Per-band cooling units, and `chiller_electric_hfo`'s COP of 0.9** against
+- [x] **Per-band cooling units, and `chiller_electric_hfo`'s COP of 0.9** — done 2026-09-25:
+  `chiller_electric_lt0`, HFO rebased on COP 3.00, reject rows on all three. No absorption
+  chiller, cooling tower or dry cooler: no sourced cost. against
   `ICHREFEHFC01` in the workbook. The three `cooling_lt0` rows have no unit that reaches them
   until a sub-zero unit exists. *Note 22 Tasks 4 and 10.*
 - [ ] **Split Distillery `cooling_systems`?** It names condenser water and cooling-tower fans
   (`cooling_gt15`) beside yeast refrigeration (`cooling_0_15`). No source gives the share, so
   under Task 3's rule the row is whole, on `cooling_0_15`. A published split would move part
   of it to `cooling_gt15`. *Note 20 item 62.*
-- [ ] **One consolidated pass over the unit library and the duty rows.** Fix the 89
+- [x] **One consolidated pass over the unit library and the duty rows.** Done 2026-09-25:
+  unservable 89 → 38, every survivor named in note 22 Task 10. Fix the 89
   unservable duties in a single sweep with one owner, rather than lane by lane, and rebuild
   `unit_eligibility.csv` from the join (family, grade family, `grade_out` in C10's direction,
   coefficients present) instead of today's no-grade-filter proxy rows. The work list is
   `docs/notes/data/build/unservable_duties.csv`, written by `make data-worklist`, one row
   per duty with its cause and owner. *Note 22 Task 10.*
-- [ ] **`heat_exchanger_spc_steam` draws `heat_100_150` at 59 places where nothing eligible
+- [x] **`heat_exchanger_spc_steam` draws `heat_100_150` at 59 places** — gone with the
+  rebuild, which offers a unit only where its intermediate input is made at the activity. where nothing eligible
   makes steam, even through C8's heat cascade.** Found 2026-09-25 by the new advisory
   "intermediate draws with no eligible producer": 119 (unit, activity, process) draws have no
   exact producer, 71 have none even through the cascade, and this unit is 59 of them. Its
   eligibility needs a steam source beside it, or the rows go. *Note 22 Task 10.*
-- [ ] **`heat_pump_lt_reject` has no source at 11 `REF` processes, not 16.** Note 22 §1 counted
+- [x] **`heat_pump_lt_reject` has no source at 11 `REF` processes, not 16.** 0 since the
+  chillers' reject rows (2026-09-25). Note 22 §1 counted
   16; at five of them another admitted unit makes `heat_lt60` — `solar_thermal_flat` at four,
   the `SPC` units at Artificial Fibre Works `spinning_hvac` — which is not the condenser heat
   the unit exists to lift. The fix is still the chillers' `reject` rows. *Note 22 Task 4.*

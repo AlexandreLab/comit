@@ -459,8 +459,12 @@ def test_measured_counts_match_the_plan(
     producer of ``electric_service`` (note 22 §2), and one eligibility row was added for it.
 
     Note 22 Task 10 (2026-09-25) added ``chiller_electric_lt0``, the only unit reaching the
-    ``cooling_lt0`` band: 138 units, one more admitted, 17 more eligibility rows (one per
-    ``REF`` process). The unit leg is unchanged — the new unit is fully costed.
+    ``cooling_lt0`` band: 138 units, one more admitted; the unit leg is unchanged, since the
+    new unit is fully costed. It also rebuilt ``unit_eligibility``'s family rows from the join
+    (``docs/notes/data/build/rebuild_eligibility_join.py``): the 1,852 no-grade-filter proxy
+    rows became 2,442 rows that each serve a duty in C10's direction with a costed unit, so
+    the table grew to 3,207 while the rows reaching an incomplete unit fell from 363 to 50 —
+    the survivors are worked-example and options rows, which are evidence and were kept.
     """
     dropped = {d.unit_id for d in screen.dropped}
     unit_leg = {d.unit_id for d in screen.dropped if d.leg != "import_price"}
@@ -470,9 +474,9 @@ def test_measured_counts_match_the_plan(
     assert len(screen.admitted) == 58
 
     elig = reference.unit_eligibility
-    assert len(elig) == 2630
-    assert int(elig["unit_id"].isin(unit_leg).sum()) == 363
-    assert int(elig["unit_id"].isin(dropped).sum()) == 1154
+    assert len(elig) == 3207
+    assert int(elig["unit_id"].isin(unit_leg).sum()) == 50
+    assert int(elig["unit_id"].isin(dropped).sum()) == 1378
 
 
 def test_a_drop_is_reported_once_per_failing_leg(screen: load.AdmissionScreen) -> None:

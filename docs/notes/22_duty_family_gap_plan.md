@@ -24,10 +24,12 @@ serve them**, most of them for reasons note 20 already records. This plan fixes 
 cooling, `OTH`, `PHEAT` and `EN` gaps, adds the validator checks that would have caught
 them, and routes the other coverage gaps to the note 20 items that own them.
 
-**Status 2026-09-25:** Tasks 1, 2, 3, 7 and 9 are done (§8) and Task 8 is done as labels; the
-cooling carriers are in `carrier.csv`, the 17 `REF` rows sit on them, and the unservable count
-is re-measured with a cause and owner per row — 89 before Task 3, 92 after it, because three
-rows moved to `cooling_lt0` where no unit yet reaches.
+**Status 2026-09-25:** Tasks 1, 2, 3, 7, 9 and 10 are done (§8), Task 10 absorbing 4, 5 and
+6, and Task 8 is done as labels. The unservable count went **89 → 92 → 38**: up by three when
+Task 3 put three rows on `cooling_lt0`, then down to 38 after Task 10's units, `OTH` rows and
+eligibility rebuild. Every survivor is a named gap with its cause and owner (Task 10), and 18
+more rows are no longer counted because they classify a chemistry node that makes a product
+(§3.9, note 20 item 51).
 
 **Ten tasks in six lanes.** The first one — teaching the validator that ranks are unique
 per grade family — has to land before any cooling carrier is added, or `make data-check`
@@ -433,8 +435,18 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 5 — Resolve the eleven `OTH` rows on `electricity`
 
-- **Status:** partly done 2026-09-24 (`electric_service`, §2). Three rows remain — the 3 that
-  V34 (a) counts, and 3 of the 6 unservable `OTH` rows.
+- **Status:** **done 2026-09-25 within Task 10, except row 5.** Mill `other_process` moved to
+  `motive_power` — its cited `CTV059` names motors and compressed air, which the evidence rule
+  requires — with `motor_elec` as its default. Works `other_process` did **not** go to
+  `motive_power`: its cited MECS Table 5.2 names no motor, fan, pump or compressed air, so the
+  rule refuses the move; it went to `electric_service`, as Workshop `other_process` did on the
+  same source (the fan share is note 20 item 63). The three `OTH` rows on `motive_power` are
+  served by `motor_elec` since the rebuild. **Row 5, Mineral Production - Gas
+  `power_generation`, is not deleted**: a duty row cannot go while its register row stays
+  (`make data-check` requires every register process to carry one), and deleting the register
+  row cascades into the energy profile's gas shares, the load shape, the crosswalk and the
+  options — a decision for note 20 item 37, not a data fix. V34 (a) therefore stays advisory,
+  at 1 row.
 - **Lane:** duties, with a specification edit to §3.4 if the decision is yes.
 - **Goal:** no duty row sits on a fuel.
 - **Inputs:** §2 of this note; note 20 items 8, 37 and 1a.
@@ -546,8 +558,50 @@ agree again.
 
 ### Task 10 — One consolidated pass over the unit library and the duty rows
 
-- **Status:** open, unblocked. Tasks 1, 2 and 7 are done; the work list is
-  `docs/notes/data/build/unservable_duties.csv` (89 rows).
+- **Status:** **done 2026-09-25.** In three commits on one branch, one owner for all six files:
+  Task 3; the units (Tasks 4 and 6, note 20 item 24); then the `OTH` rows (Task 5), the
+  default units and the eligibility rebuild.
+  - **Eligibility is rebuilt from the join** by `build/rebuild_eligibility_join.py`
+    (idempotent; its docstring is the rule). The 1,852 no-grade-filter proxy rows — plus the
+    17 `chiller_electric_lt0` rows chunk 1 added — are replaced by **2,442** rows, each
+    offering a costed unit with coefficients that serves a duty at that process: its family
+    (the wet-heat families `LTH`, `SPC`, `STM` serve one another, `HTH` serves `PHEAT`, and a
+    non-gradeable service is matched on the carrier, which is how `motor_elec` reaches an
+    `OTH` row on `motive_power`), its grade family, `grade_out` in C10's direction (the grade
+    cascade), and every intermediate input produced somewhere at the activity. Chemistry
+    nodes and diesel mobile plant are skipped rather than given a stand-in. `dryer_steam` is
+    withheld: it makes heat_150_400 from heat_100_150 with no work input (note 20 item 64).
+    The 765 evidence rows (worked examples, options join, chemistry nodes, activity-level
+    supply) and the rolling mills' 4 node rows are kept. `unit_eligibility.csv` has 3,207
+    rows; the rows reaching an uncostable unit fell from 363 to 50.
+  - **The validator** gained a blocking V19 (no unit eligible beyond its `grade_out`) check on
+    the rebuilt rows (the 158 evidence rows that offer a unit beyond its grade are listed,
+    not failed — `carb3` drops them from U_q); an advisory check that each default unit serves
+    its duty; the coverage check now skips rows at a process whose units make a product
+    (§3.9) and names a `beyond_library` cause where no unit in the library reaches the band;
+    the draws check reads the activity, as C8 does, not the process.
+  - **Default units:** 18 rows named a unit that could not serve their duty and now name one
+    on the same fuel vector that can (motors for refinery and brine `MOT` rows, chillers for
+    two `REF` rows, `furnace_ht_gas` for the refinery's rank-5 `PHEAT` rows and the fab's
+    exhaust abatement, `boiler_lt_gas` or `resistance_heater_lt` for three `LTH` rows).
+  - **Unservable: 92 → 38**, every one named:
+
+    | Rows | Cause | Owner |
+    |---:|---|---|
+    | 20 | `MOT` diesel mobile plant, haulage, drilling and loading: no mobile-plant unit | note 20 item 30 |
+    | 13 | `HTH` at rank 6 (>1000 °C): no unit in the library reaches it (kilns, pottery, foundry melting, steel reheat and secondary metallurgy, anode baking, coke ovens, cutting) | note 20 item 27 |
+    | 2 | `HTH` at a chemistry node with no node unit: aluminium potlines, the beet-sugar lime kiln | note 20 item 30 |
+    | 2 | `STM` refinery steam at rank 4 (`alkylation`, `utilities_steam`): no steam unit reaches rank 4 | note 20 item 25 |
+    | 1 | `OTH` on `electricity`, Mineral Production - Gas `power_generation` | note 20 item 37 |
+
+  - **Default units still unable to serve their duty: 20**, all inside the gaps above — 12
+    rank-6 furnaces, the refinery's two `STM` boilers, the Mineral Production - Gas motor,
+    coke ovens, the two cutting processes — plus the three `OTH` rows on `motive_power` at
+    gas-only processes, whose default `generic_process_gas` has no coefficients and no
+    gas-fired motive unit exists to replace it (note 20 item 65).
+  - Counts in `CLAUDE.md` and `carb3/tests/test_load.py` re-measured: 138 units, 3,207
+    eligibility rows, 50 reaching an uncostable unit, 1,378 including the unpriced-fuel leg,
+    58 units admitted.
 - **Lane:** units and duties together, one owner for all six files.
 - **Goal:** every duty row has an eligible unit that can serve it at its grade and in its
   grade family, and every unit offered for a duty can actually be costed and run. The 89

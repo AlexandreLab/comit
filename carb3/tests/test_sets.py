@@ -371,8 +371,10 @@ def test_a_positive_max_share_is_recorded_as_a_c1_cap(
     to exercise the bound is to state one.
     """
     elig = reference.unit_eligibility.copy()
-    row = (elig["unit_id"] == "boiler_lt_gas") & (
-        elig["carb3_activity"] == "Food Processing Centre"
+    row = (
+        (elig["unit_id"] == "boiler_lt_gas")
+        & (elig["carb3_activity"] == "Food Processing Centre")
+        & (elig["process_id"] == "boiler_steam_hot_water")
     )
     assert int(row.sum()) == 1
     elig.loc[row, "max_share"] = 0.35
