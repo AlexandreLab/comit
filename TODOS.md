@@ -38,6 +38,11 @@ Open work on the CaRB3 duty families and cooling grades. The full plan is
 - [ ] **Band the 17 `REF` rows, add the cooling carriers and per-band chillers**, and check
   `chiller_electric_hfo`'s COP of 0.9 against `ICHREFEHFC01` in the workbook.
   *Note 22 Tasks 2–4.*
+- [ ] **One consolidated pass over the unit library and the duty rows.** Fix the 89
+  unservable duties in a single sweep with one owner, rather than lane by lane, and rebuild
+  `unit_eligibility.csv` from the join (family, grade family, `grade_out` in C10's direction,
+  coefficients present) instead of today's no-grade-filter proxy rows. Uses Task 7's
+  per-row report as the work list. *Note 22 Task 10.*
 
 ## Documents and code
 

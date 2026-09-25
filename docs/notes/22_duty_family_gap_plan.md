@@ -24,7 +24,7 @@ serve them**, most of them for reasons note 20 already records. This plan fixes 
 cooling, `OTH`, `PHEAT` and `EN` gaps, adds the validator checks that would have caught
 them, and routes the other coverage gaps to the note 20 items that own them.
 
-**Nine tasks in six lanes.** The first one — teaching the validator that ranks are unique
+**Ten tasks in six lanes.** The first one — teaching the validator that ranks are unique
 per grade family — has to land before any cooling carrier is added, or `make data-check`
 goes red on the first row. The new service carrier for non-motive electric end uses
 (lighting, instruments, welding, fab tools), `electric_service`, was accepted on 2026-09-24
@@ -300,10 +300,11 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 ```
   Task 1 validator ──▶ Task 2 carriers ──┬──▶ Task 3 REF bands ──┐
                                          └──▶ Task 4 cooling units┴──▶ Task 8 examples
-  Decision (electric_service) ──▶ Task 5 OTH rows
+  Task 5 OTH rows (electric_service done; three rows left)
   Task 6 grade_out repairs      (independent)
   Task 7 coverage report        (after Task 1)
   Task 9 carb3 direction        (after Task 2)
+  Tasks 1, 2, 7 ──▶ Task 10 consolidated units-and-duties pass (absorbs 3–6's row fixes)
 ```
 
 ### Task 1 — Split the family sets and make ranks unique per grade family
@@ -435,6 +436,34 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 - **Verification:** a unit test with a sub-zero chiller serving a chilled-water duty (admitted)
   and a cooling tower offered to a sub-zero duty (refused); `make carb3` green.
 - **Depends on:** Task 2.
+
+### Task 10 — One consolidated pass over the unit library and the duty rows
+
+- **Lane:** units and duties together, one owner for all six files.
+- **Goal:** every duty row has an eligible unit that can serve it at its grade and in its
+  grade family, and every unit offered for a duty can actually be costed and run. The 89
+  unservable rows of §1 fall to zero, or each survivor is a named, deliberate gap.
+- **Inputs:** Task 7's per-row report, as the work list; §3 to §5 of this note; note 20 items
+  24, 25, 27, 30 and 49; `activity_process_duty_profile.csv`, `unit.csv`,
+  `unit_input_output.csv`, `unit_eligibility.csv`, `activity_default_unit.csv` and
+  `carrier.csv`.
+- **Change:** the per-row fixes of Tasks 3 to 6 and the remaining `OTH` rows, applied in one
+  sweep rather than lane by lane, because each fix on one side of the join moves the other:
+  a band change on a duty changes which units reach it, and a `grade_out` change on a unit
+  changes which duties it serves. **Eligibility is rebuilt from the join** — family, grade
+  family, `grade_out` against the duty's band in C10's direction, and a coefficient check —
+  replacing today's proxy rows, which offer every unit of a family to every process of that
+  family with no grade filter. Each base-year row in `activity_default_unit.csv` is checked
+  to name a unit that produces its duty's carrier.
+- **Evidence rule:** as for the tasks it absorbs: no new coefficient, grade or unit without a
+  source; a duty that still has no unit after the pass is recorded as a gap with its cause,
+  not served by a stand-in.
+- **Verification:** the coverage check, run once at the end, reports zero unservable rows
+  or only the named gaps; V19 (no unit eligible beyond its `grade_out`) and V34 (duties are
+  services at a grade) pass; `make check` green; the counts quoted in `CLAUDE.md`'s data
+  caveats and pinned in `carb3/tests/test_load.py` re-measured and updated in the same
+  commit.
+- **Depends on:** Tasks 1, 2 and 7.
 
 ---
 
