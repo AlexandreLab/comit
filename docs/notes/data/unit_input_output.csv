@@ -108,6 +108,8 @@ chiller_electric,cooling,1,primary_output,proxy,medium,[CARB3_WE_FOODDRINK] 1.11
 chiller_electric,electricity,-0.3333,fuel_input,proxy,medium,[CARB3_WE_FOODDRINK] 1.11 coefficient table
 chiller_electric_hfo,cooling,1,primary_output,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHREFEHFO01"
 chiller_electric_hfo,electricity,-1.11111,fuel_input,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHREFEHFO01"
+generic_process_elec,electric_service,1,primary_output,comit_reuse,high,"[COMIT_WB_140] sheet technology_input_output, technology_code IFDOTHELC01 (9 of 10 sector copies at -1.0101 PJ electricity per PJ output; INFOTHELC01 at -1.1765)"
+generic_process_elec,electricity,-1.0101,fuel_input,comit_reuse,high,"[COMIT_WB_140] sheet technology_input_output, technology_code IFDOTHELC01 (9 of 10 sector copies at -1.0101 PJ electricity per PJ output; INFOTHELC01 at -1.1765)"
 electrolyser_alkaline,hydrogen,1,primary_output,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code PHYGEYALSL01"
 electrolyser_alkaline,electricity,-1.35135,fuel_input,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code PHYGEYALSL01"
 electrolyser_pem,hydrogen,1,primary_output,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code PHYGEYSL01"

@@ -241,7 +241,7 @@ flowchart TB
 
   subgraph REF["Reference data this premise reaches"]
     direction TB
-    RC["<b>carrier</b> §3.4 — 14 rows, <b>4 gradeable</b><br/>heat_lt60 r1 · heat_60_100 r2<br/>heat_100_150 r3 · heat_150_400 r4<br/>motive_power, cooling intermediate<br/>co2_fuel_fossil charged · co2_fuel_biogenic zero_rated<br/><b>no co2_process at all</b>"]
+    RC["<b>carrier</b> §3.4 — 14 rows, <b>5 gradeable</b><br/>heat_lt60 r1 · heat_60_100 r2<br/>heat_100_150 r3 · heat_150_400 r4<br/>cooling_0_15 r2, cooling family<br/>motive_power intermediate<br/>co2_fuel_fossil charged · co2_fuel_biogenic zero_rated<br/><b>no co2_process at all</b>"]
     RU["<b>unit</b> §3.5 — 19 rows, fuel in the identity (D13)<br/>boiler_lt_gas 4.5 £m/(PJ/yr), grade_out 3<br/>boiler_lt_biomass <b>7.9</b>, α 0.82 — the D13 payoff<br/>heat_pump_lt_air 16.0, <b>grade_out 2</b><br/>heat_pump_ht 26.0, grade_out 3, grade_in_max 2<br/>chp_gas_turbine 38.0, L 25 · dryer_direct_gas 5.0, grade_out 4<br/>pv_rooftop 0.62 £m/MW, α 0.11, 6,500 m²/MW"]
     RK["<b>unit_carrier_coefficient</b> §3.6<br/>boiler_lt_gas: heat_100_150 +1.00000, gas −1.13636,<br/>co2_fuel_fossil +63.74980 <i>derived</i><br/>chp_gas_turbine: heat +1.00000, gas −2.22220,<br/><b>electricity +0.77780 co-product</b><br/>dryer_direct_gas: <b>heat_lt60 +0.12000 role=reject</b><br/>heat_pump_lt_reject: heat_lt60 −0.68750, COP 3.20"]
     RE["<b>unit_eligibility</b> §3.5.1<br/>boiler_lt_coal <b>max_share 0.00</b> — screened at this site<br/>chp_biomass_st min_duty 0.25 &gt; 0.07559 ⇒ <b>screened out</b><br/>hydrogen units earliest_year 2035<br/>heat_pump_ht earliest_year 2030"]
@@ -255,7 +255,7 @@ flowchart TB
     SP["<b>scenario_parameters</b> §3.8, £m per PJ<br/>gas 7.10→8.80 · elec 32.00→23.50<br/>hydrogen <b>19.50→11.00</b> from 2035<br/>biomass 15.00→19.00 · export elec 19.00→13.50<br/>carbon £90→£275/t · elec factor 18.0→3.0 kt/PJ<br/>hydrogen factor <b>0.0</b> — a scenario assumption<br/>biomass factor <b>97.22 gross</b>, biogenic_fraction 1"]
   end
 
-  DUTY["<b>process_duty</b> §3.9 — 6 duties, 4 of them graded heat<br/>LTH heat_60_100 r2 <b>0.075587 PJ/yr</b><br/>STM heat_100_150 r3 <b>0.055992 PJ/yr</b><br/>DRY heat_150_400 r4 <b>0.079050 PJ/yr</b><br/>SPC heat_60_100 r2 <b>0.018480 PJ/yr</b><br/>REF cooling <b>0.064598</b> · MOT motive_power <b>0.064598</b>"]
+  DUTY["<b>process_duty</b> §3.9 — 6 duties, 4 graded heat, 1 graded cooling<br/>LTH heat_60_100 r2 <b>0.075587 PJ/yr</b><br/>STM heat_100_150 r3 <b>0.055992 PJ/yr</b><br/>DRY heat_150_400 r4 <b>0.079050 PJ/yr</b><br/>SPC heat_60_100 r2 <b>0.018480 PJ/yr</b><br/>REF cooling_0_15 r2 <b>0.064598</b> · MOT motive_power <b>0.064598</b>"]
   CAP["<b>A4 back-solved capacity</b><br/>boiler_lt_gas 0.137018 PJ/yr, serving <b>three duties</b><br/>chp_gas_turbine 0.039524 · dryer 0.100000 known<br/>chiller 0.071776 · motor 0.067998<br/><b>consumption 0.086130 = import 0.060000 + CHP 0.026130</b><br/>mix_evidence_tier = <b>activity_default</b>, the weakest tier"]
   LP["<b>A6 the LP</b><br/>6 periods, 6 duties, 14 carriers, 2 connections<br/>chp_biomass_st screened out, hydrogen units held back to 2035<br/>C10 cascade: <b>36 h-variables</b>, 6 grade pairs × 6 periods<br/>C11 export leg binds at 2050 · C12 binds on PV"]
 
@@ -276,14 +276,14 @@ flowchart LR
   BO["boiler_lt_gas<br/>0.116465 PJ heat, η 0.88<br/>gas −0.132346"]
   CH["chp_gas_turbine<br/>0.033595 PJ heat<br/>gas −0.074655<br/><b>electricity +0.026130</b>"]
   DR["dryer_direct_gas<br/>0.079050 PJ heat, η 0.85<br/>gas −0.093000"]
-  CL["chiller_electric<br/>0.064598 PJ cooling, COP 3.00<br/>electricity −0.021533"]
+  CL["chiller_electric<br/>0.064598 PJ cooling_0_15, COP 3.00<br/>electricity −0.021533"]
   MO["motor_elec<br/>0.064598 PJ<br/>electricity −0.064598"]
 
   DLTH["duty LTH, 80 °C, r2<br/><b>0.075587 PJ</b>"]
   DSPC["duty SPC, r2<br/><b>0.018480 PJ</b>"]
   DSTM["duty STM, 120 °C, r3<br/><b>0.055992 PJ</b>"]
   DDRY["duty DRY, 200 °C, r4<br/><b>0.079050 PJ</b>"]
-  DREF["duty REF<br/><b>0.064598 PJ cooling</b>"]
+  DREF["duty REF, chilled water, r2<br/><b>0.064598 PJ cooling_0_15</b>"]
   DMOT["duty MOT<br/><b>0.064598 PJ motive_power</b>"]
 
   DV["dispose heat_lt60<br/><b>0.009486 PJ vented</b><br/>nothing consumes reject heat in 2025"]
@@ -363,7 +363,7 @@ pair. This is that table.
 | `area_evidence_tier` §3.10 | **`proxy`** — 16,100 m² from floorspace | **`measured`** — 12,000 m² surveyed |
 | `mix_evidence_tier` §4.1 | tier 2 **`carrier_bounded`** — one consumer per fuel | tier 3 **`activity_default`** — three units share gas |
 | §7.6 reconciliation | **runs**, 728.44 vs 743 kt, **1.96%** | **skipped**, `emissions_year_unmatched` |
-| Gradeable carriers §3.4 | **none** — C10 has 0 rows | **four** — C10 has 36 `h` variables |
+| Gradeable carriers §3.4 | **none** — C10 has 0 rows | **five**, four heat and one cooling — C10 has 36 `h` variables, all in the heat family |
 | `co2_process` | **446.25 kt/yr**, untouchable by fuel switching | **absent** — no mass denominator |
 | Infrastructure §3.7 | CO₂ transport at 2035, **hydrogen never** | **hydrogen at 2035**, CO₂ transport never |
 | Onsite generation | PV only, 1.86% of electricity | PV **and** an existing CHP, 30% of load |

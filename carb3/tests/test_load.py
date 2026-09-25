@@ -368,7 +368,7 @@ def test_coefficient_leg_counts(
 ) -> None:
     with_rows = set(reference.unit_input_output["unit_id"])
     without = set(reference.unit["unit_id"]) - with_rows
-    assert len(without) == 26, "plan §3.2: 26 units carry no unit_input_output rows"
+    assert len(without) == 25, "plan §3.2's 26, less generic_process_elec (note 22 §2)"
     assert {d.unit_id for d in screen.dropped if d.leg == "coefficients"} == without
 
 
@@ -453,18 +453,22 @@ def test_measured_counts_match_the_plan(
     The plan's "41 of 137" is the **unit-leg** subtotal — the units that cannot be costed
     from their own row. Adding the price leg, which is a property of the *carrier*, takes it
     to 81 and leaves U at 56.
+
+    Each figure is one lower than the plan's (the eligibility count one higher) since
+    2026-09-24: ``generic_process_elec`` gained its coefficient rows when it became the
+    producer of ``electric_service`` (note 22 §2), and one eligibility row was added for it.
     """
     dropped = {d.unit_id for d in screen.dropped}
     unit_leg = {d.unit_id for d in screen.dropped if d.leg != "import_price"}
     assert len(reference.unit) == 137
-    assert len(unit_leg) == 41
-    assert len(dropped) == 81
-    assert len(screen.admitted) == 56
+    assert len(unit_leg) == 40
+    assert len(dropped) == 80
+    assert len(screen.admitted) == 57
 
     elig = reference.unit_eligibility
-    assert len(elig) == 2612
-    assert int(elig["unit_id"].isin(unit_leg).sum()) == 387
-    assert int(elig["unit_id"].isin(dropped).sum()) == 1178
+    assert len(elig) == 2613
+    assert int(elig["unit_id"].isin(unit_leg).sum()) == 363
+    assert int(elig["unit_id"].isin(dropped).sum()) == 1154
 
 
 def test_a_drop_is_reported_once_per_failing_leg(screen: load.AdmissionScreen) -> None:

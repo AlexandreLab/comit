@@ -40,7 +40,8 @@ this one.
 - **A5.** Derive the duty families from the 94 process codes, **excluding the 16
   sector-root codes** (`ICH`, `ICN`, `ICR`, `IEE`, `IFD`, `IME`, `INF`, `IOI`, `IPR`,
   `ITX`, `IVH`, `ICM`, `IGL`, `IIS`, `ILM`, `IPP`) which are sector-level demand
-  commodities and not duties. Expect 12 service families and 14 chemistry nodes; classify
+  commodities and not duties. Expect 12 service families and 14 chemistry nodes — eleven of
+  the twelve are duty families, since `EN` (hydrogen production) keys units only; classify
   each into the service/chemistry split of the
   [architecture](2026-08-28-carb3-site-energy-system-architecture.md).
 
@@ -55,8 +56,9 @@ this one.
   so it is a deliverable, not a working file.
 - **B2.** Preserve the 57 non-fuel technologies (CCS 25, heat pump 31, dry kiln 1) as
   distinct unit archetypes; do not let them collapse.
-- **B3.** Assign `grade_in`/`grade_out` to every unit and every heat duty
-  (LTH/HTH/STM/DRY/SPC). Non-nullable — see [implementation spec §10.5](2026-08-28-carb3-site-energy-system-implementation.md), failure mode #6.
+- **B3.** Assign `grade_in`/`grade_out` to every unit and a grade to every heat duty
+  (LTH/HTH/STM/DRY/SPC/PHEAT) and every cooling duty (REF), which takes one of the three
+  cooling bands of the implementation specification's §3.4. Non-nullable — see [implementation spec §10.5](2026-08-28-carb3-site-energy-system-implementation.md), failure mode #6.
 - **B4.** Re-derive heat pump COP from grade lift, replacing the flat `33.333` (LTH, DRY,
   **and STM**) and `25` (SPC) coefficients.
 - **B5.** **Reject-heat coefficients — without these, waste heat recovery does not work at

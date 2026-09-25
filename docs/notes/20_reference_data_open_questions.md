@@ -8,10 +8,12 @@ what has to change to answer them, so they can be worked through in one sitting.
 names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
-2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, and items
-51, 53 and 56 on 2026-09-20 — **twelve of the fifty-nine**. Each carries the decision inline, with the work items 1 and 36 leave
-behind in items 1a and 1b, and the work item 4 leaves behind in items 44 and 45. The rest are
-undecided.
+2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
+51, 53 and 56 on 2026-09-20, and item 61 on 2026-09-24 — **thirteen of the sixty-one**.
+Item 60 is **partly settled**: its specification side is done, and its data side is planned
+in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
+items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
+and 45. The rest are undecided.
 
 ## A. Questions that change the specification
 
@@ -302,6 +304,11 @@ These are the ones with a consequence outside the reference data.
     rank 3), so it has no coefficients. *`DONE_units.md`, G10.*
 27. **Lime calcination at band 5 or 6? Non-ferrous foundry melting at 6?** *`DONE_duty_a.md`,
     Q2 and Q7.* **Band-boundary convention** (upper bound inclusive) to confirm. *`DONE_duty_b.md`, Q7.*
+    **Written into the live spec §3.4 on 2026-09-24, still to confirm.** §3.4 now states the
+    placement rule this build used — a heat duty takes the band holding the hottest temperature
+    it needs, a cooling duty the band holding the coldest — and reads band edges as the labels
+    do (lower edge in, upper edge out). Confirm or reverse; the cooling rule mirrors whichever
+    stands.
 
 ## D. Questions about units and costs
 
@@ -740,3 +747,72 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     `fuel_input` row, so its declared fuel burns free. **Do not correct the magnitude from
     a lane** — it needs the workbook, not a plausible substitute.
     *Item 56; `docs/notes/data/unit_input_output.csv`; spec §3.6.*
+
+## G. Questions raised reading the specification
+
+60. **§3.4's duty-family-to-carrier table covers eight of the twelve families, and the data
+    already disagrees with it.** The table maps `LTH`, `HTH`, `STM`, `DRY`, `SPC`, `MOT`, `REF`
+    and `OTH`, and §3.4 then explains away `NEUOTH` and `HRS`. That leaves two families with no
+    stated carrier:
+    - **`PHEAT` (process heating).** It has 14 rows in `activity_process_duty_profile.csv`, all on
+      graded heat at bands 3 to 5 (`heat_100_150`, `heat_150_400`, `heat_400_1000`). The data
+      treats it as a heat family, and the table should say so.
+    - **`EN`.** It has no rows at all and nothing in the spec says what it means. Either define
+      it and give it a carrier, or drop it from §3.3's enum and from the architecture document's
+      list of twelve.
+
+    Separately, **11 `OTH` rows sit on `electricity`**. That breaks §3.4's own rule ("a duty's
+    carrier is a service, never a fuel"): a unit serving that duty would consume and produce the
+    same carrier, and the C8 (carrier balance) node at `electricity` would go in a circle. Each
+    of the 11 needs resolving to the service it actually is, which is usually `motive_power`.
+    *Raised 2026-09-24 reading §3.3 and §3.4.*
+
+    **Partly settled 2026-09-24 — the specification side.** §3.4's table now lists `PHEAT` with
+    the graded-heat families. `EN` turned out not to be empty: it has no duty rows, but ten
+    `unit.csv` units carry it — the electrolysers, reformers and gasifiers, and three
+    electrolyser-battery hybrids, all producing `hydrogen`. It is COMIT's hydrogen-production
+    family, so it keys units and presents no duty: §3.3's enum drops it (eleven duty families),
+    §3.4 says what it is, and the architecture and data-migration documents say the same.
+    §3.4 now states that a duty row on a `primary` or `emission` carrier is invalid whatever its
+    family, and the new V34 (duties are services at a grade) rejects it at load. **Still open —
+    the data side:** the 11 `OTH` rows on `electricity` each need a service, and
+    `validate_carb3_data.py` still admits `EN` as a duty family. Both are tasks in
+    [note 22](22_duty_family_gap_plan.md).
+
+    **Further progress 2026-09-24:** a new service carrier, `electric_service`, now holds
+    electricity-only end uses (§3.4). Seven of the 11 rows and Chemical Works
+    `electrochemical_processes` are on it, served by `generic_process_elec` at COMIT's
+    coefficient of 1.0101. **Three rows remain:** Mill and Works `other_process` to
+    `motive_power`, and Mineral Production - Gas `power_generation` to be deleted (item 37).
+61. **Should `cooling` be graded?** §3.4 makes it one ungraded carrier. The 17 `REF` duties span
+    very different temperatures: cold stores and chilling at an abattoir or creamery, glycol
+    at a brewery, chilled water for a wafer fab's HVAC, and cooling-tower water at a
+    distillery. With one carrier, any cooling unit can serve any cooling duty. So when both
+    exist, the LP will meet a freezer duty with whatever gives the cheapest "cooling": the same
+    silent failure that `grade_rank` prevents for heat (data-migration mode #6). A chiller's
+    COP also depends on how cold it has to go, so an ungraded carrier forces one coefficient
+    onto duties that need different ones.
+    - **If graded**, the cascade runs the other way from heat: a colder band can serve a warmer
+      duty, never the reverse. C10 (the heat grade cascade) would need a direction per carrier,
+      or a sister constraint.
+    - **The cheapest version** is two or three bands: sub-zero refrigeration, chilled water
+      (about 0–15 °C) and ambient heat rejection. A cooling tower then cannot serve a freezer.
+    - **The units are not ready for it either way.** Only `chiller_electric` (COP 3.0) and
+      `chiller_electric_hfo` (COP 0.9) produce `cooling`. They differ by refrigerant, not by
+      temperature. The "advanced" unit's COP being a third of the standard one's looks like a
+      coefficient error in its own right.
+
+    *Raised 2026-09-24.*
+
+    **Settled 2026-09-24: cooling is graded, in three bands, with the cascade reversed.** The
+    bands are `cooling_lt0` (`<0C`, refrigeration), `cooling_0_15` (`0-15C`, chilled water) and
+    `cooling_gt15` (`>15C`, ambient heat rejection), ranked by temperature like the heat bands,
+    rank 1 coldest. `carrier` gains `grade_family` (heat or cooling), and C10 (the grade cascade)
+    reads the direction from it: heat serves downwards, cooling upwards — a colder band may serve
+    a warmer duty, never the reverse — and nothing cascades between the two families. A cooling
+    duty takes the band of the coldest temperature it needs, mirroring the heat rule. Spec
+    changes: §3.3 (the grade rule covers cooling), §3.4 (the table and both band sets), §3.5
+    (`grade_out` per family), §5.1, §5.2 and §5.5 (C8's cascade sums and C10), and §10.3 (V19
+    widened, V34 added). **The data work is not done** — the three carriers, a band for each of
+    the 17 `REF` rows, per-band chiller units and coefficients, and the `chiller_electric_hfo`
+    coefficient — and is planned in [note 22](22_duty_family_gap_plan.md).

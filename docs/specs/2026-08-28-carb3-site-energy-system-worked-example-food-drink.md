@@ -4,7 +4,7 @@
 (§4), exercising the thing the model exists for and the
 [cement works](2026-08-28-carb3-site-energy-system-worked-example-cement.md) structurally
 cannot show: eight fuel-variant technology rows collapsing to three units, a 120 °C duty with
-a boiler, a CHP, a heat pump and an electric resistance heater competing under C10 (heat grade
+a boiler, a CHP, a heat pump and an electric resistance heater competing under C10 (the grade
 cascade), a reject-heat leg from the dryer feeding a heat pump, a CHP producing heat **and**
 electricity into the carrier balance, rooftop PV bounded by C12 (siting cap), and surplus
 electricity exported below the import price.
@@ -287,7 +287,9 @@ information that does not vary along that axis. No unit at this premise sets
 
 ### 1.11 Reference data this premise reads
 
-**Carriers (§3.4).** Fourteen rows are in play, four of them graded heat.
+**Carriers (§3.4).** Fourteen rows are in play: four graded heat and one graded cooling.
+Ranks count within a grade family (§3.4), so `cooling_0_15`'s rank 2 is the cooling family's
+chilled-water band and has nothing to do with heat rank 2.
 
 | `carrier_id` | `carrier_kind` | `is_gradeable` | `grade_rank` | `grade_label` | `is_indirect` | `denominator_kind` | `may_import` | `may_export` |
 |---|---|---|---|---|---|---|---|---|
@@ -302,7 +304,7 @@ information that does not vary along that axis. No unit at this premise sets
 | `heat_100_150` | intermediate | **yes** | **3** | `100-150C` | no | energy | no | no |
 | `heat_150_400` | intermediate | **yes** | **4** | `150-400C` | no | energy | no | no |
 | `motive_power` | intermediate | no | — | — | no | energy | no | no |
-| `cooling` | intermediate | no | — | — | no | energy | no | no |
+| `cooling_0_15` | intermediate | **yes** (cooling) | 2 | `0-15C` | no | energy | no | no |
 | `co2_fuel_fossil` | **emission** | no | — | — | no | **mass** | no | no |
 | `co2_fuel_biogenic` | **emission** | no | — | — | no | **mass** | no | no |
 
@@ -356,10 +358,12 @@ consuming a `primary` carrier. Every heat carrier here is `intermediate`, so a u
 heat adds nothing — the fuel was already charged upstream. Getting this wrong double-counts
 every boiler in the stock.
 
-**`motive_power` and `cooling` are carriers, and they have to be.** The `MOT` (motors) duty's
+**`motive_power` and `cooling_0_15` are carriers, and they have to be.** The `MOT` (motors) duty's
 carrier cannot be `electricity`, because C8 would then have the motor unit consuming and
 producing the same carrier and the node would be circular; the same holds for a `REF`
-(refrigeration) duty. A duty is a *service*. This is forced by C8's algebra and is recorded in
+(refrigeration) duty. A duty is a *service*. The refrigeration here is chilled water, so it
+sits in §3.4's `cooling_0_15` band; the centre has no freezer store and so no sub-zero duty,
+which is why the chiller keeps its COP of 3.00. This is forced by C8's algebra and is recorded in
 §13 as an open point, because §3.4 does not say it.
 
 **Units (§3.5).** Capacity in PJ/yr of the unit's primary output, except PV and storage in MW.
@@ -381,7 +385,7 @@ producing the same carrier and the node would be circular; the same holds for a 
 | `dryer_direct_gas` | converter | `DRY` | **natural_gas** | **4** | — | 5.0 | 0.21 | 20 | 0.85 |
 | `dryer_direct_hydrogen` | converter | `DRY` | **hydrogen** | 4 | — | 5.2 | 0.21 | 20 | 0.85 |
 | `dryer_electric` | converter | `DRY` | **electricity** | **4** | — | 6.8 | 0.24 | 20 | 0.85 |
-| `chiller_electric` | converter | `REF` | **electricity** | — | — | 9.0 | 0.22 | 20 | 0.90 |
+| `chiller_electric` | converter | `REF` | **electricity** | **2** | — | 9.0 | 0.22 | 20 | 0.90 |
 | `motor_elec` | converter | `MOT` | **electricity** | — | — | 3.2 | 0.35 | 20 | 0.95 |
 | `pv_rooftop` | **generator** | — | — | — | — | 0.62 £m/MW | 0.011 | 30 | **0.11** |
 | `battery_2h` | **storage** | — | — | — | — | 0.58 £m/MW | 0.009 | 15 | 0.95 |
@@ -448,7 +452,7 @@ a new unit be added without editing a mapping table.
 | `dryer_electric` | `heat_150_400` | +1.00000 | `primary_output` | declared |
 | `dryer_electric` | `electricity` | −1.05260 | `fuel_input` | declared *(η 0.95)* |
 | `dryer_electric` | `heat_lt60` | **+0.08000** | `reject` | declared |
-| `chiller_electric` | `cooling` | **+1.00000** | `primary_output` | declared |
+| `chiller_electric` | `cooling_0_15` | **+1.00000** | `primary_output` | declared |
 | `chiller_electric` | `electricity` | −0.33330 | `fuel_input` | declared *(COP 3.00)* |
 | `motor_elec` | `motive_power` | **+1.00000** | `primary_output` | declared |
 | `motor_elec` | `electricity` | −1.00000 | `fuel_input` | declared |
@@ -637,7 +641,7 @@ energy through the incumbent units of §1.12 and their coefficients:
 | `boiler_steam_hot_water` | `STM` — evaporator, 120 °C | `heat_100_150` | **3** | 0.53820 | 0.100105 gas | **0.055992** |
 | `direct_heating` | `DRY` — spray dryer, 200 °C | `heat_150_400` | **4** | 1.00000 | 0.093000 gas | **0.079050** |
 | `site_services` | `SPC` — space heating | `heat_60_100` | **2** | 1.00000 | 0.021000 gas | **0.018480** |
-| `refrigeration` | `REF` | `cooling` | — | 1.00000 | 0.021533 elec | **0.064598** |
+| `refrigeration` | `REF` | `cooling_0_15` | **2** | 1.00000 | 0.021533 elec | **0.064598** |
 | `machinery_motors`, `compressed_air`, `site_services` | `MOT` | `motive_power` | — | 1.00000 | 0.064598 elec | **0.064598** |
 
 The conversions: LTH 0.085895 × 0.88 (boiler η); STM 0.100105 ÷ 1.787864, the incumbent mix
@@ -646,7 +650,8 @@ divisor of §1.12 — 0.60 × 2.22220 + 0.40 × 1.13636 — which is higher than
 0.093000 × 0.85; SPC 0.021000 × 0.88; REF 0.021533 × COP 3.00; MOT identity.
 
 **Every heat duty carries a `grade_rank`, and §3.3 makes it non-nullable wherever the carrier
-is gradeable.** A heat duty with no grade is invisible to C10's cascade: it could be served by
+is gradeable.** The rule covers cooling too, which is why `refrigeration` carries rank 2. A
+heat duty with no grade is invisible to C10's cascade: it could be served by
 any grade at all, including one far below what the process needs, and the LP would take the
 cheapest. That is failure mode 6 of §10.5, it fails silently, and this premise is where it
 would have bitten — a heat pump firing a 200 °C spray dryer.
@@ -742,7 +747,7 @@ has one.
 
 ### 3.4 The candidate unit set, after eligibility and C10
 
-This is where C10 (heat grade cascade) does its work. §5.5 is explicit that the duty-side leg
+This is where C10 (the grade cascade) does its work. §5.5 is explicit that the duty-side leg
 is enforced by **eligibility at load** rather than as an LP row — a unit whose `grade_out` is
 below the duty's grade is never in $U_q$, so the variable is never created — which is why
 `V19` is a load-scope test.
@@ -1056,9 +1061,9 @@ U⁰   = { boiler_lt@natural_gas, chp_gas_turbine, dryer_direct_gas@natural_gas,
          chiller_electric, motor_elec }                                       incumbents
 Ugen = { chp_gas_turbine, chp_hydrogen_ccgt, pv_rooftop }                    generators
 Uarea= { pv_rooftop }             area_per_capacity set; NEITHER CHP is in it, nor the battery
-C    = fourteen carriers of §1.11, four of them gradeable
+C    = fourteen carriers of §1.11, five of them gradeable: four heat, one cooling
 K    = { E-01, G-01 }
-g(c) = 1 … 4 on the heat carriers
+g(c) = 1 … 4 on the heat carriers; 2 on cooling_0_15, in the cooling family
 ```
 
 ### 7.2 Variables (§5.2), all continuous and non-negative
@@ -1069,7 +1074,7 @@ g(c) = 1 … 4 on the heat carriers
 | $a_{u,t}$ available capacity | as above | |
 | $z_{u,q,t}$ dispatch to a duty | declared over $u \in U_q$ only, per §3.4's eligibility table | **the duty index is what stops one unit being credited twice** |
 | $z^{\circ}_{u,t}$ released to the balance | non-zero for `pv_rooftop`, both CHPs' heat where it exceeds a duty, and `heat_pump_lt_*` where its output feeds `heat_pump_ht` | |
-| $h_{c \to c',t}$ cascade | declared only where both carriers are gradeable and $g(c') < g(c)$: **six pairs × 6 periods = 36** | 4→3, 4→2, 4→1, 3→2, 3→1, 2→1 |
+| $h_{c \to c',t}$ cascade | declared only where both carriers are gradeable and $g(c') < g(c)$: **six pairs × 6 periods = 36** | 4→3, 4→2, 4→1, 3→2, 3→1, 2→1, all heat. None in the cooling family, which has one band here, and none across families |
 | $e_{u,t}$, $r_{u,t}$ | 5 × 6 each | over $U^0$ only |
 | $m_{c,k,t}$, $x_{c,k,t}$ | per carrier per connection per period | $m = x = 0$ where the connection does not carry $c$ |
 | $w_{k,t}$ reinforcement | 2 × 6 | |
@@ -1098,7 +1103,7 @@ before the build.
 | **C7** | Known changes | none announced at this premise | — |
 | **C8** | **Carrier balance** | 14 carriers × 6 = 84 | always — equalities |
 | **C9** | Infrastructure availability | hydrogen from 2035; no CO₂ transport | **binds before 2035** |
-| **C10** | **Heat grade cascade** | duty side by eligibility (§3.4); carrier side = the 36 $h$ declarations | **binds — §3.4 and §8.4** |
+| **C10** | **Grade cascade, heat and cooling** | duty side by eligibility (§3.4); carrier side = the 36 $h$ declarations | **binds — §3.4 and §8.4** |
 | **C11** | Connection capacity | 2 × 6 = 12 | **binds on export at 2050** — §8.6 |
 | **C12** | Siting cap | 6 | **binds** — §8.2 |
 
@@ -1145,7 +1150,7 @@ asserts to 1e-6 and `V30` extends to the emission carriers.
 | `heat_60_100` | — | no unit active | — | — | **0** |
 | **`heat_lt60`** | — | dryer **+0.009486 (reject)** | — | **−0.009486** | **0** |
 | `motive_power` | — | motor +0.064598, dispatched | — | — | **0** |
-| `cooling` | — | chiller +0.064598, dispatched | — | — | **0** |
+| `cooling_0_15` | — | chiller +0.064598, dispatched | — | — | **0** |
 | **`co2_fuel_fossil`** | — | boiler +7.42461, CHP +4.18814, dryer +5.21730 = **+16.83005 kt** | — | **−16.83005** | **0** |
 | **`co2_fuel_biogenic`** | — | **none at 2025** — no biomass unit is built in this period | — | 0 | **0** |
 
@@ -1807,14 +1812,14 @@ deleted, because the record of *why* a rule exists is what stops it being undone
 | 2 | No per-premise tier over that table | **Closed.** §3.10.1 `premise_process_energy` — quantities, not shares, with the residual renormalised |
 | 3 | C8 admitted no disposal route, so unrecovered reject heat could not balance | **Closed.** $d_{c,t}$ (§5.2). This site vents 0.00949 PJ in 2025, nothing in 2040, and 0.00350 in 2050 — a reported quantity rather than an assumption |
 | 4 | §7 double-counted once electricity was generated on site | **Closed.** §7.8 charges an indirect carrier on the import; §7.7 gives the allocation layer, which §8.1.1 uses to put the CHP's electricity at **282 gCO₂e/kWh** against a grid at 65 |
-| 5 | A `MOT` or `REF` duty had no carrier that worked | **Closed.** §3.4 states the service-carrier convention and names `motive_power` and `cooling` |
+| 5 | A `MOT` or `REF` duty had no carrier that worked | **Closed.** §3.4 states the service-carrier convention and names `motive_power` and the graded `cooling@band` carriers |
 | 6 | Nothing said how a multi-binding unit becomes LP variables | **Closed, by removal.** D13 makes fuel part of a unit's identity, so there are no multi-binding units left to expand. `unit_eligibility.max_share` now caps a fuel, which was the knock-on |
 
 One remains, and one is new:
 
 | # | Open point | Where it bites | Closed by |
 |---|---|---|---|
-| **7** | **§3.4 declares `grade_rank` and `grade_label` but no canonical band set**, and nothing in the reference data holds one. Where the lines are drawn decides which units are eligible for which duty | §1.11 — the four bands are this example's own; with two bands a single heat pump would take both the 80 °C and the 120 °C duty | `T17` (duty families and heat grades). §3.4 now records the gap; it does not fill it |
+| **7** | **§3.4 declares `grade_rank` and `grade_label` but no canonical band set**, and nothing in the reference data holds one. Where the lines are drawn decides which units are eligible for which duty | §1.11 — the four bands are this example's own; with two bands a single heat pump would take both the 80 °C and the 120 °C duty | `T17` (duty families and heat grades). §3.4 now declares a canonical band set, six heat and three cooling; this example keeps its own four heat bands to show the heat pump split, and its one cooling duty sits in §3.4's `cooling_0_15` |
 | **8** | **The MVP's exit gate is stated in pre-D13 terms.** Milestone M4 asserts "eight fuel-variant rows collapse to three units", which D13 makes false and uninteresting — within a sector there is now almost nothing to collapse | §3.3 — the real claim is the cross-sector one, 84 rows to eight units | [notes/18](../notes/18_mvp_feature_prioritisation.md) M4 and `MF-03`, which should assert the cross-sector collapse and the per-fuel attributes D13 buys |
 
 Two things stated rather than filed. **The objective charges direct carbon only** (§6.3): §5.4
