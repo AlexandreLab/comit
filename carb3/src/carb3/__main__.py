@@ -27,6 +27,7 @@ from pathlib import Path
 import pandas as pd
 
 from carb3 import build, ledger, survival
+from carb3.report import write_report
 from carb3.load import (
     DEFAULT_PREMISE_ROOT,
     DEFAULT_REFERENCE_ROOT,
@@ -113,6 +114,14 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--no-report",
+        action="store_true",
+        help=(
+            "with --out-dir, do not write site_report.html beside each solved premise's "
+            "parquet; `python -m carb3.report <dir>` rebuilds it later without a solve"
+        ),
+    )
+    parser.add_argument(
         "--show-dropped",
         action="store_true",
         help="print the §3.2 screen's dropped-unit work list in full, not just its shape",
@@ -128,12 +137,17 @@ def run_premise(
     premise_root: Path,
     out_dir: Path | None,
     tariff_override: float | None = None,
+    site_report: bool = True,
 ) -> PremiseRun:
     """Load, derive, build, solve and (optionally) write one premise.
 
     Every stage that §5.2 calls an expected outcome returns a :class:`PremiseRun` carrying
     ``blocked`` rather than raising: an unservable duty and a non-optimal solve are both
     answers about the data, and a traceback would bury them.
+
+    With ``out_dir`` and ``site_report``, the premise's ``site_report.html`` is written
+    beside its parquet. A premise that returns ``blocked`` never reaches that line, so a
+    blocked or non-optimal premise writes no report: there is nothing solved to draw.
     """
     periods = axis.years
     premise = load_premise_tables(premise_id, premise_root)
@@ -173,6 +187,8 @@ def run_premise(
             objective=result.objective,
         )
         written = ledger.write_parquet(tables, report, out_dir)
+        if site_report:
+            written = (*written, write_report(written[0].parent))
     return PremiseRun(
         premise_id=premise_id,
         sets=sets,
@@ -220,6 +236,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.premise_root,
             args.out_dir,
             args.co2_tariff,
+            not args.no_report,
         )
         runs.append(run)
         _print_premise(run)
@@ -383,7 +400,11 @@ def _print_premise(run: PremiseRun) -> None:
         _print_export(run.tables)
         _print_pathway(run.tables)
     if run.written:
-        print(f"written          {run.written[0].parent} ({len(run.written)} parquet files)")
+        parquet = [path for path in run.written if path.suffix == ".parquet"]
+        pages = [path for path in run.written if path.suffix == ".html"]
+        print(f"written          {run.written[0].parent} ({len(parquet)} parquet files)")
+        for page in pages:
+            print(f"site report      {page}")
 
 
 def _print_costs(tables: ledger.Ledger, objective: float | None) -> None:

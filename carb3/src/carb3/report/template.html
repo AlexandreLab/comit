@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site report — __PREMISE_ID__</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --highlight: rgba(42, 120, 214, 0.10);
+  --hover: rgba(11, 11, 11, 0.04);
+  --unit-node: #52514e;
+  --process-node: #898781;
+  --boundary-node: #c3c2b7;
+  --neutral-link: #c3c2b7;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+  --critical: #d03b3b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --highlight: rgba(57, 135, 229, 0.18);
+    --hover: rgba(255, 255, 255, 0.05);
+    --unit-node: #c3c2b7;
+    --process-node: #898781;
+    --boundary-node: #52514e;
+    --neutral-link: #52514e;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --ink: #ffffff;
+  --ink-2: #c3c2b7;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --highlight: rgba(57, 135, 229, 0.18);
+  --hover: rgba(255, 255, 255, 0.05);
+  --unit-node: #c3c2b7;
+  --process-node: #898781;
+  --boundary-node: #52514e;
+  --neutral-link: #52514e;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 24px; }
+h1 { font-size: 20px; margin: 0; font-weight: 600; }
+h2 { font-size: 15px; margin: 0 0 4px; font-weight: 600; }
+.meta { color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.meta b { color: var(--ink); font-weight: 600; }
+.spacer { flex: 1; }
+button, .tab {
+  font: inherit; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; cursor: pointer;
+}
+button:hover, .tab:hover { background: var(--hover); }
+button:focus-visible, .tab:focus-visible, input:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; margin-top: 16px;
+}
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.note { color: var(--muted); font-size: 12px; }
+#sankey-wrap { overflow-x: auto; margin-top: 8px; }
+#sankey { display: block; min-width: 760px; }
+#sankey text { fill: var(--ink); font-size: 12px; }
+#sankey text .val { fill: var(--ink-2); }
+#sankey .link { fill: none; stroke-opacity: 0.38; }
+#sankey .link:hover, #sankey .link.focus { stroke-opacity: 0.7; }
+#sankey .node rect { shape-rendering: crispEdges; }
+.player { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.track { flex: 1; position: relative; padding-bottom: 18px; }
+.track input[type=range] { width: 100%; margin: 0; accent-color: var(--s1); }
+.ticks { position: relative; height: 16px; color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ticks span { position: absolute; transform: translateX(-50%); cursor: pointer; }
+.ticks span.on { color: var(--ink); font-weight: 600; }
+.year { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 3.2em; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.grid .card { margin-top: 0; }
+.chart-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.chart-head .unit { color: var(--muted); font-size: 12px; }
+.legend { display: flex; flex-wrap: wrap; gap: 2px 12px; margin: 6px 0 4px; font-size: 12px; color: var(--ink-2); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.chart svg { display: block; width: 100%; }
+.chart .tick text { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .tick line { stroke: var(--grid); }
+.chart .domain { stroke: var(--axis); }
+.chart .col { cursor: pointer; }
+.chart .col:hover { fill: var(--hover); }
+.foot { margin-top: 6px; font-size: 12px; color: var(--ink-2); }
+.foot .bad { color: var(--critical); font-weight: 600; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 2px 8px; font-size: 12px; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+#tooltip {
+  position: fixed; pointer-events: none; z-index: 10; max-width: 340px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  opacity: 0; transition: opacity 80ms;
+}
+#tooltip .t { font-weight: 600; margin-bottom: 2px; }
+#tooltip .r { display: flex; justify-content: space-between; gap: 16px; font-variant-numeric: tabular-nums; }
+#tooltip .r span:first-child { color: var(--ink-2); }
+details { margin-top: 10px; }
+summary { cursor: pointer; color: var(--ink-2); }
+table { border-collapse: collapse; margin-top: 6px; font-size: 12px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 3px 12px 3px 0; border-bottom: 1px solid var(--grid); }
+td.n { text-align: right; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="title">Site report</h1>
+    <div class="meta" id="meta"></div>
+    <div class="spacer"></div>
+    <button id="theme" type="button" aria-label="Switch colour theme">Theme: auto</button>
+  </header>
+
+  <section class="card" aria-labelledby="sankey-title">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <h2 id="sankey-title" style="margin-top:10px"></h2>
+    <div class="note" id="sankey-note"></div>
+    <div id="sankey-wrap"><svg id="sankey" role="img"></svg></div>
+    <div class="player">
+      <button id="play" type="button" aria-label="Play through the periods">▶ Play</button>
+      <span class="year" id="year"></span>
+      <div class="track">
+        <input id="slider" type="range" min="0" step="1" aria-label="Period">
+        <div class="ticks" id="ticks"></div>
+      </div>
+    </div>
+    <details>
+      <summary>Flows in this period as a table</summary>
+      <div id="flow-table"></div>
+    </details>
+  </section>
+
+  <section aria-label="The site across all periods">
+    <div class="card" style="padding-bottom:6px">
+      <h2>Across all periods</h2>
+      <div class="note">The highlighted column is the slider's period. Click a column to move the slider there.</div>
+    </div>
+    <div class="grid" id="charts" style="margin-top:16px"></div>
+  </section>
+</main>
+<div id="tooltip" role="status"></div>
+
+<script>/*__VENDOR_SCRIPTS__*/</script>
+<script>
+"use strict";
+const DATA = /*__REPORT_DATA__*/null;
+
+// ------------------------------------------------------------------------------------
+// State, formatting, theme
+// ------------------------------------------------------------------------------------
+const state = { layer: 0, year: 0, playing: null, costMode: "discounted" };
+const PERIODS = DATA.periods;
+const SLOTS = 8;
+const fmtSig = d3.format(",.4~r");
+const fmt = v => (Math.abs(v) < 1e-12 ? "0" : fmtSig(v));
+const pct = d3.format(".1%");
+const slot = i => (i < SLOTS ? `var(--s${i + 1})` : "var(--muted)");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function applyTheme(mode) {
+  const root = document.documentElement;
+  if (mode === "auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", mode);
+  document.getElementById("theme").textContent = "Theme: " + mode;
+}
+(function initTheme() {
+  let mode = "auto";
+  try { mode = localStorage.getItem("carb3-report-theme") || "auto"; } catch (e) { /* storage blocked */ }
+  applyTheme(mode);
+  document.getElementById("theme").addEventListener("click", () => {
+    const order = ["auto", "light", "dark"];
+    const current = document.documentElement.getAttribute("data-theme") || "auto";
+    const next = order[(order.indexOf(current) + 1) % order.length];
+    applyTheme(next);
+    try { localStorage.setItem("carb3-report-theme", next); } catch (e) { /* storage blocked */ }
+  });
+})();
+
+// ------------------------------------------------------------------------------------
+// Tooltip
+// ------------------------------------------------------------------------------------
+const tip = document.getElementById("tooltip");
+function showTip(event, html) {
+  tip.innerHTML = html;
+  tip.style.opacity = 1;
+  const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = event.clientX + pad, y = event.clientY + pad;
+  if (x + w > window.innerWidth - 8) x = event.clientX - w - pad;
+  if (y + h > window.innerHeight - 8) y = event.clientY - h - pad;
+  tip.style.left = Math.max(8, x) + "px";
+  tip.style.top = Math.max(8, y) + "px";
+}
+function hideTip() { tip.style.opacity = 0; }
+const row = (k, v) => `<div class="r"><span>${esc(k)}</span><span>${v}</span></div>`;
+
+// ------------------------------------------------------------------------------------
+// Header
+// ------------------------------------------------------------------------------------
+document.getElementById("title").textContent = "Site report — " + DATA.premise_id;
+document.getElementById("meta").innerHTML = [
+  `Solver <b>${esc(DATA.status)}</b>`,
+  DATA.objective == null ? "" : `Objective <b>£${d3.format(",.4f")(DATA.objective)}m</b>, discounted to ${PERIODS[0]}`,
+  `Periods <b>${PERIODS[0]}–${PERIODS[PERIODS.length - 1]}</b>`,
+].filter(Boolean).map(part => `<span>${part}</span>`).join("");
+
+// ------------------------------------------------------------------------------------
+// Sankey: one stable layout per layer, rescaled per period
+// ------------------------------------------------------------------------------------
+const KIND_COLOR = { unit: "var(--unit-node)", process: "var(--process-node)", boundary: "var(--boundary-node)" };
+
+function carrierColours(layer) {
+  const colours = new Map();
+  layer.nodes.filter(n => n.kind === "carrier").forEach((n, i) => colours.set(n.id, slot(i)));
+  return colours;
+}
+
+// Compute the layout once, over every link that exists in any period at its largest value.
+// Positions and the value-to-pixel scale are then fixed, so moving the slider changes widths
+// and never moves a node.
+function layoutLayer(layer, width) {
+  const union = new Map();
+  for (const year of PERIODS) {
+    for (const l of layer.links[year]) {
+      const key = l.source + ">" + l.target;
+      union.set(key, Math.max(union.get(key) || 0, l.value));
+    }
+  }
+  const links = [...union].map(([key, value]) => {
+    const [source, target] = key.split(">").map(Number);
+    return { source, target, value, key };
+  });
+  const nodes = layer.nodes.map((n, i) => ({ ...n, index: i }));
+
+  // First pass only to find the columns, which set the height.
+  const probe = d3.sankey().nodeId(d => d.index).nodeAlign(d3.sankeyJustify)
+    .extent([[0, 0], [width, 1000]])({ nodes: nodes.map(d => ({ ...d })), links: links.map(d => ({ ...d })) });
+  const columns = new Map();
+  for (const n of probe.nodes) columns.set(n.layer, (columns.get(n.layer) || 0) + 1);
+  const perColumn = d3.max([...columns.values()]) || 1;
+  const height = Math.max(360, Math.min(960, perColumn * 46 + 80));
+
+  // Every label sits right of its node, so the last column's labels need a margin.
+  const lastLayer = d3.max(probe.nodes, n => n.layer);
+  const longest = d3.max(probe.nodes.filter(n => n.layer === lastLayer), n => n.label.length) || 10;
+  const rightRoom = Math.min(width * 0.3, 70 + longest * 7);
+  const graph = d3.sankey().nodeId(d => d.index).nodeAlign(d3.sankeyJustify)
+    .nodeWidth(12).nodePadding(Math.max(14, Math.min(28, height / (perColumn * 3))))
+    .extent([[12, 16], [width - rightRoom, height - 16]])({ nodes, links });
+
+  const withValue = graph.nodes.find(n => n.value > 0);
+  const ky = withValue ? (withValue.y1 - withValue.y0) / withValue.value : 1;
+  const order = new Map();
+  for (const n of graph.nodes) {
+    order.set(n.index, {
+      out: n.sourceLinks.map(l => l.key),
+      in: n.targetLinks.map(l => l.key),
+    });
+  }
+  return { graph, ky, order, height, width };
+}
+
+function frameFor(layer, layout, year) {
+  const values = new Map(layer.links[year].map(l => [l.source + ">" + l.target, l.value]));
+  const inflow = new Map(), outflow = new Map();
+  for (const [key, v] of values) {
+    const [s, t] = key.split(">").map(Number);
+    outflow.set(s, (outflow.get(s) || 0) + v);
+    inflow.set(t, (inflow.get(t) || 0) + v);
+  }
+  const nodes = layout.graph.nodes.map(n => {
+    const value = Math.max(inflow.get(n.index) || 0, outflow.get(n.index) || 0);
+    return { ...n, value, in: inflow.get(n.index) || 0, out: outflow.get(n.index) || 0,
+             top: n.y0, h: value * layout.ky };
+  });
+  const byIndex = new Map(nodes.map(n => [n.index, n]));
+  const offsets = new Map();
+  const links = [];
+  for (const n of nodes) {
+    let y = n.top;
+    for (const key of layout.order.get(n.index).out) {
+      const w = (values.get(key) || 0) * layout.ky;
+      offsets.set("s" + key, y + w / 2);
+      y += w;
+    }
+    y = n.top;
+    for (const key of layout.order.get(n.index).in) {
+      const w = (values.get(key) || 0) * layout.ky;
+      offsets.set("t" + key, y + w / 2);
+      y += w;
+    }
+  }
+  for (const l of layout.graph.links) {
+    const value = values.get(l.key) || 0;
+    const s = byIndex.get(l.source.index), t = byIndex.get(l.target.index);
+    links.push({ key: l.key, s, t, value, w: value * layout.ky,
+                 x0: s.x1, x1: t.x0, y0: offsets.get("s" + l.key), y1: offsets.get("t" + l.key) });
+  }
+  return { nodes, links };
+}
+
+function linkPath(d) {
+  const xm = (d.x0 + d.x1) / 2;
+  return `M${d.x0},${d.y0}C${xm},${d.y0} ${xm},${d.y1} ${d.x1},${d.y1}`;
+}
+
+let current = null;   // { layer, layout, colours }
+
+function drawSankey(animate) {
+  const layer = DATA.layers[state.layer];
+  const svg = d3.select("#sankey");
+  const wrap = document.getElementById("sankey-wrap");
+  const width = Math.max(760, wrap.clientWidth);
+  if (!current || current.layer !== layer || current.layout.width !== width) {
+    current = { layer, layout: layoutLayer(layer, width), colours: carrierColours(layer) };
+    svg.selectAll("*").remove();
+    svg.attr("viewBox", `0 0 ${width} ${current.layout.height}`)
+      .attr("width", width).attr("height", current.layout.height)
+      .attr("aria-label", `${layer.label} flows at ${DATA.premise_id}, ${layer.unit}`);
+    svg.append("g").attr("class", "links");
+    svg.append("g").attr("class", "nodes");
+    animate = false;
+  }
+  const { layout, colours } = current;
+  const year = PERIODS[state.year];
+  const frame = frameFor(layer, layout, year);
+  const duration = animate ? 850 : 0;
+
+  const linkColour = d => {
+    if (d.s.kind === "carrier") return colours.get(d.s.id);
+    if (d.t.kind === "carrier") return colours.get(d.t.id);
+    return "var(--neutral-link)";
+  };
+
+  const link = svg.select("g.links").selectAll("path.link").data(frame.links, d => d.key)
+    .join(enter => enter.append("path").attr("class", "link")
+      .each(function (d) { this._prev = { y0: d.y0, y1: d.y1, w: d.w }; })
+      .attr("d", linkPath).attr("stroke-width", d => Math.max(0, d.w)));
+  link.attr("stroke", linkColour)
+    .on("mousemove", (event, d) => showTip(event, linkTip(d, layer)))
+    .on("mouseleave", hideTip);
+  link.transition().duration(duration).ease(d3.easeCubicInOut)
+    .attrTween("d", function (d) {
+      const p = this._prev || d;
+      const i0 = d3.interpolateNumber(p.y0, d.y0), i1 = d3.interpolateNumber(p.y1, d.y1);
+      this._prev = { y0: d.y0, y1: d.y1, w: d.w };
+      return t => linkPath({ x0: d.x0, x1: d.x1, y0: i0(t), y1: i1(t) });
+    })
+    .attr("stroke-width", d => Math.max(0, d.w))
+    .attr("stroke-opacity", d => (d.value > 0 ? null : 0));
+
+  const node = svg.select("g.nodes").selectAll("g.node").data(frame.nodes, d => d.id)
+    .join(enter => {
+      const g = enter.append("g").attr("class", "node");
+      g.append("rect").attr("x", d => d.x0).attr("width", d => d.x1 - d.x0)
+        .attr("y", d => d.top).attr("height", d => d.h).attr("rx", 2);
+      // Labels sit right of their node. Alternating sides by half-width put two labels
+      // from adjacent columns on top of each other.
+      const left = () => false;
+      g.append("text").attr("x", d => (left(d) ? d.x0 - 6 : d.x1 + 6))
+        .attr("text-anchor", d => (left(d) ? "end" : "start")).attr("dy", "0.35em")
+        .attr("y", d => d.top + d.h / 2)
+        .call(t => { t.append("tspan").attr("class", "lab"); t.append("tspan").attr("class", "val").attr("dx", 5); });
+      return g;
+    });
+  node.select("rect").attr("fill", d => (d.kind === "carrier" ? colours.get(d.id) : KIND_COLOR[d.kind]));
+  node.select("tspan.lab").text(d => d.label);
+  node.select("tspan.val").text(d => fmt(d.value));
+  node.on("mousemove", (event, d) => showTip(event, nodeTip(d, layer)))
+    .on("mouseleave", hideTip);
+  node.select("rect").transition().duration(duration).ease(d3.easeCubicInOut)
+    .attr("height", d => Math.max(0, d.h));
+  node.select("text").transition().duration(duration).ease(d3.easeCubicInOut)
+    .attr("y", d => d.top + d.h / 2)
+    .attr("opacity", d => (d.value > 0 ? 1 : 0));
+
+  document.getElementById("sankey-title").textContent = `${layer.label} flows in ${year}, ${layer.unit}`;
+  document.getElementById("sankey-note").textContent = layer.id === "energy"
+    ? "Ribbon width is to one scale across all periods. Losses: energy a unit draws and does not pass on. Used in processing: energy drawn by a unit that makes a material product. Ambient heat: what a heat pump or chiller delivers beyond what it draws."
+    : "Ribbon width is to one scale across all periods, so a smaller site looks smaller.";
+  drawFlowTable(layer, frame);
+}
+
+function share(part, whole) { return whole > 0 ? pct(part / whole) : "—"; }
+
+function linkTip(d, layer) {
+  const year = PERIODS[state.year];
+  let html = `<div class="t">${esc(d.s.label)} → ${esc(d.t.label)}</div>`;
+  html += row(String(year), `${fmt(d.value)} ${esc(layer.unit)}`);
+  html += row(`share of ${d.s.label} out`, share(d.value, d.s.out));
+  html += row(`share of ${d.t.label} in`, share(d.value, d.t.in));
+  const unit = d.s.kind === "unit" ? d.s : d.t.kind === "unit" ? d.t : null;
+  const carrier = d.s.kind === "carrier" ? d.s : d.t.kind === "carrier" ? d.t : null;
+  if (unit && carrier) {
+    const roles = ((DATA.gross[unit.label] || {})[carrier.label]) || {};
+    const names = Object.keys(roles);
+    if (names.length > 1) {
+      html += `<div style="margin-top:4px;color:var(--muted)">Net of these roles:</div>`;
+      for (const r of names) html += row(r, fmt(roles[r][state.year]));
+    }
+  }
+  return html;
+}
+
+function nodeTip(d, layer) {
+  let html = `<div class="t">${esc(d.label)}</div>`;
+  html += row("in", `${fmt(d.in)} ${esc(layer.unit)}`);
+  html += row("out", `${fmt(d.out)} ${esc(layer.unit)}`);
+  const facts = d.kind === "unit" ? DATA.units[d.label] : null;
+  if (facts) {
+    const a = facts.activity[state.year], c = facts.available_capacity[state.year];
+    html += `<div style="margin-top:4px;color:var(--muted)">Unit, ${PERIODS[state.year]}</div>`;
+    html += row("activity", `${fmt(a)} ${esc(facts.basis)}`);
+    html += row("available capacity", `${fmt(c)} ${esc(facts.basis)}`);
+    html += row("activity ÷ capacity", c > 0 ? pct(a / c) : "—");
+    if (facts.new_capacity[state.year] > 0) html += row("built this period", `${fmt(facts.new_capacity[state.year])} ${esc(facts.basis)}`);
+  }
+  return html;
+}
+
+function drawFlowTable(layer, frame) {
+  const rows = frame.links.filter(l => l.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .map(l => `<tr><td>${esc(l.s.label)}</td><td>${esc(l.t.label)}</td><td class="n">${fmt(l.value)}</td></tr>`)
+    .join("");
+  document.getElementById("flow-table").innerHTML =
+    `<table><thead><tr><th>From</th><th>To</th><th>${esc(layer.unit)}</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+// ------------------------------------------------------------------------------------
+// Layer tabs, slider, play
+// ------------------------------------------------------------------------------------
+const tabs = d3.select("#tabs").selectAll("button").data(DATA.layers).join("button")
+  .attr("class", "tab").attr("role", "tab").attr("type", "button")
+  .text(d => `${d.label} (${d.unit})`)
+  .on("click", (event, d) => { state.layer = DATA.layers.indexOf(d); syncTabs(); drawSankey(false); });
+function syncTabs() { tabs.attr("aria-selected", (d, i) => String(i === state.layer)); }
+
+const slider = document.getElementById("slider");
+slider.max = PERIODS.length - 1;
+d3.select("#ticks").selectAll("span").data(PERIODS).join("span").text(d => d)
+  .style("left", (d, i) => `calc(8px + (100% - 16px) * ${PERIODS.length > 1 ? i / (PERIODS.length - 1) : 0})`)
+  .on("click", (event, d) => setYear(PERIODS.indexOf(d)));
+slider.addEventListener("input", () => setYear(+slider.value));
+
+function setYear(i, fromPlay) {
+  if (!fromPlay) stopPlay();
+  state.year = Math.max(0, Math.min(PERIODS.length - 1, i));
+  slider.value = state.year;
+  document.getElementById("year").textContent = PERIODS[state.year];
+  d3.select("#ticks").selectAll("span").classed("on", (d, j) => j === state.year);
+  drawSankey(true);
+  highlightCharts();
+}
+
+const playButton = document.getElementById("play");
+function stopPlay() {
+  if (state.playing) { clearInterval(state.playing); state.playing = null; }
+  playButton.textContent = "▶ Play";
+}
+playButton.addEventListener("click", () => {
+  if (state.playing) { stopPlay(); return; }
+  if (state.year === PERIODS.length - 1) setYear(0, true);
+  playButton.textContent = "❚❚ Pause";
+  state.playing = setInterval(() => {
+    if (state.year >= PERIODS.length - 1) { stopPlay(); return; }
+    setYear(state.year + 1, true);
+  }, 1300);
+});
+
+// ------------------------------------------------------------------------------------
+// Evolution panel: stacked bars per period, one chart per measure
+// ------------------------------------------------------------------------------------
+const charts = [];
+
+// More than eight series fold into "Other" rather than repeating a hue.
+function foldSeries(series) {
+  if (series.length <= SLOTS) return series;
+  const kept = series.slice(0, SLOTS - 1);
+  const rest = series.slice(SLOTS - 1);
+  kept.push({ key: `Other (${rest.length})`, values: PERIODS.map((_, i) => d3.sum(rest, s => s.values[i])), colour: "var(--muted)" });
+  return kept;
+}
+
+function barChart(container, spec) {
+  const card = container.append("div").attr("class", "card chart");
+  const head = card.append("div").attr("class", "chart-head");
+  head.append("h2").text(spec.title);
+  head.append("span").attr("class", "unit").text(spec.unit);
+  const controls = head.append("div").style("margin-left", "auto");
+  const legend = card.append("div").attr("class", "legend");
+  const svg = card.append("svg");
+  const foot = card.append("div").attr("class", "foot");
+  const chart = { spec, card, svg, legend, foot, controls, draw: null, highlight: null };
+
+  chart.draw = function () {
+    const series = (typeof spec.series === "function" ? spec.series() : spec.series)
+      .map((s, i) => ({ ...s, colour: s.colour || slot(i) }));
+    legend.selectAll("span").data(series, d => d.key).join("span")
+      .html(d => `<i style="background:${d.colour}"></i>${esc(d.key)}`);
+    const width = Math.max(280, card.node().clientWidth - 32), height = 210;
+    const m = { top: 8, right: 8, bottom: 22, left: 52 };
+    svg.attr("viewBox", `0 0 ${width} ${height}`).attr("height", height).selectAll("*").remove();
+    const x = d3.scaleBand().domain(PERIODS).range([m.left, width - m.right]).paddingInner(0.28).paddingOuter(0.14);
+    const table = PERIODS.map((year, i) => Object.fromEntries(series.map(s => [s.key, s.values[i]])));
+    // Grouped charts draw each series from zero, side by side: used where a sum means nothing.
+    const stacked = spec.grouped
+      ? series.map(s => s.values.map(v => [Math.min(0, v), Math.max(0, v)]))
+      : d3.stack().keys(series.map(s => s.key)).offset(d3.stackOffsetDiverging).order(d3.stackOrderNone)(table);
+    const lo = Math.min(0, d3.min(stacked, l => d3.min(l, d => d[0])) || 0);
+    const hi = Math.max(0, d3.max(stacked, l => d3.max(l, d => d[1])) || 0);
+    const sub = spec.grouped ? x.bandwidth() / series.length : x.bandwidth();
+    const y = d3.scaleLinear().domain([lo, hi || 1]).nice(4).range([height - m.bottom, m.top]);
+
+    chart.highlight = svg.append("rect").attr("class", "hl").attr("fill", "var(--highlight)")
+      .attr("y", m.top).attr("height", height - m.top - m.bottom).attr("width", x.step()).attr("rx", 4);
+    svg.append("g").attr("transform", `translate(${m.left},0)`)
+      .call(d3.axisLeft(y).ticks(4).tickSize(-(width - m.left - m.right)).tickFormat(d3.format(",~g")))
+      .call(g => g.select(".domain").remove());
+    svg.append("g").attr("transform", `translate(0,${height - m.bottom})`)
+      .call(d3.axisBottom(x).tickSize(0).tickPadding(6));
+    svg.append("line").attr("x1", m.left).attr("x2", width - m.right)
+      .attr("y1", y(0)).attr("y2", y(0)).attr("stroke", "var(--axis)");
+
+    svg.append("g").selectAll("g").data(stacked).join("g")
+      .attr("fill", (d, i) => series[i].colour)
+      .selectAll("rect").data(d => d).join("rect")
+      .attr("x", function (d, i) {
+        const k = spec.grouped ? stacked.indexOf(d3.select(this.parentNode).datum()) : 0;
+        return x(PERIODS[i]) + k * sub;
+      })
+      .attr("width", spec.grouped ? Math.max(1, sub - 1) : x.bandwidth())
+      .attr("y", d => y(Math.max(d[0], d[1])))
+      .attr("height", d => Math.max(0, Math.abs(y(d[0]) - y(d[1])) - (Math.abs(y(d[0]) - y(d[1])) > 3 ? 1 : 0)))
+      .attr("rx", 1.5)
+      .attr("stroke", "var(--surface)").attr("stroke-width", 1);
+
+    svg.append("g").selectAll("rect").data(PERIODS).join("rect").attr("class", "col")
+      .attr("x", d => x(d) - (x.step() - x.bandwidth()) / 2).attr("width", x.step())
+      .attr("y", m.top).attr("height", height - m.top - m.bottom).attr("fill", "transparent")
+      .on("click", (event, d) => setYear(PERIODS.indexOf(d)))
+      .on("mousemove", (event, d) => {
+        const i = PERIODS.indexOf(d);
+        let html = `<div class="t">${d} — ${esc(spec.title)}</div>`;
+        for (const s of series.slice().reverse()) html += row(s.key, `${fmt(s.values[i])} ${esc(spec.unit)}`);
+        if (series.length > 1 && !spec.grouped) html += row("total", `${fmt(d3.sum(series, s => s.values[i]))} ${esc(spec.unit)}`);
+        showTip(event, html);
+      })
+      .on("mouseleave", hideTip);
+    chart.x = x;
+    if (spec.footer) spec.footer(foot, series);
+    chart.highlightYear();
+  };
+  chart.highlightYear = function () {
+    if (!chart.highlight) return;
+    const x = chart.x, year = PERIODS[state.year];
+    chart.highlight.attr("x", x(year) - (x.step() - x.bandwidth()) / 2);
+  };
+  charts.push(chart);
+  return chart;
+}
+
+function highlightCharts() { charts.forEach(c => c.highlightYear()); }
+
+function buildCharts() {
+  const root = d3.select("#charts");
+  const evo = DATA.evolution;
+  const energy = DATA.layers.find(l => l.id === "energy");
+  const carrierColour = energy ? carrierColours(energy) : new Map();
+
+  if (evo.imports.series.length) {
+    barChart(root, {
+      title: "Imports by carrier", unit: evo.imports.unit,
+      series: foldSeries(evo.imports.series.map(s => ({ ...s, colour: carrierColour.get("carrier:" + s.key) }))),
+    });
+  }
+  for (const group of evo.capacity) {
+    // Side by side, not stacked: a kiln's Mt of clinker and a grinder's Mt of cement do not add.
+    barChart(root, { title: "Available capacity by unit", unit: group.unit, series: foldSeries(group.series), grouped: true });
+  }
+
+  const cost = evo.cost;
+  const costChart = barChart(root, {
+    title: "Cost by term", unit: cost.unit,
+    series: () => cost.terms.map(term => ({ key: term, values: cost[state.costMode][term] })),
+    footer: foot => {
+      const total = d3.sum(cost.terms, t => d3.sum(cost.discounted[t]));
+      let text = `Discounted total £${d3.format(",.4f")(total)}m`;
+      if (cost.objective != null) {
+        const residual = total - cost.objective;
+        const bad = Math.abs(residual) > 1e-6 * Math.max(1, Math.abs(cost.objective));
+        text += ` against the reported objective £${d3.format(",.4f")(cost.objective)}m — residual <span class="${bad ? "bad" : ""}">${d3.format("+.2e")(residual)}</span>`;
+      } else {
+        text += " (the run report carries no objective to check against)";
+      }
+      foot.html(text);
+    },
+  });
+  const seg = costChart.controls.append("div").attr("class", "seg");
+  seg.selectAll("button").data([["discounted", "Discounted"], ["annual", "Undiscounted"]]).join("button")
+    .attr("type", "button").text(d => d[1])
+    .attr("aria-pressed", d => String(d[0] === state.costMode))
+    .on("click", (event, d) => {
+      state.costMode = d[0];
+      seg.selectAll("button").attr("aria-pressed", e => String(e[0] === state.costMode));
+      costChart.draw();
+    });
+
+  const co2 = evo.co2;
+  if (co2.vented.length || co2.captured.some(v => v > 0)) {
+    const series = co2.vented.map(s => ({ key: "vented: " + s.key, values: s.values }));
+    if (co2.captured.some(v => v > 0)) series.push({ key: "captured", values: co2.captured });
+    barChart(root, {
+      title: "CO₂ vented and captured", unit: co2.unit, series,
+      footer: foot => foot.text("Captured is what capture units drew from the site's CO₂ streams."),
+    });
+  }
+  charts.forEach(c => c.draw());
+}
+
+// ------------------------------------------------------------------------------------
+// Start
+// ------------------------------------------------------------------------------------
+syncTabs();
+buildCharts();
+setYear(0);
+let resizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { current = null; drawSankey(false); charts.forEach(c => c.draw()); }, 150);
+});
+</script>
+</body>
+</html>

@@ -17,11 +17,12 @@ Five modules, per plan §5.1 — the review reduced seven to five, so do not add
     Variables, C1 (duty satisfaction) to C5 (no building in the start year), C8 (carrier
     balance), C10 (heat grade cascade), objective, solve.
 ``ledger``
-    Cost by term, carrier mix, dispatch, build, disposal -> parquet.
+    Cost by term, carrier mix, dispatch, build, disposal, unit flow -> parquet.
 
 ``carb3.__main__`` is the entry point — ``python -m carb3``, or ``make carb3-run`` — and is
 not a sixth module: it holds no model code, only the order the five stages run in and the
-run report §5.2 and §5.3 ask to be printed.
+run report §5.2 and §5.3 ask to be printed. ``carb3.report`` is not one either: it turns
+the ledger's parquet into a page and imports nothing from the five.
 """
 
 __all__ = ["__version__"]

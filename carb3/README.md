@@ -10,7 +10,8 @@ three synthetic premises, solved as a pure LP on the real reference tables under
 ```
 make carb3-run                                   # all three premises, report only
 make carb3-run PREMISES=mvp-dairy                # one premise
-make carb3-run OUT_DIR=outputs/carb3             # write the parquet ledger too
+make carb3-run OUT_DIR=outputs/carb3             # write the parquet ledger and a site report too
+make carb3-report OUT_DIR=outputs/carb3          # rebuild the site reports from parquet, no solve
 make carb3-run PREMISES="mvp-cement --co2-tariff 60"  # flat CO₂ tariff in £/t (note 21 §4.4)
 uv run --directory carb3 python -m carb3 --help  # the flags, including --reference-root
 ```
@@ -32,10 +33,35 @@ make carb3                                       # the tests; also part of `make
 | `sets.py` | Minimal A2; Q, U, U_q via the three-table join; C10 widening; unservable-duty diagnosis |
 | `survival.py` | D11 survival function and the capacity behind a cohort, computed before the LP |
 | `build.py` | Variables, C1–C5, C8, C10 via eligibility, C9 for CO₂ export only, the objective, the solve |
-| `ledger.py` | Cost by term, carrier mix, dispatch, build, disposal → parquet |
+| `ledger.py` | Cost by term, carrier mix, dispatch, build, disposal, unit flow → parquet |
 | `__main__.py` | The entry point. Not a sixth module: no model code, only the wiring and the report |
+| `report/` | The site report, parquet → `site_report.html`. Not model code: it reads only the ledger's parquet and imports nothing from the five modules |
 
 Inputs a human edits stay **CSV**; outputs are **parquet** (§3.4).
+
+## The site report
+
+With `--out-dir`, each solved premise also gets `site_report.html` beside its parquet
+(`--no-report` skips it). It is one file with d3 and the data inlined, so it opens offline.
+
+- **A Sankey of the site in one period.** Each layer has its own tab and its own unit:
+  Energy (PJ/yr), CO₂ (kt/yr) and Materials (Mt/yr). A carrier's layer comes from its
+  `carrier_kind`. Imports enter on the left. Flows leave to a process duty, to export, to
+  disposal, or, in the Energy layer, to `Losses` or `Used in processing` (energy drawn by a
+  unit that makes a material product). A heat pump's or chiller's surplus output enters
+  from `Ambient heat`.
+- **A year slider with a play button.** The layout and the width scale are fixed across
+  periods, so a node never moves and a smaller site draws smaller.
+- **Charts across all periods.** Imports by carrier, available capacity by unit (side by
+  side, one chart per capacity unit), cost by term (discounted or not, checked against the
+  reported objective), and CO₂ vented against CO₂ captured.
+
+The edges come from the ledger's `unit_flow` table, one row per `(unit, carrier, role,
+period)`, signed. Its C8-side rows net per unit to `carrier_mix.produced` and `consumed`,
+and its `duty_output` rows sum to `dispatched`. The report nets each unit's roles on a
+carrier before drawing, because the capture train both draws and emits `co2_fuel_fossil`;
+the tooltip shows the roles behind the net figure. The vendored d3 and its rebuild recipe
+are in `src/carb3/report/vendor/`.
 
 ## State of the three premises
 
