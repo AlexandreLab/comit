@@ -24,6 +24,10 @@ serve them**, most of them for reasons note 20 already records. This plan fixes 
 cooling, `OTH`, `PHEAT` and `EN` gaps, adds the validator checks that would have caught
 them, and routes the other coverage gaps to the note 20 items that own them.
 
+**Status 2026-09-25:** Tasks 1, 2 and 7 are done (§8) and Task 8 is done as labels; the
+cooling carriers are in `carrier.csv`, and the unservable count is re-measured at 89 with a
+cause and owner per row.
+
 **Ten tasks in six lanes.** The first one — teaching the validator that ranks are unique
 per grade family — has to land before any cooling carrier is added, or `make data-check`
 goes red on the first row. The new service carrier for non-motive electric end uses
@@ -291,6 +295,13 @@ is green today is blocking from the start.
 The last two are counts, not failures, and belong in `make data-report` beside the
 admission screen's cost-completeness count.
 
+**All eight landed on 2026-09-25 (Tasks 1, 2 and 7), in the modes the table gives.** Red
+today, as measured then: 0, 0, **3**, 17, 0, 1, 89 and **11** — the third fell from 11 when
+`electric_service` took eight rows, and the last is 11 `REF` processes of 119 unsourced draws
+across the library (Task 1's status says why it is not 16). The draw check matches the carrier
+exactly rather than through C8's heat cascade: a boiler cascading into `heat_lt60` would feed
+`heat_pump_lt_reject` in LP terms, but that is not the condenser heat the unit exists to lift.
+
 ---
 
 ## 8. Tasks
@@ -313,6 +324,16 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 1 — Split the family sets and make ranks unique per grade family
 
+- **Status:** **done 2026-09-25.** `DUTY_FAMILIES` holds §3.3's eleven and `UNIT_FAMILIES`
+  adds `EN`, in `validate_carb3_data.py` and `check_units.py`. `check_carrier` keys uniqueness
+  on `(grade_family, grade_rank)` and checks `grade_family` presence (V34 (duties are services
+  at a grade) leg (d)). New blocking check: V34 (c), no `EN`, `NEUOTH` or `HRS` duty row, green.
+  New advisory checks, measured: V34 (a) **3** rows on a primary carrier (§1 said 11, before
+  `electric_service`); V34 (c) **17** `REF` rows off a cooling band; `grade_out` **1** blank
+  (`solar_thermal_flat`) and 3 disagreeing with their output; the unsourced-draw check **119**
+  (unit, activity, process) draws with no exact producer, 71 with none even through C8's heat
+  cascade, `heat_pump_lt_reject` at **11** `REF` processes rather than 16 — at the other five
+  `solar_thermal_flat` or the `SPC` units make `heat_lt60`. The 89 is Task 7's.
 - **Lane:** validator.
 - **Goal:** the validator accepts cooling bands and rejects an `EN`, `NEUOTH` or `HRS` duty row.
 - **Inputs:** `validate_carb3_data.py` lines 444–458 and 522–556; `check_units.py` line 56.
@@ -327,6 +348,13 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 2 — Add the cooling carriers and `grade_family`
 
+- **Status:** **done 2026-09-25.** `carrier.csv` has `grade_family` after `is_gradeable`
+  (heat on six rows, cooling on three, blank on the rest) and rows `cooling_lt0`,
+  `cooling_0_15`, `cooling_gt15` at ranks 1–3, provenance citing §3.4; 48 carriers. The
+  ungraded `cooling` row stays, its provenance saying it retires after Tasks 3 and 4. The
+  `grade_family` check is blocking and passes; `carb3`'s carrier schema and the validator's
+  column list carry the column; `README_spec_tables.md` covers both band sets. `make check`
+  green, 180 `carb3` tests.
 - **Lane:** carriers.
 - **Goal:** `carrier.csv` carries the three cooling bands of §3.4.
 - **Inputs:** §3.4's band table; `README_spec_tables.md` "The heat-grade band set".
@@ -340,6 +368,8 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 3 — Band the seventeen `REF` rows
 
+- **Status:** open. The three bands exist in `carrier.csv` since Task 2; all 17 rows are
+  still on `cooling`, which `make data-report`'s V34 (c) advisory counts.
 - **Lane:** duties.
 - **Goal:** every `REF` row sits on a cooling band with its rank.
 - **Inputs:** §3 of this note; the sources named there; note 20 item 1 for the alkylation
@@ -356,6 +386,8 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 4 — Cooling units, coefficients and eligibility
 
+- **Status:** open. Measured 2026-09-25: `heat_pump_lt_reject` lacks a `heat_lt60` source at
+  11 `REF` processes, and 2 `REF` rows are unservable.
 - **Lane:** units.
 - **Goal:** each cooling band has at least one costed unit, and every `REF` duty has one
   that reaches it.
@@ -374,6 +406,8 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 5 — Resolve the eleven `OTH` rows on `electricity`
 
+- **Status:** partly done 2026-09-24 (`electric_service`, §2). Three rows remain — the 3 that
+  V34 (a) counts, and 3 of the 6 unservable `OTH` rows.
 - **Lane:** duties, with a specification edit to §3.4 if the decision is yes.
 - **Goal:** no duty row sits on a fuel.
 - **Inputs:** §2 of this note; note 20 items 8, 37 and 1a.
@@ -389,6 +423,7 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 6 — Repair the four inconsistent `grade_out` values
 
+- **Status:** open. The `grade_out` advisory counts 1 blank and 3 disagreeing, as §1 did.
 - **Lane:** units.
 - **Goal:** every unit with a gradeable output has a `grade_out` in that output's family that
   its coefficients support.
@@ -401,6 +436,31 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 7 — Report the unservable duties by cause
 
+- **Status:** **done 2026-09-25.** `make data-report` carries the advisory "duty coverage"
+  check, one line per unservable row with its cause and owner; `make data-worklist` (or
+  `validate_carb3_data.py --unservable-csv PATH`) writes the same list to
+  `docs/notes/data/build/unservable_duties.csv` for Task 10. A fifth cause joined the four:
+  `duty_on_fuel`, a row on a primary carrier, which no unit can serve without making C8
+  (carrier balance) circular. Re-measured on today's data: **89 of 427**, the same total and
+  per-family split as §1, but the `OTH` six are different rows (see below).
+
+  | Family | Rows | Cause | Owner |
+  |---|---:|---|---|
+  | `MOT` | 37 | 34 no unit of the family admitted, 3 no unit at all | note 20 item 30 (20 mobile-plant rows); Task 10, `motor_elec` not admitted (17) |
+  | `HTH` | 21 | 11 grade ceiling, 10 no unit of the family admitted | note 20 item 27 |
+  | `SPC` | 19 | 19 grade ceiling | note 20 item 24 |
+  | `OTH` | 6 | 3 duty on a fuel, 3 unit without coefficients | Task 5 (note 20 items 8 and 37); Task 10 (note 20 item 49) |
+  | `PHEAT` | 2 | 2 grade ceiling | §5, Task 10 |
+  | `REF` | 2 | 2 no unit of the family admitted | Task 4 |
+  | `LTH` | 1 | 1 no unit of the family admitted | Task 10 |
+  | `STM` | 1 | 1 grade ceiling | note 20 item 25 |
+  | **All** | **89** | 47 no unit of the family, 33 grade ceiling, 3 duty on a fuel, 3 without coefficients, 3 no unit | |
+
+  **`electric_service` made its rows servable.** All nine `OTH` rows on it are served by
+  `generic_process_elec`, including the two Laboratory rows §1 counted. The six `OTH` rows
+  left are the three still on `electricity` (Task 5) and the three on `motive_power` —
+  Aircraft works, Factory and Industrial NEC `other_process` — where only the coefficient-less
+  `generic_process_*` units are admitted and `motor_elec` is not.
 - **Lane:** validator.
 - **Goal:** the 89 unservable rows are a standing, attributed count rather than a surprise
   at solve time.
@@ -420,6 +480,7 @@ below never applied. What remains is Task 3 putting the reference-data row for F
 Processing Centre `refrigeration` on the same band, so that the row and the example it cites
 agree again.
 
+- **Status:** **done 2026-09-25, labels only** (above); the data row waits on Task 3.
 - **Lane:** examples — one agent per file, as CLAUDE.md requires.
 - **Goal:** no document quotes the ungraded `cooling` carrier.
 - **Inputs:** §6 of this note; Task 3's band for Food Processing Centre; Task 4's COP for it.
@@ -434,6 +495,8 @@ agree again.
 
 ### Task 9 — Read the cascade direction in `carb3`
 
+- **Status:** open. Since Task 2, `carb3`'s carrier schema requires `grade_family`; nothing
+  reads it yet.
 - **Lane:** carb3.
 - **Goal:** `eligible_units` admits cooling units by the cooling direction and never across
   families.
@@ -448,6 +511,8 @@ agree again.
 
 ### Task 10 — One consolidated pass over the unit library and the duty rows
 
+- **Status:** open, unblocked. Tasks 1, 2 and 7 are done; the work list is
+  `docs/notes/data/build/unservable_duties.csv` (89 rows).
 - **Lane:** units and duties together, one owner for all six files.
 - **Goal:** every duty row has an eligible unit that can serve it at its grade and in its
   grade family, and every unit offered for a duty can actually be costed and run. The 89

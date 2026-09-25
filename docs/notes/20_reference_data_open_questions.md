@@ -784,6 +784,14 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     `electrochemical_processes` are on it, served by `generic_process_elec` at COMIT's
     coefficient of 1.0101. **Three rows remain:** Mill and Works `other_process` to
     `motive_power`, and Mineral Production - Gas `power_generation` to be deleted (item 37).
+
+    **Further progress 2026-09-25 — the validator side is done** (note 22 Task 1).
+    `validate_carb3_data.py` holds §3.3's eleven duty families and a separate unit-family set
+    that adds `EN`, and a blocking check refuses any `EN`, `NEUOTH` or `HRS` duty row. The
+    three rows on `electricity` are counted by an advisory V34 (duties are services at a
+    grade) leg (a), which turns blocking when they move. All nine `OTH` rows on
+    `electric_service` are servable; the three on `motive_power` are not, because only
+    coefficient-less `generic_process_*` units are admitted there (note 22 Task 7).
 61. **Should `cooling` be graded?** §3.4 makes it one ungraded carrier. The 17 `REF` duties span
     very different temperatures: cold stores and chilling at an abattoir or creamery, glycol
     at a brewery, chilled water for a wafer fab's HVAC, and cooling-tower water at a
@@ -816,3 +824,9 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     widened, V34 added). **The data work is not done** — the three carriers, a band for each of
     the 17 `REF` rows, per-band chiller units and coefficients, and the `chiller_electric_hfo`
     coefficient — and is planned in [note 22](22_duty_family_gap_plan.md).
+
+    **Data progress 2026-09-25: the three carriers are in** (note 22 Task 2). `carrier.csv`
+    has a `grade_family` column and rows `cooling_lt0`, `cooling_0_15` and `cooling_gt15` at
+    ranks 1–3, and the validator holds `grade_rank` unique within a family. Still open: the
+    17 `REF` rows sit on the ungraded `cooling` carrier, which stays until they and the two
+    chillers move (note 22 Tasks 3 and 4), and the HFO coefficient.
