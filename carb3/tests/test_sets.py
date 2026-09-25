@@ -230,12 +230,18 @@ def test_c10_a_grade_2_unit_is_refused_a_grade_3_duty(dairy: sets.ModelSets) -> 
 def test_c10_refuses_a_grade_1_unit_a_grade_2_duty(
     reference, dairy: sets.ModelSets
 ) -> None:
-    """``site_services`` offers grade-1 boilers and grade-2 heat pumps to a grade-2 duty."""
+    """``site_services`` offers a grade-1 heat pump beside grade-2 boilers to a grade-2 duty.
+
+    The fuel-fired space-heat boilers moved to ``grade_out`` 2 on 2026-09-25 (note 20 item
+    24: they supply an 82/71 °C LPHW circuit), so ``heat_pump_spc_air``, still at 1, is now
+    the grade-1 unit that must be refused.
+    """
     unit = reference.unit.set_index("unit_id")
-    assert int(unit.loc["boiler_spc_gas", "grade_out"]) == 1
+    assert int(unit.loc["heat_pump_spc_air", "grade_out"]) == 1
+    assert int(unit.loc["boiler_spc_gas", "grade_out"]) == 2
     service_g2 = dairy.eligible[("fx-dairy", "site_services", "heat_60_100")]
-    assert "boiler_spc_gas" not in service_g2
-    assert service_g2 == {"heat_pump_lt_air", "heat_pump_lt_reject"}
+    assert "heat_pump_spc_air" not in service_g2
+    assert "boiler_spc_gas" in service_g2
 
 
 def _duty(carrier_id: str, grade_rank: int | None) -> sets.Duty:

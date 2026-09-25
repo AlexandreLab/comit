@@ -830,16 +830,16 @@ def _primary_output(io: list[dict]) -> dict[str, str]:
 
 
 def check_unit_grade_out(unit: list[dict], io: list[dict], car: list[dict]) -> Result:
-    """ADVISORY. §3.5: a unit's `grade_out` is a rank in the grade family of its primary
-    output, and it is required where that output is gradeable.
+    """BLOCKING since note 22 Task 6 (2026-09-25). §3.5: a unit's `grade_out` is a rank in
+    the grade family of its primary output, and it is required where that output is
+    gradeable. V19 (no unit eligible beyond its `grade_out`) reads it, so a blank or an
+    out-of-family value would make C10 (the grade cascade) vacuous for that unit.
 
     Also counts, as detail, units whose `grade_out` differs from their own primary output's
-    rank: legal in principle (a unit may be rated above the band it is booked to), but in
-    the current library it marks a unit whose output and rating disagree (note 22 §1).
-    Advisory until note 22 Task 6 repairs `solar_thermal_flat` and the three heat-pump
-    stores; it then turns blocking."""
-    r = Result("unit grade_out in its primary output's grade family (advisory)",
-               blocking=False)
+    rank: legal in principle (a unit may be rated above the band it is booked to), so it is
+    reported rather than failed. Task 6 repaired `solar_thermal_flat` (blank) and the three
+    heat-pump stores (3 against a rank-2 output)."""
+    r = Result("unit grade_out in its primary output's grade family")
     carriers = {c["carrier_id"]: c for c in car}
     ranks_by_family: dict[str, set[int]] = defaultdict(set)
     for c in car:
@@ -868,7 +868,7 @@ def check_unit_grade_out(unit: list[dict], io: list[dict], car: list[dict]) -> R
             disagree.append(f"{uid}: grade_out {g}, primary output {p} at rank "
                             f"{carriers[p]['grade_rank']}")
     for m in missing + out_of_family:
-        r.detail(f"  {m}")
+        r.fail(m)
     r.note = (f"{graded} units with a gradeable primary output; {len(missing)} without a "
               f"grade_out, {len(out_of_family)} outside the family, {len(disagree)} whose "
               f"grade_out differs from the output's rank")

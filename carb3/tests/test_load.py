@@ -457,16 +457,20 @@ def test_measured_counts_match_the_plan(
     Each figure is one lower than the plan's (the eligibility count one higher) since
     2026-09-24: ``generic_process_elec`` gained its coefficient rows when it became the
     producer of ``electric_service`` (note 22 §2), and one eligibility row was added for it.
+
+    Note 22 Task 10 (2026-09-25) added ``chiller_electric_lt0``, the only unit reaching the
+    ``cooling_lt0`` band: 138 units, one more admitted, 17 more eligibility rows (one per
+    ``REF`` process). The unit leg is unchanged — the new unit is fully costed.
     """
     dropped = {d.unit_id for d in screen.dropped}
     unit_leg = {d.unit_id for d in screen.dropped if d.leg != "import_price"}
-    assert len(reference.unit) == 137
+    assert len(reference.unit) == 138
     assert len(unit_leg) == 40
     assert len(dropped) == 80
-    assert len(screen.admitted) == 57
+    assert len(screen.admitted) == 58
 
     elig = reference.unit_eligibility
-    assert len(elig) == 2613
+    assert len(elig) == 2630
     assert int(elig["unit_id"].isin(unit_leg).sum()) == 363
     assert int(elig["unit_id"].isin(dropped).sum()) == 1154
 

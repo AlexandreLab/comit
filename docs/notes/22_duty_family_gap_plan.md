@@ -401,8 +401,20 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 4 — Cooling units, coefficients and eligibility
 
-- **Status:** open. Measured 2026-09-25: `heat_pump_lt_reject` lacks a `heat_lt60` source at
-  11 `REF` processes, and 2 `REF` rows are unservable.
+- **Status:** **done 2026-09-25 within Task 10, except three units with no source.**
+  `chiller_electric_lt0` is new: `grade_out` 1, electricity −0.3876 per unit of cooling
+  (`CIAT_ECODESIGN`: Regulation (EU) 2015/1095's minimum SEPR of 2.58 for an air-cooled
+  medium-temperature process chiller at a −8 °C outlet), costs a proxy copy of
+  `chiller_electric`'s, eligible at all 17 `REF` processes, and the default unit at the three
+  `cooling_lt0` duties. **HFO:** `ICHREFEHFC01` carries −1.11111 too, so the evidence rule's
+  first branch applies — the HFO unit is rebased on `chiller_electric`'s COP of 3.00 with no
+  refrigerant penalty. All three chillers carry `reject` rows to `heat_lt60` (1 + 1/COP, a
+  first-law balance), and the reject-draw advisory at `REF` processes fell from 11 to 0.
+  `grade_out` 2 on both chillers and their move to `cooling_0_15` landed with Task 3; the
+  `spinning_hvac` and `alkylation` eligibility gaps close in Task 10's rebuild. **Not added,
+  and recorded as gaps:** an absorption chiller, a cooling tower and a dry cooler — no source
+  for their cost or coefficient was found in this pass. No duty sits on `cooling_gt15`, so
+  their absence leaves no row unservable.
 - **Lane:** units.
 - **Goal:** each cooling band has at least one costed unit, and every `REF` duty has one
   that reaches it.
@@ -438,7 +450,11 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 6 — Repair the four inconsistent `grade_out` values
 
-- **Status:** open. The `grade_out` advisory counts 1 blank and 3 disagreeing, as §1 did.
+- **Status:** **done 2026-09-25 within Task 10.** `solar_thermal_flat` takes `grade_out` 1,
+  the rank of the `heat_lt60` output its row already declares — no collector temperature is
+  sourced, so nothing higher is claimed. The three `hp_thermal_store_*` packages take 2, the
+  `grade_out` of their `heat_pump_lt_air` component, whose conversion they copy. The check
+  is blocking and passes (0 blank, 0 outside the family, 0 disagreeing).
 - **Lane:** units.
 - **Goal:** every unit with a gradeable output has a `grade_out` in that output's family that
   its coefficients support.

@@ -299,6 +299,13 @@ These are the ones with a consequence outside the reference data.
     lane `duty_b` found no duty below 60 °C at all. *Both duty reports.*
 24. **All 48 space-heat duties sit at band 2, and `unit.csv`'s `SPC` units have `grade_out` 1.**
     One side must move or no unit can serve space heat. *`DONE_default_unit.md`, Q1.*
+    **Settled 2026-09-25 on the unit side** (note 22 Task 10): the five fuel-fired `SPC`
+    boilers supply the conventional UK LPHW circuit at 82/71 °C (`CIBSEJ_RETURN`, the source
+    the 48 duty rows already cite for band 2), so they now produce `heat_60_100` at
+    `grade_out` 2 with unchanged coefficients. `heat_pump_spc_air`, `resistance_heater_spc`
+    and `heat_exchanger_spc_steam` stay at band 1: nothing sourced puts their supply above
+    60 °C, so a space-heat heat pump cannot serve an LPHW duty — a real limit, not a data
+    gap. The 19 `SPC` rows this item made unservable are servable.
 25. **Refinery steam is band 4 and every CHP tops out at band 3.** *`DONE_default_unit.md`, Q2.*
 26. **`heat_exchanger_lt_steam` consumes and produces the same band** (LTH and STM both at
     rank 3), so it has no coefficients. *`DONE_units.md`, G10.*
@@ -840,6 +847,18 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     banded by their equipment. Both chillers produce `cooling_0_15` at `grade_out` 2 and the
     ungraded `cooling` carrier is retired. Still open: a unit that reaches `cooling_lt0`, the
     HFO coefficient, and the distillery split (item 62).
+
+    **Data progress 2026-09-25, Task 10: units per band and the HFO coefficient.**
+    `chiller_electric_lt0` reaches `cooling_lt0` at a -8 °C outlet, electricity -0.3876 per
+    unit of cooling from the Regulation (EU) 2015/1095 minimum SEPR of 2.58, costs a proxy
+    copy of `chiller_electric`'s. The HFO coefficient is **not** an error: `ICHREFEHFC01`, the
+    standard unit `chiller_electric` collapses from, carries the same -1.11111 in the
+    workbook, so COMIT's refrigeration rows are final energy per unit of its service
+    commodity and the HFO unit is rebased on `chiller_electric`'s COP of 3.00. All three
+    chillers carry a `reject` row to `heat_lt60`, so `heat_pump_lt_reject` has a source at
+    every `REF` process. **Not added**, for want of a sourced cost or coefficient: an
+    absorption chiller, a cooling tower and a dry cooler; no duty sits on `cooling_gt15`, so
+    no row is unservable for lack of them.
 62. **Should Distillery `cooling_systems` be split between two cooling bands?** Its equipment is
     condenser water pumps and cooling-tower fans — ambient heat rejection, `cooling_gt15` — and
     yeast refrigeration, which is chilled (`cooling_0_15`). §3.4's rule puts the whole row in
