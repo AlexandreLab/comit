@@ -21,7 +21,7 @@ the spec calls `activity_process_energy_share`.
 
 | File | Spec entity | Rows | Built by | Report |
 |---|---|---:|---|---|
-| `carrier.csv` | §3.4 `carrier` | 44 | coordinator (skeleton) + lane `carriers` (factors) + lane `units` (product carriers) | `build/DONE_carriers.md` |
+| `carrier.csv` | §3.4 `carrier` | 48 | coordinator (skeleton) + lane `carriers` (factors) + lane `units` (product carriers) | `build/DONE_carriers.md` |
 | `activity_process_duty_profile.csv` | §3.3 `activity_process_duty_profile` | 427 | lanes `duty_a`, `duty_b` | `build/DONE_duty_a.md`, `build/DONE_duty_b.md` |
 | `carb3_comit_process_crosswalk.csv` | the process-level join T17 asked for (no spec entity) | 376 | lanes `duty_a`, `duty_b` | same |
 | `unit.csv` | §3.5 `unit` | 137 | lane `units` | `build/DONE_units.md` |
@@ -66,24 +66,44 @@ how to read a cell:
 | `infrastructure_scenario.csv` | `provenance` | Citation |
 | `decarbonisation_options_library.csv` | `displaces_carrier_ids`, `route_change`, `exclusivity_group` | Data-migration items C1, C3, C4 |
 
-## The heat-grade band set
+## The grade band sets, heat and cooling
 
-§3.4 declares `grade_rank` and `grade_label` but no band list, and the food-and-drink worked
-example says the four bands it uses are its own. This build **extends those four upward by
-two** so that furnace and kiln duties have somewhere to land, and every heat row in the duty
-profile, every `grade_out` and every reject row uses it:
+§3.4 declares two grade families, each a set of gradeable `carrier` rows, and `carrier.csv`
+carries a `grade_family` column (heat or cooling) on every gradeable row and on no other.
+`grade_rank` is ordered by temperature within the family, rank 1 coldest, and is unique
+**within the family only**: cooling ranks 1 to 3 sit beside heat ranks 1 to 3 by design.
+C10 (the grade cascade) runs down the heat bands and up the cooling bands, and never between
+the two families.
 
-| `carrier_id` | `grade_rank` | `grade_label` |
-|---|---|---|
-| `heat_lt60` | 1 | `<60C` |
-| `heat_60_100` | 2 | `60-100C` |
-| `heat_100_150` | 3 | `100-150C` |
-| `heat_150_400` | 4 | `150-400C` |
-| `heat_400_1000` | 5 | `400-1000C` |
-| `heat_gt1000` | 6 | `>1000C` |
+**Heat.** The food-and-drink worked example says the four bands it uses are its own. This
+build **extends those four upward by two** so that furnace and kiln duties have somewhere to
+land, and every heat row in the duty profile, every `grade_out` and every reject row uses it:
+
+| `grade_family` | `carrier_id` | `grade_rank` | `grade_label` |
+|---|---|---|---|
+| heat | `heat_lt60` | 1 | `<60C` |
+| heat | `heat_60_100` | 2 | `60-100C` |
+| heat | `heat_100_150` | 3 | `100-150C` |
+| heat | `heat_150_400` | 4 | `150-400C` |
+| heat | `heat_400_1000` | 5 | `400-1000C` |
+| heat | `heat_gt1000` | 6 | `>1000C` |
 
 Where the lines fall decides which units are eligible for which duty. This set is a proposal
 for review, not a settled answer — note 20 lists the places it bites.
+
+**Cooling.** Added 2026-09-25 (note 22 Task 2), the specification's own three bands:
+
+| `grade_family` | `carrier_id` | `grade_rank` | `grade_label` |
+|---|---|---|---|
+| cooling | `cooling_lt0` | 1 | `<0C` |
+| cooling | `cooling_0_15` | 2 | `0-15C` |
+| cooling | `cooling_gt15` | 3 | `>15C` |
+
+**Nothing uses the cooling bands yet.** The ungraded `cooling` carrier stays in `carrier.csv`
+while the 17 `REF` duty rows and the two chillers' `unit_input_output` rows still name it; it
+retires once note 22 Tasks 3 (a band for each `REF` row) and 4 (cooling units per band) have
+moved every reference. Until then `make data-report`'s V34 (duties are services at a grade)
+advisory counts the 17 `REF` rows as off their family's carrier.
 
 ## What is thin, and known to be
 

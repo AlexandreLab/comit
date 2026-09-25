@@ -378,8 +378,8 @@ def check_band_coverage(prof: list[dict]) -> Result:
 
 SPEC_COLUMNS = {
     "carrier.csv": [
-        "carrier_id", "carrier_name", "carrier_kind", "is_gradeable", "grade_rank",
-        "grade_label", "is_indirect", "emission_factor_source", "biogenic_fraction",
+        "carrier_id", "carrier_name", "carrier_kind", "is_gradeable", "grade_family",
+        "grade_rank", "grade_label", "is_indirect", "emission_factor_source", "biogenic_fraction",
         "carbon_charge", "denominator_kind", "may_dispose", "may_import", "may_export",
         "vector", "comit_commodity", "provenance",
     ],
