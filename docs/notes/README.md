@@ -60,6 +60,7 @@ record of what was decided and what was deliberately left out.
 
 | Doc | Topic |
 |-----|-------|
+| [2026-09-25-carb3-site-sankey-report.md](../superpowers/plans/2026-09-25-carb3-site-sankey-report.md) | **A Sankey report per premise.** One offline HTML file beside each solved premise's parquet: a Sankey of the site (imports, units, and the four D16 exits) with a year slider, and four small charts of the site's evolution. Adds a `unit_flow` ledger table, since no current output says how much of which carrier each unit drew. Five tasks; a plan, nothing built |
 | [2026-09-07-temporal-coverage.md](../superpowers/plans/2026-09-07-temporal-coverage.md) | **Temporal coverage.** Several years of measured history behind one base year (D12), and a premise's process list stated as at a year. Carries the reviewed design for the declared forward process switch, which is deferred behind delivery T23 |
 | [2026-08-04-comit-headless-integration.md](../superpowers/plans/2026-08-04-comit-headless-integration.md) | Running COMIT without the Shiny front end, so another model can call it |
 | [2026-08-04-site-level-pathways-note.md](../superpowers/plans/2026-08-04-site-level-pathways-note.md) | The note explaining how sites sharing a base-year configuration can follow different modelled pathways |
