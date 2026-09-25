@@ -441,8 +441,20 @@ OPTIONAL_SPEC_COLUMNS = {
     ],
 }
 
-DUTY_FAMILIES = {"DRY", "EN", "HRS", "HTH", "LTH", "MOT", "NEUOTH", "OTH", "PHEAT", "REF",
-                 "SPC", "STM"}
+# §3.3: the eleven duty families. `EN` is not one of them — it is COMIT's hydrogen-production
+# family and labels only units (§3.4), so it is valid for `unit.duty_family` and nowhere else.
+# One shared set used to serve both columns, which meant an `EN` duty row could not be
+# rejected without also rejecting the ten hydrogen-producing units (note 22 Task 1).
+DUTY_FAMILIES = {"DRY", "HRS", "HTH", "LTH", "MOT", "NEUOTH", "OTH", "PHEAT", "REF", "SPC",
+                 "STM"}
+UNIT_FAMILIES = DUTY_FAMILIES | {"EN"}
+# V34 (c): families the §3.3 enum admits but which present no service duty (§3.4), and `EN`,
+# which the enum does not admit at all. A duty-profile row on any of them is refused.
+NON_DUTY_FAMILIES = {"EN", "NEUOTH", "HRS"}
+# §3.4's duty-family-to-carrier table, by what the family's carrier must be.
+HEAT_DUTY_FAMILIES = {"LTH", "HTH", "STM", "DRY", "SPC", "PHEAT"}
+COOLING_DUTY_FAMILIES = {"REF"}
+GRADE_FAMILIES = {"heat", "cooling"}
 SPEC_ENUMS = {
     ("carrier.csv", "carrier_kind"): {"primary", "intermediate", "product", "emission"},
     ("carrier.csv", "carbon_charge"): {"charged", "zero_rated"},
@@ -455,7 +467,7 @@ SPEC_ENUMS = {
     ("carb3_comit_process_crosswalk.csv", "match_kind"): {"direct", "analogue", "none"},
     ("unit.csv", "unit_class"): {"converter", "generator", "storage", "hybrid", "abatement"},
     ("unit.csv", "spine"): {"service", "chemistry"},
-    ("unit.csv", "duty_family"): DUTY_FAMILIES,
+    ("unit.csv", "duty_family"): UNIT_FAMILIES,
     ("unit.csv", "provenance"): {"comit_reuse", "bref", "proxy"},
     ("unit.csv", "confidence"): {"high", "medium", "low"},
     ("unit_eligibility.csv", "provenance"): {"comit_reuse", "bref", "proxy"},
@@ -519,12 +531,32 @@ def check_spec_shape(tables: dict[str, list[dict]]) -> Result:
     return r
 
 
+def grade_family(row: dict) -> str | None:
+    """A carrier's `grade_family` (§3.4), or None where it is not gradeable.
+
+    Before `carrier.csv` carried the column, every gradeable carrier was heat, so a missing
+    column reads as heat. Where the column is present a blank on a gradeable row is a
+    failure of `check_carrier`, and this returns the blank rather than guessing."""
+    if row.get("is_gradeable") != "TRUE":
+        return None
+    if "grade_family" not in row:
+        return "heat"
+    return (row["grade_family"] or "").strip()
+
+
 def check_carrier(car: list[dict]) -> Result:
-    """§3.4: grades need a rank and a label; emissions carry a charge; may_dispose is
-    derived from carrier_kind (true for intermediate and emission only)."""
-    r = Result("carrier: grades, charges, may_dispose")
+    """§3.4: grades need a family, a rank and a label, and the rank is unique within its
+    family; emissions carry a charge; may_dispose is derived from carrier_kind (true for
+    intermediate and emission only).
+
+    V34 (duties are services at a grade) leg (d): every gradeable carrier has a
+    `grade_family`, no other carrier has one, and `grade_rank` is unique within the family.
+    Uniqueness used to be global, which would have rejected the first cooling band: cooling
+    ranks 1 to 3 sit beside heat ranks 1 to 3 by design (note 22 Task 1)."""
+    r = Result("carrier: grades per family, charges, may_dispose")
     seen: set[str] = set()
-    ranks: dict[int, str] = {}
+    ranks: dict[tuple[str, int], str] = {}
+    has_family_column = bool(car) and "grade_family" in car[0]
     for i, row in enumerate(car, start=2):
         cid = row["carrier_id"]
         if cid in seen:
@@ -534,11 +566,22 @@ def check_carrier(car: list[dict]) -> Result:
         gradeable = row["is_gradeable"] == "TRUE"
         if gradeable and not (row["grade_rank"].strip() and row["grade_label"].strip()):
             r.fail(f"{cid}: gradeable without grade_rank/grade_label")
-        if gradeable:
+        fam = grade_family(row)
+        if has_family_column:
+            raw = (row["grade_family"] or "").strip()
+            if gradeable and raw not in GRADE_FAMILIES:
+                r.fail(f"{cid}: gradeable with grade_family {raw!r}, required one of "
+                       f"{sorted(GRADE_FAMILIES)} (V34 (d))")
+            if not gradeable and raw:
+                r.fail(f"{cid}: grade_family {raw!r} on a non-gradeable carrier (V34 (d))")
+        if not gradeable and (row["grade_rank"].strip() or row["grade_label"].strip()):
+            r.fail(f"{cid}: grade_rank/grade_label on a non-gradeable carrier")
+        if gradeable and row["grade_rank"].strip():
             rk = int(row["grade_rank"])
-            if rk in ranks:
-                r.fail(f"{cid}: grade_rank {rk} already used by {ranks[rk]}")
-            ranks[rk] = cid
+            if (fam, rk) in ranks:
+                r.fail(f"{cid}: grade_rank {rk} already used in grade_family {fam} by "
+                       f"{ranks[(fam, rk)]} (V34 (d): unique within the family)")
+            ranks[(fam, rk)] = cid
         if kind == "emission" and not row["carbon_charge"].strip():
             r.fail(f"{cid}: emission carrier without carbon_charge")
         if kind != "emission" and row["carbon_charge"].strip():
@@ -551,7 +594,12 @@ def check_carrier(car: list[dict]) -> Result:
         b = _f(row["biogenic_fraction"])
         if b is not None and not 0 <= b <= 1:
             r.fail(f"{cid}: biogenic_fraction {b} outside [0,1]")
-    r.note = f"{len(seen)} carriers, {len(ranks)} heat grades"
+    per_family = defaultdict(int)
+    for fam, _ in ranks:
+        per_family[fam] += 1
+    r.note = (f"{len(seen)} carriers, "
+              + ", ".join(f"{n} {fam} grades" for fam, n in sorted(per_family.items()))
+              + ("" if has_family_column else "; no grade_family column, read as heat"))
     return r
 
 
@@ -686,6 +734,212 @@ def check_duty_profile(duty: list[dict], reg: list[dict], car: list[dict]) -> Re
     for k in sorted(missing)[:5]:
         r.fail(f"register row {k} has no duty row")
     r.note = f"{len(duty)} rows, {len(covered)} of {len(reg_keys)} register rows covered"
+    return r
+
+
+def check_duty_families(duty: list[dict]) -> Result:
+    """BLOCKING. V34 (duties are services at a grade) leg (c), the part that is green today:
+    no duty-profile row carries `EN`, `NEUOTH` or `HRS`.
+
+    `EN` labels hydrogen-producing units only; `NEUOTH` (feedstock) and `HRS` (hot rolling, a
+    chemistry node) present no service duty (§3.4). Leg (b) — a row on a gradeable carrier
+    carries that carrier's own rank — is in `check_duty_profile`; legs (a) and the rest of
+    (c) are advisory in `check_duty_services` until note 22 Tasks 3 and 5 land."""
+    r = Result("V34 (duties are services at a grade) (c): no EN, NEUOTH or HRS duty row")
+    for i, row in enumerate(duty, start=2):
+        f = row["duty_family"].strip()
+        if f in NON_DUTY_FAMILIES:
+            r.fail(f"activity_process_duty_profile.csv:{i} {key(row)} carries {f}, which "
+                   "presents no duty (§3.4)")
+    r.note = f"{len(duty)} rows"
+    return r
+
+
+def check_duty_services(duty: list[dict], car: list[dict]) -> Result:
+    """ADVISORY. V34 (duties are services at a grade) legs (a) and (c), the parts the data
+    does not yet meet.
+
+    (a) no duty row names a `primary` or `emission` carrier — an `OTH` row on `electricity`
+        makes C8 (carrier balance) circular at the `electricity` node (§3.4).
+    (c) each family's rows sit on the carrier §3.4's table names for it: the six heat
+        families on a heat band, `REF` on a cooling band, `MOT` on `motive_power`, `OTH` on a
+        non-gradeable service carrier. A `product` carrier with `may_export` true is a
+        legitimate duty on any row (§3.9) and is not judged here.
+
+    Advisory until note 22 Task 5 (the `OTH` rows on `electricity`) and Task 3 (a band for
+    each `REF` row) land; each then turns blocking."""
+    r = Result("V34 (duties are services at a grade) (a), (c): duty carriers (advisory)",
+               blocking=False)
+    carriers = {c["carrier_id"]: c for c in car}
+    on_fuel: list[str] = []
+    off_family: dict[str, list[str]] = defaultdict(list)
+    for i, row in enumerate(duty, start=2):
+        f, cid = row["duty_family"].strip(), row["carrier_id"].strip()
+        c = carriers.get(cid)
+        if c is None:
+            continue  # an unknown carrier is check_duty_profile's failure, not this one's
+        where = f"row {i} {row['carb3_activity']} / {row['process_id']} {f} on {cid}"
+        kind = c["carrier_kind"]
+        if kind in {"primary", "emission"}:
+            on_fuel.append(where)
+            continue
+        if kind == "product":
+            continue
+        fam = grade_family(c)
+        if f in HEAT_DUTY_FAMILIES:
+            ok = fam == "heat"
+        elif f in COOLING_DUTY_FAMILIES:
+            ok = fam == "cooling"
+        elif f == "MOT":
+            ok = cid == "motive_power"
+        elif f == "OTH":
+            ok = kind == "intermediate"
+        else:
+            ok = True  # NON_DUTY_FAMILIES are check_duty_families' failure
+        if not ok:
+            off_family[f].append(where)
+    n_off = sum(len(v) for v in off_family.values())
+    r.note = (f"(a) {len(on_fuel)} rows on a primary or emission carrier; "
+              f"(c) {n_off} rows off their family's carrier"
+              + (" — " + ", ".join(f"{f} {len(v)}" for f, v in sorted(off_family.items()))
+                 if off_family else ""))
+    for w in on_fuel:
+        r.detail(f"  (a) {w}")
+    for f in sorted(off_family):
+        for w in off_family[f]:
+            r.detail(f"  (c) {w}")
+    return r
+
+
+def _primary_output(io: list[dict]) -> dict[str, str]:
+    return {row["unit_id"]: row["carrier_id"] for row in io if row["role"] == "primary_output"}
+
+
+def check_unit_grade_out(unit: list[dict], io: list[dict], car: list[dict]) -> Result:
+    """ADVISORY. §3.5: a unit's `grade_out` is a rank in the grade family of its primary
+    output, and it is required where that output is gradeable.
+
+    Also counts, as detail, units whose `grade_out` differs from their own primary output's
+    rank: legal in principle (a unit may be rated above the band it is booked to), but in
+    the current library it marks a unit whose output and rating disagree (note 22 §1).
+    Advisory until note 22 Task 6 repairs `solar_thermal_flat` and the three heat-pump
+    stores; it then turns blocking."""
+    r = Result("unit grade_out in its primary output's grade family (advisory)",
+               blocking=False)
+    carriers = {c["carrier_id"]: c for c in car}
+    ranks_by_family: dict[str, set[int]] = defaultdict(set)
+    for c in car:
+        fam = grade_family(c)
+        if fam and c["grade_rank"].strip():
+            ranks_by_family[fam].add(int(c["grade_rank"]))
+    prim = _primary_output(io)
+    missing: list[str] = []
+    out_of_family: list[str] = []
+    disagree: list[str] = []
+    graded = 0
+    for u in unit:
+        uid = u["unit_id"]
+        p = prim.get(uid)
+        fam = grade_family(carriers[p]) if p in carriers else None
+        g = u["grade_out"].strip()
+        if fam is None:
+            continue
+        graded += 1
+        if not g:
+            missing.append(f"{uid}: primary output {p} ({fam}) is gradeable, grade_out blank")
+            continue
+        if int(g) not in ranks_by_family[fam]:
+            out_of_family.append(f"{uid}: grade_out {g} is not a {fam} rank")
+        elif int(g) != int(carriers[p]["grade_rank"]):
+            disagree.append(f"{uid}: grade_out {g}, primary output {p} at rank "
+                            f"{carriers[p]['grade_rank']}")
+    for m in missing + out_of_family:
+        r.detail(f"  {m}")
+    r.note = (f"{graded} units with a gradeable primary output; {len(missing)} without a "
+              f"grade_out, {len(out_of_family)} outside the family, {len(disagree)} whose "
+              f"grade_out differs from the output's rank")
+    for d in disagree:
+        r.detail(f"  {d}")
+    return r
+
+
+def _eligible_sets(elig: list[dict]) -> tuple[dict[tuple, set[str]], dict[str, set[str]]]:
+    """Per (activity, process) and per activity (the blank-`process_id` rows), the units
+    `unit_eligibility` admits. An activity-level row admits its unit at every process of
+    the activity, which is how A3 reads it."""
+    per_process: dict[tuple, set[str]] = defaultdict(set)
+    per_activity: dict[str, set[str]] = defaultdict(set)
+    for row in elig:
+        if row["process_id"].strip():
+            per_process[(row["carb3_activity"], row["process_id"])].add(row["unit_id"])
+        else:
+            per_activity[row["carb3_activity"]].add(row["unit_id"])
+    return per_process, per_activity
+
+
+def check_unsourced_draws(elig: list[dict], io: list[dict], car: list[dict],
+                          duty: list[dict]) -> Result:
+    """ADVISORY. A unit eligible at a process draws an `intermediate` carrier that no unit
+    eligible there produces, under any output role.
+
+    The carrier is matched exactly, not through the heat cascade. C8 (carrier balance)
+    lets hotter heat cascade into a colder band's node, so a boiler can in LP terms feed
+    `heat_pump_lt_reject`'s `heat_lt60` draw — but that is burning fuel to feed a heat
+    pump's source, not recovering reject heat, so it is not counted as a source here. The
+    count under the cascade is given in the note for comparison.
+
+    The case note 22 §3 names is `heat_pump_lt_reject` at the `REF` processes: it is meant
+    to lift a chiller's condenser heat, and no chiller carries a `reject` row (Task 4)."""
+    r = Result("intermediate draws with no eligible producer (advisory)", blocking=False)
+    carriers = {c["carrier_id"]: c for c in car}
+    draws: dict[str, set[str]] = defaultdict(set)
+    makes: dict[str, set[str]] = defaultdict(set)
+    for row in io:
+        c = carriers.get(row["carrier_id"])
+        if c is None or c["carrier_kind"] != "intermediate":
+            continue
+        (draws if row["role"] in INPUT_ROLES else makes)[row["unit_id"]].add(row["carrier_id"])
+
+    def rank(cid: str) -> tuple[str | None, int | None]:
+        c = carriers[cid]
+        fam = grade_family(c)
+        return fam, (int(c["grade_rank"]) if fam and c["grade_rank"].strip() else None)
+
+    def cascades(cid: str, produced: set[str]) -> bool:
+        fam, g = rank(cid)
+        if fam is None or g is None:
+            return False
+        for p in produced:
+            pf, pg = rank(p)
+            if pf == fam and pg is not None and (pg > g if fam == "heat" else pg < g):
+                return True
+        return False
+
+    per_process, per_activity = _eligible_sets(elig)
+    gaps: list[tuple[str, str, str, str]] = []
+    under_cascade = 0
+    scopes = [((a, p), us, us | per_activity.get(a, set())) for (a, p), us in per_process.items()]
+    scopes += [((a, ""), us, us) for a, us in per_activity.items()]
+    for (a, p), drawers, here in scopes:
+        produced = set().union(*(makes[u] for u in here)) if here else set()
+        for u in sorted(drawers):
+            for cid in sorted(draws[u] - produced):
+                gaps.append((u, cid, a, p))
+                if not cascades(cid, produced):
+                    under_cascade += 1
+    by_pair: dict[tuple[str, str], int] = defaultdict(int)
+    for u, cid, _, _ in gaps:
+        by_pair[(u, cid)] += 1
+    ref_processes = {(d["carb3_activity"], d["process_id"]) for d in duty
+                     if d["duty_family"] in COOLING_DUTY_FAMILIES}
+    reject_at_ref = sum(1 for u, _, a, p in gaps
+                        if u == "heat_pump_lt_reject" and (a, p) in ref_processes)
+    r.note = (f"{len(gaps)} (unit, activity, process) draws with no exact producer, "
+              f"{under_cascade} with none even through C8's heat cascade; "
+              f"{len(by_pair)} (unit, carrier) pairs; heat_pump_lt_reject at "
+              f"{reject_at_ref} REF processes")
+    for (u, cid), n in sorted(by_pair.items(), key=lambda kv: (-kv[1], kv[0])):
+        r.detail(f"  {u} draws {cid}: {n} places")
     return r
 
 
@@ -1295,6 +1549,7 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
         check_boundary(car, duty),
         check_abatement_hosts(tables["unit_abatement_host.csv"], unit),
         check_duty_profile(duty, reg, car),
+        check_duty_families(duty),
         check_process_crosswalk(tables["carb3_comit_process_crosswalk.csv"], reg),
         check_units(unit, tables["unit_input_output.csv"],
                     tables["unit_bill_of_materials.csv"], car, reg),
@@ -1314,6 +1569,9 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
         check_band_coverage(prof),
         check_admission_screen(unit, tables["unit_input_output.csv"], elig, car,
                                tables["scenario_parameters.csv"]),
+        check_duty_services(duty, car),
+        check_unit_grade_out(unit, tables["unit_input_output.csv"], car),
+        check_unsourced_draws(elig, tables["unit_input_output.csv"], car, duty),
     ]
     return results, tables
 

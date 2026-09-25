@@ -53,7 +53,10 @@ ENUMS = {
     "provenance": {"comit_reuse", "bref", "proxy"},
     "confidence": {"high", "medium", "low"},
 }
-DUTY_FAMILIES = {"DRY","EN","HRS","HTH","LTH","MOT","NEUOTH","OTH","PHEAT","REF","SPC","STM"}
+# unit.duty_family admits the eleven duty families of spec §3.3 plus EN, which keys the
+# hydrogen-producing units and presents no duty (§3.4). The duty profile's own set, without
+# EN, is in validate_carb3_data.py (note 22 Task 1).
+UNIT_FAMILIES = {"DRY","EN","HRS","HTH","LTH","MOT","NEUOTH","OTH","PHEAT","REF","SPC","STM"}
 PLACEHOLDERS = {"NA", "n/a", "N/A", "-", "?", "None", "null"}
 
 fail, warn = [], []
@@ -123,7 +126,7 @@ for r in units:
     for f in ("is_hybrid", "draws_ambient"):
         if r[f] not in ("TRUE", "FALSE"):
             fail.append("bool  %s.%s = %r" % (r["unit_id"], f, r[f]))
-    if r["spine"] == "service" and r["duty_family"] and r["duty_family"] not in DUTY_FAMILIES:
+    if r["spine"] == "service" and r["duty_family"] and r["duty_family"] not in UNIT_FAMILIES:
         fail.append("enum  %s.duty_family = %r" % (r["unit_id"], r["duty_family"]))
     if r["process_id"] and r["process_id"] not in PROC_IDS:
         fail.append("fk    %s.process_id = %r does not resolve" % (r["unit_id"], r["process_id"]))
