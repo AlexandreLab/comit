@@ -46,9 +46,11 @@ Open work on the CaRB3 duty families and cooling grades. The full plan is
 
 ## Documents and code
 
-- [ ] **Worked examples still use ungraded `cooling`.** The food-and-drink example, the
-  cement example and note 19. Not edited yet because a sub-zero band changes the
-  chiller-efficiency figures they are built on. *Note 22 Task 8, line list in note 22 §6.*
+- [ ] **Put the Food Processing Centre `refrigeration` data row on `cooling_0_15`.** The
+  food-and-drink worked example now says chilled water at that band (decided 2026-09-25, labels
+  only, no figure moved), and the row in `activity_process_duty_profile.csv` cites the example.
+  It still says ungraded `cooling` because the cooling carriers are not in `carrier.csv` yet.
+  *Note 22 Tasks 2 and 3.*
 - [ ] **`carb3` handles grades for heat only.** C10 (the grade cascade) in the code needs the
   reversed direction for cooling once graded cooling carriers are in the data.
   *Note 22 Task 9.*

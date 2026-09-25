@@ -352,9 +352,10 @@ quantity that turns capture net-negative in §8.4.
 **`motive_power` is a carrier, and it has to be.** The `MOT` (motors) duty's carrier cannot be
 `electricity`, because C8 (carrier balance) would then have the motor unit consuming and
 producing the same carrier and the node would be circular. A duty is a *service*, so the
-motor consumes `electricity` and produces `motive_power`; the same holds for `cooling` on a
+motor consumes `electricity` and produces `motive_power`; the same holds for cooling on a
 `REF` (refrigeration) duty. This is forced by C8's algebra, and §3.4 states it: its duty-family
-table maps `MOT` to `motive_power` and `REF` to `cooling`.
+table maps `MOT` to `motive_power` and `REF` to a graded cooling band, `cooling@band`. This
+works has no `REF` duty, so no cooling carrier is in play.
 
 **Units (§3.5), the rows this premise can reach.** Capacity units follow `D5`: Mt/yr for
 chemistry, PJ/yr for energy services, MW for PV and storage.
@@ -1104,7 +1105,7 @@ before the build.
 | **C7** | Known changes | none announced at this premise | — |
 | **C8** | **Carrier balance** | 13 carriers × 6 = 78 | always — equalities |
 | **C9** | Infrastructure availability | hydrogen false throughout; CO₂ transport from 2035 | binds before 2035 |
-| **C10** | Heat grade cascade | **no binding rows** | trivially satisfied — below |
+| **C10** | Grade cascade, heat and cooling | **no binding rows** | trivially satisfied — below |
 | **C11** | Connection capacity | 2 × 6 = 12 | **binds at `C-01` from 2035** — §8.3 |
 | **C12** | Siting cap | 6 | **binds** — §8.2 |
 
@@ -1732,7 +1733,7 @@ of *why* a rule exists is what stops it being undone.
 | 2 | No per-premise tier over that table, so every premise of an activity got the same split | **Closed.** §3.10.1 `premise_process_energy` — quantities, not shares, with the residual renormalised |
 | 3 | C8 admitted no disposal route, so vented process CO₂ could not balance and V18 failed on a physically fine premise | **Closed.** $d_{c,t}$ (§5.2), gated on `carrier_kind`, and **all thirteen of §8.1's nodes** now close with nothing assumed — `clinker` was the last exception and D16 closed it at point 9 |
 | 4 | §7 double-counted once electricity was generated on site, and said nothing about exports | **Closed.** §7.8 charges an indirect carrier on the import; §7.7 gives the allocation layer; D14 keeps the two apart |
-| 5 | A `MOT` or `REF` duty had no carrier that worked, because a duty carrier that is also a fuel makes C8 circular | **Closed.** §3.4 states the service-carrier convention and names `motive_power` and `cooling` |
+| 5 | A `MOT` or `REF` duty had no carrier that worked, because a duty carrier that is also a fuel makes C8 circular | **Closed.** §3.4 states the service-carrier convention and names `motive_power` and the graded `cooling@band` carriers |
 
 Two remain, and both are the same thing — a section cited from several places and never
 written:

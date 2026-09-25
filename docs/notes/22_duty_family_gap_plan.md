@@ -146,7 +146,7 @@ rule — though one (the distillery) should be split so its cooling-tower share 
 | 6 | Creamery / `refrigeration` | ammonia/glycol chillers, cold stores | `cooling_0_15` | ice-water and cold-store temperatures (dairy stores are chill, not freeze) | LBNL_DAIRY |
 | 7 | Distillery / `cooling_systems` | condenser pumps, cooling towers, yeast refrigerators | `cooling_0_15` now; **split** recommended | a share between condenser cooling (`cooling_gt15`) and yeast chilling (`cooling_0_15`) — an uncoupled split under §3.2 | BALMENACH_CS, document level only |
 | 8 | Factory / `process_cooling` | chillers, refrigerated dryers | `cooling_0_15` | none beyond MECS | MECS2022_T52 |
-| 9 | Food Processing Centre / `refrigeration` | ammonia plant, chill/freezer stores | `cooling_lt0` | freezer-store temperature | the food-and-drink worked example, which also needs updating (§6) |
+| 9 | Food Processing Centre / `refrigeration` | ammonia plant, chill/freezer stores | **`cooling_0_15`** — decided 2026-09-25 | none further: the food-and-drink worked example now states chilled water with no freezer store, and this row cites it | the worked example, **done** (§6) |
 | 10 | Industrial NEC / `process_cooling` | chillers | `cooling_0_15` | none beyond MECS | MECS2022_T52 |
 | 11 | Large industrial NEC / `process_cooling` | chillers | `cooling_0_15` | none beyond MECS | MECS2022_T52 |
 | 12 | Maltings - Non Trad / `refrigeration_attemperation` | chillers for steep/germination air | `cooling_0_15` | germination air temperature (about 14–16 °C, which needs chilled coils) | **no** — the row already says so |
@@ -243,9 +243,13 @@ cannot reject an `EN` duty row without also rejecting the ten units. Task 1 spli
 
 ## 6. Worked examples and code that quote `cooling`
 
-Changing the carrier id is a label change; choosing a band for a freezer store is not,
-because it questions the COP the example computes from. **So none of these is edited in
-this plan's first pass.** Each is listed so that Task 8 can apply them in one sweep, by one
+**Done 2026-09-25, as labels only.** Alexandre put the food-and-drink example's refrigeration
+in `cooling_0_15` (chilled water, no freezer store), so the chiller keeps its COP of 3.00 and
+no figure moved. The example, the cement example's prose and note 19 now name the graded
+carrier, C10 (the grade cascade) by its new name, and five gradeable carriers where they said
+four. The table below is kept as the record of what was touched. Changing the carrier id is a
+label change; choosing a band for a freezer store is not, because it questions the COP the
+example computes from. **Originally none of these was edited in this plan's first pass.** Each is listed so that Task 8 can apply them in one sweep, by one
 agent owning each file, as CLAUDE.md requires for anything that feeds derived figures.
 
 | File | Lines | What quotes `cooling` or `REF` | Numeric cascade? |
@@ -410,6 +414,11 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 - **Depends on:** Task 1.
 
 ### Task 8 — Bring the worked examples and note 19 into step
+
+**Done 2026-09-25, labels only** (§6): the band chosen was `cooling_0_15`, so the COP branch
+below never applied. What remains is Task 3 putting the reference-data row for Food
+Processing Centre `refrigeration` on the same band, so that the row and the example it cites
+agree again.
 
 - **Lane:** examples — one agent per file, as CLAUDE.md requires.
 - **Goal:** no document quotes the ungraded `cooling` carrier.
