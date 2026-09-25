@@ -1,6 +1,8 @@
 # carb3 site report — a Sankey per premise, with a year slider
 
-*Plan written 2026-09-25. Nothing built yet.*
+*Plan written 2026-09-25. Built 2026-09-25: `carb3/src/carb3/report/`, the `unit_flow`
+ledger table, and `make carb3-report`. Where the build departs from the plan is listed under
+"As built" at the end.*
 
 ## What it is
 
@@ -137,3 +139,38 @@ agent owns both. Task 5 last.
 Comparing premises side by side; comparing scenarios (e.g. two `--co2-tariff` runs);
 emissions attribution (MF-52, MF-53, MF-79 — out of the slice per note 21); any hosted
 dashboard.
+
+## As built
+
+What differs from the plan above, and why.
+
+- **`unit_flow` has two kinds of row.** C8 (carrier balance) terms, by role, times the
+  solved activity. Then each unit's output to a duty, read from z under a new role,
+  `duty_output`, on the carrier the duty is on. C10 (the grade cascade) lets that carrier
+  differ from the unit's declared primary output: `boiler_lt_gas` makes `heat_100_150` and
+  serves the dairy's `heat_60_100` duty. A6's (the problem builder's) derived fuel-CO₂ rows
+  carry the role `emission_derived`, so they stay apart from a declared `emission` row. The
+  Task 1 test nets each unit's C8-side roles before splitting by sign, because that is how
+  `carrier_mix` computes `produced` and `consumed`.
+- **`run_report.parquet` carries the objective.** Task 4's check needs it, and the report
+  reads parquet alone.
+- **The Sankey nets a unit's roles on one carrier.** `ccs_amine` draws `co2_fuel_fossil` and
+  emits some from its own gas burn. Drawn gross, that is a two-node cycle, which d3-sankey
+  cannot lay out. The tooltip lists the gross roles.
+- **The Energy-layer residual has three sinks and sources, not one.** A unit's energy in
+  minus energy out goes to `Losses`, or to `Used in processing` where the unit makes a
+  material product (the kiln, the grinders, the capture train). Calling the kiln's 3.1 PJ
+  a loss would be wrong. Where the residual is negative, as for a heat pump or chiller,
+  it enters from `Ambient heat`.
+- **The evolution charts are stacked bars, not areas.** The periods are seven discrete LP
+  periods at uneven spacing, and a bar per period is what the highlighted column and the
+  click target need. Capacity bars sit side by side rather than stacked: a kiln's Mt of
+  clinker and a grinder's Mt of cement do not add. There is one capacity chart per
+  capacity unit.
+- **The CO₂ chart shows vented against captured, not exported.** Captured is the
+  `emission_input` draw of capture units, already in kt. Exported `co2_captured` is in Mt
+  and would need a conversion keyed on the carrier's name. At the cement works the two are
+  equal, 22.76 kt/yr from 2035, and a test holds them equal.
+- **Vendored JavaScript is 68 kB.** That is a d3 bundle trimmed to the names the page uses
+  (62 kB) plus the unmodified `d3-sankey.min.js` (5.6 kB). Licences and the rebuild
+  command are in `vendor/`.

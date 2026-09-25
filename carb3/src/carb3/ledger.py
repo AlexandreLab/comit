@@ -1,4 +1,4 @@
-"""Cost by term, carrier mix, dispatch, build, disposal -> parquet.
+"""Cost by term, carrier mix, dispatch, build, disposal, unit flow -> parquet.
 
 CSV is for hand-authored inputs; **outputs and any fixture written for M2 are parquet**
 (§3.4, §7). The run report the ledger writes alongside them carries the §3.2 screen's
@@ -36,7 +36,7 @@ from carb3.build import (
     PeriodAxis,
     SolveResult,
     _annuity_factor,
-    _balance_coefficients,
+    _balance_terms,
     _carrier_facts,
     _dispatch_pairs,
     _scalar_parameter,
@@ -55,6 +55,12 @@ from carb3.sets import ModelSets
 #: to a pipeline is a cost. At the cement works it is a cost.
 COST_TERMS: tuple[str, ...] = ("capex", "opex", "fuel", "carbon", "export")
 
+#: The role ``unit_flow`` files a unit's output to a duty under. It is not a
+#: ``unit_input_output`` role: C1 (duty satisfaction) settles it, not C8 (carrier balance),
+#: and the carrier is the one the duty is on, which C10 (heat grade cascade) lets differ
+#: from the unit's declared primary output — a grade-3 boiler serving a grade-2 duty.
+DUTY_OUTPUT_ROLE: str = "duty_output"
+
 #: What :func:`write_parquet` writes, and the order it returns the paths in.
 LEDGER_TABLES: tuple[str, ...] = (
     "cost_by_term",
@@ -62,12 +68,13 @@ LEDGER_TABLES: tuple[str, ...] = (
     "dispatch",
     "build",
     "disposal",
+    "unit_flow",
 )
 
 
 @dataclass(frozen=True)
 class Ledger:
-    """The five output tables, long-form, one row per keyed observation."""
+    """The six output tables, long-form, one row per keyed observation."""
 
     #: One row per ``(period, term)`` over capex, opex, fuel and carbon. The terms must sum
     #: to the reported objective — that is one of the §5.3 test paths.
@@ -80,6 +87,9 @@ class Ledger:
     build: pd.DataFrame
     #: d_{c,t} — one row per ``(carrier_id, period)``, the venting that carbon is charged on.
     disposal: pd.DataFrame
+    #: How much of which carrier each unit drew or made — one row per
+    #: ``(unit_id, carrier_id, role, period)``, signed: + produced, − consumed.
+    unit_flow: pd.DataFrame
 
 
 @dataclass(frozen=True)
@@ -92,6 +102,9 @@ class RunReport:
     n_constraints: int
     wall_clock_seconds: float
     status: str
+    #: The objective the solver reported, £m. Written so a reader of the parquet alone — the
+    #: site report — can check the cost terms against it without re-solving.
+    objective: float | None = None
 
 
 def build_ledger(
@@ -101,7 +114,7 @@ def build_ledger(
     reference: ReferenceTables,
     tariff_override: float | None = None,
 ) -> Ledger:
-    """Decompose the solution into the five tables above.
+    """Decompose the solution into the six tables above.
 
     **``reference`` is the fourth argument the scaffolded signature lacked.** The three it
     named carry the *shape* of the answer and none of its prices: κ, φ and L live in
@@ -134,9 +147,14 @@ def build_ledger(
         for carrier_id, units in sorted(sets.supply.items())
         if units & sets.units
     }
-    coefficients = _balance_coefficients(
-        reference, model_units, periods, carrier_facts, supplied
-    )
+    terms = _balance_terms(reference, model_units, periods, carrier_facts, supplied)
+    coefficients = {
+        carrier_id: {
+            unit_id: sum(by_role.values(), np.zeros(len(periods)))
+            for unit_id, by_role in by_unit.items()
+        }
+        for carrier_id, by_unit in terms.items()
+    }
 
     solution = result.solution
     z = _series(solution, "z", "dispatch", periods)
@@ -154,6 +172,7 @@ def build_ledger(
     carrier_mix = _carrier_mix_table(
         coefficients, carrier_facts, activity, m, d, x, dispatch, periods
     )
+    unit_flow = _unit_flow_table(terms, carrier_facts, activity, pairs, z, periods)
     cost_by_term = _cost_table(
         reference, axis, periods, model_units, parameters, carrier_facts, a, e, m, d, x,
         activity, tariff_override,
@@ -164,6 +183,7 @@ def build_ledger(
         dispatch=dispatch,
         build=build,
         disposal=disposal,
+        unit_flow=unit_flow,
     )
 
 
@@ -171,8 +191,8 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
     """Write the ledger and the run report under ``out_dir``, returning the paths written.
 
     One directory per premise, so two premises written to the same root do not overwrite
-    each other. Seven files: the five ledger tables, ``run_report.parquet`` — one row, the
-    G1 (single-premise wall clock) measurement and the solver status — and
+    each other. Eight files: the six ledger tables, ``run_report.parquet`` — one row, the
+    G1 (single-premise wall clock) measurement, the solver status and the objective — and
     ``screen_dropped.parquet``, the §3.2 screen's work list, which is the table note 20
     records. The screen's list is written even when it is empty, because "nothing was
     dropped" is a finding too and an absent file cannot say it.
@@ -195,6 +215,7 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
             {
                 "premise_id": report.premise_id,
                 "status": report.status,
+                "objective": report.objective,
                 "n_variables": report.n_variables,
                 "n_constraints": report.n_constraints,
                 "wall_clock_seconds": report.wall_clock_seconds,
@@ -465,6 +486,71 @@ def _carrier_mix_table(
         records,
         columns=["carrier_id", "period", "carrier_kind", "imported", "produced", "consumed",
                  "disposed", "exported", "dispatched", "net"],
+    )
+
+
+def _unit_flow_table(
+    terms: dict[str, dict[str, dict[str, np.ndarray]]],
+    carrier_facts,
+    activity: dict[str, np.ndarray],
+    pairs,
+    z: dict[str, np.ndarray],
+    periods: tuple[int, ...],
+) -> pd.DataFrame:
+    """Each unit's draw and output per carrier, role and period, signed.
+
+    Two sources, both read from the solution. **C8's terms** — the same coefficient set the
+    constraint was built from, by role, times the solved activity: a fuel or auxiliary
+    draw, a reject, a declared or A6-derived emission, and the primary output of a D16
+    (internal product) supplier such as the kiln's clinker. **C1's side** — the solved
+    z_{u,q,t} summed per unit and duty carrier, under :data:`DUTY_OUTPUT_ROLE`; a
+    ``primary_output`` coefficient is 1 on every row of ``unit_input_output``, so this is
+    also the unit's primary output, re-labelled to the carrier the duty is on.
+
+    The split is what makes the table checkable against ``carrier_mix``: the positive
+    C8-side flows sum to ``produced``, the negative to ``consumed``, and the duty-side flows
+    to ``dispatched``, per carrier and period. Nothing here is re-joined from the CSV.
+
+    A (unit, carrier, role) whose flow is zero in every period carries no rows.
+    """
+    n_periods = len(periods)
+    series: dict[tuple[str, str, str], np.ndarray] = {}
+    for carrier_id, by_unit in terms.items():
+        for unit_id, by_role in by_unit.items():
+            for role, weights in by_role.items():
+                flow = np.asarray(weights, dtype=float) * activity.get(
+                    unit_id, np.zeros(n_periods)
+                )
+                key = (unit_id, carrier_id, role)
+                series[key] = series.get(key, np.zeros(n_periods)) + flow
+    for pair in pairs:
+        if pair.duty_key is None:
+            continue
+        _premise_id, _process_id, carrier_id = pair.duty_key
+        key = (pair.unit_id, carrier_id, DUTY_OUTPUT_ROLE)
+        series[key] = series.get(key, np.zeros(n_periods)) + _column(
+            z, pair.coordinate, n_periods
+        )
+
+    records = []
+    for (unit_id, carrier_id, role), values in sorted(series.items()):
+        if not np.any(np.abs(values) > 0.0):
+            continue
+        facts = carrier_facts.get(carrier_id)
+        for index, year in enumerate(periods):
+            records.append(
+                {
+                    "unit_id": unit_id,
+                    "carrier_id": carrier_id,
+                    "role": role,
+                    "period": year,
+                    "carrier_kind": facts.kind if facts else "",
+                    "flow": float(values[index]),
+                }
+            )
+    return pd.DataFrame.from_records(
+        records,
+        columns=["unit_id", "carrier_id", "role", "period", "carrier_kind", "flow"],
     )
 
 

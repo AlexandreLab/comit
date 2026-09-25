@@ -1,4 +1,4 @@
-"""ledger.py — cost by term, carrier mix, dispatch, build, disposal -> parquet.
+"""ledger.py — cost by term, carrier mix, dispatch, build, disposal, unit flow -> parquet.
 
 The tables' *contents* are checked end to end in ``test_integration.py``, against a real
 premise and a real solve. What is checked here is the shape of the contract and the two
@@ -18,7 +18,7 @@ from carb3 import build, ledger
 from carb3.load import AdmissionScreen, UnitDrop
 
 
-def test_ledger_carries_the_five_output_tables() -> None:
+def test_ledger_carries_the_six_output_tables() -> None:
     fields = {f.name for f in dataclasses.fields(ledger.Ledger)}
     assert fields == {
         "cost_by_term",
@@ -26,6 +26,7 @@ def test_ledger_carries_the_five_output_tables() -> None:
         "dispatch",
         "build",
         "disposal",
+        "unit_flow",
     }
 
 
@@ -74,7 +75,12 @@ def test_write_parquet_writes_the_screen_list_even_when_it_is_empty(tmp_path: Pa
     """"Nothing was dropped" is a finding too, and an absent file cannot say it."""
     empty = pd.DataFrame()
     tables = ledger.Ledger(
-        cost_by_term=empty, carrier_mix=empty, dispatch=empty, build=empty, disposal=empty
+        cost_by_term=empty,
+        carrier_mix=empty,
+        dispatch=empty,
+        build=empty,
+        disposal=empty,
+        unit_flow=empty,
     )
     report = ledger.RunReport(
         premise_id="fx-empty",
@@ -100,7 +106,12 @@ def test_write_parquet_keeps_one_directory_per_premise(tmp_path: Path) -> None:
     """Two premises written to one root must not overwrite each other."""
     empty = pd.DataFrame()
     tables = ledger.Ledger(
-        cost_by_term=empty, carrier_mix=empty, dispatch=empty, build=empty, disposal=empty
+        cost_by_term=empty,
+        carrier_mix=empty,
+        dispatch=empty,
+        build=empty,
+        disposal=empty,
+        unit_flow=empty,
     )
     for premise_id in ("fx-a", "fx-b"):
         ledger.write_parquet(

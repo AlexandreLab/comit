@@ -21,7 +21,7 @@ CARB3    := $(REPO)/carb3
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check docs-check docs-list data-check data-report data-worklist docs-build carb3 carb3-run
+.PHONY: help check docs-check docs-list data-check data-report data-worklist docs-build carb3 carb3-run carb3-report
 
 help: ## Show available targets
 	@grep -hE '^[a-z0-9-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -58,7 +58,8 @@ carb3: ## Run the carb3 package tests
 	@$(UV) run --directory $(CARB3) pytest
 
 # Not part of `make check`: this solves and writes, where every other target only reads
-# and verifies. PREMISES overrides which premises run, OUT_DIR asks for the parquet ledger.
+# and verifies. PREMISES overrides which premises run, OUT_DIR asks for the parquet ledger
+# and a site_report.html beside each solved premise (PREMISES="... --no-report" skips it).
 #   make carb3-run PREMISES=mvp-dairy OUT_DIR=outputs/carb3
 #
 # PREMISES also carries the CLI's own switches, which is how the note 21 §4.4 sensitivity
@@ -71,3 +72,9 @@ carb3: ## Run the carb3 package tests
 carb3-run: ## Solve the synthetic premises and print the run report
 	@$(UV) run --directory $(CARB3) python -m carb3 $(PREMISES) \
 	  $(if $(OUT_DIR),--out-dir $(abspath $(OUT_DIR)))
+
+# Rebuild every site_report.html under OUT_DIR from the parquet already there; no solve.
+#   make carb3-report OUT_DIR=outputs/carb3
+carb3-report: ## Rebuild the site reports under OUT_DIR from parquet, without re-solving
+	@test -n "$(OUT_DIR)" || { echo "carb3-report needs OUT_DIR=<dir written by carb3-run>"; exit 2; }
+	@$(UV) run --directory $(CARB3) python -m carb3.report $(abspath $(OUT_DIR))

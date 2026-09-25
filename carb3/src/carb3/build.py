@@ -127,6 +127,10 @@ PRIMARY_OUTPUT_ROLE: str = "primary_output"
 #: ``primary`` and ``product`` may not, or the model could import gas and dump it.
 DISPOSABLE_KINDS: frozenset[str] = frozenset({"intermediate", "emission"})
 
+#: The role A6 files its derived fuel-CO₂ rows under. ``unit_input_output`` never uses it,
+#: so a derived row cannot be confused with a declared ``emission`` row.
+A6_ROLE: str = "emission_derived"
+
 #: The two carriers A6 derives (D15). Process CO₂ is declared in ``unit_input_output``.
 FOSSIL_FUEL_CO2: str = "co2_fuel_fossil"
 BIOGENIC_FUEL_CO2: str = "co2_fuel_biogenic"
@@ -977,6 +981,29 @@ def _balance_coefficients(
 ) -> dict[str, dict[str, np.ndarray]]:
     """C8's coefficient set: carrier → unit → ι over the periods.
 
+    The roles of :func:`_balance_terms` summed. The ledger's ``unit_flow`` table reads the
+    terms before the sum, so the two can never disagree about which rows C8 saw.
+    """
+    return {
+        carrier_id: {
+            unit_id: sum(by_role.values(), np.zeros(len(periods)))
+            for unit_id, by_role in by_unit.items()
+        }
+        for carrier_id, by_unit in _balance_terms(
+            reference, model_units, periods, carrier_facts, supplied
+        ).items()
+    }
+
+
+def _balance_terms(
+    reference: ReferenceTables,
+    model_units: Sequence[str],
+    periods: Sequence[int],
+    carrier_facts: dict[str, _CarrierFacts],
+    supplied: dict[str, frozenset[str]] | None = None,
+) -> dict[str, dict[str, dict[str, np.ndarray]]]:
+    """C8's coefficient set by role: carrier → unit → role → ι over the periods.
+
     Every role except ``primary_output`` enters, because C8 reads a primary output through
     z° and z° is out of this slice — a unit's whole output is dispatched to duties and is
     settled by C1 instead. The inner sum is over **roles**, per §5.5: a store holding a charge
@@ -1000,7 +1027,7 @@ def _balance_coefficients(
 
     wanted = set(model_units)
     n_periods = len(periods)
-    coefficients: dict[str, dict[str, np.ndarray]] = {}
+    coefficients: dict[str, dict[str, dict[str, np.ndarray]]] = {}
     burn: dict[str, dict[str, float]] = {}
 
     for row in table.itertuples(index=False):
@@ -1022,8 +1049,8 @@ def _balance_coefficients(
             )
         reads_output = unit_id in (supplied or {}).get(carrier_id, frozenset())
         if role != PRIMARY_OUTPUT_ROLE or reads_output:
-            slot = coefficients.setdefault(carrier_id, {})
-            slot[unit_id] = slot.get(unit_id, np.zeros(n_periods)) + value
+            slot = coefficients.setdefault(carrier_id, {}).setdefault(unit_id, {})
+            slot[role] = slot.get(role, np.zeros(n_periods)) + value
         facts = carrier_facts[carrier_id]
         if role in CONSUMING_ROLES and facts.kind == "primary" and not facts.is_indirect:
             burn.setdefault(unit_id, {})[carrier_id] = (
@@ -1033,15 +1060,19 @@ def _balance_coefficients(
     _apply_a6(reference, burn, carrier_facts, periods, coefficients)
 
     # Drop anything that is zero in every period: an all-zero row would add a term to C8 that
-    # carries no flow, which is the dense-model habit #248 warns about.
+    # carries no flow, which is the dense-model habit #248 warns about. The test is on the
+    # role sum, so two roles that cancel exactly drop together, as they did before the split.
     return {
         carrier_id: {
-            unit_id: values
-            for unit_id, values in by_unit.items()
-            if np.any(np.abs(values) > 0.0)
+            unit_id: by_role
+            for unit_id, by_role in by_unit.items()
+            if np.any(np.abs(sum(by_role.values(), np.zeros(n_periods))) > 0.0)
         }
         for carrier_id, by_unit in coefficients.items()
-        if any(np.any(np.abs(values) > 0.0) for values in by_unit.values())
+        if any(
+            np.any(np.abs(sum(by_role.values(), np.zeros(n_periods))) > 0.0)
+            for by_role in by_unit.values()
+        )
     }
 
 
@@ -1050,9 +1081,12 @@ def _apply_a6(
     burn: dict[str, dict[str, float]],
     carrier_facts: dict[str, _CarrierFacts],
     periods: Sequence[int],
-    coefficients: dict[str, dict[str, np.ndarray]],
+    coefficients: dict[str, dict[str, dict[str, np.ndarray]]],
 ) -> None:
     """A6 (§3.6, D15): derive the two fuel-CO₂ ``emission`` rows, per period.
+
+    They are filed under the role :data:`A6_ROLE`, not ``emission``, so a declared process
+    row and a derived fuel row on one carrier stay apart in the ledger's ``unit_flow``.
 
     ι_{u,co2_fuel_fossil} = Σ_c Σ_θ |ι_{u,c,θ}| f_{c,t} (1 − b_c), and the biogenic row the
     same with b_c. Both positive, because emissions are produced. The split happens here,
@@ -1087,8 +1121,8 @@ def _apply_a6(
                 raise ValueError(
                     f"A6 derives {carrier_id!r} and carrier.csv does not define it (§3.6)"
                 )
-            slot = coefficients.setdefault(carrier_id, {})
-            slot[unit_id] = slot.get(unit_id, np.zeros(len(periods))) + values
+            slot = coefficients.setdefault(carrier_id, {}).setdefault(unit_id, {})
+            slot[A6_ROLE] = slot.get(A6_ROLE, np.zeros(len(periods))) + values
 
 
 def _objective(
