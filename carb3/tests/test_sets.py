@@ -219,7 +219,10 @@ def test_c10_a_grade_3_unit_is_refused_a_grade_4_duty(dairy: sets.ModelSets) -> 
     both directions are asserted rather than one.
     """
     assert "boiler_lt_gas" not in dairy.eligible[DAIRY_G4]
-    assert "resistance_heater_lt" not in dairy.eligible[DAIRY_G4]
+    # ``boiler_lt_biomethane`` is offered at ``direct_heating`` by the options join and is
+    # still grade 3. ``resistance_heater_lt`` used to stand here; since 2026-09-25 it is the
+    # electrode steam boiler rated to band 4 (note 20 item 25) and does reach this duty.
+    assert "boiler_lt_biomethane" not in dairy.eligible[DAIRY_G4]
 
 
 def test_c10_a_grade_2_unit_is_refused_a_grade_3_duty(dairy: sets.ModelSets) -> None:

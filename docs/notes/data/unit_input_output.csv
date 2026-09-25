@@ -48,6 +48,12 @@ furnace_ht_coal,heat_400_1000,1,primary_output,comit_reuse,low,"[COMIT_WB_140] s
 furnace_ht_coal,coal,-1.66667,fuel_input,comit_reuse,low,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHHTHHCO01"
 furnace_ht_elec,heat_400_1000,1,primary_output,comit_reuse,low,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHHTHELC01"
 furnace_ht_elec,electricity,-1.17647,fuel_input,comit_reuse,low,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHHTHELC01"
+kiln_ht_gas,heat_gt1000,1,primary_output,bref,low,"[BEIS_IFS2018] section 7.2, ""Natural gas fired kiln""; Table 5 ""Direct - High Temperature 240-2,000 C"". Added decided 2026-09-25 on PR #64"
+kiln_ht_gas,natural_gas,-1.18,fuel_input,bref,low,"[BEIS_IFS2018] section 7.2, ""Natural gas fired kiln"": 1.18 kWh fuel per kWh thermal output. Added decided 2026-09-25 on PR #64"
+kiln_ht_gas,heat_lt60,0.14192,reject,bref,low,"[DECC_SURPLUSHEAT2014] section 4.1: recoverable stream fraction (48 - 13)/291 = 0.12027 of fuel energy in, the whole-of-industry figure every fuel-fired unit in this table carries, banded on heat_lt60. CONFIDENCE LOW: no per-unit figure was found; 0.12027 x 1.18 = 0.14192. Added decided 2026-09-25 on PR #64"
+engine_mot_gas,motive_power,1,primary_output,bref,low,"[EPA_CHP_RICE] p2-1, mechanical drive. Added decided 2026-09-25 on PR #64"
+engine_mot_gas,natural_gas,-2.71739,fuel_input,bref,low,"[EPA_CHP_RICE] Table 2-2 System 3: 36.8% electrical efficiency, HHV, taken as the shaft efficiency (a genset's electrical output is below its shaft output, so the fuel is slightly overstated); natural_gas is on gross CV, so 1 / 0.368 = 2.71739. Added decided 2026-09-25 on PR #64"
+engine_mot_gas,heat_lt60,0.32682,reject,bref,low,"[DECC_SURPLUSHEAT2014] section 4.1: recoverable stream fraction (48 - 13)/291 = 0.12027 of fuel energy in, the whole-of-industry figure every fuel-fired unit in this table carries, banded on heat_lt60. CONFIDENCE LOW: no per-unit figure was found; 0.12027 x 2.71739 = 0.32682. Added decided 2026-09-25 on PR #64"
 heat_pump_ht,heat_100_150,1,primary_output,proxy,medium,[CARB3_WE_FOODDRINK] 1.11 coefficient table
 heat_pump_ht,electricity,-0.4762,fuel_input,proxy,medium,[CARB3_WE_FOODDRINK] 1.11 coefficient table
 heat_pump_ht,heat_60_100,-0.5238,aux_input,proxy,medium,[CARB3_WE_FOODDRINK] 1.11 coefficient table

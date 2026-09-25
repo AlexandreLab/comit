@@ -20,11 +20,12 @@ Open work on the CaRB3 duty families and cooling grades. The full plan is
 
 ## Decisions for Alexandre, from note 22 Task 10
 
-- [ ] Note 20 item 27: 13 `HTH` rows at rank 6 have no unit (a >1000 °C furnace, or move the boundary).
+- [x] Note 20 item 27: `kiln_ht_gas` added 2026-09-25; 11 of 13 rank-6 rows served, the two coke-oven rows are chemistry nodes (item 30).
 - [ ] Note 20 item 30: 20 mobile-plant rows and two chemistry nodes have no unit.
-- [ ] Note 20 item 25: refinery steam at rank 4, two rows.
+- [x] Note 20 item 25: steam CHPs and four boilers at `grade_out` 4, 2026-09-25.
 - [ ] Note 20 item 37: does Mineral Production - Gas `power_generation` leave the register?
-- [ ] Note 20 items 62–66: distillery split, Works fan share, `dryer_steam`, gas-only motive rows, the rebuild's family groups.
+- [x] Note 20 items 65 (gas engine added) and 66 (family groups in spec §3.5.1), 2026-09-25.
+- [ ] Note 20 items 62–64: distillery split, Works fan share, `dryer_steam`.
 
 ## Data
 

@@ -45,8 +45,9 @@ A unit is offered at `(carb3_activity, process_id)` when, for at least one duty 
    a free grade-up, and is withheld until its coefficients are fixed (note 20 item 64).
 4. **Scope.** A generic service unit (`spine` = service, blank `process_id`) is offered
    wherever it serves. A service unit keyed to a process is node-keyed like a chemistry unit
-   (D5) and keeps its activity: `refinery_process_heat_gas` is re-joined within the
-   activities it already had rows at, and a keyed unit whose primary output is a `product`
+   (D5) and keeps its reach: it is re-joined only at the `(activity, process)` pairs its
+   rows already name (`refinery_process_heat_gas` at the refinery, `engine_mot_gas` at the
+   three gas-only `OTH` motive rows, note 20 item 65), and a keyed unit whose primary output is a `product`
    (the two rolling mills) keeps its rows verbatim, since no duty row names its product and
    its process is a node (§3.9).
 
@@ -142,10 +143,10 @@ def main():
     keyed = {u["unit_id"] for u in units if u["spine"] == "service" and u["process_id"].strip()}
     keyed_product = {uid for uid in keyed
                      if carriers.get(primary.get(uid) or "", {}).get("carrier_kind") == "product"}
-    scope = defaultdict(set)  # keyed unit -> the activities its existing rows reach
+    scope = defaultdict(set)  # keyed unit -> the (activity, process) pairs its rows reach
     for r in elig:
         if r["unit_id"] in keyed:
-            scope[r["unit_id"]].add(r["carb3_activity"])
+            scope[r["unit_id"]].add((r["carb3_activity"], r["process_id"]))
     candidates = [u for u in service if u["unit_id"] not in keyed_product]
 
     wet = {"LTH", "SPC", "STM"}
@@ -183,7 +184,7 @@ def main():
             skipped["diesel mobile plant"].add((a, p))
             continue
         for u in candidates:
-            if u["unit_id"] in keyed and a not in scope[u["unit_id"]]:
+            if u["unit_id"] in keyed and (a, p) not in scope[u["unit_id"]]:
                 continue
             if serves(u, row):
                 offers[(u["unit_id"], a, p)].append(row)

@@ -27,7 +27,8 @@ them, and routes the other coverage gaps to the note 20 items that own them.
 **Status 2026-09-25:** Tasks 1, 2, 3, 7, 9 and 10 are done (§8), Task 10 absorbing 4, 5 and
 6, and Task 8 is done as labels. The unservable count went **89 → 92 → 38**: up by three when
 Task 3 put three rows on `cooling_lt0`, then down to 38 after Task 10's units, `OTH` rows and
-eligibility rebuild. Every survivor is a named gap with its cause and owner (Task 10), and 18
+eligibility rebuild, then to **25** after Alexandre's decisions on PR #64 (a >1000 °C gas kiln,
+steam CHPs and boilers rated to band 4, a gas engine for shaft work). Every survivor is a named gap with its cause and owner (Task 10), and 18
 more rows are no longer counted because they classify a chemistry node that makes a product
 (§3.9, note 20 item 51).
 
@@ -602,6 +603,23 @@ agree again.
   - Counts in `CLAUDE.md` and `carb3/tests/test_load.py` re-measured: 138 units, 3,207
     eligibility rows, 50 reaching an uncostable unit, 1,378 including the unpriced-fuel leg,
     58 units admitted.
+  - **After the PR #64 decisions (2026-09-25): 25 unservable.** `kiln_ht_gas` serves 11 of
+    the 13 rank-6 rows (note 20 item 27), the steam CHPs and boilers at `grade_out` 4 serve
+    both refinery steam rows (item 25), `engine_mot_gas` is the default at the three gas-only
+    motive rows (item 65), and the family groups are in the live spec §3.5.1 (item 66). What
+    is left:
+
+    | Rows | Cause | Owner |
+    |---:|---|---|
+    | 20 | `MOT` diesel mobile plant: no mobile-plant unit | note 20 item 30 |
+    | 4 | `HTH` at chemistry nodes with no node unit: aluminium potlines, the beet-sugar lime kiln, two coke-oven processes | note 20 item 30 |
+    | 1 | `OTH` on `electricity`, Mineral Production - Gas `power_generation` | note 20 item 37 |
+
+    Five default units still cannot serve their duty: the two coke-oven processes, Foundry
+    `melting_holding` (a coal furnace; no coal unit reaches rank 6), Mineral Production - Gas
+    `power_generation`, and the electric plasma-cutting share at Shipbuilding
+    `steel_prep_cutting`. Counts: 140 units, 60 admitted, 3,263 eligibility rows, 1,391
+    reaching an incomplete or unpriced-fuel unit.
 - **Lane:** units and duties together, one owner for all six files.
 - **Goal:** every duty row has an eligible unit that can serve it at its grade and in its
   grade family, and every unit offered for a duty can actually be costed and run. The 89

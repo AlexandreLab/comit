@@ -1021,7 +1021,8 @@ def _unservable_owner(row: dict, cause: str) -> str:
     if f == "SPC":
         return "note 20 item 24 (SPC at rank 2, SPC units at grade_out 1)"
     if f == "HTH" and cause == "grade_ceiling":
-        return "note 20 item 27 (rank 6 or 5, and no admitted unit reaches it)"
+        return ("note 20 item 27 (rank 6 or 5, and no admitted unit reaches it); at a "
+                "chemistry node, item 30 (no node unit)")
     if f == "HTH":
         return "note 20 item 30 (a chemistry node with no unit in the library)"
     if f == "STM":
