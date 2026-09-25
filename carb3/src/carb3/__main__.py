@@ -170,6 +170,7 @@ def run_premise(
             n_constraints=result.n_constraints,
             wall_clock_seconds=result.wall_clock_seconds,
             status=result.termination_condition,
+            objective=result.objective,
         )
         written = ledger.write_parquet(tables, report, out_dir)
     return PremiseRun(

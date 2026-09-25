@@ -381,6 +381,64 @@ def test_the_ledger_carrier_mix_nets_to_zero_at_every_c8_node(
     assert nodes["net"].abs().max() < TOLERANCE
 
 
+@pytest.mark.parametrize("premise_id", SOLVING_PREMISES)
+def test_unit_flow_sums_to_the_carrier_mix(runs: dict[str, Run], premise_id: str) -> None:
+    """The site report's edges are the ledger's, not a recomputation.
+
+    Per carrier and period, ``unit_flow``'s C8-side rows, netted per unit, split into
+    ``carrier_mix``'s ``produced`` (the positive ones) and ``consumed`` (the negative ones),
+    and its ``duty_output`` rows sum to ``dispatched``. The first two are read from the same
+    coefficient set, so they agree to rounding; the third is a separate read of z, so it
+    agreeing is the evidence that no duty-serving unit was left out of the table.
+    """
+    tables = runs[premise_id].tables
+    flow = tables.unit_flow
+    assert not flow.empty
+    assert set(flow["period"]) == set(PERIOD_YEARS)
+    assert not flow.duplicated(["unit_id", "carrier_id", "role", "period"]).any()
+
+    # carrier_mix splits a unit's flow by sign after summing its roles, so the capture
+    # train's draw and its own A6 row on co2_fuel_fossil net before the split. Do the same.
+    c8_side = (
+        flow[flow["role"] != ledger.DUTY_OUTPUT_ROLE]
+        .groupby(["unit_id", "carrier_id", "period"], as_index=False)["flow"]
+        .sum()
+    )
+    duty_side = flow[flow["role"] == ledger.DUTY_OUTPUT_ROLE]
+    produced = c8_side[c8_side["flow"] > 0].groupby(["carrier_id", "period"])["flow"].sum()
+    consumed = -c8_side[c8_side["flow"] < 0].groupby(["carrier_id", "period"])["flow"].sum()
+    dispatched = duty_side.groupby(["carrier_id", "period"])["flow"].sum()
+
+    mix = tables.carrier_mix.set_index(["carrier_id", "period"])
+    for column, sums in (
+        ("produced", produced),
+        ("consumed", consumed),
+        ("dispatched", dispatched),
+    ):
+        expected = mix[column]
+        actual = sums.reindex(expected.index, fill_value=0.0)
+        assert (actual - expected).abs().max() < 1e-9, column
+        # Nothing in unit_flow lands on a carrier the carrier mix does not know.
+        assert set(sums.index) <= set(expected.index), column
+
+
+def test_unit_flow_keeps_a_derived_emission_apart_from_a_declared_one(
+    runs: dict[str, Run],
+) -> None:
+    """The capture train both draws ``co2_fuel_fossil`` and, burning gas, makes some.
+
+    Summed over roles the two would net into one number and hide how much it captured.
+    """
+    flow = runs["mvp-cement"].tables.unit_flow
+    ccs = flow[(flow["unit_id"] == "ccs_amine") & (flow["carrier_id"] == "co2_fuel_fossil")]
+    by_role = ccs.groupby("role")["flow"].sum()
+    assert by_role["emission_input"] < 0.0
+    assert by_role[build.A6_ROLE] > 0.0
+
+    kiln = flow[(flow["unit_id"] == "kiln_dry_gas") & (flow["period"] == 2050)]
+    assert set(kiln["role"]) >= {"primary_output", "fuel_input", "emission", build.A6_ROLE}
+
+
 # --------------------------------------------------------------------------------------
 # The objective
 # --------------------------------------------------------------------------------------
@@ -792,6 +850,7 @@ def test_the_ledger_round_trips_through_parquet(
         n_constraints=run.result.n_constraints,
         wall_clock_seconds=run.result.wall_clock_seconds,
         status=run.result.termination_condition,
+        objective=run.result.objective,
     )
     written = ledger.write_parquet(run.tables, report, tmp_path)
     assert all(path.suffix == ".parquet" and path.is_file() for path in written)
@@ -800,6 +859,9 @@ def test_the_ledger_round_trips_through_parquet(
         original = getattr(run.tables, table)
         restored = pd.read_parquet(tmp_path / run.premise_id / f"{table}.parquet")
         pd.testing.assert_frame_equal(original, restored)
+
+    run_report = pd.read_parquet(tmp_path / run.premise_id / "run_report.parquet")
+    assert run_report.loc[0, "objective"] == pytest.approx(run.result.objective)
 
     dropped = pd.read_parquet(tmp_path / run.premise_id / "screen_dropped.parquet")
     assert len(dropped) == len(screen.dropped)
