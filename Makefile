@@ -21,7 +21,7 @@ CARB3    := $(REPO)/carb3
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check docs-check docs-list data-check data-report docs-build carb3 carb3-run
+.PHONY: help check docs-check docs-list data-check data-report data-worklist docs-build carb3 carb3-run
 
 help: ## Show available targets
 	@grep -hE '^[a-z0-9-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -41,6 +41,14 @@ data-check: ## Validate the CaRB3 data tables (blocking checks only)
 
 data-report: ## Full CaRB3 data report, including advisory counts
 	@$(PYTHON) $(EXAMPLES)/validate_carb3_data.py
+
+# The unservable-duty work list note 22 Task 10 reads: every duty row no eligible unit can
+# serve, with its cause and the note 20 item or note 22 task that owns it. Regenerate it
+# after any change to the duty profile, the unit tables or eligibility, and commit it.
+WORKLIST := $(REPO)/docs/notes/data/build/unservable_duties.csv
+
+data-worklist: ## Write the unservable-duty work list (docs/notes/data/build/unservable_duties.csv)
+	@$(PYTHON) $(EXAMPLES)/validate_carb3_data.py --quiet --unservable-csv $(WORKLIST)
 
 docs-build: ## Regenerate the interface docs and spec diagrams
 	@$(PYTHON) $(EXAMPLES)/build_interface_docs.py --all

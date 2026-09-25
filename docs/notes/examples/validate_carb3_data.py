@@ -943,6 +943,179 @@ def check_unsourced_draws(elig: list[dict], io: list[dict], car: list[dict],
     return r
 
 
+# ------------------------------------------------ duty coverage, by cause (2026-09-25)
+#
+# Note 22 Task 7. A duty row that no eligible unit can serve is not a load failure — the
+# keys join and every blocking check passes — but the LP either relaxes C1 (duty
+# satisfaction) at that row or is infeasible there. This makes the gap a standing,
+# attributed count instead of a surprise at solve time. ADVISORY, permanently for now
+# (note 22 §7): it depends on note 20 items 24, 25, 27 and 30.
+#
+# "Serves" follows note 22 §1: the unit is admitted by `unit_eligibility` for the duty's
+# (activity, process) or by an activity-level row with a blank `process_id`, and its
+# `primary_output` row is the duty's carrier — for a graded duty, a carrier in the same
+# `grade_family` whose `grade_out` reaches the duty's rank in C10's (the grade cascade's)
+# direction: at or above it for heat, at or below it for cooling. A unit with no
+# coefficients serves nothing. A blank `grade_out` on a unit with a gradeable output reads
+# as its output's own rank (§3.5 requires it; note 22 Task 6 fills the one blank).
+
+UNSERVABLE_CAUSES = {
+    "duty_on_fuel": "the duty sits on a primary or emission carrier, so no unit can serve it "
+                    "without making C8 (carrier balance) circular — V34 (a)",
+    "no_unit": "no unit is eligible at the process or the activity at all",
+    "no_coefficients": "a unit of the duty's family is admitted, but it has no "
+                       "unit_input_output rows, so it serves nothing",
+    "no_family_unit": "units are admitted, but none has the duty's carrier (or a band of its "
+                      "grade family) as its primary output",
+    "grade_ceiling": "units of the right carrier family are admitted, but none has a "
+                     "grade_out that reaches the duty's band",
+}
+
+UNSERVABLE_COLUMNS = [
+    "carb3_activity", "process_set_id", "process_id", "duty_family", "carrier_id",
+    "grade_rank", "duty_share", "cause", "owner", "eligible_units", "family_units",
+    "detail",
+]
+
+# Note 22 §2 and §5: MOT rows at processes whose motive load is diesel mobile plant,
+# haulage, drilling or loading have no unit in the library at all. Note 20 item 30 owns them.
+_MOBILE_PLANT = re.compile(r"mobile|haulage|drilling|loading|loaders|windrow|crushing")
+
+
+def _unservable_owner(row: dict, cause: str) -> str:
+    """The note 20 item, or note 22 task, that owns an unservable row (note 22 §5's table)."""
+    f, p = row["duty_family"], row["process_id"]
+    if cause == "duty_on_fuel":
+        if p == "power_generation":
+            return "note 20 item 37; note 22 Task 5 (delete the row, admit the generator)"
+        return "note 20 item 8; note 22 Task 5 (to motive_power)"
+    if f == "SPC":
+        return "note 20 item 24 (SPC at rank 2, SPC units at grade_out 1)"
+    if f == "HTH" and cause == "grade_ceiling":
+        return "note 20 item 27 (rank 6 or 5, and no admitted unit reaches it)"
+    if f == "HTH":
+        return ("note 20 item 27 (no admitted unit outputs heat here; a chemistry-node unit "
+                "outputs its product)")
+    if f == "STM":
+        return "note 20 item 25 (refinery steam at rank 4, CHPs at 3)"
+    if f == "REF":
+        return "note 22 Task 4 (cooling units and eligibility)"
+    if f == "MOT" and _MOBILE_PLANT.search(p):
+        return "note 20 item 30 (diesel mobile plant has no unit)"
+    if f == "MOT":
+        return "note 22 Task 10 (motor_elec not admitted at this process)"
+    if f == "PHEAT":
+        return "note 22 §5, Task 10 (furnace_ht_hydrogen not admitted here)"
+    if f == "OTH":
+        return ("note 22 Task 10 (generic_process_* carry no coefficients, note 20 item 49; "
+                "motor_elec not admitted)")
+    return "note 22 Task 10"
+
+
+def unservable_duties(duty: list[dict], elig: list[dict], unit: list[dict],
+                      io: list[dict], car: list[dict]) -> list[dict]:
+    """Every duty-profile row no eligible unit can serve, with its cause and owner.
+
+    Returned as dicts keyed by UNSERVABLE_COLUMNS, in duty-profile order, so the same list
+    feeds the advisory check and the `--unservable-csv` work list note 22 Task 10 reads."""
+    carriers = {c["carrier_id"]: c for c in car}
+    units = {u["unit_id"]: u for u in unit}
+    prim = _primary_output(io)
+    has_io = {row["unit_id"] for row in io}
+    per_process, per_activity = _eligible_sets(elig)
+
+    def fam_rank(cid: str) -> tuple[str | None, int | None]:
+        c = carriers.get(cid)
+        if c is None:
+            return None, None
+        f = grade_family(c)
+        return f, (int(c["grade_rank"]) if f and c["grade_rank"].strip() else None)
+
+    def reach(uid: str) -> int | None:
+        g = units[uid]["grade_out"].strip()
+        return int(g) if g else fam_rank(prim[uid])[1]
+
+    out: list[dict] = []
+    for row in duty:
+        a, cid = row["carb3_activity"], row["carrier_id"]
+        admitted = sorted(per_process.get((a, row["process_id"]), set())
+                          | per_activity.get(a, set()))
+        admitted = [u for u in admitted if u in units]
+        dfam, drank = fam_rank(cid)
+        kind = carriers.get(cid, {}).get("carrier_kind")
+        family_units = [u for u in admitted if u in prim
+                        and (prim[u] == cid or (dfam and fam_rank(prim[u])[0] == dfam))]
+
+        def serves(u: str) -> bool:
+            if dfam is None or drank is None:
+                return prim[u] == cid
+            g = reach(u)
+            if g is None:
+                return False
+            return g >= drank if dfam == "heat" else g <= drank
+
+        detail = ""
+        if kind in {"primary", "emission"}:
+            cause = "duty_on_fuel"
+            detail = f"{cid} is a {kind} carrier"
+        elif any(serves(u) for u in family_units):
+            continue
+        elif not admitted:
+            cause = "no_unit"
+        elif family_units:
+            cause = "grade_ceiling"
+            best = sorted({reach(u) for u in family_units if reach(u) is not None})
+            detail = (f"duty at {dfam} rank {drank}; admitted grade_out "
+                      f"{', '.join(map(str, best)) or 'none'}")
+        elif any(u not in has_io and units[u]["duty_family"] == row["duty_family"]
+                 for u in admitted):
+            cause = "no_coefficients"
+            detail = "no coefficients on " + ", ".join(
+                u for u in admitted
+                if u not in has_io and units[u]["duty_family"] == row["duty_family"])
+        else:
+            cause = "no_family_unit"
+            outs = sorted({prim[u] for u in admitted if u in prim})
+            detail = "admitted units output " + (", ".join(outs) if outs else "nothing")
+        out.append({
+            "carb3_activity": a, "process_set_id": row["process_set_id"],
+            "process_id": row["process_id"], "duty_family": row["duty_family"],
+            "carrier_id": cid, "grade_rank": row["grade_rank"],
+            "duty_share": row["duty_share"], "cause": cause,
+            "owner": _unservable_owner(row, cause),
+            "eligible_units": str(len(admitted)),
+            "family_units": ";".join(family_units), "detail": detail,
+        })
+    return out
+
+
+def check_duty_coverage(duty: list[dict], elig: list[dict], unit: list[dict],
+                        io: list[dict], car: list[dict]) -> Result:
+    """ADVISORY, permanently for now (note 22 §7). Every duty has at least one eligible
+    unit whose primary output serves it at its grade, per C10 (the grade cascade).
+
+    Prints each unservable row with its cause and the note 20 item or note 22 task that
+    owns it. `--unservable-csv PATH` writes the same list as note 22 Task 10's work list."""
+    r = Result("duty coverage: rows no eligible unit can serve (advisory)", blocking=False)
+    rows = unservable_duties(duty, elig, unit, io, car)
+    by_family: dict[str, int] = defaultdict(int)
+    by_cause: dict[str, int] = defaultdict(int)
+    for x in rows:
+        by_family[x["duty_family"]] += 1
+        by_cause[x["cause"]] += 1
+    r.note = (f"{len(rows)}/{len(duty)} duty rows unservable — "
+              + ", ".join(f"{f} {n}" for f, n in sorted(by_family.items(),
+                                                        key=lambda kv: (-kv[1], kv[0]))))
+    r.detail("by cause: " + ", ".join(f"{c} {n}" for c, n in sorted(
+        by_cause.items(), key=lambda kv: (-kv[1], kv[0]))))
+    for x in rows:
+        r.detail(f"  {x['duty_family']:<5} {x['cause']:<15} {x['carb3_activity']} / "
+                 f"{x['process_id']} on {x['carrier_id']}"
+                 + (f" ({x['detail']})" if x["detail"] else "")
+                 + f" — {x['owner']}")
+    return r
+
+
 def check_process_crosswalk(xw: list[dict], reg: list[dict]) -> Result:
     """One row per register row; codes are COMIT process codes, never sector roots."""
     r = Result("process crosswalk: one row per register row, no sector roots")
@@ -1572,6 +1745,7 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
         check_duty_services(duty, car),
         check_unit_grade_out(unit, tables["unit_input_output.csv"], car),
         check_unsourced_draws(elig, tables["unit_input_output.csv"], car, duty),
+        check_duty_coverage(duty, elig, unit, tables["unit_input_output.csv"], car),
     ]
     return results, tables
 
@@ -1582,9 +1756,22 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--quiet", action="store_true", help="print failures only")
     ap.add_argument("--max-failures", type=int, default=10,
                     help="failures shown per check (default 10)")
+    ap.add_argument("--unservable-csv", metavar="PATH",
+                    help="also write the unservable duty rows, with cause and owner, to PATH "
+                         "(note 22 Task 10's work list; `make data-worklist`)")
     args = ap.parse_args(argv)
 
-    results, _ = run()
+    results, tables = run()
+    if args.unservable_csv and "unit.csv" in tables:
+        rows = unservable_duties(tables["activity_process_duty_profile.csv"],
+                                 tables["unit_eligibility.csv"], tables["unit.csv"],
+                                 tables["unit_input_output.csv"], tables["carrier.csv"])
+        with open(args.unservable_csv, "w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, fieldnames=UNSERVABLE_COLUMNS, lineterminator="\n")
+            w.writeheader()
+            w.writerows(rows)
+        print(f"wrote {len(rows)} unservable duty rows to {args.unservable_csv}",
+              file=sys.stderr)
     blocking_failed = [r for r in results if r.blocking and not r.ok]
 
     if args.json:
