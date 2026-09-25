@@ -42,7 +42,7 @@ may not, or the model could import gas and dump it.
 
 Constraints in: C1 (duty satisfaction), C2 (activity limited by available capacity), C3
 (capacity transfer between periods), C4 (incumbent ageing, fallback tier only), C5 (no
-building in the start year), C8 (carrier balance) and C10 (heat grade cascade, via
+building in the start year), C8 (carrier balance) and C10 (the grade cascade, via
 eligibility). Out: C6, C7, C11, C12. **C9 (infrastructure availability) is partially in**
 — for the export of CO₂ only, as a bound of zero on x_{c,t} in every period the premise's
 cluster cannot take it. The 63 ``co2_transport`` rows of §3.7 are real, sourced data: four

@@ -108,7 +108,7 @@ process CO₂, no co-firing, no second cohort.
 | `carb3_activity` | `Food Processing Centre` |
 | Cut from | [Food and drink worked example](../../../docs/specs/2026-08-28-carb3-site-energy-system-worked-example-food-drink.md), premise `P-004417` |
 | Processes | Six: the activity's whole default set |
-| Duties | Eight rows across five carriers: `heat_60_100` grade 2 (LTH 0.060763 and SPC 0.018480), `heat_100_150` grade 3 (STM 0.070816), `heat_150_400` grade 4 (DRY 0.079050), `cooling` (REF 0.064598), `motive_power` (MOT 0.062553 over three processes) |
+| Duties | Eight rows across five carriers: `heat_60_100` grade 2 (LTH 0.060763 and SPC 0.018480), `heat_100_150` grade 3 (STM 0.070816), `heat_150_400` grade 4 (DRY 0.079050), `cooling_0_15` grade 2 (REF 0.064598), `motive_power` (MOT 0.062553 over three processes) |
 | Incumbents | Eight rows over six processes: `chp_gas_turbine` + `boiler_lt_gas`, `dryer_direct_gas`, `chiller_electric`, `motor_elec` ×3, `heat_pump_lt_air` |
 | Base-year energy | `natural_gas` 0.300000, `electricity` 0.060000 PJ/yr; three explicit `not_consumed` zeros |
 
@@ -137,7 +137,9 @@ cohort years are a 2016 drives refit, chosen so `motor_elec` (`lifetime` 20) is 
 this activity is `boiler_spc_gas`, which has `grade_out` 1 and therefore cannot serve the
 grade-2 SPC duty the profile states. `heat_pump_lt_air` stands in as the incumbent. See
 [Findings](#findings-for-the-reference-data) — this is a whole-table defect, not a quirk of
-this premise.
+this premise. **Since 2026-09-25 the reason is gone** — the five fuel-fired
+`SPC` boilers are at `grade_out` 2 (finding 1) — but the premise keeps its heat-pump
+incumbent, since it is synthetic and changing it would move the solve.
 
 **What it does not exercise.** No mass denominator, no process CO₂, no `earliest_year` gate
 that can fire (`boiler_lt_hydrogen` at 2035 and `chp_hydrogen_ccgt` at 2035 are both dropped
@@ -252,10 +254,14 @@ Recorded, not fixed. Nothing under `docs/notes/data/` was changed.
    `heat_60_100` at `grade_rank` 2. Every `SPC`-family unit in `unit.csv` —
    `boiler_spc_coal`, `boiler_spc_gas`, `boiler_spc_biomass`, `boiler_spc_hydrogen`,
    `boiler_spc_lpg`, `heat_pump_spc_air`, `resistance_heater_spc`, `heat_exchanger_spc_steam`
-   — has `grade_out` 1 and produces `heat_lt60`. Under C10 (the heat grade cascade) no
+   — has `grade_out` 1 and produces `heat_lt60`. Under C10 (the grade cascade) no
    `SPC` unit can serve an `SPC` duty. `activity_default_unit.csv` compounds it by naming
    `boiler_spc_gas` as the default `SPC` unit for `Food Processing Centre`. Either the duty
-   belongs at grade 1 or the units belong at grade 2; one of the two is wrong everywhere.
+   belongs at grade 1 or the units belong at grade 2; one of the two is wrong everywhere. **Resolved 2026-09-25 on the unit side** (note 22 Task 10, note 20
+   item 24): the five fuel-fired `SPC` boilers deliver an 82/71 °C LPHW circuit
+   (`CIBSEJ_RETURN`), so they produce `heat_60_100` at `grade_out` 2. `heat_pump_spc_air`,
+   `resistance_heater_spc` and `heat_exchanger_spc_steam` stay at 1: nothing sourced puts
+   them above 60 °C.
 2. **`kiln_wet_ICMCLK` does not exist.** The cement worked example §1.5.1 names it as a
    `premise_process_unit.unit_id`; `unit.csv` has no such row.
 3. **`fuel_oil` is not a `carrier_id`.** Both worked examples use it in their §1.2

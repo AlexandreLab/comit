@@ -24,9 +24,13 @@ serve them**, most of them for reasons note 20 already records. This plan fixes 
 cooling, `OTH`, `PHEAT` and `EN` gaps, adds the validator checks that would have caught
 them, and routes the other coverage gaps to the note 20 items that own them.
 
-**Status 2026-09-25:** Tasks 1, 2 and 7 are done (§8) and Task 8 is done as labels; the
-cooling carriers are in `carrier.csv`, and the unservable count is re-measured at 89 with a
-cause and owner per row.
+**Status 2026-09-25:** Tasks 1, 2, 3, 7, 9 and 10 are done (§8), Task 10 absorbing 4, 5 and
+6, and Task 8 is done as labels. The unservable count went **89 → 92 → 38**: up by three when
+Task 3 put three rows on `cooling_lt0`, then down to 38 after Task 10's units, `OTH` rows and
+eligibility rebuild, then to **25** after Alexandre's decisions on PR #64 (a >1000 °C gas kiln,
+steam CHPs and boilers rated to band 4, a gas engine for shaft work). Every survivor is a named gap with its cause and owner (Task 10), and 18
+more rows are no longer counted because they classify a chemistry node that makes a product
+(§3.9, note 20 item 51).
 
 **Ten tasks in six lanes.** The first one — teaching the validator that ranks are unique
 per grade family — has to land before any cooling carrier is added, or `make data-check`
@@ -286,7 +290,7 @@ is green today is blocking from the start.
 | `grade_rank` unique **within `grade_family`**, replacing the global uniqueness in `check_carrier` (line 540) | 0 | blocking | now — and it must land first, or three cooling carriers at ranks 1–3 collide with `heat_lt60`, `heat_60_100` and `heat_100_150` |
 | Every gradeable carrier has a `grade_family`; no ungradeable one does | 6 (the column is absent) | blocking | Task 2, in the same commit as the column |
 | No duty-profile row on a `primary` or `emission` carrier — V34 (a) | 11 | advisory | Task 5 |
-| Every `REF` row on a cooling band with its rank — V34 (c) | 17 | advisory | Task 3 |
+| Every `REF` row on a cooling band with its rank — V34 (c) | 17 | advisory | Task 3 — **blocking since 2026-09-25, 0 red** |
 | Duty families split from unit families; no duty row on `EN`, `NEUOTH` or `HRS` — V34 (c) | 0 | blocking | now |
 | A unit's `grade_out` is a rank of its primary output's family; required where that output is gradeable | 1 (`solar_thermal_flat`) | advisory | Task 6 |
 | Every duty has at least one eligible unit whose primary output serves it at its rank, per C10 (the grade cascade) | 89 | **advisory, permanently for now** | not scheduled — it depends on note 20 items 24, 25, 27 and 30 |
@@ -368,8 +372,22 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 3 — Band the seventeen `REF` rows
 
-- **Status:** open. The three bands exist in `carrier.csv` since Task 2; all 17 rows are
-  still on `cooling`, which `make data-report`'s V34 (c) advisory counts.
+- **Status:** **done 2026-09-25.** 3 rows on `cooling_lt0` (Abattoir, Brewery, Chemical Works)
+  and 14 on `cooling_0_15`, none on `cooling_gt15`. Five cite a temperature: `UKSI_2007_191`
+  (frozen food no warmer than −18 °C, the abattoir's freezer stores), `GD_CHILLERS_BREWERY`
+  (glycol at 26–28 °F, vendor material, so `confidence` low), `REG853_2004` (milk held at
+  ≤ 6 °C, the creamery), `OGJ_ALKY_1996` (sulphuric-acid alkylation at about 10 °C,
+  `confidence` low because each UK unit's acid is not sourced) and `CARB3_WE_FOOD` (Food
+  Processing Centre). The other twelve are `fallback`, `confidence` low, and name the
+  equipment that decided the band; Chemical Works reads its "ammonia/HFC refrigeration sets"
+  as sub-zero, the note's own low-confidence call. The distillery is **not** split: no source
+  gives the share (note 20 item 62). No `duty_share` changed, so the 376 key sums hold. Both
+  chillers now produce `cooling_0_15` at `grade_out` 2 — the label move of Task 4's change
+  list, without which every `REF` row would have lost its unit — and the ungraded `cooling`
+  carrier is retired (47 carriers). V34 (duties are services at a grade) leg (c) is a
+  blocking check, `check_duty_family_carriers`, and passes; leg (a) stays advisory for
+  Task 5. Unservable: 89 → 92, the three `cooling_lt0` rows at a grade ceiling until a
+  sub-zero unit exists (Task 10).
 - **Lane:** duties.
 - **Goal:** every `REF` row sits on a cooling band with its rank.
 - **Inputs:** §3 of this note; the sources named there; note 20 item 1 for the alkylation
@@ -386,8 +404,20 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 4 — Cooling units, coefficients and eligibility
 
-- **Status:** open. Measured 2026-09-25: `heat_pump_lt_reject` lacks a `heat_lt60` source at
-  11 `REF` processes, and 2 `REF` rows are unservable.
+- **Status:** **done 2026-09-25 within Task 10, except three units with no source.**
+  `chiller_electric_lt0` is new: `grade_out` 1, electricity −0.3876 per unit of cooling
+  (`CIAT_ECODESIGN`: Regulation (EU) 2015/1095's minimum SEPR of 2.58 for an air-cooled
+  medium-temperature process chiller at a −8 °C outlet), costs a proxy copy of
+  `chiller_electric`'s, eligible at all 17 `REF` processes, and the default unit at the three
+  `cooling_lt0` duties. **HFO:** `ICHREFEHFC01` carries −1.11111 too, so the evidence rule's
+  first branch applies — the HFO unit is rebased on `chiller_electric`'s COP of 3.00 with no
+  refrigerant penalty. All three chillers carry `reject` rows to `heat_lt60` (1 + 1/COP, a
+  first-law balance), and the reject-draw advisory at `REF` processes fell from 11 to 0.
+  `grade_out` 2 on both chillers and their move to `cooling_0_15` landed with Task 3; the
+  `spinning_hvac` and `alkylation` eligibility gaps close in Task 10's rebuild. **Not added,
+  and recorded as gaps:** an absorption chiller, a cooling tower and a dry cooler — no source
+  for their cost or coefficient was found in this pass. No duty sits on `cooling_gt15`, so
+  their absence leaves no row unservable.
 - **Lane:** units.
 - **Goal:** each cooling band has at least one costed unit, and every `REF` duty has one
   that reaches it.
@@ -406,8 +436,18 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 5 — Resolve the eleven `OTH` rows on `electricity`
 
-- **Status:** partly done 2026-09-24 (`electric_service`, §2). Three rows remain — the 3 that
-  V34 (a) counts, and 3 of the 6 unservable `OTH` rows.
+- **Status:** **done 2026-09-25 within Task 10, except row 5.** Mill `other_process` moved to
+  `motive_power` — its cited `CTV059` names motors and compressed air, which the evidence rule
+  requires — with `motor_elec` as its default. Works `other_process` did **not** go to
+  `motive_power`: its cited MECS Table 5.2 names no motor, fan, pump or compressed air, so the
+  rule refuses the move; it went to `electric_service`, as Workshop `other_process` did on the
+  same source (the fan share is note 20 item 63). The three `OTH` rows on `motive_power` are
+  served by `motor_elec` since the rebuild. **Row 5, Mineral Production - Gas
+  `power_generation`, is not deleted**: a duty row cannot go while its register row stays
+  (`make data-check` requires every register process to carry one), and deleting the register
+  row cascades into the energy profile's gas shares, the load shape, the crosswalk and the
+  options — a decision for note 20 item 37, not a data fix. V34 (a) therefore stays advisory,
+  at 1 row.
 - **Lane:** duties, with a specification edit to §3.4 if the decision is yes.
 - **Goal:** no duty row sits on a fuel.
 - **Inputs:** §2 of this note; note 20 items 8, 37 and 1a.
@@ -423,7 +463,11 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 6 — Repair the four inconsistent `grade_out` values
 
-- **Status:** open. The `grade_out` advisory counts 1 blank and 3 disagreeing, as §1 did.
+- **Status:** **done 2026-09-25 within Task 10.** `solar_thermal_flat` takes `grade_out` 1,
+  the rank of the `heat_lt60` output its row already declares — no collector temperature is
+  sourced, so nothing higher is claimed. The three `hp_thermal_store_*` packages take 2, the
+  `grade_out` of their `heat_pump_lt_air` component, whose conversion they copy. The check
+  is blocking and passes (0 blank, 0 outside the family, 0 disagreeing).
 - **Lane:** units.
 - **Goal:** every unit with a gradeable output has a `grade_out` in that output's family that
   its coefficients support.
@@ -495,8 +539,12 @@ agree again.
 
 ### Task 9 — Read the cascade direction in `carb3`
 
-- **Status:** open. Since Task 2, `carb3`'s carrier schema requires `grade_family`; nothing
-  reads it yet.
+- **Status:** **done 2026-09-25**, with Task 3, because the banded data needed it: without
+  the family test `heat_pump_lt_reject` (heat, `grade_out` 2) sat in `mvp-dairy`'s U_q for the
+  rank-2 chilled-water duty. `carb3.sets._serves` matches the duty carrier's `grade_family`
+  against the unit's primary output first, then compares `grade_out` in that family's
+  direction; `test_c10_cooling_runs_the_other_way` and `test_c10_never_crosses_grade_families`
+  pin both.
 - **Lane:** carb3.
 - **Goal:** `eligible_units` admits cooling units by the cooling direction and never across
   families.
@@ -511,8 +559,67 @@ agree again.
 
 ### Task 10 — One consolidated pass over the unit library and the duty rows
 
-- **Status:** open, unblocked. Tasks 1, 2 and 7 are done; the work list is
-  `docs/notes/data/build/unservable_duties.csv` (89 rows).
+- **Status:** **done 2026-09-25.** In three commits on one branch, one owner for all six files:
+  Task 3; the units (Tasks 4 and 6, note 20 item 24); then the `OTH` rows (Task 5), the
+  default units and the eligibility rebuild.
+  - **Eligibility is rebuilt from the join** by `build/rebuild_eligibility_join.py`
+    (idempotent; its docstring is the rule). The 1,852 no-grade-filter proxy rows — plus the
+    17 `chiller_electric_lt0` rows chunk 1 added — are replaced by **2,442** rows, each
+    offering a costed unit with coefficients that serves a duty at that process: its family
+    (the wet-heat families `LTH`, `SPC`, `STM` serve one another, `HTH` serves `PHEAT`, and a
+    non-gradeable service is matched on the carrier, which is how `motor_elec` reaches an
+    `OTH` row on `motive_power`), its grade family, `grade_out` in C10's direction (the grade
+    cascade), and every intermediate input produced somewhere at the activity. Chemistry
+    nodes and diesel mobile plant are skipped rather than given a stand-in. `dryer_steam` is
+    withheld: it makes heat_150_400 from heat_100_150 with no work input (note 20 item 64).
+    The 765 evidence rows (worked examples, options join, chemistry nodes, activity-level
+    supply) and the rolling mills' 4 node rows are kept. `unit_eligibility.csv` has 3,207
+    rows; the rows reaching an uncostable unit fell from 363 to 50.
+  - **The validator** gained a blocking V19 (no unit eligible beyond its `grade_out`) check on
+    the rebuilt rows (the 158 evidence rows that offer a unit beyond its grade are listed,
+    not failed — `carb3` drops them from U_q); an advisory check that each default unit serves
+    its duty; the coverage check now skips rows at a process whose units make a product
+    (§3.9) and names a `beyond_library` cause where no unit in the library reaches the band;
+    the draws check reads the activity, as C8 does, not the process.
+  - **Default units:** 18 rows named a unit that could not serve their duty and now name one
+    on the same fuel vector that can (motors for refinery and brine `MOT` rows, chillers for
+    two `REF` rows, `furnace_ht_gas` for the refinery's rank-5 `PHEAT` rows and the fab's
+    exhaust abatement, `boiler_lt_gas` or `resistance_heater_lt` for three `LTH` rows).
+  - **Unservable: 92 → 38**, every one named:
+
+    | Rows | Cause | Owner |
+    |---:|---|---|
+    | 20 | `MOT` diesel mobile plant, haulage, drilling and loading: no mobile-plant unit | note 20 item 30 |
+    | 13 | `HTH` at rank 6 (>1000 °C): no unit in the library reaches it (kilns, pottery, foundry melting, steel reheat and secondary metallurgy, anode baking, coke ovens, cutting) | note 20 item 27 |
+    | 2 | `HTH` at a chemistry node with no node unit: aluminium potlines, the beet-sugar lime kiln | note 20 item 30 |
+    | 2 | `STM` refinery steam at rank 4 (`alkylation`, `utilities_steam`): no steam unit reaches rank 4 | note 20 item 25 |
+    | 1 | `OTH` on `electricity`, Mineral Production - Gas `power_generation` | note 20 item 37 |
+
+  - **Default units still unable to serve their duty: 20**, all inside the gaps above — 12
+    rank-6 furnaces, the refinery's two `STM` boilers, the Mineral Production - Gas motor,
+    coke ovens, the two cutting processes — plus the three `OTH` rows on `motive_power` at
+    gas-only processes, whose default `generic_process_gas` has no coefficients and no
+    gas-fired motive unit exists to replace it (note 20 item 65).
+  - Counts in `CLAUDE.md` and `carb3/tests/test_load.py` re-measured: 138 units, 3,207
+    eligibility rows, 50 reaching an uncostable unit, 1,378 including the unpriced-fuel leg,
+    58 units admitted.
+  - **After the PR #64 decisions (2026-09-25): 25 unservable.** `kiln_ht_gas` serves 11 of
+    the 13 rank-6 rows (note 20 item 27), the steam CHPs and boilers at `grade_out` 4 serve
+    both refinery steam rows (item 25), `engine_mot_gas` is the default at the three gas-only
+    motive rows (item 65), and the family groups are in the live spec §3.5.1 (item 66). What
+    is left:
+
+    | Rows | Cause | Owner |
+    |---:|---|---|
+    | 20 | `MOT` diesel mobile plant: no mobile-plant unit | note 20 item 30 |
+    | 4 | `HTH` at chemistry nodes with no node unit: aluminium potlines, the beet-sugar lime kiln, two coke-oven processes | note 20 item 30 |
+    | 1 | `OTH` on `electricity`, Mineral Production - Gas `power_generation` | note 20 item 37 |
+
+    Five default units still cannot serve their duty: the two coke-oven processes, Foundry
+    `melting_holding` (a coal furnace; no coal unit reaches rank 6), Mineral Production - Gas
+    `power_generation`, and the electric plasma-cutting share at Shipbuilding
+    `steel_prep_cutting`. Counts: 140 units, 60 admitted, 3,263 eligibility rows, 1,391
+    reaching an incomplete or unpriced-fuel unit.
 - **Lane:** units and duties together, one owner for all six files.
 - **Goal:** every duty row has an eligible unit that can serve it at its grade and in its
   grade family, and every unit offered for a duty can actually be costed and run. The 89

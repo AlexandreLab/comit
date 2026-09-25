@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, and item 61 on 2026-09-24 — **thirteen of the sixty-one**.
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, and items 25, 27, 65 and 66 on 2026-09-25 when Alexandre decided them on PR #64 — **eighteen of the sixty-six**.
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -299,7 +299,33 @@ These are the ones with a consequence outside the reference data.
     lane `duty_b` found no duty below 60 °C at all. *Both duty reports.*
 24. **All 48 space-heat duties sit at band 2, and `unit.csv`'s `SPC` units have `grade_out` 1.**
     One side must move or no unit can serve space heat. *`DONE_default_unit.md`, Q1.*
+    **Settled 2026-09-25 on the unit side** (note 22 Task 10): the five fuel-fired `SPC`
+    boilers supply the conventional UK LPHW circuit at 82/71 °C (`CIBSEJ_RETURN`, the source
+    the 48 duty rows already cite for band 2), so they now produce `heat_60_100` at
+    `grade_out` 2 with unchanged coefficients. `heat_pump_spc_air`, `resistance_heater_spc`
+    and `heat_exchanger_spc_steam` stay at band 1: nothing sourced puts their supply above
+    60 °C, so a space-heat heat pump cannot serve an LPHW duty — a real limit, not a data
+    gap. The 19 `SPC` rows this item made unservable are servable.
 25. **Refinery steam is band 4 and every CHP tops out at band 3.** *`DONE_default_unit.md`, Q2.*
+    **Still open, 2026-09-25:** two rows now, `utilities_steam` and `alkylation`'s steam share.
+    The eligibility rebuild (note 22 Task 10) no longer lets `refinery_process_heat_gas`, a
+    fired process heater, stand in for a steam raiser, so no unit reaches either. Either the
+    CHPs and boilers get a sourced rating above 150 °C, or the refinery's steam is placed at
+    band 3.
+
+    **Decided 2026-09-25 (PR #64): the units move.** `grade_out` 4 on the ten steam-raising
+    CHPs and on four boilers, each on its source: the three gas-turbine CHPs on `EPA_CHP_CT`
+    (HRSG steam up to 1,200 psig and 900 °F; the cost basis itself is saturated steam at
+    150 psig, 186 °C), the five CCGT and two steam-turbine CHPs on `EPA_CHP_ST` (industrial
+    process steam at 150–250 psig, 186–208 °C), and `boiler_lt_gas`, `boiler_lt_hydrogen`,
+    `boiler_lt_biomass` and `resistance_heater_lt` (the electrode boiler) on `BEIS_IFS2018`
+    (high-pressure steam at 190–240 °C raised on site, and each boiler "suitable for all
+    processes where steam, at different pressures, is used"). Primary outputs and coefficients
+    are unchanged, so no worked-example figure moves; the worked examples still rate those
+    units 3 because their duties need no more. **Not changed:** the LPG, coal, oil and
+    biomethane boilers (no source in hand names their steam conditions), the hydrogen fuel-cell
+    CHP (it makes hot water, not steam), and the thermal-store packages. Both refinery steam
+    rows are servable.
 26. **`heat_exchanger_lt_steam` consumes and produces the same band** (LTH and STM both at
     rank 3), so it has no coefficients. *`DONE_units.md`, G10.*
 27. **Lime calcination at band 5 or 6? Non-ferrous foundry melting at 6?** *`DONE_duty_a.md`,
@@ -308,7 +334,24 @@ These are the ones with a consequence outside the reference data.
     placement rule this build used — a heat duty takes the band holding the hottest temperature
     it needs, a cooling duty the band holding the coldest — and reads band edges as the labels
     do (lower edge in, upper edge out). Confirm or reverse; the cooling rule mirrors whichever
-    stands.
+    stands. **13 duty rows hang on it (2026-09-25):** every `HTH` row at rank 6 is unservable
+    because no unit in the library reaches rank 6 — the furnaces stop at 5. Confirming the rule
+    needs a furnace rated above 1000 °C with a source; moving the boundary would re-band the
+    rows instead. Note 22 Task 10 records them as a named gap.
+
+    **Decided 2026-09-25 (PR #64): add the unit.** `kiln_ht_gas`, a natural-gas direct-fired
+    kiln or furnace at `grade_out` 6, on `BEIS_IFS2018`'s "Natural gas fired kiln" row (capex
+    £665/kW, fixed opex £13.30/kW/yr, 25 years, 1.18 kWh of fuel per kWh of heat) and its
+    Table 5 ("Direct - High Temperature 240-2,000 °C" for kiln firing, non-ferrous melting and
+    steel rolling); availability 0.94 from COMIT's gas furnace, because the report gives none;
+    `confidence` low, because the cost is a ceramics kiln's. It serves 11 of the 13 rows. **Two
+    stay gaps:** Iron and/or Steel Works `coke_ovens` and Coking and Carbonising Plant
+    `oven_battery_carbonisation` are chemistry nodes, where a furnace would stand in for a coke
+    oven that makes coke and coke-oven gas (item 30). **Not added:** an electric
+    high-temperature unit — the report's electric tunnel kiln is "Ceramics only" and at TRL 5–6,
+    and no sourced induction-furnace cost was found — and a coal-fired one, so Foundry
+    `melting_holding` keeps a coal furnace default that cannot reach rank 6, though the gas kiln
+    now serves the row.
 
 ## D. Questions about units and costs
 
@@ -321,6 +364,9 @@ These are the ones with a consequence outside the reference data.
 30. **Seventeen units the option join needs and the library lacks**, headed by any diesel
     mobile-plant unit (13 register processes have no unit at all), an aluminium electrolysis
     cell, vapour recompression and an electrode steam boiler. *`DONE_eligibility.md`, §2.*
+    **22 duty rows hang on it (2026-09-25):** 20 mobile-plant `MOT` rows and two chemistry
+    nodes with no unit (aluminium potlines, the beet-sugar lime kiln). The eligibility rebuild
+    offers them nothing rather than a stationary motor or a generic furnace as a stand-in.
 31. **Nine COMIT technologies are `unmapped`** (three lime and two chemicals capture variants,
     two gas-fired boilers on works gases, two finishing processes): build the units or record
     them out of scope. *`DONE_lineage.md`, Q6.*
@@ -367,7 +413,12 @@ These are the ones with a consequence outside the reference data.
     four sectors only, splitting everywhere else; or add `SPC` nodes to the four sectors, which is
     a change to COMIT itself and not to CaRB3.
 37. **`Mineral Production - Gas / power_generation` is a conversion unit, not a demand**, and
-    should arguably leave the register. *`DONE_duty_b.md`, Q4.*
+    should arguably leave the register. *`DONE_duty_b.md`, Q4.* **Still the one `OTH` row
+    on a fuel (2026-09-25).** Note 22 Task 5 planned to delete its duty row; that cannot be
+    done alone, because `make data-check` requires every register process to carry a duty row,
+    and deleting the register row moves the activity's gas energy shares (0.25 of them), the
+    load shape, the crosswalk and four option mappings. Decide whether the process leaves the
+    register — and how the 0.25 is redistributed — and the row goes with it.
 38. **SMR feedstock at oil refineries needs a `NEUOTH` row with a published feedstock/fuel
     split**; none was found. *`DONE_duty_b.md`, Q5.*
 39. **`Mill`, Laboratory, Post Office Sorting Centre and Vehicle repair cannot be crosswalked** to
@@ -512,7 +563,9 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     green on all of it; note 21 adds an advisory count to `make data-report`. Some of these
     may be legitimately costless placeholders and the list needs triaging rather than
     filling wholesale. *Note 21 §3.2; learning `comit-make-check-is-green-but-blind`,
-    2026-09-16.*
+    2026-09-16.* **Reach narrowed 2026-09-25:** the family rows of `unit_eligibility.csv` are
+    rebuilt from the join and admit no incomplete unit, so the 40 units now reach 50 of its
+    3,207 rows, all of them worked-example or options rows (note 22 Task 10).
 50. **§5.1's uniform timestep does not hold against the data.** The spec writes
     $y_t = y_{t_0} + \Delta t$ and $\ell_u = \lceil L_u / \Delta \rceil$, but
     `scenario_parameters.csv` runs 2021, 2025, 2030, 2035, 2040, 2045, 2050 — a four-year
@@ -830,3 +883,75 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     ranks 1–3, and the validator holds `grade_rank` unique within a family. Still open: the
     17 `REF` rows sit on the ungraded `cooling` carrier, which stays until they and the two
     chillers move (note 22 Tasks 3 and 4), and the HFO coefficient.
+
+    **Data progress 2026-09-25: the 17 `REF` rows are banded** (note 22 Task 3): three on
+    `cooling_lt0` (Abattoir, Brewery, Chemical Works), fourteen on `cooling_0_15`, none on
+    `cooling_gt15`. Five cite a temperature source (the abattoir's freezer stores under the
+    Quick-frozen Foodstuffs Regulations, the brewery's glycol loop, the creamery's milk at
+    6 °C under Regulation 853/2004, the refinery's sulphuric-acid alkylation at about 10 °C,
+    and the food-and-drink worked example); the other twelve are `fallback`, `confidence` low,
+    banded by their equipment. Both chillers produce `cooling_0_15` at `grade_out` 2 and the
+    ungraded `cooling` carrier is retired. Still open: a unit that reaches `cooling_lt0`, the
+    HFO coefficient, and the distillery split (item 62).
+
+    **Data progress 2026-09-25, Task 10: units per band and the HFO coefficient.**
+    `chiller_electric_lt0` reaches `cooling_lt0` at a -8 °C outlet, electricity -0.3876 per
+    unit of cooling from the Regulation (EU) 2015/1095 minimum SEPR of 2.58, costs a proxy
+    copy of `chiller_electric`'s. The HFO coefficient is **not** an error: `ICHREFEHFC01`, the
+    standard unit `chiller_electric` collapses from, carries the same -1.11111 in the
+    workbook, so COMIT's refrigeration rows are final energy per unit of its service
+    commodity and the HFO unit is rebased on `chiller_electric`'s COP of 3.00. All three
+    chillers carry a `reject` row to `heat_lt60`, so `heat_pump_lt_reject` has a source at
+    every `REF` process. **Not added**, for want of a sourced cost or coefficient: an
+    absorption chiller, a cooling tower and a dry cooler; no duty sits on `cooling_gt15`, so
+    no row is unservable for lack of them.
+
+    **Chemical Works `refrigeration` stays on `cooling_lt0`, now on the literature** (decided
+    2026-09-25 on PR #64 to follow the evidence). `RTOC_2018` §1.1 characterises industrial
+    refrigeration at −10 to −40 °C, and §5.2.5 describes chemical-process refrigeration as
+    reactor jackets and coils or a secondary fluid of water, brine or glycol; the row names
+    refrigeration sets beside its chilled-water plant, so its coldest need is below 0 °C. The
+    row is `published_sec`, `confidence` low: the range is for industrial refrigeration
+    generally, not for UK chemical works.
+62. **Should Distillery `cooling_systems` be split between two cooling bands?** Its equipment is
+    condenser water pumps and cooling-tower fans — ambient heat rejection, `cooling_gt15` — and
+    yeast refrigeration, which is chilled (`cooling_0_15`). §3.4's rule puts the whole row in
+    the band of its coldest need, so it sits on `cooling_0_15` and a chiller is offered for
+    duty a cooling tower could meet. A split is an uncoupled two-row share under §3.2 and needs
+    a published share; `BALMENACH_CS` names the end uses without quantifying them, and no
+    other source was found. Until one is, the row stays whole. *Note 22 Task 3, 2026-09-25.*
+63. **Works `other_process`: electric service or motive power?** The register names test rigs
+    and fume extraction. Note 22 §2 proposed `motive_power` (fume extraction is fan load), but
+    the cited MECS Table 5.2 "other process use" names no motor, fan, pump or compressed air,
+    so Task 5's evidence rule refused the move and the row went to `electric_service`, as
+    Workshop `other_process` did on the same source. A source for the fan share would split
+    it, or move it whole. *Note 22 Task 10, 2026-09-25.*
+64. **`dryer_steam` makes hotter heat than it draws, for nothing.** Its coefficients
+    (`ICHDRYSTM01`) are heat_150_400 +1 from heat_100_150 −1, with no work input and capex 0: a
+    free grade-up, which C10 (the grade cascade) is meant to make impossible. The eligibility
+    rebuild withholds it from the join rows; its worked-example and options rows remain. Either
+    the input is steam at band 4 — there is no steam carrier (item 21) — or the grade_out is 3.
+    *Note 22 Task 10, 2026-09-25.*
+65. **Three `OTH` rows on `motive_power` sit at gas-only processes.** Aircraft works, Factory and
+    Industrial NEC `other_process` carry a bundled overhead as motive power, and their energy
+    profile says the process burns only gas (engine test cells). `motor_elec` now serves them as
+    a candidate, but the base-year default is `generic_process_gas`, which has no coefficients,
+    and the library has no gas-fired motive unit to replace it. Either the duty is not motive
+    power, or a gas engine unit is needed. *Note 22 Task 10, 2026-09-25.*
+    **Decided 2026-09-25 (PR #64): add the unit.** `engine_mot_gas`, a gas reciprocating
+    engine driving a shaft, on `EPA_CHP_RICE`: shaft efficiency taken as System 3's 36.8% HHV
+    electrical efficiency (fuel −2.71739 per unit of motive power, on gas's gross CV); capex
+    System 3's $2,366/kW less the heat-recovery and interconnect lines, $1,766/kW; fixed opex
+    its $0.019/kWh O&M at 8,000 h/yr; availability 98.22%; lifetime 15 years from
+    `BEIS_EGC2016`. 2013 dollars to 2021 pounds at `ONS_AUSS`'s 1.5644 and the COMIT GDP
+    deflator. `confidence` low. It is keyed to `other_process` and eligible at the three rows
+    only, and it is their base-year default in place of `generic_process_gas`.
+66. **Confirm the family rule behind the eligibility rebuild.** C10 (the grade cascade) sees
+    temperature only, not the medium, so a join on grade alone would offer a direct-fired dryer
+    or a furnace to a hot-water duty. `build/rebuild_eligibility_join.py` therefore keeps the
+    duty family, lets `LTH`, `SPC` and `STM` (hot water and steam) serve one another by grade,
+    and lets `HTH` serve `PHEAT` (fired process heat). The spec states none of these groups;
+    either §3.4 or §3.5.1 says so, or the rule changes and the script with it.
+    *Note 22 Task 10, 2026-09-25.* **Confirmed 2026-09-25 (PR #64) and written into the live
+    spec §3.5.1**, with a table of the two groups and the carrier match for non-gradeable
+    services; §3's *Section last updated* line is bumped and the generated documents rebuilt.

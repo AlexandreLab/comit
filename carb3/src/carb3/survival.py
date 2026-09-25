@@ -202,7 +202,7 @@ def vintage_capacity(premise, unit: pd.DataFrame) -> pd.DataFrame:
 def _lifetimes(unit: pd.DataFrame) -> dict[str, int]:
     """``unit_id`` → ``lifetime`` in years, skipping units whose lifetime is blank.
 
-    13 of the reference table's 137 units carry a blank ``lifetime`` (§3.2). They are dropped
+    13 of the reference table's 138 units carry a blank ``lifetime`` (§3.2). They are dropped
     by the admission screen before they reach the LP; here a vintage row naming one raises,
     through the caller's unknown-unit check.
     """
@@ -236,7 +236,7 @@ def _share(value: object) -> float:
 def _as_years(value: object) -> int | None:
     """Coerce a lifetime cell to whole years, or ``None`` where it is blank.
 
-    ``pd.NA`` is a blank too. 13 of ``unit.csv``'s 137 rows carry no ``lifetime`` and the
+    ``pd.NA`` is a blank too. 13 of ``unit.csv``'s 138 rows carry no ``lifetime`` and the
     loader keeps the column ``Int64``, so the cell arrives as ``NAType`` rather than as
     ``float('nan')`` — which ``float()`` refuses outright, so a real reference table turned
     the intended "skip it" into a ``TypeError``.

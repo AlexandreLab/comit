@@ -199,7 +199,7 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-09-24*
+*Section last updated: 2026-09-25*
 
 **Twenty-six entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, nine by the
@@ -854,6 +854,23 @@ sector specificity lives.**
 | `max_share` | real | fraction | no | — | ∈ (0, 1]. Cap on this unit's share of the duty |
 | `earliest_year` | integer | year | no | — | Availability |
 | `provenance` | enum{comit_reuse, bref, proxy} | — | yes | — | D6 |
+
+**A unit is offered for a duty of its own family, or of a family that takes the same
+medium.** C10 (the grade cascade) sees temperature only, not what carries the heat, so a
+grade test alone would offer a direct-fired dryer or a furnace to a hot-water duty — a dryer
+heats air in contact with the product and cannot fill an LPHW circuit. `unit_eligibility`
+therefore joins on the family first, with two groups whose units serve one another by grade:
+
+| Duty family | Also served by units of | Why |
+|---|---|---|
+| `LTH`, `SPC`, `STM` | the other two | All three are hot water or steam, raised by a boiler, heat pump or CHP. `STM` has no plain boiler of its own, and a steam duty is what the `LTH` boiler makes |
+| `PHEAT` | `HTH` | Both are fired process heat; a refinery's reformer or cracker furnace is a high-temperature furnace |
+
+`DRY`, `HTH` and `REF` are served by their own family only. A duty on a non-gradeable service
+carrier — `motive_power`, `electric_service` — is matched on the carrier, whatever the unit's
+family: `motor_elec` serves an `OTH` row whose service is shaft work. Within those families
+C10 still decides which unit serves which duty, and V19 (no unit eligible beyond its
+`grade_out`) asserts it.
 
 **`min_duty` replaces the MILP binary.** COMIT introduces a binary per hydrogen technology
 per site when a minimum plant size is set (`R/fct_constraints_hydrogen.R:650`,

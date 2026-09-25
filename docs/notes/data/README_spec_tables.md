@@ -21,22 +21,22 @@ the spec calls `activity_process_energy_share`.
 
 | File | Spec entity | Rows | Built by | Report |
 |---|---|---:|---|---|
-| `carrier.csv` | §3.4 `carrier` | 48 | coordinator (skeleton) + lane `carriers` (factors) + lane `units` (product carriers) | `build/DONE_carriers.md` |
+| `carrier.csv` | §3.4 `carrier` | 47 | coordinator (skeleton) + lane `carriers` (factors) + lane `units` (product carriers) | `build/DONE_carriers.md` |
 | `activity_process_duty_profile.csv` | §3.3 `activity_process_duty_profile` | 427 | lanes `duty_a`, `duty_b` | `build/DONE_duty_a.md`, `build/DONE_duty_b.md` |
 | `carb3_comit_process_crosswalk.csv` | the process-level join T17 asked for (no spec entity) | 376 | lanes `duty_a`, `duty_b` | same |
-| `unit.csv` | §3.5 `unit` | 137 | lane `units` | `build/DONE_units.md` |
-| `unit_input_output.csv` | §3.6 `unit_input_output` | 446 | lane `units` | same |
+| `unit.csv` | §3.5 `unit` | 140 | lane `units`; `chiller_electric_lt0` added by note 22 Task 10, `kiln_ht_gas` and `engine_mot_gas` by the PR #64 decisions | `build/DONE_units.md` |
+| `unit_input_output.csv` | §3.6 `unit_input_output` | 459 | lane `units` | same |
 | `unit_bill_of_materials.csv` | §3.5.2 `unit_bill_of_materials` | 24 | lane `units` | same |
-| `unit_eligibility.csv` | §3.5.1 `unit_eligibility` | 2,612 | lane `eligibility` | `build/DONE_eligibility.md` |
+| `unit_eligibility.csv` | §3.5.1 `unit_eligibility` | 3,263 | lane `eligibility`; family rows rebuilt from the join by `build/rebuild_eligibility_join.py` (note 22 Task 10) | `build/DONE_eligibility.md`, the script's docstring |
 | `unit_abatement_host.csv` | §3.5.3 `unit_abatement_host` | 37 | lane `units`, 2026-09-17 | `build/DONE_units.md` §8 |
 | `decarbonisation_option_unit.csv` | the option→unit join (data-migration item C2) | 163 | lane `eligibility` | same |
 | `comit_technology_lineage.csv` | the 397-row reconciliation V1b reads (data-migration item B1) | 397 | lane `lineage` | `build/DONE_lineage.md` |
 | `process_load_shape.csv` | §3.13 `process_load_shape` | 371 | lane `loadshape` | `build/DONE_loadshape.md` |
 | `scenario_parameters.csv` | §3.8 `scenario_parameters` | 155 | lane `carriers` | `build/DONE_carriers.md` |
 | `infrastructure_scenario.csv` | §3.7 `infrastructure_scenario` | 189 | lane `carriers` | same |
-| `activity_default_unit.csv` | §3.16 `activity_default_unit` | 455 | lane `default_unit` | `build/DONE_default_unit.md` |
+| `activity_default_unit.csv` | §3.16 `activity_default_unit` | 456 | lane `default_unit` | `build/DONE_default_unit.md` |
 
-`references.csv` grew from 270 to 306 entries; every `[REF_ID]` in every `provenance` and
+`references.csv` grew from 270 to 319 entries; every `[REF_ID]` in every `provenance` and
 `provenance_ref` column resolves to it, and `make data-check` asserts that.
 
 ## Conventions every lane worked to
@@ -99,11 +99,13 @@ for review, not a settled answer — note 20 lists the places it bites.
 | cooling | `cooling_0_15` | 2 | `0-15C` |
 | cooling | `cooling_gt15` | 3 | `>15C` |
 
-**Nothing uses the cooling bands yet.** The ungraded `cooling` carrier stays in `carrier.csv`
-while the 17 `REF` duty rows and the two chillers' `unit_input_output` rows still name it; it
-retires once note 22 Tasks 3 (a band for each `REF` row) and 4 (cooling units per band) have
-moved every reference. Until then `make data-report`'s V34 (duties are services at a grade)
-advisory counts the 17 `REF` rows as off their family's carrier.
+**The 17 `REF` duty rows sit on them since 2026-09-25** (note 22 Task 3): three on
+`cooling_lt0` (the abattoir's freezer stores, the brewery's glycol loop, and Chemical Works
+refrigeration, the last on a `fallback` reading of its equipment) and fourteen on
+`cooling_0_15`; nothing is on `cooling_gt15`. Each row's provenance names the temperature
+source or, where none was found, the equipment that decided the band. The two chillers
+produce `cooling_0_15` at `grade_out` 2, and the ungraded `cooling` carrier is retired.
+V34 (duties are services at a grade) leg (c) is now blocking in `make data-check`.
 
 ## What is thin, and known to be
 
@@ -113,14 +115,18 @@ advisory counts the 17 `REF` rows as off their family's carrier.
 | `unit.csv` | 15 units uncosted (thermal stores, digester, solar thermal, most hybrids); `min_viable_scale` blank throughout; 24 units now on published UK costs, 92 on COMIT reuse, 21 proxy | `build/DONE_units.md` §4 and §7 |
 | `unit.csv` | ~~`abates_unit_id` blank on 11 of 13 abatement units~~ — **closed 2026-09-17.** The column is gone; `unit_abatement_host.csv` carries one row per (train, host) pair, 37 rows over all 13 trains, none blank, and V33 (b) is blocking | `build/DONE_units.md` §8, note 20 item 5 |
 | `unit_input_output.csv` | Capture trains other than `ccs_amine` have no coefficients; the four standalone storage units have none either, for want of a published round-trip efficiency — they are now *expressible*, since §3.6 keys on `(unit_id, carrier_id, role)` (note 20 item 4), but not yet written | `build/DONE_units.md` G2, G8 |
-| `unit_eligibility.csv` | `min_duty` on 15 rows and `earliest_year` on 9, all from the worked examples; 1,851 of 2,612 rows are `proxy` | `build/DONE_eligibility.md` §4 |
-| `activity_process_duty_profile.csv` | 151 of 427 rows are `fallback`; no row is `measured` or `high` | the two duty reports |
-| `activity_default_unit.csv` | 367 of 455 rows are `assumed`; the CHP shares on 17 rows are the `sector_statistic` content | `build/DONE_default_unit.md` |
+| `unit_eligibility.csv` | `min_duty` on 15 rows and `earliest_year` on 9, all from the worked examples; 2,502 of 3,263 rows are `proxy` — 2,498 rebuilt from the join (each serves a duty at its process in C10's direction with a costed unit) and the two rolling mills' 4 node rows. 158 worked-example or options rows offer a unit beyond its `grade_out` at their process; `carb3` drops them from U_q, and `make data-report` lists them under V19 | `build/rebuild_eligibility_join.py`, note 22 Task 10 |
+| `activity_process_duty_profile.csv` | 158 of 427 rows are `fallback`; no row is `measured` or `high` | the two duty reports |
+| `activity_default_unit.csv` | 366 of 456 rows are `assumed`; 5 name a unit that cannot serve their duty, each a named gap in note 22 Task 10; the CHP shares on 17 rows are the `sector_statistic` content | `build/DONE_default_unit.md` |
 | `scenario_parameters.csv` | No 2021 export price, no hydrogen price, no reinforcement cost; import prices for 11 minor carriers absent | `build/DONE_carriers.md` §5 |
 | `infrastructure_scenario.csv` | `unit_tariff` and `capacity_limit` blank on every row; hydrogen `available = FALSE` everywhere because nothing published names a region | same |
 
 ## Rebuilding
 
 `build/build_*.py` and `build/check_*.py` are the lanes' own generators and checks, kept as a
-record of how each table was assembled; each ran clean at the time it was written. The
+record of how each table was assembled; each ran clean at the time it was written.
+**Do not re-run `build/build_eligibility.py`**: its step (c) writes the no-grade-filter proxy
+rows back and would clobber later hand rows. `build/rebuild_eligibility_join.py` owns the
+family rows since note 22 Task 10; it is idempotent, and it is the one to run after any
+change to the duty profile, the units or the carriers, followed by `make data-worklist`. The
 authoritative check is `make data-check`, which now covers all fourteen tables.

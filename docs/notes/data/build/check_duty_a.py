@@ -40,7 +40,7 @@ DUTY_COLS = ['carb3_activity','process_set_id','process_id','duty_family','carri
 XW_COLS = ['carb3_activity','process_set_id','process_id','comit_process_code',
            'match_kind','notes']
 
-FAMILIES = {'DRY','EN','HRS','HTH','LTH','MOT','NEUOTH','OTH','PHEAT','REF','SPC','STM'}
+FAMILIES = {'DRY','HRS','HTH','LTH','MOT','NEUOTH','OTH','PHEAT','REF','SPC','STM'}  # EN is a unit family only (spec 3.4, note 22 Task 1)
 TIERS = {'measured','engineering','published_sec','fallback'}
 CONF = {'high','medium','low'}
 KINDS = {'direct','analogue','none'}
@@ -134,10 +134,8 @@ for i, r in enumerate(duty, start=2):
         fail('%s: heat family with non-heat carrier %s' % (where, r['carrier_id']))
     if r['duty_family'] == 'MOT' and r['carrier_id'] != 'motive_power':
         fail('%s: MOT must use motive_power' % where)
-    if r['duty_family'] == 'REF' and r['carrier_id'] != 'cooling':
-        fail('%s: REF must use cooling' % where)
-    if r['duty_family'] == 'EN':
-        warn('%s: EN is a last resort and should be avoided' % where)
+    if r['duty_family'] == 'REF' and r['carrier_id'] not in ('cooling_lt0', 'cooling_0_15', 'cooling_gt15'):
+        fail('%s: REF must use a cooling band (note 22 Task 3)' % where)
 
     # PK uniqueness: (activity, set, process, family, grade_rank)
     pk = key + (r['duty_family'], rank)

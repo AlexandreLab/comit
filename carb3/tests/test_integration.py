@@ -471,7 +471,7 @@ def _grade_two_dispatch(run: Run) -> pd.DataFrame:
     """z on ``boiler_steam_hot_water``'s grade-2 duty, which is §4.2's contest exactly.
 
     Not every ``heat_60_100`` row: ``mvp-dairy``'s ``site_services`` duty has a heat pump
-    as its *incumbent* (the README's one substitution, forced by every SPC unit being
+    as its *incumbent* (the README's one substitution, made when every SPC unit was
     ``grade_out`` 1), so including it would make "a heat pump runs at 2021" true for a
     reason that has nothing to do with the switch.
     """
@@ -501,10 +501,18 @@ def test_the_low_grade_heat_duty_switches_to_a_heat_pump_at_the_first_buildable_
     grade_two = _grade_two_dispatch(run)
     assert not grade_two.empty
 
+    # C5: nothing is built in the start year. The dispatch is not the test of that: the
+    # dairy's ``site_services`` incumbent is a heat pump, capacity is shared across a unit's
+    # duties (C2), and since the space-heat boilers reach grade 2 (note 20 item 24,
+    # 2026-09-25) a boiler takes the space-heat duty and frees that pump for this one.
+    built = run.tables.build
+    at_start = built[(built["period"] == 2021) & built["unit_id"].isin(HEAT_PUMPS)]
+    assert at_start["new_capacity"].sum() == pytest.approx(0.0, abs=TOLERANCE), (
+        "no heat pump can be built in the start year (C5)"
+    )
     start = grade_two[grade_two["period"] == 2021]
-    assert start[start["unit_id"].isin(HEAT_PUMPS)]["activity"].sum() == pytest.approx(
-        0.0, abs=TOLERANCE
-    ), "no heat pump can be built in the start year (C5), and none is an incumbent here"
+    incumbent_pumps = start[start["unit_id"].isin(HEAT_PUMPS)]["activity"].sum()
+    assert incumbent_pumps < start["activity"].sum(), "the incumbents are not all heat pumps"
     assert start["activity"].sum() > 0.0
 
     switched = grade_two[grade_two["period"] == 2025]
@@ -569,7 +577,7 @@ def test_carbon_off_inverts_the_boiler_versus_heat_pump_ranking(
     ``carbon_price`` at zero the pump's 16.12 £m/yr of electricity must lose to the
     boiler's 11.97 £m/yr of gas and no annuity can close the gap.
 
-    U_q is narrowed to those two units, because at ``mvp-minimal`` it really holds eleven
+    U_q is narrowed to those two units, because at ``mvp-minimal`` it really holds thirteen
     and the wider contest has a different winner — see
     :func:`test_carbon_off_switches_the_premise_to_on_site_generation_not_to_the_boiler`.
     Narrowing it is what makes this a test of §4.2's arithmetic rather than of the
@@ -629,7 +637,8 @@ def test_carbon_off_switches_the_premise_to_on_site_generation_not_to_the_boiler
     heat pumps for the grade-2 duty, and **imports no electricity at all** — consumption
     exceeds import, which is exactly the condition ``MF-79`` exists for. The switch §4.2
     describes is real (the test above proves it head to head); it is simply not the whole
-    contest at a premise whose U_q holds eleven units.
+    contest at a premise whose U_q holds thirteen units (eleven before the 2026-09-25 rebuild
+    added the two space-heat boilers, now grade 2).
     """
     with_carbon = _solve("mvp-minimal", reference, screen, axis)
     without_carbon = _solve("mvp-minimal", _without_carbon(reference), screen, axis)

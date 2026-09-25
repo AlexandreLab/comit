@@ -457,18 +457,30 @@ def test_measured_counts_match_the_plan(
     Each figure is one lower than the plan's (the eligibility count one higher) since
     2026-09-24: ``generic_process_elec`` gained its coefficient rows when it became the
     producer of ``electric_service`` (note 22 §2), and one eligibility row was added for it.
+
+    Note 22 Task 10 (2026-09-25) added ``chiller_electric_lt0``, the only unit reaching the
+    ``cooling_lt0`` band: 138 units, one more admitted; the unit leg is unchanged, since the
+    new unit is fully costed. It also rebuilt ``unit_eligibility``'s family rows from the join
+    (``docs/notes/data/build/rebuild_eligibility_join.py``): the 1,852 no-grade-filter proxy
+    rows became 2,442 rows (2,498 after the PR #64 units) that each serve a duty in C10's direction with a costed unit, so
+    the table grew to 3,207 (3,263) while the rows reaching an incomplete unit fell from 363 to 50 —
+    the survivors are worked-example and options rows, which are evidence and were kept.
+
+    The PR #64 decisions (2026-09-25) added ``kiln_ht_gas`` (heat above 1000 °C) and
+    ``engine_mot_gas`` (gas engine for shaft work), both fully costed: 140 units, 60 admitted,
+    and the rebuilt rows grew to 2,498 of 3,263.
     """
     dropped = {d.unit_id for d in screen.dropped}
     unit_leg = {d.unit_id for d in screen.dropped if d.leg != "import_price"}
-    assert len(reference.unit) == 137
+    assert len(reference.unit) == 140
     assert len(unit_leg) == 40
     assert len(dropped) == 80
-    assert len(screen.admitted) == 57
+    assert len(screen.admitted) == 60
 
     elig = reference.unit_eligibility
-    assert len(elig) == 2613
-    assert int(elig["unit_id"].isin(unit_leg).sum()) == 363
-    assert int(elig["unit_id"].isin(dropped).sum()) == 1154
+    assert len(elig) == 3263
+    assert int(elig["unit_id"].isin(unit_leg).sum()) == 50
+    assert int(elig["unit_id"].isin(dropped).sum()) == 1391
 
 
 def test_a_drop_is_reported_once_per_failing_leg(screen: load.AdmissionScreen) -> None:

@@ -23,7 +23,6 @@ heat_150_400,Heat 150-400 C,intermediate,TRUE,heat,4,150-400C,FALSE,,,,energy,TR
 heat_400_1000,Heat 400-1000 C,intermediate,TRUE,heat,5,400-1000C,FALSE,,,,energy,TRUE,FALSE,FALSE,,,
 heat_gt1000,Heat above 1000 C,intermediate,TRUE,heat,6,>1000C,FALSE,,,,energy,TRUE,FALSE,FALSE,,,
 motive_power,Motive power (shaft work),intermediate,FALSE,,,,FALSE,,,,energy,TRUE,FALSE,FALSE,,,
-cooling,Cooling and refrigeration,intermediate,FALSE,,,,FALSE,,,,energy,TRUE,FALSE,FALSE,,,"Ungraded; kept while the 17 REF duty rows and the two chillers' unit_input_output rows still name it. Retires once note 22 Tasks 3 and 4 move them onto cooling_lt0, cooling_0_15 or cooling_gt15"
 cooling_lt0,Cooling below 0 C,intermediate,TRUE,cooling,1,<0C,FALSE,,,,energy,TRUE,FALSE,FALSE,,,"Spec section 3.4 cooling band set (grade_family cooling, rank 1 coldest, band includes its lower edge); note 22 Task 2. Internal service carrier: may_import and may_export FALSE (D16)"
 cooling_0_15,Cooling 0-15 C,intermediate,TRUE,cooling,2,0-15C,FALSE,,,,energy,TRUE,FALSE,FALSE,,,"Spec section 3.4 cooling band set (grade_family cooling, rank 1 coldest, band includes its lower edge); note 22 Task 2. Internal service carrier: may_import and may_export FALSE (D16)"
 cooling_gt15,Cooling above 15 C,intermediate,TRUE,cooling,3,>15C,FALSE,,,,energy,TRUE,FALSE,FALSE,,,"Spec section 3.4 cooling band set (grade_family cooling, rank 1 coldest, band includes its lower edge); note 22 Task 2. Internal service carrier: may_import and may_export FALSE (D16)"

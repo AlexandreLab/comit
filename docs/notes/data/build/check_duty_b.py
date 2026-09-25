@@ -17,7 +17,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.dirname(HERE)
 LANE = 'duty_b'
 
-DUTY_FAMILIES = {'DRY','EN','HRS','HTH','LTH','MOT','NEUOTH','OTH','PHEAT','REF','SPC','STM'}
+DUTY_FAMILIES = {'DRY','HRS','HTH','LTH','MOT','NEUOTH','OTH','PHEAT','REF','SPC','STM'}  # EN is a unit family only (spec 3.4, note 22 Task 1)
 HEAT_FAMILIES = {'DRY','HTH','LTH','PHEAT','SPC','STM'}
 TIERS = {'measured','engineering','published_sec','fallback'}
 CONFS = {'high','medium','low'}
@@ -96,9 +96,9 @@ for i, r in enumerate(duty, 2):
         if not car: err('duty row %d: carrier_id is required' % i)
         elif car not in CARRIER: err('duty row %d: carrier_id %r not in carrier.csv' % (i, car))
     if fam == 'HRS': err('duty row %d: HRS is the steel hot-rolling chemistry node and is out of this lane' % i)
-    if fam == 'EN':  warn('duty row %d: EN (generic energy) is a last resort and should be avoided' % i)
     if fam == 'MOT' and car != 'motive_power': err('duty row %d: MOT must bind motive_power, found %r' % (i, car))
-    if fam == 'REF' and car != 'cooling':      err('duty row %d: REF must bind cooling, found %r' % (i, car))
+    if fam == 'REF' and car not in ('cooling_lt0', 'cooling_0_15', 'cooling_gt15'):
+        err('duty row %d: REF must bind a cooling band (note 22 Task 3), found %r' % (i, car))
     if fam in HEAT_FAMILIES and car and not car.startswith('heat_'):
         err('duty row %d: %s must bind a heat_* band, found %r' % (i, fam, car))
 
