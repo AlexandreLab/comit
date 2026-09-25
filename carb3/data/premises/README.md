@@ -108,7 +108,7 @@ process CO₂, no co-firing, no second cohort.
 | `carb3_activity` | `Food Processing Centre` |
 | Cut from | [Food and drink worked example](../../../docs/specs/2026-08-28-carb3-site-energy-system-worked-example-food-drink.md), premise `P-004417` |
 | Processes | Six: the activity's whole default set |
-| Duties | Eight rows across five carriers: `heat_60_100` grade 2 (LTH 0.060763 and SPC 0.018480), `heat_100_150` grade 3 (STM 0.070816), `heat_150_400` grade 4 (DRY 0.079050), `cooling` (REF 0.064598), `motive_power` (MOT 0.062553 over three processes) |
+| Duties | Eight rows across five carriers: `heat_60_100` grade 2 (LTH 0.060763 and SPC 0.018480), `heat_100_150` grade 3 (STM 0.070816), `heat_150_400` grade 4 (DRY 0.079050), `cooling_0_15` grade 2 (REF 0.064598), `motive_power` (MOT 0.062553 over three processes) |
 | Incumbents | Eight rows over six processes: `chp_gas_turbine` + `boiler_lt_gas`, `dryer_direct_gas`, `chiller_electric`, `motor_elec` ×3, `heat_pump_lt_air` |
 | Base-year energy | `natural_gas` 0.300000, `electricity` 0.060000 PJ/yr; three explicit `not_consumed` zeros |
 

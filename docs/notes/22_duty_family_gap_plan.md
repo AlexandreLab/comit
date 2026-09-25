@@ -24,9 +24,10 @@ serve them**, most of them for reasons note 20 already records. This plan fixes 
 cooling, `OTH`, `PHEAT` and `EN` gaps, adds the validator checks that would have caught
 them, and routes the other coverage gaps to the note 20 items that own them.
 
-**Status 2026-09-25:** Tasks 1, 2 and 7 are done (§8) and Task 8 is done as labels; the
-cooling carriers are in `carrier.csv`, and the unservable count is re-measured at 89 with a
-cause and owner per row.
+**Status 2026-09-25:** Tasks 1, 2, 3, 7 and 9 are done (§8) and Task 8 is done as labels; the
+cooling carriers are in `carrier.csv`, the 17 `REF` rows sit on them, and the unservable count
+is re-measured with a cause and owner per row — 89 before Task 3, 92 after it, because three
+rows moved to `cooling_lt0` where no unit yet reaches.
 
 **Ten tasks in six lanes.** The first one — teaching the validator that ranks are unique
 per grade family — has to land before any cooling carrier is added, or `make data-check`
@@ -286,7 +287,7 @@ is green today is blocking from the start.
 | `grade_rank` unique **within `grade_family`**, replacing the global uniqueness in `check_carrier` (line 540) | 0 | blocking | now — and it must land first, or three cooling carriers at ranks 1–3 collide with `heat_lt60`, `heat_60_100` and `heat_100_150` |
 | Every gradeable carrier has a `grade_family`; no ungradeable one does | 6 (the column is absent) | blocking | Task 2, in the same commit as the column |
 | No duty-profile row on a `primary` or `emission` carrier — V34 (a) | 11 | advisory | Task 5 |
-| Every `REF` row on a cooling band with its rank — V34 (c) | 17 | advisory | Task 3 |
+| Every `REF` row on a cooling band with its rank — V34 (c) | 17 | advisory | Task 3 — **blocking since 2026-09-25, 0 red** |
 | Duty families split from unit families; no duty row on `EN`, `NEUOTH` or `HRS` — V34 (c) | 0 | blocking | now |
 | A unit's `grade_out` is a rank of its primary output's family; required where that output is gradeable | 1 (`solar_thermal_flat`) | advisory | Task 6 |
 | Every duty has at least one eligible unit whose primary output serves it at its rank, per C10 (the grade cascade) | 89 | **advisory, permanently for now** | not scheduled — it depends on note 20 items 24, 25, 27 and 30 |
@@ -368,8 +369,22 @@ Six lanes: **validator** (`validate_carb3_data.py` and `check_units.py`), **carr
 
 ### Task 3 — Band the seventeen `REF` rows
 
-- **Status:** open. The three bands exist in `carrier.csv` since Task 2; all 17 rows are
-  still on `cooling`, which `make data-report`'s V34 (c) advisory counts.
+- **Status:** **done 2026-09-25.** 3 rows on `cooling_lt0` (Abattoir, Brewery, Chemical Works)
+  and 14 on `cooling_0_15`, none on `cooling_gt15`. Five cite a temperature: `UKSI_2007_191`
+  (frozen food no warmer than −18 °C, the abattoir's freezer stores), `GD_CHILLERS_BREWERY`
+  (glycol at 26–28 °F, vendor material, so `confidence` low), `REG853_2004` (milk held at
+  ≤ 6 °C, the creamery), `OGJ_ALKY_1996` (sulphuric-acid alkylation at about 10 °C,
+  `confidence` low because each UK unit's acid is not sourced) and `CARB3_WE_FOOD` (Food
+  Processing Centre). The other twelve are `fallback`, `confidence` low, and name the
+  equipment that decided the band; Chemical Works reads its "ammonia/HFC refrigeration sets"
+  as sub-zero, the note's own low-confidence call. The distillery is **not** split: no source
+  gives the share (note 20 item 62). No `duty_share` changed, so the 376 key sums hold. Both
+  chillers now produce `cooling_0_15` at `grade_out` 2 — the label move of Task 4's change
+  list, without which every `REF` row would have lost its unit — and the ungraded `cooling`
+  carrier is retired (47 carriers). V34 (duties are services at a grade) leg (c) is a
+  blocking check, `check_duty_family_carriers`, and passes; leg (a) stays advisory for
+  Task 5. Unservable: 89 → 92, the three `cooling_lt0` rows at a grade ceiling until a
+  sub-zero unit exists (Task 10).
 - **Lane:** duties.
 - **Goal:** every `REF` row sits on a cooling band with its rank.
 - **Inputs:** §3 of this note; the sources named there; note 20 item 1 for the alkylation
@@ -495,8 +510,12 @@ agree again.
 
 ### Task 9 — Read the cascade direction in `carb3`
 
-- **Status:** open. Since Task 2, `carb3`'s carrier schema requires `grade_family`; nothing
-  reads it yet.
+- **Status:** **done 2026-09-25**, with Task 3, because the banded data needed it: without
+  the family test `heat_pump_lt_reject` (heat, `grade_out` 2) sat in `mvp-dairy`'s U_q for the
+  rank-2 chilled-water duty. `carb3.sets._serves` matches the duty carrier's `grade_family`
+  against the unit's primary output first, then compares `grade_out` in that family's
+  direction; `test_c10_cooling_runs_the_other_way` and `test_c10_never_crosses_grade_families`
+  pin both.
 - **Lane:** carb3.
 - **Goal:** `eligible_units` admits cooling units by the cooling direction and never across
   families.

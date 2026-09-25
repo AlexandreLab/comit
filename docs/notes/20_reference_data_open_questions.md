@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, and item 61 on 2026-09-24 — **thirteen of the sixty-one**.
+51, 53 and 56 on 2026-09-20, and item 61 on 2026-09-24 — **thirteen of the sixty-two**.
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -830,3 +830,20 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     ranks 1–3, and the validator holds `grade_rank` unique within a family. Still open: the
     17 `REF` rows sit on the ungraded `cooling` carrier, which stays until they and the two
     chillers move (note 22 Tasks 3 and 4), and the HFO coefficient.
+
+    **Data progress 2026-09-25: the 17 `REF` rows are banded** (note 22 Task 3): three on
+    `cooling_lt0` (Abattoir, Brewery, Chemical Works), fourteen on `cooling_0_15`, none on
+    `cooling_gt15`. Five cite a temperature source (the abattoir's freezer stores under the
+    Quick-frozen Foodstuffs Regulations, the brewery's glycol loop, the creamery's milk at
+    6 °C under Regulation 853/2004, the refinery's sulphuric-acid alkylation at about 10 °C,
+    and the food-and-drink worked example); the other twelve are `fallback`, `confidence` low,
+    banded by their equipment. Both chillers produce `cooling_0_15` at `grade_out` 2 and the
+    ungraded `cooling` carrier is retired. Still open: a unit that reaches `cooling_lt0`, the
+    HFO coefficient, and the distillery split (item 62).
+62. **Should Distillery `cooling_systems` be split between two cooling bands?** Its equipment is
+    condenser water pumps and cooling-tower fans — ambient heat rejection, `cooling_gt15` — and
+    yeast refrigeration, which is chilled (`cooling_0_15`). §3.4's rule puts the whole row in
+    the band of its coldest need, so it sits on `cooling_0_15` and a chiller is offered for
+    duty a cooling tower could meet. A split is an uncoupled two-row share under §3.2 and needs
+    a published share; `BALMENACH_CS` names the end uses without quantifying them, and no
+    other source was found. Until one is, the row stays whole. *Note 22 Task 3, 2026-09-25.*

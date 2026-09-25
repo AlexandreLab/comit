@@ -9,13 +9,13 @@ Five modules, per plan §5.1 — the review reduced seven to five, so do not add
 ``load``
     Reference + premise tables -> typed records; the §3.2 screen.
 ``sets``
-    Minimal A2; Q, U, U_q via the three-table join; C10 (heat grade cascade) widening;
+    Minimal A2; Q, U, U_q via the three-table join; C10 (the grade cascade) widening;
     ``earliest_year`` / ``max_share`` / ``min_duty``; unservable-duty diagnosis.
 ``survival``
     D11 (existing plant has an age) survival function, computed before the LP.
 ``build``
     Variables, C1 (duty satisfaction) to C5 (no building in the start year), C8 (carrier
-    balance), C10 (heat grade cascade), objective, solve.
+    balance), C10 (the grade cascade), objective, solve.
 ``ledger``
     Cost by term, carrier mix, dispatch, build, disposal -> parquet.
 

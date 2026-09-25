@@ -99,11 +99,13 @@ for review, not a settled answer — note 20 lists the places it bites.
 | cooling | `cooling_0_15` | 2 | `0-15C` |
 | cooling | `cooling_gt15` | 3 | `>15C` |
 
-**Nothing uses the cooling bands yet.** The ungraded `cooling` carrier stays in `carrier.csv`
-while the 17 `REF` duty rows and the two chillers' `unit_input_output` rows still name it; it
-retires once note 22 Tasks 3 (a band for each `REF` row) and 4 (cooling units per band) have
-moved every reference. Until then `make data-report`'s V34 (duties are services at a grade)
-advisory counts the 17 `REF` rows as off their family's carrier.
+**The 17 `REF` duty rows sit on them since 2026-09-25** (note 22 Task 3): three on
+`cooling_lt0` (the abattoir's freezer stores, the brewery's glycol loop, and Chemical Works
+refrigeration, the last on a `fallback` reading of its equipment) and fourteen on
+`cooling_0_15`; nothing is on `cooling_gt15`. Each row's provenance names the temperature
+source or, where none was found, the equipment that decided the band. The two chillers
+produce `cooling_0_15` at `grade_out` 2, and the ungraded `cooling` carrier is retired.
+V34 (duties are services at a grade) leg (c) is now blocking in `make data-check`.
 
 ## What is thin, and known to be
 
@@ -114,7 +116,7 @@ advisory counts the 17 `REF` rows as off their family's carrier.
 | `unit.csv` | ~~`abates_unit_id` blank on 11 of 13 abatement units~~ — **closed 2026-09-17.** The column is gone; `unit_abatement_host.csv` carries one row per (train, host) pair, 37 rows over all 13 trains, none blank, and V33 (b) is blocking | `build/DONE_units.md` §8, note 20 item 5 |
 | `unit_input_output.csv` | Capture trains other than `ccs_amine` have no coefficients; the four standalone storage units have none either, for want of a published round-trip efficiency — they are now *expressible*, since §3.6 keys on `(unit_id, carrier_id, role)` (note 20 item 4), but not yet written | `build/DONE_units.md` G2, G8 |
 | `unit_eligibility.csv` | `min_duty` on 15 rows and `earliest_year` on 9, all from the worked examples; 1,851 of 2,612 rows are `proxy` | `build/DONE_eligibility.md` §4 |
-| `activity_process_duty_profile.csv` | 151 of 427 rows are `fallback`; no row is `measured` or `high` | the two duty reports |
+| `activity_process_duty_profile.csv` | 159 of 427 rows are `fallback`; no row is `measured` or `high` | the two duty reports |
 | `activity_default_unit.csv` | 367 of 455 rows are `assumed`; the CHP shares on 17 rows are the `sector_statistic` content | `build/DONE_default_unit.md` |
 | `scenario_parameters.csv` | No 2021 export price, no hydrogen price, no reinforcement cost; import prices for 11 minor carriers absent | `build/DONE_carriers.md` §5 |
 | `infrastructure_scenario.csv` | `unit_tariff` and `capacity_limit` blank on every row; hydrogen `available = FALSE` everywhere because nothing published names a region | same |

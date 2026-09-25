@@ -743,8 +743,9 @@ def check_duty_families(duty: list[dict]) -> Result:
 
     `EN` labels hydrogen-producing units only; `NEUOTH` (feedstock) and `HRS` (hot rolling, a
     chemistry node) present no service duty (§3.4). Leg (b) — a row on a gradeable carrier
-    carries that carrier's own rank — is in `check_duty_profile`; legs (a) and the rest of
-    (c) are advisory in `check_duty_services` until note 22 Tasks 3 and 5 land."""
+    carries that carrier's own rank — is in `check_duty_profile`; the rest of (c) is
+    blocking in `check_duty_family_carriers`, and leg (a) is advisory in `check_duty_services`
+    until note 22 Task 5 lands."""
     r = Result("V34 (duties are services at a grade) (c): no EN, NEUOTH or HRS duty row")
     for i, row in enumerate(duty, start=2):
         f = row["duty_family"].strip()
@@ -755,21 +756,16 @@ def check_duty_families(duty: list[dict]) -> Result:
     return r
 
 
-def check_duty_services(duty: list[dict], car: list[dict]) -> Result:
-    """ADVISORY. V34 (duties are services at a grade) legs (a) and (c), the parts the data
-    does not yet meet.
+def _duty_carrier_findings(duty: list[dict], car: list[dict]
+                           ) -> tuple[list[str], dict[str, list[str]]]:
+    """V34 (duties are services at a grade) legs (a) and (c), as findings.
 
     (a) no duty row names a `primary` or `emission` carrier — an `OTH` row on `electricity`
         makes C8 (carrier balance) circular at the `electricity` node (§3.4).
     (c) each family's rows sit on the carrier §3.4's table names for it: the six heat
         families on a heat band, `REF` on a cooling band, `MOT` on `motive_power`, `OTH` on a
         non-gradeable service carrier. A `product` carrier with `may_export` true is a
-        legitimate duty on any row (§3.9) and is not judged here.
-
-    Advisory until note 22 Task 5 (the `OTH` rows on `electricity`) and Task 3 (a band for
-    each `REF` row) land; each then turns blocking."""
-    r = Result("V34 (duties are services at a grade) (a), (c): duty carriers (advisory)",
-               blocking=False)
+        legitimate duty on any row (§3.9) and is not judged here."""
     carriers = {c["carrier_id"]: c for c in car}
     on_fuel: list[str] = []
     off_family: dict[str, list[str]] = defaultdict(list)
@@ -798,16 +794,34 @@ def check_duty_services(duty: list[dict], car: list[dict]) -> Result:
             ok = True  # NON_DUTY_FAMILIES are check_duty_families' failure
         if not ok:
             off_family[f].append(where)
-    n_off = sum(len(v) for v in off_family.values())
-    r.note = (f"(a) {len(on_fuel)} rows on a primary or emission carrier; "
-              f"(c) {n_off} rows off their family's carrier"
-              + (" — " + ", ".join(f"{f} {len(v)}" for f, v in sorted(off_family.items()))
-                 if off_family else ""))
-    for w in on_fuel:
-        r.detail(f"  (a) {w}")
+    return on_fuel, off_family
+
+
+def check_duty_family_carriers(duty: list[dict], car: list[dict]) -> Result:
+    """BLOCKING. V34 (duties are services at a grade) leg (c): every row sits on its family's
+    carrier — `REF` on a cooling band, the heat families on a heat band, `MOT` on
+    `motive_power`, `OTH` on a service carrier. Blocking since note 22 Task 3 put the 17
+    `REF` rows on cooling bands (2026-09-25); the grade on each is `check_duty_profile`'s
+    leg (b)."""
+    r = Result("V34 (duties are services at a grade) (c): each family on its carrier")
+    _, off_family = _duty_carrier_findings(duty, car)
     for f in sorted(off_family):
         for w in off_family[f]:
-            r.detail(f"  (c) {w}")
+            r.fail(f"{w} (V34 (c): {f} belongs on its family's carrier, §3.4)")
+    r.note = f"{len(duty)} rows"
+    return r
+
+
+def check_duty_services(duty: list[dict], car: list[dict]) -> Result:
+    """ADVISORY. V34 (duties are services at a grade) leg (a), the part the data does not
+    yet meet: no duty row names a `primary` or `emission` carrier. Advisory until note 22
+    Task 5 (the `OTH` rows on `electricity`) lands; it then turns blocking."""
+    r = Result("V34 (duties are services at a grade) (a): no duty on a fuel (advisory)",
+               blocking=False)
+    on_fuel, _ = _duty_carrier_findings(duty, car)
+    r.note = f"(a) {len(on_fuel)} rows on a primary or emission carrier"
+    for w in on_fuel:
+        r.detail(f"  (a) {w}")
     return r
 
 
@@ -1723,6 +1737,7 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
         check_abatement_hosts(tables["unit_abatement_host.csv"], unit),
         check_duty_profile(duty, reg, car),
         check_duty_families(duty),
+        check_duty_family_carriers(duty, car),
         check_process_crosswalk(tables["carb3_comit_process_crosswalk.csv"], reg),
         check_units(unit, tables["unit_input_output.csv"],
                     tables["unit_bill_of_materials.csv"], car, reg),

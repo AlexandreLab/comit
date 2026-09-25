@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 from pathlib import Path
 
+import pandas as pd
 import pytest
 from test_load import write_premise_fixture
 
@@ -206,7 +207,7 @@ def test_a2_fails_loud_with_no_process_valid_at_the_base_year(
 
 
 def test_c10_a_grade_3_unit_serves_a_grade_2_duty(dairy: sets.ModelSets) -> None:
-    """C10 (heat grade cascade) widens U_q downwards: heat made hotter still serves cooler."""
+    """C10 (the grade cascade) widens U_q downwards: heat made hotter still serves cooler."""
     assert "boiler_lt_gas" in dairy.eligible[DAIRY_G2]
     assert "boiler_lt_gas" in dairy.eligible[DAIRY_G3]
 
@@ -235,6 +236,36 @@ def test_c10_refuses_a_grade_1_unit_a_grade_2_duty(
     service_g2 = dairy.eligible[("fx-dairy", "site_services", "heat_60_100")]
     assert "boiler_spc_gas" not in service_g2
     assert service_g2 == {"heat_pump_lt_air", "heat_pump_lt_reject"}
+
+
+def _duty(carrier_id: str, grade_rank: int | None) -> sets.Duty:
+    return sets.Duty("fx", "p", carrier_id, grade_rank, {2021: 1.0})
+
+
+def _unit(grade_out: int | None) -> pd.Series:
+    return pd.Series({"grade_out": pd.NA if grade_out is None else grade_out})
+
+
+def test_c10_cooling_runs_the_other_way(reference) -> None:
+    """Note 22 Task 9. For cooling, rank 1 is the coldest band, so the cascade is reversed:
+    a sub-zero plant (``grade_out`` 1) serves a chilled-water duty (rank 2), and a cooling
+    tower (``grade_out`` 3, ambient heat rejection) is refused a sub-zero duty (rank 1)."""
+    families = sets._grade_families(reference)
+    chilled = _duty("cooling_0_15", 2)
+    freezer = _duty("cooling_lt0", 1)
+    assert sets._serves(_unit(1), {"cooling_lt0"}, chilled, families)
+    assert sets._serves(_unit(2), {"cooling_0_15"}, chilled, families)
+    assert not sets._serves(_unit(3), {"cooling_gt15"}, freezer, families)
+    assert not sets._serves(_unit(2), {"cooling_0_15"}, freezer, families)
+
+
+def test_c10_never_crosses_grade_families(reference) -> None:
+    """A heat unit's ``grade_out`` 2 says nothing about cooling: before the family test,
+    ``heat_pump_lt_reject`` (heat, ``grade_out`` 2) sat in U_q for a rank-2 chilled-water
+    duty, and a chiller would have sat in U_q for a rank-2 heat duty."""
+    families = sets._grade_families(reference)
+    assert not sets._serves(_unit(2), {"heat_60_100"}, _duty("cooling_0_15", 2), families)
+    assert not sets._serves(_unit(2), {"cooling_0_15"}, _duty("heat_60_100", 2), families)
 
 
 def test_a_non_gradeable_duty_matches_on_the_carrier_instead(

@@ -34,10 +34,17 @@ Open work on the CaRB3 duty families and cooling grades. The full plan is
   `HTH` duty** (`activity_default_unit.csv`, share 0.13636). That unit now produces
   `electric_service`, so it cannot serve a heat duty; the plasma-cutting share needs a heat
   unit. The row was already unservable before, when the unit had no coefficients.
-- [ ] **Band the 17 `REF` rows and add per-band chillers**, and check
-  `chiller_electric_hfo`'s COP of 0.9 against `ICHREFEHFC01` in the workbook. The cooling
-  carriers landed 2026-09-25; the ungraded `cooling` carrier retires when these move off it.
-  *Note 22 Tasks 3 and 4.*
+- [x] **Band the 17 `REF` rows.** Done 2026-09-25: 3 on `cooling_lt0`, 14 on `cooling_0_15`,
+  each citing a temperature source or, under the task's fallback rule, the equipment that
+  decided it; both chillers on `cooling_0_15` at `grade_out` 2; the ungraded `cooling` carrier
+  retired; V34 (duties are services at a grade) leg (c) blocking. *Note 22 Task 3.*
+- [ ] **Per-band cooling units, and `chiller_electric_hfo`'s COP of 0.9** against
+  `ICHREFEHFC01` in the workbook. The three `cooling_lt0` rows have no unit that reaches them
+  until a sub-zero unit exists. *Note 22 Tasks 4 and 10.*
+- [ ] **Split Distillery `cooling_systems`?** It names condenser water and cooling-tower fans
+  (`cooling_gt15`) beside yeast refrigeration (`cooling_0_15`). No source gives the share, so
+  under Task 3's rule the row is whole, on `cooling_0_15`. A published split would move part
+  of it to `cooling_gt15`. *Note 20 item 62.*
 - [ ] **One consolidated pass over the unit library and the duty rows.** Fix the 89
   unservable duties in a single sweep with one owner, rather than lane by lane, and rebuild
   `unit_eligibility.csv` from the join (family, grade family, `grade_out` in C10's direction,
@@ -56,12 +63,17 @@ Open work on the CaRB3 duty families and cooling grades. The full plan is
 
 ## Documents and code
 
-- [ ] **Put the Food Processing Centre `refrigeration` data row on `cooling_0_15`.** The
+- [x] **Put the Food Processing Centre `refrigeration` data row on `cooling_0_15`.** Done
+  2026-09-25 with Task 3. The
   food-and-drink worked example now says chilled water at that band (decided 2026-09-25, labels
   only, no figure moved), and the row in `activity_process_duty_profile.csv` cites the example.
   It still says ungraded `cooling`; the `cooling_0_15` carrier exists since 2026-09-25, so
   only the row move is left. *Note 22 Task 3.*
-- [ ] **`carb3` handles grades for heat only.** C10 (the grade cascade) in the code needs the
+- [x] **`carb3` handles grades for heat only.** Done 2026-09-25 (note 22 Task 9, landed with
+  Task 3 because the banded data needed it): `_serves` matches the grade family first and reads
+  the direction from it, and two tests pin a sub-zero plant serving chilled water and a
+  cooling tower refused a freezer duty. Before it, `heat_pump_lt_reject` sat in the dairy's
+  chilled-water U_q. C10 (the grade cascade) in the code needs the
   reversed direction for cooling once graded cooling carriers are in the data. `carb3` now
   reads `carrier.grade_family` (its schema requires the column) but nothing uses it yet.
   *Note 22 Task 9.*
@@ -69,6 +81,7 @@ Open work on the CaRB3 duty families and cooling grades. The full plan is
   `build/carrier_products_units.csv`, which is not in the tree, and dies with
   `FileNotFoundError` before any check. Found 2026-09-25; its `EN` family set was updated
   anyway. Either restore the staging file or drop the read. `make check` does not call it.
-- [ ] **The lane scripts `check_duty_a.py` and `check_duty_b.py` still admit `EN` as a duty
-  family, and `check_duty_a.py` requires `REF` on `cooling`.** Neither is in `make check`;
-  the second goes red the moment Task 3 bands a `REF` row. Update or retire them with Task 3.
+- [ ] **The lane scripts `check_duty_a.py` and `check_duty_b.py` do not run.** Their `EN`
+  family and `REF`-on-`cooling` rules were updated with Task 3 (2026-09-25), but both read lane
+  staging files (`build/activity_process_duty_profile_duty_a.csv`, `_duty_b.csv`) that are not
+  in the tree and die with `FileNotFoundError`. Neither is in `make check`. Restore or retire.

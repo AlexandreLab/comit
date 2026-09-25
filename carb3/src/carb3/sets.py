@@ -26,7 +26,7 @@ in ``build.py``.
 ``(unit_id, carb3_activity, process_id)`` — by *process*, not by duty — with no carrier or
 grade column, and 142 of its rows carry a blank ``process_id`` and are activity-level supply.
 Building U_q means joining it to ``activity_process_duty_profile`` for the duty and to
-``unit.grade_out`` for C10 (heat grade cascade).
+``unit.grade_out`` for C10 (the grade cascade).
 
 **C10 is enforced by widening U_q, not by a cascade variable** (§6.1). A unit is eligible for
 any duty at or below its ``grade_out``. That is the ``MF-41`` Must form, not a debt.
@@ -140,7 +140,7 @@ class ModelSets:
     duties: tuple[Duty, ...]
     #: U — the admitted units, after the §3.2 screen.
     units: frozenset[str]
-    #: U_q — eligible units per duty, already widened for C10 (heat grade cascade).
+    #: U_q — eligible units per duty, already widened for C10 (the grade cascade).
     eligible: Mapping[DutyKey, frozenset[str]]
     #: Upper bound of zero on new capacity before this year. 9 rows; 2030, 2035, 2040.
     earliest_year: Mapping[tuple[DutyKey, str], int]
@@ -488,7 +488,7 @@ def _throughput_duties(
                 premise_id=premise_id,
                 process_id=maker_of[carrier_id],
                 carrier_id=carrier_id,
-                # A product carrier is not gradeable, so C10 (heat grade cascade) has
+                # A product carrier is not gradeable, so C10 (the grade cascade) has
                 # nothing to say about it and _serves falls back to the carrier test.
                 grade_rank=None,
                 quantity={period: quantity for period in periods},
@@ -776,23 +776,58 @@ def _eligibility_rows(
     return rows.sort_values("_specific", kind="stable").drop_duplicates("unit_id")
 
 
-def _serves(unit: pd.Series, primary_outputs: set[str], duty: Duty) -> bool:
-    """Whether one unit can serve one duty, on grade for heat and on carrier otherwise.
+def _grade_families(reference: ReferenceTables) -> dict[str, str | None]:
+    """carrier_id -> its ``grade_family`` (§3.4), ``None`` where it is not gradeable."""
+    families: dict[str, str | None] = {}
+    for carrier_id, gradeable, family in zip(
+        reference.carrier["carrier_id"],
+        reference.carrier["is_gradeable"],
+        reference.carrier["grade_family"],
+        strict=True,
+    ):
+        families[str(carrier_id)] = (
+            str(family) if bool(gradeable) is True and not pd.isna(family) else None
+        )
+    return families
 
-    **C10 (heat grade cascade), and its direction is the whole point.** A gradeable duty is
-    served by a unit whose ``grade_out`` is at or *above* the duty's ``grade_rank`` — a
-    grade-3 boiler serves a grade-2 duty by cascading down — and is **refused** by a unit
-    below it, because nothing raises heat to a grade the plant cannot make. Getting that
-    inequality backwards is a silent wrong answer, not a crash.
 
-    A non-gradeable duty — ``motive_power``, ``cooling`` — has no cascade, so the test is the
-    plain one: the unit's primary output is the duty's own carrier.
+def _serves(
+    unit: pd.Series,
+    primary_outputs: set[str],
+    duty: Duty,
+    families: Mapping[str, str | None],
+) -> bool:
+    """Whether one unit can serve one duty: C10 (the grade cascade) for a graded duty, the
+    carrier otherwise.
+
+    **C10 reads its direction from the duty carrier's ``grade_family``, and never crosses
+    families** (§5.5). A graded duty is served only by a unit whose primary output lies in
+    the same family, and then:
+
+    * **heat** — ``grade_out`` at or *above* the duty's ``grade_rank``: a grade-3 boiler
+      serves a grade-2 duty by cascading down, and a grade-2 heat pump is refused a grade-3
+      one, because nothing raises heat to a grade the plant cannot make;
+    * **cooling** — ``grade_out`` at or *below* it, since rank 1 is the coldest band: a
+      sub-zero plant serves a chilled-water duty, and a chilled-water chiller is refused a
+      freezer store.
+
+    Getting either inequality backwards, or letting a heat unit's ``grade_out`` stand in for
+    a cooling one, is a silent wrong answer rather than a crash — before the family test a
+    grade-2 heat pump sat in U_q for a grade-2 chilled-water duty.
+
+    A non-gradeable duty — ``motive_power``, ``electric_service`` — has no cascade, so the
+    test is the plain one: the unit's primary output is the duty's own carrier.
     """
     if duty.grade_rank is None:
         return duty.carrier_id in primary_outputs
+    family = families.get(duty.carrier_id)
+    if family is None or not any(families.get(c) == family for c in primary_outputs):
+        return False
     grade_out = unit["grade_out"]
     if pd.isna(grade_out):
         return False
+    if family == "cooling":
+        return int(grade_out) <= duty.grade_rank
     return int(grade_out) >= duty.grade_rank
 
 
@@ -803,11 +838,12 @@ def eligible_units(
     *,
     carb3_activity: str,
 ) -> frozenset[str]:
-    """U_q for one duty: the three-table join, widened for C10 (heat grade cascade).
+    """U_q for one duty: the three-table join, widened for C10 (the grade cascade).
 
     Joins ``unit_eligibility`` to ``activity_process_duty_profile`` for the duty and to
-    ``unit.grade_out`` for the grade, admits a unit whose ``grade_out`` is at or above the
-    duty's ``grade_rank``, and applies the documented rule for the 142 activity-level rows
+    ``unit.grade_out`` for the grade, admits a unit whose primary output is in the duty
+    carrier's ``grade_family`` and whose ``grade_out`` reaches the duty's ``grade_rank`` in
+    that family's direction — at or above it for heat, at or below it for cooling — and applies the documented rule for the 142 activity-level rows
     whose ``process_id`` is blank.
 
     ``carb3_activity`` is keyword-only and required: ``unit_eligibility`` is keyed
@@ -833,13 +869,16 @@ def eligible_units(
     for unit_id, carrier_id in zip(outputs["unit_id"], outputs["carrier_id"], strict=True):
         primary_by_unit.setdefault(str(unit_id), set()).add(str(carrier_id))
 
+    families = _grade_families(reference)
     ceiling = max(duty.quantity.values()) if duty.quantity else 0.0
     eligible: set[str] = set()
     for _, row in rows.iterrows():
         unit_id = str(row["unit_id"])
         if unit_id not in admitted or unit_id not in units.index:
             continue
-        if not _serves(units.loc[unit_id], primary_by_unit.get(unit_id, set()), duty):
+        if not _serves(
+            units.loc[unit_id], primary_by_unit.get(unit_id, set()), duty, families
+        ):
             continue
         max_share = row["max_share"]
         if not pd.isna(max_share) and float(max_share) <= 0.0:

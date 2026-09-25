@@ -104,9 +104,9 @@ dryer_steam,heat_150_400,1,primary_output,comit_reuse,low,"[COMIT_WB_140] sheet 
 dryer_steam,heat_100_150,-1,aux_input,comit_reuse,low,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHDRYSTM01"
 motor_elec,motive_power,1,primary_output,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table; [CARB3_WE_FOODDRINK] 1.11 coefficient table
 motor_elec,electricity,-1,fuel_input,proxy,medium,[CARB3_WE_CEMENT] 1.11 coefficient table; [CARB3_WE_FOODDRINK] 1.11 coefficient table
-chiller_electric,cooling,1,primary_output,proxy,medium,[CARB3_WE_FOODDRINK] 1.11 coefficient table
+chiller_electric,cooling_0_15,1,primary_output,proxy,medium,"[CARB3_WE_FOODDRINK] 1.11 coefficient table | carrier cooling_0_15 (note 22 Task 3, 2026-09-25): an electric vapour-compression chiller makes chilled water, the band the food and drink worked example gives this unit at COP 3.00"
 chiller_electric,electricity,-0.3333,fuel_input,proxy,medium,[CARB3_WE_FOODDRINK] 1.11 coefficient table
-chiller_electric_hfo,cooling,1,primary_output,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHREFEHFO01"
+chiller_electric_hfo,cooling_0_15,1,primary_output,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHREFEHFO01 | carrier cooling_0_15 (note 22 Task 3, 2026-09-25): an electric vapour-compression chiller makes chilled water, the band the food and drink worked example gives this unit at COP 3.00"
 chiller_electric_hfo,electricity,-1.11111,fuel_input,comit_reuse,medium,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHREFEHFO01"
 generic_process_elec,electric_service,1,primary_output,comit_reuse,high,"[COMIT_WB_140] sheet technology_input_output, technology_code IFDOTHELC01 (9 of 10 sector copies at -1.0101 PJ electricity per PJ output; INFOTHELC01 at -1.1765)"
 generic_process_elec,electricity,-1.0101,fuel_input,comit_reuse,high,"[COMIT_WB_140] sheet technology_input_output, technology_code IFDOTHELC01 (9 of 10 sector copies at -1.0101 PJ electricity per PJ output; INFOTHELC01 at -1.1765)"
