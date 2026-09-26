@@ -16,7 +16,7 @@ sources, with every populated row carrying a provenance pointer into the shared
 | File | What it is | Rows |
 |---|---|---|
 | `decarbonisation_options_library.csv` | One row per option: 34 cross-cutting + 100 sector-specific, each with a **TRL column**, TRL basis, constraints, UK status | 134 |
-| `process_decarbonisation_options.csv` | One row per (activity, process_set, process, option): which options apply to which process, with the option's TRL repeated for convenience | 1,109 |
+| `process_decarbonisation_options.csv` | One row per (activity, process_set, process, option): which options apply to which process, with the option's TRL repeated for convenience | 1,105 |
 | `decarbonisation_options_challenges.csv` | The 56 data challenges flagged by the researchers, by scope | 56 |
 | `references.csv` | Shared reference table — now 270 entries (energy profile + options) | 270 |
 
@@ -40,7 +40,7 @@ sources, with every populated row carrying a provenance pointer into the shared
 - Mapping rows with a `provenance` citation name a source that discusses that option
   for that sector/duty; rows marked "engineering judgement" (confidence `low`) are the
   researchers' inference from temperature/duty fit.
-- 364 of 376 register processes carry at least one option. The 12 without are small
+- 363 of 375 register processes carry at least one option (one fewer since Mineral Production - Gas `power_generation` left the register, note 20 item 37). The 12 without are small
   electricity-only handling/packing/pumping steps where nothing beyond generic controls
   was defensible — left empty on purpose.
 

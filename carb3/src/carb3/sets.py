@@ -848,7 +848,7 @@ def eligible_units(
 
     ``carb3_activity`` is keyword-only and required: ``unit_eligibility`` is keyed
     ``(unit_id, carb3_activity, process_id)`` and :class:`Duty` carries no activity, so
-    without it the join would have to match on ``process_id`` alone. 29 of the 215
+    without it the join would have to match on ``process_id`` alone. 33 of the 228
     ``process_id`` values appear under more than one activity, so that would read another
     activity's rows — including its ``max_share`` and ``min_duty`` — for this duty.
 

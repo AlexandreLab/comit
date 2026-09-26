@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, and items 25, 27, 65 and 66 on 2026-09-25 when Alexandre decided them on PR #64 — **eighteen of the sixty-six**.
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, and items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64 — **twenty-one of the sixty-six, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -367,6 +367,19 @@ These are the ones with a consequence outside the reference data.
     **22 duty rows hang on it (2026-09-25):** 20 mobile-plant `MOT` rows and two chemistry
     nodes with no unit (aluminium potlines, the beet-sugar lime kiln). The eligibility rebuild
     offers them nothing rather than a stationary motor or a generic furnace as a stand-in.
+    **Progress 2026-09-26: 20 of the 22 rows are served.** Mobile plant: `mobile_plant_diesel`
+    (33% efficiency, machine costs, maintenance and a 7-year life from `DESNZ_NRMM2023`) is the
+    base-year default at all 22 diesel mobile-plant `MOT` rows, with `mobile_plant_battery`
+    (80% efficiency, cost built from the same report's component costs) as the decarbonisation
+    option; both are keyed to those rows. A hydrogen machine is not added: its cost needs two
+    unsourced sizing assumptions and hydrogen has no price. Chemistry nodes:
+    `potline_prebake_elec` (15.5 MWh/t from `JRC_AL2023`, 1.6 t CO₂/t from `IPCC2006_V3C4`,
+    capex from `WB_AL2023`) and `lime_kiln_sugar_coke` (4.25 GJ/t on coke and 785 kt CO₂/Mt from
+    `EULA_ECOFYS_2014`, COMIT lime-kiln costs), with a new `aluminium` product carrier. **Still
+    open: the two coke-oven processes.** The coefficients are sourced (`IS_BREF2012` Table 5.2),
+    but A6 would charge the coking coal's carbon and then the coke's, and coke is a fuel carrier
+    rather than a product, so §3.9 would not classify the node — both need a decision
+    (`TODOS.md`).
 31. **Nine COMIT technologies are `unmapped`** (three lime and two chemicals capture variants,
     two gas-fired boilers on works gases, two finishing processes): build the units or record
     them out of scope. *`DONE_lineage.md`, Q6.*
@@ -419,6 +432,13 @@ These are the ones with a consequence outside the reference data.
     and deleting the register row moves the activity's gas energy shares (0.25 of them), the
     load shape, the crosswalk and four option mappings. Decide whether the process leaves the
     register — and how the 0.25 is redistributed — and the row goes with it.
+    **Decided 2026-09-26 (PR #64): it leaves the register.** Its register, duty, energy-profile,
+    load-shape and crosswalk rows, its four option mappings, its default unit and its
+    eligibility rows are gone; its 0.25 gas share joins `gas_compression` (now 0.80), because
+    `NSTA_EMR` puts on-site power and compression together as the dominant upstream combustion,
+    the power mainly driving compression. On-site generation is a unit the optimiser may choose,
+    a CHP or a gas turbine, not a demand. The register has 375 processes; V34 (duties are
+    services at a grade) leg (a) has no row left and is now blocking.
 38. **SMR feedstock at oil refineries needs a `NEUOTH` row with a published feedstock/fuel
     split**; none was found. *`DONE_duty_b.md`, Q5.*
 39. **`Mill`, Laboratory, Post Office Sorting Centre and Vehicle repair cannot be crosswalked** to
@@ -920,18 +940,33 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     duty a cooling tower could meet. A split is an uncoupled two-row share under §3.2 and needs
     a published share; `BALMENACH_CS` names the end uses without quantifying them, and no
     other source was found. Until one is, the row stays whole. *Note 22 Task 3, 2026-09-25.*
+    **Decided 2026-09-26 (PR #64): split 90/10.** 0.90 on `cooling_gt15` (spirit condensers
+    and wort cooling on cooling-tower or river water) and 0.10 on `cooling_0_15` (chilled yeast
+    storage), both `fallback`, `confidence` low — no source gives the share. A new unit serves
+    the warm part: `cooling_tower_wet`, an open wet cooling tower at `grade_out` 3, costed from
+    the Industrial Cooling Systems BREF (`ICS_BREF2001`: total investment 89–266 thousand
+    EUR/MWth for a recirculating system with an open wet tower, 1993–1995, maintenance 3.5% a
+    year, 20 kWe/MWth for pumps and fans), converted at `ONS_THAP`'s 1997 euro rate (the series'
+    first year) and the COMIT deflator, with a 20-year life from `ASHRAE_LIFE`; availability is
+    a proxy copy of `chiller_electric`'s 0.9. The default unit is 0.90 tower, 0.10 chiller.
 63. **Works `other_process`: electric service or motive power?** The register names test rigs
     and fume extraction. Note 22 §2 proposed `motive_power` (fume extraction is fan load), but
     the cited MECS Table 5.2 "other process use" names no motor, fan, pump or compressed air,
     so Task 5's evidence rule refused the move and the row went to `electric_service`, as
     Workshop `other_process` did on the same source. A source for the fan share would split
-    it, or move it whole. *Note 22 Task 10, 2026-09-25.*
+    it, or move it whole. *Note 22 Task 10, 2026-09-25.* **Decided 2026-09-26 (PR #64): it
+    stays on `electric_service`.** No data change.
 64. **`dryer_steam` makes hotter heat than it draws, for nothing.** Its coefficients
     (`ICHDRYSTM01`) are heat_150_400 +1 from heat_100_150 −1, with no work input and capex 0: a
     free grade-up, which C10 (the grade cascade) is meant to make impossible. The eligibility
     rebuild withholds it from the join rows; its worked-example and options rows remain. Either
     the input is steam at band 4 — there is no steam carrier (item 21) — or the grade_out is 3.
-    *Note 22 Task 10, 2026-09-25.*
+    *Note 22 Task 10, 2026-09-25.* **Decided 2026-09-26 (PR #64), both at once:** heat_150_400
+    in at −1.11111 per unit of output, primary output heat_100_150, `grade_out` 3. The steam
+    conditions are cited — paper-machine drying cylinders on steam up to 75 psig, about 160 °C
+    (`VOITH_US5379528`), and steam-heated drying on high-pressure steam at 190–240 °C in
+    refining (`BEIS_IFS2018` Table 6) — but the 10% loss is not: it is a fallback, `confidence`
+    low. The unit is back in the join rebuild.
 65. **Three `OTH` rows on `motive_power` sit at gas-only processes.** Aircraft works, Factory and
     Industrial NEC `other_process` carry a bundled overhead as motive power, and their energy
     profile says the process burns only gas (engine test cells). `motor_elec` now serves them as

@@ -468,19 +468,23 @@ def test_measured_counts_match_the_plan(
 
     The PR #64 decisions (2026-09-25) added ``kiln_ht_gas`` (heat above 1000 °C) and
     ``engine_mot_gas`` (gas engine for shaft work), both fully costed: 140 units, 60 admitted,
-    and the rebuilt rows grew to 2,498 of 3,263.
+    and the rebuilt rows grew to 2,498 of 3,263. The second round (2026-09-26) added
+    ``cooling_tower_wet`` and removed the gas terminal's ``power_generation`` process: 141 units,
+    61 admitted, 3,268 rows. The third (2026-09-26) added the two mobile-plant units, the
+    aluminium potline and the beet-sugar lime kiln: 145 units, 64 admitted, 3,314 rows. The
+    price leg drops one more (81): the sugar kiln burns coke, which has no import price.
     """
     dropped = {d.unit_id for d in screen.dropped}
     unit_leg = {d.unit_id for d in screen.dropped if d.leg != "import_price"}
-    assert len(reference.unit) == 140
+    assert len(reference.unit) == 145
     assert len(unit_leg) == 40
-    assert len(dropped) == 80
-    assert len(screen.admitted) == 60
+    assert len(dropped) == 81
+    assert len(screen.admitted) == 64
 
     elig = reference.unit_eligibility
-    assert len(elig) == 3263
+    assert len(elig) == 3314
     assert int(elig["unit_id"].isin(unit_leg).sum()) == 50
-    assert int(elig["unit_id"].isin(dropped).sum()) == 1391
+    assert int(elig["unit_id"].isin(dropped).sum()) == 1392
 
 
 def test_a_drop_is_reported_once_per_failing_leg(screen: load.AdmissionScreen) -> None:

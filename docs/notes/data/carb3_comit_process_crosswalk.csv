@@ -240,7 +240,6 @@ Mineral Production - Coal,default,haulage_mobile_plant,,none,Activity absent fro
 Mineral Production - Coal,default,digging_loading,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
 Mineral Production - Coal,default,drilling,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
 Mineral Production - Gas,default,gas_compression,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
-Mineral Production - Gas,default,power_generation,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
 Mineral Production - Gas,default,process_heating_regeneration,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
 Mineral Production - Gas,default,site_services,,none,Activity absent from COMIT per carb3_comit_crosswalk.csv (extraction/servicing/dispersed loads are not modelled as manufacturing point sources)
 Mineral Production - Inert,default,materials_handling_loaders,IOIMOT,analogue,carb3_comit_crosswalk.csv records coverage=gap: waste sorting/crushing folded into COMIT's Other sector

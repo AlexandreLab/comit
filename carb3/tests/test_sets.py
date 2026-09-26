@@ -323,11 +323,15 @@ def test_activity_level_rows_do_not_reach_a_duty_they_should_not(
 
 
 def test_eligible_units_needs_the_activity(reference, screen, dairy) -> None:
-    """29 of the 215 process_id values appear under more than one activity."""
+    """33 of the 228 process_id values with eligibility rows appear under more than one activity.
+
+    29 of 215 until 2026-09-26, when the mobile-plant units gave the shared mobile-plant
+    process_ids (``drilling``, ``haulage``, ``mobile_plant``, ``extraction_loading``) rows.
+    """
     elig = reference.unit_eligibility
     named = elig[elig["process_id"].notna()]
     per_process = named.groupby("process_id")["carb3_activity"].nunique()
-    assert int((per_process > 1).sum()) == 29
+    assert int((per_process > 1).sum()) == 33
     assert "site_services" in set(per_process[per_process > 1].index)
 
     duty = next(d for d in dairy.duties if d.key == DAIRY_G2)

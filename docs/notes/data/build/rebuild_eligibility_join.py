@@ -41,8 +41,8 @@ A unit is offered at `(carb3_activity, process_id)` when, for at least one duty 
    produced, under some output role, by a unit eligible somewhere at the same activity
    (C8, the carrier balance, is per premise). A heat pump on reject heat is not offered
    where nothing rejects heat. A unit driven only by heat cannot deliver a hotter band than
-   it draws: `dryer_steam` makes heat_150_400 from heat_100_150 at 1:1 with no work input,
-   a free grade-up, and is withheld until its coefficients are fixed (note 20 item 64).
+   it draws. `dryer_steam` was withheld on that test until note 20 item 64 rebased it on
+   2026-09-26 (heat_150_400 in, heat_100_150 out); nothing is withheld today.
 4. **Scope.** A generic service unit (`spine` = service, blank `process_id`) is offered
    wherever it serves. A service unit keyed to a process is node-keyed like a chemistry unit
    (D5) and keeps its reach: it is re-joined only at the `(activity, process)` pairs its
@@ -63,8 +63,10 @@ stand-in, which the task forbids:
 * a **chemistry node** (`PROCESS_FAMILIES` marks it `CHEMISTRY`, or `HRS` for hot rolling):
   its duty rows classify the node's energy need (§3.9) and its units are node-keyed (D5);
   where the node has no unit the gap is note 20 item 30's, not a furnace's;
-* **diesel mobile plant** (`NRMM`) for its `MOT` rows: a stationary electric motor is not a
-  loader or a haul truck, and the library has no mobile-plant unit (note 20 item 30).
+* **diesel mobile plant** (`NRMM`) for its `MOT` rows, except for units keyed to those rows:
+  a stationary electric motor is not a loader or a haul truck. The mobile-plant units
+  (`mobile_plant_diesel`, `mobile_plant_battery`, added 2026-09-26, note 20 item 30) are keyed
+  to the mobile-plant rows and offered there only.
 """
 
 import csv
@@ -180,11 +182,13 @@ def main():
         if markers & CHEMISTRY_MARKERS:
             skipped["chemistry node"].add((a, p))
             continue
-        if NRMM in markers and f == "MOT":
-            skipped["diesel mobile plant"].add((a, p))
-            continue
+        mobile = NRMM in markers and f == "MOT"
+        if mobile:
+            skipped["diesel mobile plant (keyed mobile units only)"].add((a, p))
         for u in candidates:
             if u["unit_id"] in keyed and (a, p) not in scope[u["unit_id"]]:
+                continue
+            if mobile and u["unit_id"] not in keyed:
                 continue
             if serves(u, row):
                 offers[(u["unit_id"], a, p)].append(row)

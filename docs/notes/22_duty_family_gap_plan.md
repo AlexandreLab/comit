@@ -28,7 +28,12 @@ them, and routes the other coverage gaps to the note 20 items that own them.
 6, and Task 8 is done as labels. The unservable count went **89 → 92 → 38**: up by three when
 Task 3 put three rows on `cooling_lt0`, then down to 38 after Task 10's units, `OTH` rows and
 eligibility rebuild, then to **25** after Alexandre's decisions on PR #64 (a >1000 °C gas kiln,
-steam CHPs and boilers rated to band 4, a gas engine for shaft work). Every survivor is a named gap with its cause and owner (Task 10), and 18
+steam CHPs and boilers rated to band 4, a gas engine for shaft work), then to **24** after
+the second round (the gas terminal's `power_generation` process left the register, the
+distillery's cooling split onto a new cooling tower, `dryer_steam` rebased), then to
+**2** on 2026-09-26 with diesel and battery mobile plant, an aluminium potline and a
+beet-sugar lime kiln. The two left are the coke-oven processes, which wait on a decision
+(`TODOS.md`). Every survivor is a named gap with its cause and owner (Task 10), and 18
 more rows are no longer counted because they classify a chemistry node that makes a product
 (§3.9, note 20 item 51).
 
@@ -620,6 +625,19 @@ agree again.
     `power_generation`, and the electric plasma-cutting share at Shipbuilding
     `steel_prep_cutting`. Counts: 140 units, 60 admitted, 3,263 eligibility rows, 1,391
     reaching an incomplete or unpriced-fuel unit.
+  - **Second round, 2026-09-26: 24 unservable.** Note 20 item 37: Mineral Production - Gas
+    `power_generation` left the register with every row that named it, its gas share folded
+    into `gas_compression`, and V34 (duties are services at a grade) leg (a) is blocking at 0.
+    Item 62: Distillery `cooling_systems` split 0.90 `cooling_gt15` / 0.10 `cooling_0_15`,
+    served by the new `cooling_tower_wet` and the chiller. Item 63: Works stays on
+    `electric_service`. Item 64: `dryer_steam` takes band-4 steam and delivers band 3, and is
+    back in the join. The food and drink worked example rates the steam boilers and CHPs at
+    band 4 and gives §3.5.1's family rule, not the grade, as the reason they are not offered
+    for the spray dryer; its candidate sets, and so every figure, are unchanged. What is left:
+    20 diesel mobile-plant rows and 4 chemistry nodes with no unit (note 20 item 30). Four
+    defaults still cannot serve their duty: the two coke-oven processes, the Foundry coal
+    furnace, and Shipbuilding's electric plasma-cutting share. Counts: 141 units, 61 admitted,
+    3,268 eligibility rows, 375 register processes.
 - **Lane:** units and duties together, one owner for all six files.
 - **Goal:** every duty row has an eligible unit that can serve it at its grade and in its
   grade family, and every unit offered for a duty can actually be costed and run. The 89

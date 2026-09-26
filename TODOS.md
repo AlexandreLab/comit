@@ -1,103 +1,132 @@
 # TODOS
 
-Open work on the CaRB3 duty families and cooling grades. The full plan is
-[note 22](docs/notes/22_duty_family_gap_plan.md); the open questions are
-[note 20](docs/notes/20_reference_data_open_questions.md) items 60 and 61.
-
-## Blocking
-
-- [x] **Bring the data checker up to the spec before any cooling carrier lands.** Done
-  2026-09-25: `EN` left the duty families and stays a unit family, `grade_rank` is unique
-  within its `grade_family`, and the three cooling carriers are in `carrier.csv` with
-  `make data-check` green. *Note 22 Tasks 1 and 2.*
+Everything still open on the CaRB3 reference data after the duty-family and cooling work,
+consolidated on 2026-09-26. Each entry stands on its own. The plan that produced it is
+[note 22](docs/notes/22_duty_family_gap_plan.md) (duty families and processes); the open
+questions live in [note 20](docs/notes/20_reference_data_open_questions.md) (reference-data
+open questions), whose item numbers are quoted below. The coverage check — `make data-report`,
+"duty coverage", and the work list `make data-worklist` writes to
+`docs/notes/data/build/unservable_duties.csv` — counts **2 of 427 duty rows unservable**.
 
 ## Decisions for Alexandre
 
-- [ ] **Which heat band does a duty go in?** §3.4 now states the rule the reference build
-  used: a duty takes the band of its hottest temperature, and band edges read as the labels
-  do. Note 20 item 27 had left this open. Confirm or reverse it; the cooling rule (the band of
-  the coldest temperature) mirrors whichever stands.
+- [ ] **The heat-band set and the rule for placing a duty in a band (note 20 items 23 and
+  27).** Item 23 (the six-band heat set is this build's proposal) and the first half of item
+  27 (lime calcination at band 5 or 6, non-ferrous melting at 6, and the band-edge convention)
+  are still open. §3.4 of the live spec states the rule the build used — a heat duty takes the
+  band of the hottest temperature it needs, a cooling duty the band of the coldest, and a band
+  includes its lower edge — but no one has confirmed it. **Item 27 is only half answered:** its
+  second half, "no unit reaches rank 6", was settled on 2026-09-25 by adding `kiln_ht_gas`,
+  which is why note 20 counts it among the decided items while this entry keeps it open.
+  Confirming or reversing the rule can move duty rows between bands, and the cooling rule
+  mirrors whichever stands.
+- [ ] **The two coke-oven processes need a representation before a unit can be added (note 20
+  item 30).** Iron and/or Steel Works `coke_ovens` and Coking and Carbonising Plant
+  `oven_battery_carbonisation` are the only unservable rows left. The coefficients are sourced
+  and ready — `IS_BREF2012` Table 5.2: 1,220–1,350 kg of dry coal per t of coke, 360–518 Nm³ of
+  coke-oven gas at 17–18 MJ/Nm³ (7,200–9,000 MJ/t coke), 3,200–3,900 MJ/t coke of underfiring
+  gas — but two rules block the unit, and both are the user's call:
+  1. **Feedstock carbon would be counted twice.** A6 (the problem builder) charges fuel CO₂ on
+     every consumed primary carrier, so the coking coal would be charged at the oven and the
+     coke again at the blast furnace. It needs the feedstock carrier of note 20 items 22 and
+     44, or a rule that a converted carrier is not burnt.
+  2. **Coke is a fuel carrier, not a product.** §3.9's rule (a process whose units make a
+     `product` states no energy duty) does not apply, so the node's `HTH` row would stay a
+     heat duty the coke oven cannot serve. Either coke is treated as a node product here, or
+     the rule is widened to chemistry-spine units.
+  No capex was searched once these were found.
+- [ ] **Should the CO₂ bound in carbonatation be credited at the beet-sugar lime kiln?**
+  `lime_kiln_sugar_coke` declares the full 785 kt CO₂ per Mt of quicklime (`EULA_ECOFYS_2014`),
+  because §3.6 declares `co2_process` from stoichiometry, §3.4 charges it, the spec has no
+  rule for CO₂ bound in a product, and the EU ETS also counts CO₂ bound in precipitated
+  calcium carbonate as emitted (`CEMNET_LIME2022`). Physically most of it is reabsorbed in the
+  juice. A credit would need a spec rule (a sink carrier, or a capture-like unit) and a
+  sourced reabsorbed share.
+- [ ] **The beet-sugar lime kiln has no consumer for its quicklime.** `quicklime` is an
+  internal product (`may_export` FALSE), so C8 (carrier balance) pins the kiln to zero unless
+  something at the sugar factory draws quicklime. Modelling juice purification as a unit that
+  consumes quicklime and CO₂ would let the kiln run. The same structure already holds for the
+  cement kiln and its grinder.
 
-## Decisions for Alexandre, from note 22 Task 10
+## Data to review
 
-- [x] Note 20 item 27: `kiln_ht_gas` added 2026-09-25; 11 of 13 rank-6 rows served, the two coke-oven rows are chemistry nodes (item 30).
-- [ ] Note 20 item 30: 20 mobile-plant rows and two chemistry nodes have no unit.
-- [x] Note 20 item 25: steam CHPs and four boilers at `grade_out` 4, 2026-09-25.
-- [ ] Note 20 item 37: does Mineral Production - Gas `power_generation` leave the register?
-- [x] Note 20 items 65 (gas engine added) and 66 (family groups in spec §3.5.1), 2026-09-25.
-- [ ] Note 20 items 62–64: distillery split, Works fan share, `dryer_steam`.
+- [ ] **Two duty shares may have been copied from the fuel split (note 20 item 1a).** Large
+  industrial (> 20,000 m2) NEC `other_process` (0.36 on `electric_service`, 0.64 on
+  `heat_100_150`) and Oil refinery, gas processing etc `alkylation` (0.03 `REF`, whose
+  provenance says the split was "computed from published vector weights"). §3.3 now forbids
+  renormalising a process's own vector shares into duty shares. Check both against item 1a's
+  list before relying on them.
+- [ ] **40 units cannot be fully costed (note 20 item 49).** 15 have a blank `capex`, 13 a
+  blank `lifetime`, 15 a blank `fixed_opex`, 13 each a blank `availability_factor` and
+  `capacity_to_activity_factor`, 25 have no `unit_input_output` rows, and 3 declare a fuel
+  they never consume. They reach 50 of `unit_eligibility.csv`'s 3,314 rows, all
+  worked-example or options rows; the rebuilt family rows admit none of them.
+- [ ] **11 of the 15 importable carriers lack a price in every period (note 20 item 48).**
+  Only `natural_gas`, `light_fuel_oil`, `coal` and `electricity` are priced in all seven
+  periods; `heavy_fuel_oil` has 2021 only. Units burning an unpriced fuel reach 1,392 of the
+  3,314 eligibility rows. The new `lime_kiln_sugar_coke` burns `coke`, which has no price, so
+  `carb3`'s admission screen drops it.
 
-## Data
+## Units not added for want of a source
 
-- [x] **The last three `OTH` rows on `electricity`** — two done 2026-09-25 (Mill to
-  `motive_power`, Works to `electric_service`, note 20 item 63); Mineral Production - Gas
-  `power_generation` waits on note 20 item 37. Mill and Works `other_process` to
-  `motive_power` (screening lines, fans); Mineral Production - Gas `power_generation` deleted,
-  because a generator is a unit, not a demand (note 20 item 37). V34 (duties are services at
-  a grade) rejects all three. *Note 22 Task 5.*
-- [ ] **Two rows may carry a duty share copied from the fuel split.** Large industrial NEC
-  `other_process` (0.36, now on `electric_service`) and Oil refinery `alkylation`. Check both
-  against note 20 item 1a before relying on their shares; they are flagged, not recomputed.
-- [ ] **Laboratory ultra-low-temperature freezers.** `lab_equipment` moved to
-  `electric_service` as a whole. If SLAB2011 Table 7 separates the freezers, split them out
-  as a `REF` duty in the `cooling_lt0` band.
-- [ ] **Shipbuilding `steel_prep_cutting` names `generic_process_elec` as incumbent on an
-  `HTH` duty** (`activity_default_unit.csv`, share 0.13636). That unit now produces
-  `electric_service`, so it cannot serve a heat duty; the plasma-cutting share needs a heat
-  unit. The row was already unservable before, when the unit had no coefficients.
-- [x] **Band the 17 `REF` rows.** Done 2026-09-25: 3 on `cooling_lt0`, 14 on `cooling_0_15`,
-  each citing a temperature source or, under the task's fallback rule, the equipment that
-  decided it; both chillers on `cooling_0_15` at `grade_out` 2; the ungraded `cooling` carrier
-  retired; V34 (duties are services at a grade) leg (c) blocking. *Note 22 Task 3.*
-- [x] **Per-band cooling units, and `chiller_electric_hfo`'s COP of 0.9** — done 2026-09-25:
-  `chiller_electric_lt0`, HFO rebased on COP 3.00, reject rows on all three. No absorption
-  chiller, cooling tower or dry cooler: no sourced cost. against
-  `ICHREFEHFC01` in the workbook. The three `cooling_lt0` rows have no unit that reaches them
-  until a sub-zero unit exists. *Note 22 Tasks 4 and 10.*
-- [ ] **Split Distillery `cooling_systems`?** It names condenser water and cooling-tower fans
-  (`cooling_gt15`) beside yeast refrigeration (`cooling_0_15`). No source gives the share, so
-  under Task 3's rule the row is whole, on `cooling_0_15`. A published split would move part
-  of it to `cooling_gt15`. *Note 20 item 62.*
-- [x] **One consolidated pass over the unit library and the duty rows.** Done 2026-09-25:
-  unservable 89 → 38, every survivor named in note 22 Task 10. Fix the 89
-  unservable duties in a single sweep with one owner, rather than lane by lane, and rebuild
-  `unit_eligibility.csv` from the join (family, grade family, `grade_out` in C10's direction,
-  coefficients present) instead of today's no-grade-filter proxy rows. The work list is
-  `docs/notes/data/build/unservable_duties.csv`, written by `make data-worklist`, one row
-  per duty with its cause and owner. *Note 22 Task 10.*
-- [x] **`heat_exchanger_spc_steam` draws `heat_100_150` at 59 places** — gone with the
-  rebuild, which offers a unit only where its intermediate input is made at the activity. where nothing eligible
-  makes steam, even through C8's heat cascade.** Found 2026-09-25 by the new advisory
-  "intermediate draws with no eligible producer": 119 (unit, activity, process) draws have no
-  exact producer, 71 have none even through the cascade, and this unit is 59 of them. Its
-  eligibility needs a steam source beside it, or the rows go. *Note 22 Task 10.*
-- [x] **`heat_pump_lt_reject` has no source at 11 `REF` processes, not 16.** 0 since the
-  chillers' reject rows (2026-09-25). Note 22 §1 counted
-  16; at five of them another admitted unit makes `heat_lt60` — `solar_thermal_flat` at four,
-  the `SPC` units at Artificial Fibre Works `spinning_hvac` — which is not the condenser heat
-  the unit exists to lift. The fix is still the chillers' `reject` rows. *Note 22 Task 4.*
+- [ ] **An electric or induction furnace above 1000 °C.** The only candidate found, BEIS's
+  electric tunnel kiln (`BEIS_IFS2018`), is "Ceramics only" and at TRL 5–6 (technology
+  readiness level); no sourced induction-furnace cost was found.
+- [ ] **A coal-fired unit above 1000 °C.** Foundry `melting_holding` keeps a coal furnace
+  default that cannot reach rank 6 (the gas kiln serves the row as a candidate).
+- [ ] **An absorption chiller and a dry cooler.** No sourced cost. No duty needs them today.
+- [ ] **Band-4 steam ratings for the LPG, coal, oil and biomethane boilers.** The sources in
+  hand (`BEIS_IFS2018`, `EPA_CHP_ST`) name the gas, hydrogen, biomass and electrode boilers
+  only, so these four stay at `grade_out` 3.
+- [ ] **A hydrogen mobile-plant unit.** `DESNZ_NRMM2023` gives component costs (fuel cells
+  £250–500/kW, tanks £20–45/kWh, 45% efficiency), but a machine cost needs two unsourced sizing
+  assumptions, and `hydrogen` has no import price (item 48), so the unit would be screened out
+  anyway.
+- [ ] **A coke-oven battery** — see the decision above.
 
-## Documents and code
+## Proxy and fallback values to firm up
 
-- [x] **Put the Food Processing Centre `refrigeration` data row on `cooling_0_15`.** Done
-  2026-09-25 with Task 3. The
-  food-and-drink worked example now says chilled water at that band (decided 2026-09-25, labels
-  only, no figure moved), and the row in `activity_process_duty_profile.csv` cites the example.
-  It still says ungraded `cooling`; the `cooling_0_15` carrier exists since 2026-09-25, so
-  only the row move is left. *Note 22 Task 3.*
-- [x] **`carb3` handles grades for heat only.** Done 2026-09-25 (note 22 Task 9, landed with
-  Task 3 because the banded data needed it): `_serves` matches the grade family first and reads
-  the direction from it, and two tests pin a sub-zero plant serving chilled water and a
-  cooling tower refused a freezer duty. Before it, `heat_pump_lt_reject` sat in the dairy's
-  chilled-water U_q. C10 (the grade cascade) in the code needs the
-  reversed direction for cooling once graded cooling carriers are in the data. `carb3` now
-  reads `carrier.grade_family` (its schema requires the column) but nothing uses it yet.
-  *Note 22 Task 9.*
+Each of these is in the data with `confidence` low and a provenance string saying why.
+
+- [ ] `mobile_plant_diesel`: capex is the median of six endpoint costs per kW across loaders,
+  excavators and dumpers, which vary by a factor of four; availability 0.9599 is borrowed from
+  reciprocating CHP engines (`EPA_CHP_RICE`).
+- [ ] `mobile_plant_battery`: no whole-machine price exists; capex is built from component
+  costs with a battery sized from the report's own 150 kWh example, and lifetime and
+  availability copy the diesel unit's.
+- [ ] `potline_prebake_elec`: capex is the midpoint of the World Bank's $1,000–11,000 per
+  annual tonne range; fixed opex is JRC's "capital and O&M" residual, which includes a capital
+  charge; lifetime 30 years is an inert-anode conversion's; availability 0.8 is JRC's assumed
+  capacity factor.
+- [ ] `lime_kiln_sugar_coke`: costs, life and availability are COMIT's lime kiln, and the fuel
+  figure is the EU average across kiln types.
+- [ ] `cooling_tower_wet`: availability is `chiller_electric`'s, and its 1995 costs are
+  converted at the 1997 euro rate (the series' first year).
+- [ ] The Distillery `cooling_systems` 90/10 split (note 20 item 62).
+- [ ] The `dryer_steam` 10% loss (note 20 item 64).
+- [ ] `kiln_ht_gas`: availability is COMIT's gas furnace's, and the cost is a ceramics kiln's.
+- [ ] `engine_mot_gas`: shaft efficiency is taken as the genset's electrical efficiency.
+- [ ] `chiller_electric_lt0`: costs copy `chiller_electric`'s.
+
+## Housekeeping
+
 - [ ] **`docs/notes/data/build/check_units.py` does not run.** It reads
   `build/carrier_products_units.csv`, which is not in the tree, and dies with
-  `FileNotFoundError` before any check. Found 2026-09-25; its `EN` family set was updated
-  anyway. Either restore the staging file or drop the read. `make check` does not call it.
-- [ ] **The lane scripts `check_duty_a.py` and `check_duty_b.py` do not run.** Their `EN`
-  family and `REF`-on-`cooling` rules were updated with Task 3 (2026-09-25), but both read lane
-  staging files (`build/activity_process_duty_profile_duty_a.csv`, `_duty_b.csv`) that are not
-  in the tree and die with `FileNotFoundError`. Neither is in `make check`. Restore or retire.
+  `FileNotFoundError`. Restore the staging file or drop the read. `make check` does not call it.
+- [ ] **`check_duty_a.py` and `check_duty_b.py` do not run.** Both read lane staging files
+  (`build/activity_process_duty_profile_duty_a.csv`, `_duty_b.csv`) that are not in the tree.
+  Their `EN` family and cooling-band rules were updated on 2026-09-25. Restore or retire them.
+- [ ] **Laboratory ultra-low-temperature freezers.** `lab_equipment` moved to
+  `electric_service` as a whole. If `SLAB2011` Table 7 separates the freezers, split them out
+  as a `REF` (refrigeration) duty on `cooling_lt0`.
+- [ ] **Shipbuilding `steel_prep_cutting` names `generic_process_elec` as incumbent for its
+  electric plasma-cutting share** (share 0.13636). That unit makes `electric_service`, not heat,
+  so the default cannot serve the `HTH` (high-temperature heat) duty; no electric unit reaches
+  rank 6.
+
+## Done
+
+The duty-family and cooling work of note 22 is complete: Tasks 1–10 and note 20 items 24, 25,
+37, 60, 61, 62, 63, 64, 65 and 66 are settled, and item 27's unit half. The record of each is in
+note 22 §8 and note 20. On 2026-09-26 the diesel and battery mobile-plant units, the aluminium
+potline and the beet-sugar lime kiln took the unservable count from 24 to 2.

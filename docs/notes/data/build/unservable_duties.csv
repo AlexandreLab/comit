@@ -1,26 +1,3 @@
 carb3_activity,process_set_id,process_id,duty_family,carrier_id,grade_rank,duty_share,cause,owner,eligible_units,family_units,detail
-Aggregate/Mineral Processing Plant / Depot,default,mobile_plant,MOT,motive_power,,1.00000,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity
-Aluminium Smelting Works,default,electrolysis_potlines,HTH,heat_400_1000,5,1.00000,no_family_unit,note 20 item 30 (a chemistry node with no unit in the library),2,,admitted units output electricity
-Asphalt Plant,default,mobile_plant,MOT,motive_power,,1.00000,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity
-Beet Sugar Factory,default,lime_kiln,HTH,heat_400_1000,5,1.00000,no_family_unit,note 20 item 30 (a chemistry node with no unit in the library),2,,admitted units output electricity
-Brickworks / clay tile/pipe works,default,clay_extraction_mobile_plant,MOT,motive_power,,1.00000,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity
-Cement Tile Works,default,mobile_plant,MOT,motive_power,,1.00000,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),3,,"admitted units output electricity, heat_lt60"
-Cement Works,default,quarry_mobile_plant,MOT,motive_power,,1.00000,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),3,,admitted units output electricity
 Coking and Carbonising Plant,default,oven_battery_carbonisation,HTH,heat_gt1000,6,1.00000,grade_ceiling,"note 20 item 27 (rank 6 or 5, and no admitted unit reaches it); at a chemistry node, item 30 (no node unit)",4,boiler_lt_biomethane;chp_biomethane_ccgt,"duty at heat rank 6; admitted grade_out 3, 4"
-Concrete Block Works,default,mobile_plant,MOT,motive_power,,1.00000,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity
-Concrete Product Works,default,mobile_plant_trucks,MOT,motive_power,,1.00000,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),3,,"admitted units output electricity, heat_lt60"
-Concrete batching plant,default,mobile_plant_trucks,MOT,motive_power,,1.00000,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),3,,"admitted units output electricity, heat_lt60"
 Iron and/or Steel Works,bf_bof,coke_ovens,HTH,heat_gt1000,6,1.00000,no_family_unit,note 20 item 30 (a chemistry node with no unit in the library),2,,admitted units output electricity
-Mineral Production - Coal,default,haulage_mobile_plant,MOT,motive_power,,1.00,no_unit,note 20 item 30 (diesel mobile plant has no unit),0,,
-Mineral Production - Coal,default,digging_loading,MOT,motive_power,,1.00,no_unit,note 20 item 30 (diesel mobile plant has no unit),0,,
-Mineral Production - Coal,default,drilling,MOT,motive_power,,1.00,no_unit,note 20 item 30 (diesel mobile plant has no unit),0,,
-Mineral Production - Gas,default,power_generation,OTH,electricity,,1.00,duty_on_fuel,"note 20 item 37; note 22 Task 5 (delete the row, admit the generator)",4,pv_battery_2h;pv_ground_mount;pv_rooftop,electricity is a primary carrier
-Mineral Production - Inert,default,materials_handling_loaders,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity
-Mineral Production - Inert,default,internal_haulage,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity
-Mineral Production - Inert,default,mobile_crushing_screening,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity
-Mineral Production - Other Mineral Category,default,drilling,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),3,,admitted units output electricity
-Mineral Production - Other Mineral Category,default,extraction_loading,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),3,,admitted units output electricity
-Mineral Production - Putrescible,default,windrow_turning,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity
-Mineral Production - Putrescible,default,mobile_plant,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity
-"Mineral Production - Rock, Sand, Clay etc.",default,drilling,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),3,,admitted units output electricity
-"Mineral Production - Rock, Sand, Clay etc.",default,extraction_loading,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),3,,admitted units output electricity

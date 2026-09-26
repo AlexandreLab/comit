@@ -744,8 +744,7 @@ def check_duty_families(duty: list[dict]) -> Result:
     `EN` labels hydrogen-producing units only; `NEUOTH` (feedstock) and `HRS` (hot rolling, a
     chemistry node) present no service duty (§3.4). Leg (b) — a row on a gradeable carrier
     carries that carrier's own rank — is in `check_duty_profile`; the rest of (c) is
-    blocking in `check_duty_family_carriers`, and leg (a) is advisory in `check_duty_services`
-    until note 22 Task 5 lands."""
+    blocking in `check_duty_family_carriers`, and leg (a) in `check_duty_services`."""
     r = Result("V34 (duties are services at a grade) (c): no EN, NEUOTH or HRS duty row")
     for i, row in enumerate(duty, start=2):
         f = row["duty_family"].strip()
@@ -813,15 +812,14 @@ def check_duty_family_carriers(duty: list[dict], car: list[dict]) -> Result:
 
 
 def check_duty_services(duty: list[dict], car: list[dict]) -> Result:
-    """ADVISORY. V34 (duties are services at a grade) leg (a), the part the data does not
-    yet meet: no duty row names a `primary` or `emission` carrier. Advisory until note 22
-    Task 5 (the `OTH` rows on `electricity`) lands; it then turns blocking."""
-    r = Result("V34 (duties are services at a grade) (a): no duty on a fuel (advisory)",
-               blocking=False)
+    """BLOCKING since 2026-09-26. V34 (duties are services at a grade) leg (a): no duty row
+    names a `primary` or `emission` carrier. The last row, Mineral Production - Gas
+    `power_generation` on `electricity`, left the register on that date (note 20 item 37)."""
+    r = Result("V34 (duties are services at a grade) (a): no duty on a fuel")
     on_fuel, _ = _duty_carrier_findings(duty, car)
     r.note = f"(a) {len(on_fuel)} rows on a primary or emission carrier"
     for w in on_fuel:
-        r.detail(f"  (a) {w}")
+        r.fail(f"{w} (V34 (a): a duty is a service, never a fuel, §3.4)")
     return r
 
 
