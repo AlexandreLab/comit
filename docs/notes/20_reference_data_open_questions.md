@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 27, 65 and 66 on 2026-09-25 and items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64 — **twenty-two of the sixty-six**.
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, and items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64 — **twenty-one of the sixty-six, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -367,6 +367,19 @@ These are the ones with a consequence outside the reference data.
     **22 duty rows hang on it (2026-09-25):** 20 mobile-plant `MOT` rows and two chemistry
     nodes with no unit (aluminium potlines, the beet-sugar lime kiln). The eligibility rebuild
     offers them nothing rather than a stationary motor or a generic furnace as a stand-in.
+    **Progress 2026-09-26: 20 of the 22 rows are served.** Mobile plant: `mobile_plant_diesel`
+    (33% efficiency, machine costs, maintenance and a 7-year life from `DESNZ_NRMM2023`) is the
+    base-year default at all 22 diesel mobile-plant `MOT` rows, with `mobile_plant_battery`
+    (80% efficiency, cost built from the same report's component costs) as the decarbonisation
+    option; both are keyed to those rows. A hydrogen machine is not added: its cost needs two
+    unsourced sizing assumptions and hydrogen has no price. Chemistry nodes:
+    `potline_prebake_elec` (15.5 MWh/t from `JRC_AL2023`, 1.6 t CO₂/t from `IPCC2006_V3C4`,
+    capex from `WB_AL2023`) and `lime_kiln_sugar_coke` (4.25 GJ/t on coke and 785 kt CO₂/Mt from
+    `EULA_ECOFYS_2014`, COMIT lime-kiln costs), with a new `aluminium` product carrier. **Still
+    open: the two coke-oven processes.** The coefficients are sourced (`IS_BREF2012` Table 5.2),
+    but A6 would charge the coking coal's carbon and then the coke's, and coke is a fuel carrier
+    rather than a product, so §3.9 would not classify the node — both need a decision
+    (`TODOS.md`).
 31. **Nine COMIT technologies are `unmapped`** (three lime and two chemicals capture variants,
     two gas-fired boilers on works gases, two finishing processes): build the units or record
     them out of scope. *`DONE_lineage.md`, Q6.*

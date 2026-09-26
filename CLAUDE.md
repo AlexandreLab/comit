@@ -184,6 +184,10 @@ at the archived baseline's §6, lines 2126–2127.
   example. A lane that owns one section cannot apply that; give one agent the whole file.
   Before touching a rounded figure that other figures are computed from, `grep -rn` the
   values derived from it across `docs/` and count them.
+- **Check a PR's state before sending more work to it.** On 2026-09-26, follow-up commits
+  were aimed at PR #64 after it had already been merged. Run
+  `gh pr view <n> --repo AlexandreLab/comit --json state` first; a merged PR's branch takes no
+  new work, so open a new branch off `fork/main`.
 
 ## Data caveats worth knowing before quoting a number
 
@@ -193,7 +197,7 @@ at the archived baseline's §6, lines 2126–2127.
   `unit_eligibility.csv`, `scenario_parameters.csv`, `activity_process_duty_profile.csv`,
   `activity_process_register.csv` and `infrastructure_scenario.csv` as inputs, through a
   configurable reference root whose default is this directory.
-- **40 of `unit.csv`'s 141 units cannot be fully costed, and a cost minimiser reads the gaps
+- **40 of `unit.csv`'s 145 units cannot be fully costed, and a cost minimiser reads the gaps
   as free energy.** 15 have a blank `capex`, 13 a blank `lifetime`, 15 a blank `fixed_opex`,
   13 each a blank `availability_factor` and `capacity_to_activity_factor`, and 25 carry no
   `unit_input_output` rows at all — 37 distinct units. Three more belong to the same defect
@@ -201,7 +205,7 @@ at the archived baseline's §6, lines 2126–2127.
   `lime_kiln_fluidbed_wdf`, `refinery_fixed_mix_gas` and `refinery_flexible_mix_gas` each
   declare a `fuel_carrier_id` in `unit.csv` and carry no `fuel_input` row in
   `unit_input_output.csv`, so the declared fuel burns free. The 40 are reachable through 50
-  of `unit_eligibility.csv`'s 3268 rows — worked-example and options rows only, since the
+  of `unit_eligibility.csv`'s 3314 rows — worked-example and options rows only, since the
   family rows are rebuilt from the join and admit no uncostable unit (note 22 Task 10,
   `build/rebuild_eligibility_join.py`). `unit.csv:12`, `heat_exchanger_lt_steam`, is the
   sharpest: `capex` 0, `fixed_opex` 0 and no coefficients, so it makes low-temperature heat
@@ -214,7 +218,7 @@ at the archived baseline's §6, lines 2126–2127.
   `petroleum_products_misc` — and **`heavy_fuel_oil` has exactly one row, at 2021**. The
   partial case is the dangerous one: it looks present until you index it by year, and a
   test that asks only whether a carrier has *a* price counts 5 and misses it. Widen the
-  reach to every unit burning an unpriced or part-priced fuel and it is 1391 of the 3268
+  reach to every unit burning an unpriced or part-priced fuel and it is 1392 of the 3314
   eligibility rows. Screen for cost completeness before pointing any optimiser at these
   tables. Detail in [note 20](docs/notes/20_reference_data_open_questions.md) items 48
   and 49.

@@ -30,7 +30,10 @@ Task 3 put three rows on `cooling_lt0`, then down to 38 after Task 10's units, `
 eligibility rebuild, then to **25** after Alexandre's decisions on PR #64 (a >1000 °C gas kiln,
 steam CHPs and boilers rated to band 4, a gas engine for shaft work), then to **24** after
 the second round (the gas terminal's `power_generation` process left the register, the
-distillery's cooling split onto a new cooling tower, `dryer_steam` rebased). Every survivor is a named gap with its cause and owner (Task 10), and 18
+distillery's cooling split onto a new cooling tower, `dryer_steam` rebased), then to
+**2** on 2026-09-26 with diesel and battery mobile plant, an aluminium potline and a
+beet-sugar lime kiln. The two left are the coke-oven processes, which wait on a decision
+(`TODOS.md`). Every survivor is a named gap with its cause and owner (Task 10), and 18
 more rows are no longer counted because they classify a chemistry node that makes a product
 (§3.9, note 20 item 51).
 
