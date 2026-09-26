@@ -370,18 +370,18 @@ which is why the chiller keeps its COP of 3.00. This is forced by C8's algebra a
 
 | `unit_id` | `unit_class` | `duty_family` | **fuel** | `grade_out` | `grade_in_max` | `capex` | `fixed_opex` | `L` | `α` |
 |---|---|---|---|---|---|---|---|---|---|
-| `boiler_lt_gas` | converter | `LTH` | **natural_gas** | **3** | — | 4.5 £m/(PJ/yr) | 0.18 | 20 | 0.85 |
-| `boiler_lt_hydrogen` | converter | `LTH` | **hydrogen** | 3 | — | 4.7 | 0.19 | 20 | 0.85 |
-| `boiler_lt_biomass` | converter | `LTH` | **solid_biomass** | 3 | — | 7.9 | 0.41 | 20 | 0.82 |
+| `boiler_lt_gas` | converter | `LTH` | **natural_gas** | **4** | — | 4.5 £m/(PJ/yr) | 0.18 | 20 | 0.85 |
+| `boiler_lt_hydrogen` | converter | `LTH` | **hydrogen** | 4 | — | 4.7 | 0.19 | 20 | 0.85 |
+| `boiler_lt_biomass` | converter | `LTH` | **solid_biomass** | 4 | — | 7.9 | 0.41 | 20 | 0.82 |
 | `boiler_lt_lpg` | converter | `LTH` | **lpg** | 3 | — | 4.6 | 0.18 | 20 | 0.85 |
 | `boiler_lt_coal` | converter | `LTH` | **coal** | 3 | — | 6.8 | 0.37 | 20 | 0.82 |
-| `resistance_heater_lt` | converter | `LTH` | **electricity** | **3** | — | 2.8 | 0.09 | 20 | 0.85 |
+| `resistance_heater_lt` | converter | `LTH` | **electricity** | **4** | — | 2.8 | 0.09 | 20 | 0.85 |
 | `heat_pump_lt_air` | converter | `LTH` | **electricity** | **2** | — | 16.0 | 0.32 | 20 | 0.85 |
 | `heat_pump_lt_reject` | converter | `LTH` | **electricity** | **2** | **1** | 18.0 | 0.36 | 20 | 0.85 |
 | `heat_pump_ht` | converter | `STM` | **electricity** | **3** | **2** | 26.0 | 0.52 | 20 | 0.85 |
-| `chp_gas_turbine` | **generator** | `STM` | **natural_gas** | **3** | — | 38.0 | 1.20 | 25 | 0.85 |
-| `chp_hydrogen_ccgt` | **generator** | `STM` | **hydrogen** | **3** | — | 42.0 | 1.30 | 25 | 0.85 |
-| `chp_biomass_st` | generator | `STM` | solid_biomass | 3 | — | 61.0 | 2.10 | 25 | 0.82 |
+| `chp_gas_turbine` | **generator** | `STM` | **natural_gas** | **4** | — | 38.0 | 1.20 | 25 | 0.85 |
+| `chp_hydrogen_ccgt` | **generator** | `STM` | **hydrogen** | **4** | — | 42.0 | 1.30 | 25 | 0.85 |
+| `chp_biomass_st` | generator | `STM` | solid_biomass | 4 | — | 61.0 | 2.10 | 25 | 0.82 |
 | `dryer_direct_gas` | converter | `DRY` | **natural_gas** | **4** | — | 5.0 | 0.21 | 20 | 0.85 |
 | `dryer_direct_hydrogen` | converter | `DRY` | **hydrogen** | 4 | — | 5.2 | 0.21 | 20 | 0.85 |
 | `dryer_electric` | converter | `DRY` | **electricity** | **4** | — | 6.8 | 0.24 | 20 | 0.85 |
@@ -405,9 +405,12 @@ footnote.
 
 **`grade_out` is the whole mechanism in one column.** `heat_pump_lt_air` and
 `heat_pump_lt_reject` top out at rank 2, which removes them from the 120 °C duty's candidate
-set; `heat_pump_ht` reaches rank 3 and is admitted; nothing but the three dryers reaches rank
-4. C10 states it as physics rather than as a technology-to-process mapping, which is what lets
-a new unit be added without editing a mapping table.
+set; `heat_pump_ht` reaches rank 3 and is admitted. The gas boiler and the CHP are rated to
+rank 4 — they raise steam above 150 °C — but only the three dryers are offered for the rank-4
+drying duty, because a boiler or CHP delivers hot water or steam and a spray dryer needs hot
+air: §3.5.1 offers a duty to its own family, or to a family that takes the same medium. C10
+states the temperature leg as physics rather than as a technology-to-process mapping, which is
+what lets a new unit be added without editing a mapping table.
 
 **Coefficients (§3.6), consumed negative, produced positive.** Per unit of the unit's output.
 
@@ -754,15 +757,16 @@ below the duty's grade is never in $U_q$, so the variable is never created — w
 
 | Unit | `grade_out` | `LTH` rank 2 | `STM` rank 3 | `DRY` rank 4 |
 |---|---|---|---|---|
-| `boiler_lt_gas`, `_hydrogen`, `_biomass`, `_lpg` | 3 | **eligible** | **eligible** | **refused** — 3 < 4 |
+| `boiler_lt_gas`, `_hydrogen`, `_biomass` | 4 | **eligible** | **eligible** | **refused** — not offered: `DRY` takes its own family (§3.5.1) |
+| `boiler_lt_lpg` | 3 | **eligible** | **eligible** | **refused** — 3 < 4 |
 | `boiler_lt_coal` | 3 | **screened** — `max_share` 0.00 at this site | screened | refused |
-| `resistance_heater_lt` | 3 | **eligible** | **eligible** | **refused** — 3 < 4 |
+| `resistance_heater_lt` | 4 | **eligible** | **eligible** | **refused** — not offered: `DRY` takes its own family (§3.5.1) |
 | `heat_pump_lt_air` | **2** | **eligible** | **refused** — 2 < 3 | **refused** |
 | `heat_pump_lt_reject` | **2** | **eligible** | **refused** — 2 < 3 | **refused** |
 | `heat_pump_ht` | 3 | **eligible** | **eligible** | **refused** — 3 < 4 |
-| `chp_gas_turbine` | 3 | **eligible** | **eligible** | **refused** — 3 < 4 |
-| `chp_hydrogen_ccgt` | 3 | eligible from 2035 | eligible from 2035 | **refused** |
-| `chp_biomass_st` | 3 | **screened out** — `min_duty` 0.25 > 0.07559 | **screened out** | refused |
+| `chp_gas_turbine` | 4 | **eligible** | **eligible** | **refused** — not offered: `DRY` takes its own family (§3.5.1) |
+| `chp_hydrogen_ccgt` | 4 | eligible from 2035 | eligible from 2035 | **refused** |
+| `chp_biomass_st` | 4 | **screened out** — `min_duty` 0.25 > 0.07559 | **screened out** | refused |
 | `dryer_direct_gas` | 4 | not eligible — bound to `direct_heating` | not eligible | **eligible** |
 | `dryer_electric` | 4 | not eligible | not eligible | **eligible** |
 
@@ -1380,8 +1384,10 @@ CHP wins `STM` only because the heat pump serving rank 3 must buy its source hea
 ladder is what separates the two duties**, and without it a single flat-COP heat pump would
 have taken both, which is exactly the error the architecture document records.
 
-**Why no CHP reaches the spray dryer.** `grade_out` 3 < 4. C10 refuses it at load, and the
-200 °C duty is contested only by a direct-fired dryer and an electric one. That is M4's second
+**Why no CHP reaches the spray dryer.** Not the grade: the CHP raises steam at rank 4. It is
+not offered, because §3.5.1 offers a `DRY` duty to `DRY` units only — a CHP delivers steam or
+hot water, and a spray dryer needs hot air — so the 200 °C duty is contested only by a
+direct-fired dryer and an electric one. That is M4's second
 assertion, at a different duty from the one it names.
 
 ### 8.5 C11 and the connection

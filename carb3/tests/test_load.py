@@ -468,17 +468,19 @@ def test_measured_counts_match_the_plan(
 
     The PR #64 decisions (2026-09-25) added ``kiln_ht_gas`` (heat above 1000 °C) and
     ``engine_mot_gas`` (gas engine for shaft work), both fully costed: 140 units, 60 admitted,
-    and the rebuilt rows grew to 2,498 of 3,263.
+    and the rebuilt rows grew to 2,498 of 3,263. The second round (2026-09-26) added
+    ``cooling_tower_wet`` and removed the gas terminal's ``power_generation`` process: 141 units,
+    61 admitted, 3,268 rows.
     """
     dropped = {d.unit_id for d in screen.dropped}
     unit_leg = {d.unit_id for d in screen.dropped if d.leg != "import_price"}
-    assert len(reference.unit) == 140
+    assert len(reference.unit) == 141
     assert len(unit_leg) == 40
     assert len(dropped) == 80
-    assert len(screen.admitted) == 60
+    assert len(screen.admitted) == 61
 
     elig = reference.unit_eligibility
-    assert len(elig) == 3263
+    assert len(elig) == 3268
     assert int(elig["unit_id"].isin(unit_leg).sum()) == 50
     assert int(elig["unit_id"].isin(dropped).sum()) == 1391
 

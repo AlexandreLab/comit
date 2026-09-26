@@ -14,7 +14,6 @@ Iron and/or Steel Works,bf_bof,coke_ovens,HTH,heat_gt1000,6,1.00000,no_family_un
 Mineral Production - Coal,default,haulage_mobile_plant,MOT,motive_power,,1.00,no_unit,note 20 item 30 (diesel mobile plant has no unit),0,,
 Mineral Production - Coal,default,digging_loading,MOT,motive_power,,1.00,no_unit,note 20 item 30 (diesel mobile plant has no unit),0,,
 Mineral Production - Coal,default,drilling,MOT,motive_power,,1.00,no_unit,note 20 item 30 (diesel mobile plant has no unit),0,,
-Mineral Production - Gas,default,power_generation,OTH,electricity,,1.00,duty_on_fuel,"note 20 item 37; note 22 Task 5 (delete the row, admit the generator)",4,pv_battery_2h;pv_ground_mount;pv_rooftop,electricity is a primary carrier
 Mineral Production - Inert,default,materials_handling_loaders,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity
 Mineral Production - Inert,default,internal_haulage,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity
 Mineral Production - Inert,default,mobile_crushing_screening,MOT,motive_power,,1.00,no_family_unit,note 20 item 30 (diesel mobile plant has no unit),2,,admitted units output electricity

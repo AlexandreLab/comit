@@ -707,10 +707,6 @@ Mineral Production - Coal,default,ventilation,vam_thermal_oxidation,8,speculativ
 Mineral Production - Gas,default,gas_compression,controls_vsds,,commercial,"Compressor sequencing, recycle-valve minimisation, VSDs on electric units",engineering judgement,low
 Mineral Production - Gas,default,gas_compression,gas_compression_electric_drive,9,demonstration,Replace gas-turbine/engine drives with electric VSD motors; UK programme active but few conversions complete,[REF_NSTA24] NSTA electrification workshop and draft OGA Plan,medium
 Mineral Production - Gas,default,gas_compression,waste_heat_recovery_process,,commercial,WHRU on turbine/engine exhaust to serve regeneration and site heat,engineering judgement,medium
-Mineral Production - Gas,default,power_generation,gas_compression_electric_drive,9,prospective,Grid connection to displace onsite gas-fired generation (same electrification programme),[REF_NSTA24] NSTA: power generation was 79% of production emissions; electrification is the lever,medium
-Mineral Production - Gas,default,power_generation,h2_ready_equipment,,prospective,Specify H2-ready turbines/engines at replacement,engineering judgement,low
-Mineral Production - Gas,default,power_generation,onsite_solar_pv,,commercial,PV offsets part of terminal auxiliary load,engineering judgement,medium
-Mineral Production - Gas,default,power_generation,post_combustion_amine_ccs,9-11,prospective,Only plausible for large terminals near CCS clusters,engineering judgement,low
 Mineral Production - Gas,default,process_heating_regeneration,biomethane_fuel,8-9,prospective,Drop-in for fired heaters; certificates or local supply,engineering judgement,low
 Mineral Production - Gas,default,process_heating_regeneration,electrode_boiler,9,prospective,Electric steam/hot oil for regeneration where grid allows,engineering judgement,low
 Mineral Production - Gas,default,process_heating_regeneration,h2_boiler,7-9,prospective,Fuel switch for fired heaters if H2 available at terminal,engineering judgement,low

@@ -41,8 +41,8 @@ A unit is offered at `(carb3_activity, process_id)` when, for at least one duty 
    produced, under some output role, by a unit eligible somewhere at the same activity
    (C8, the carrier balance, is per premise). A heat pump on reject heat is not offered
    where nothing rejects heat. A unit driven only by heat cannot deliver a hotter band than
-   it draws: `dryer_steam` makes heat_150_400 from heat_100_150 at 1:1 with no work input,
-   a free grade-up, and is withheld until its coefficients are fixed (note 20 item 64).
+   it draws. `dryer_steam` was withheld on that test until note 20 item 64 rebased it on
+   2026-09-26 (heat_150_400 in, heat_100_150 out); nothing is withheld today.
 4. **Scope.** A generic service unit (`spine` = service, blank `process_id`) is offered
    wherever it serves. A service unit keyed to a process is node-keyed like a chemistry unit
    (D5) and keeps its reach: it is re-joined only at the `(activity, process)` pairs its

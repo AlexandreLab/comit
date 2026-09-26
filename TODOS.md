@@ -23,9 +23,9 @@ Open work on the CaRB3 duty families and cooling grades. The full plan is
 - [x] Note 20 item 27: `kiln_ht_gas` added 2026-09-25; 11 of 13 rank-6 rows served, the two coke-oven rows are chemistry nodes (item 30).
 - [ ] Note 20 item 30: 20 mobile-plant rows and two chemistry nodes have no unit.
 - [x] Note 20 item 25: steam CHPs and four boilers at `grade_out` 4, 2026-09-25.
-- [ ] Note 20 item 37: does Mineral Production - Gas `power_generation` leave the register?
+- [x] Note 20 item 37: `power_generation` left the register, 2026-09-26; its gas share joined `gas_compression`.
 - [x] Note 20 items 65 (gas engine added) and 66 (family groups in spec §3.5.1), 2026-09-25.
-- [ ] Note 20 items 62–64: distillery split, Works fan share, `dryer_steam`.
+- [x] Note 20 items 62 (distillery split, `cooling_tower_wet`), 63 (Works stays `electric_service`) and 64 (`dryer_steam` rebased), 2026-09-26.
 
 ## Data
 
@@ -54,7 +54,7 @@ Open work on the CaRB3 duty families and cooling grades. The full plan is
   chiller, cooling tower or dry cooler: no sourced cost. against
   `ICHREFEHFC01` in the workbook. The three `cooling_lt0` rows have no unit that reaches them
   until a sub-zero unit exists. *Note 22 Tasks 4 and 10.*
-- [ ] **Split Distillery `cooling_systems`?** It names condenser water and cooling-tower fans
+- [x] **Split Distillery `cooling_systems`?** Done 2026-09-26: 0.90 `cooling_gt15`, 0.10 `cooling_0_15`. It names condenser water and cooling-tower fans
   (`cooling_gt15`) beside yeast refrigeration (`cooling_0_15`). No source gives the share, so
   under Task 3's rule the row is whole, on `cooling_0_15`. A published split would move part
   of it to `cooling_gt15`. *Note 20 item 62.*
