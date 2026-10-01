@@ -119,8 +119,8 @@ class ExportWindow:
     #: The §3.7 network this carrier rides on, or ``""`` where C9 does not gate it.
     network: str
     #: Most the connection can carry in a year, PJ/yr: ``premise_connection.export_capacity``
-    #: (MW) run flat out. ``None`` where any row is blank or the carrier is not measured in
-    #: energy (``co2_captured`` is mass). A loose first piece of C11 (connection capacity):
+    #: (MW) run flat out, a blank row counting as 0. ``None`` only where the carrier is not
+    #: measured in energy (``co2_captured`` is mass). A loose first piece of C11 (connection capacity):
     #: without it a unit releasing output through z° could export without limit whenever
     #: the export price beats its cost, and the LP would be unbounded.
     capacity: float | None = None
@@ -810,15 +810,15 @@ def export_capacity(
     """The PJ/yr a premise's connections can export of an energy carrier, or ``None``.
 
     The sum over the carrier's ``premise_connection`` rows of ``export_capacity`` (MW) times
-    :data:`PJ_PER_MW_YEAR`. ``None`` (no cap) where the carrier is not measured in energy, or
-    any of its rows leaves the capacity blank: a blank is unknown, not zero.
+    :data:`PJ_PER_MW_YEAR`. **A blank is 0**: a connection states the export it allows, and
+    one that states none allows none. ``None`` (no cap) only where the carrier is not
+    measured in energy, since a capacity in MW cannot bound a mass flow such as
+    ``co2_captured``.
     """
     if denominator_kind != "energy":
         return None
     rows = connection[connection["carrier_id"].astype(str) == carrier_id]
-    values = pd.to_numeric(rows["export_capacity"], errors="coerce")
-    if rows.empty or values.isna().any():
-        return None
+    values = pd.to_numeric(rows["export_capacity"], errors="coerce").fillna(0.0)
     return float(values.sum()) * PJ_PER_MW_YEAR
 
 

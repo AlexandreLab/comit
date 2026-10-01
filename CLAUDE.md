@@ -257,6 +257,10 @@ at the archived baseline's §6, lines 2126–2127.
   refinery rows at 4.93580 sit 1.35× above the floor and are doubtful on magnitude rather
   than basis — note 20 item 59. Before quoting any emission number, still check the
   coefficient's order of magnitude against its neighbours in the same column.
+- **A blank `premise_connection.export_capacity` means 0 (no export) for an energy carrier,
+  not "unlimited".** A connection states the export it allows; reading a blank as no cap made
+  a PV premise with a priced export unbounded. A mass carrier (`co2_captured`) is not bounded
+  by it at all, since a MW figure cannot bound a mass flow. Settled 2026-10-01.
 - `R/fct_emissions.R` hardcodes the indirect-commodity list (`:180-183`) and the biomass
   category string (`:234`), so the carrier taxonomy is not fully data-driven.
 

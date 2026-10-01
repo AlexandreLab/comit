@@ -87,7 +87,7 @@ row and needs none.
 | `connection_id` | yes | **PK** part. Pointed to by `premise_energy.connection_id` and `premise_process_detail.connection_id` | The connection's name, unique within the premise. Other tables point at it | `C-01` |
 | `carrier_id` | yes | → `carrier.csv` | Which network it connects to | `C-01` is `electricity`, `C-02` is `natural_gas`, `C-03` is `co2_captured` |
 | `import_capacity` | no | | Maximum import in MW. Capacities are never summed across connections: each is its own limit in C11 (connection capacity) | `25` MW on `C-01`; `0` on `C-03` |
-| `export_capacity` | no | | Maximum export in MW. A site exports a carrier only through a connection carrying it | `2` MW on `mvp-dairy`'s `E-01`; blank on `C-03`, so CO₂ export is unlimited by the connection |
+| `export_capacity` | no | | Maximum export in MW. A site exports a carrier only through a connection carrying it. **Blank means 0 for an energy carrier**: no export. A mass carrier is not bounded by it (a MW figure cannot bound a mass flow) | `2` MW on `mvp-dairy`'s `E-01`; blank on `C-03`, but `co2_captured` is mass, so its export is not bounded by the connection |
 | `connection_voltage` | no | | Voltage in kV, for electricity connections | `11` kV on `mvp-dairy`'s `E-01`; `33` kV on `mvp-cement`'s `C-01` |
 | `available_area` | no | | Roof plus land in m² available for onsite generation, read by C12 (siting cap). Without it PV is unbounded | `12000` m² on `mvp-dairy`'s `E-01`; blank on `mvp-cement` |
 

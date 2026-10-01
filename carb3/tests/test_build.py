@@ -1652,8 +1652,11 @@ def test_export_capacity_reads_megawatts_as_a_year_of_flow() -> None:
         3.0 * PJ_PER_MW_YEAR
     )
     assert export_capacity(connection, "co2_captured", "mass") is None
+    # A blank on an energy carrier is no export through that connection, not unlimited.
     blank = connection.assign(export_capacity=[2.0, None, 0.0, None])
-    assert export_capacity(blank, "electricity", "energy") is None
+    assert export_capacity(blank, "electricity", "energy") == pytest.approx(2.0 * PJ_PER_MW_YEAR)
+    all_blank = connection.assign(export_capacity=[None, None, 0.0, None])
+    assert export_capacity(all_blank, "electricity", "energy") == 0.0
 
 
 def test_an_electrolyser_feeds_a_hydrogen_boiler_through_z_release() -> None:
