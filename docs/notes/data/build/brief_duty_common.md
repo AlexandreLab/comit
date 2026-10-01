@@ -32,7 +32,7 @@ Rules that the validator will enforce:
   MOT) splits, citing the source of the split; if no split is published, use one row for the
   dominant duty at 1.0 and state so.
 - `evidence_tier` ∈ {measured, engineering, published_sec, fallback}; `confidence` ∈ {high,
-  medium, low}. Same reading as `activity_process_energy_profile.csv` (see its README).
+  medium, low}. Same reading as `activity_process_energy_share.csv` (see its README).
 - Named non-default sets (`bf_bof` at Iron and/or Steel Works, `grain_distillery` at
   Distillery) need rows only where they differ from the default (inheritance, §3.3).
 

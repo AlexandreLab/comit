@@ -224,7 +224,7 @@ validated. Step 3 is new data collection but against a public source.
 **Also worth noting:** the per-site model's carrier balance decides which *fuel* serves a
 process, so a forward fuel split would over-determine the problem. What it does **not**
 decide is how much of the premise's metered energy each process takes, and that is an input:
-`activity_process_energy_profile` is promoted to the reference entity
+`activity_process_energy_share` is promoted to the reference entity
 `activity_process_energy_share` (live spec §3.3.1), which sizes a premise's duties and is
 §4.1 tier 3's source. It is a parity target for V1b (the MVP reproduces the comparison
 point) as well, but the two readings are not alternatives and the 490 rows keep their

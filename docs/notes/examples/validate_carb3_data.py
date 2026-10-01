@@ -28,14 +28,14 @@ The five files that reference each other, and on which keys:
     references.csv
       ref_id ◄─────────────── [REF_ID] tokens inside every `provenance` column
                                  │
-    activity_process_register.csv     (376 rows, the spine)
+    activity_process_register.csv     (375 rows, the spine)
       (carb3_activity, process_set_id, process_id)
           ▲                        ▲
           │                        │
-          │  activity_process_energy_profile.csv  (490 rows)
+          │  activity_process_energy_share.csv  (489 rows, covering 358 of the 375)
           │    + vector  → energy_share must sum to 1.00 per (activity, set, vector)
           │
-          │  process_decarbonisation_options.csv  (1109 rows)
+          │  process_decarbonisation_options.csv  (1105 rows)
           │    + option_id ──────────► decarbonisation_options_library.csv (134 rows)
           │                              option_id  (PK)
 
@@ -67,7 +67,7 @@ EXPECTED_COLUMNS = {
         "carb3_activity", "process_set_id", "set_name", "is_default", "process_id",
         "process_name", "is_optional", "equipment_examples", "provenance",
     ],
-    "activity_process_energy_profile.csv": [
+    "activity_process_energy_share.csv": [
         "carb3_activity", "process_set_id", "process_id", "vector", "energy_share",
         "share_low", "share_high", "evidence_tier", "provenance", "confidence",
     ],
@@ -86,11 +86,11 @@ EXPECTED_COLUMNS = {
 }
 
 ENUMS = {
-    ("activity_process_energy_profile.csv", "vector"):
+    ("activity_process_energy_share.csv", "vector"):
         {"biomass", "coal", "electricity", "gas", "oil", "other"},
-    ("activity_process_energy_profile.csv", "evidence_tier"):
+    ("activity_process_energy_share.csv", "evidence_tier"):
         {"engineering", "fallback", "published_sec", "metered"},
-    ("activity_process_energy_profile.csv", "confidence"): {"high", "medium", "low"},
+    ("activity_process_energy_share.csv", "confidence"): {"high", "medium", "low"},
     ("process_decarbonisation_options.csv", "applicability"):
         {"commercial", "demonstration", "prospective", "speculative"},
     ("process_decarbonisation_options.csv", "confidence"): {"high", "medium", "low"},
@@ -1857,7 +1857,7 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
         return [shape], tables
 
     reg = tables["activity_process_register.csv"]
-    prof = tables["activity_process_energy_profile.csv"]
+    prof = tables["activity_process_energy_share.csv"]
     opt = tables["process_decarbonisation_options.csv"]
     lib = tables["decarbonisation_options_library.csv"]
     refs = tables["references.csv"]

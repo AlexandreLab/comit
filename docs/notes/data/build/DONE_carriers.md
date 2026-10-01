@@ -21,7 +21,7 @@ directory. 8 blocking checks pass; 2 warnings, both recorded gaps (below).
 | `docs/notes/data/build/check_carriers.py` | — | this lane |
 
 Nothing else was touched. `carrier.csv`, `activity_process_register.csv`,
-`activity_process_energy_profile.csv`, the options library, the specs, the READMEs and
+`activity_process_energy_share.csv`, the options library, the specs, the READMEs and
 `references.csv` are unchanged.
 
 **Periods used: 2021, 2025, 2030, 2035, 2040, 2045, 2050.** 2021 is the base year the brief

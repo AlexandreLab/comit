@@ -618,7 +618,7 @@ Duties are **useful energy at a carrier and a grade**, not fuel. Two steps get t
 §3.3.1 supplies the first — the step that had no source until it was promoted to an entity.
 
 **Step one: the published process shares.**
-[`activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv)
+[`activity_process_energy_share.csv`](../notes/data/activity_process_energy_share.csv)
 gives `Food Processing Centre` these, all `engineering` tier at medium confidence, each column
 summing to 1.00 down the processes:
 
@@ -1256,7 +1256,7 @@ Three properties `V29` asserts, and the third is the one that matters:
 
 ### 8.2 C12 and the PV decision
 
-$$\sum_{u \in U^{\text{area}}} \lambda_u\, a_{u,t} \;\le\; \sum_{k \in \mathcal{K}} A_k \qquad \Longrightarrow \qquad 6{,}500 \times a_{\text{pv},t} \;\le\; 12{,}000$$
+$$\sum_{u \in U^{\text{area}}} \mu_u\, a_{u,t} \;\le\; \sum_{k \in \mathcal{K}} A_k \qquad \Longrightarrow \qquad 6{,}500 \times a_{\text{pv},t} \;\le\; 12{,}000$$
 
 so $a_{\text{pv},t} \le$ **1.846154 MW**. Area is summed across connections here, unlike
 capacity in C11, because roof and land are one estate however many supplies serve them (§5.5);
@@ -1405,7 +1405,7 @@ C11 is written per connection and never summed across them:
 
 $$P^{\text{peak}}_{k,t} \;\le\; \overline{P}^{\text{imp}}_{k} + w_{k,t} + \sum_{u} \beta_u\,a_{u,t}, \qquad \sum_c x_{c,k,t} \le \overline{P}^{\text{exp}}_k$$
 
-Peak is rebuilt from the solved pathway by the §5.6 method. **§5.6 is not written** (`T23`), so
+Peak is rebuilt from the solved pathway by C11's method. **§5.6 defines only the peak factor $\lambda$ and the method is open** (`T23`), so
 this example uses mean flow over operating hours multiplied by the observed within-shift peak
 factor of §1.8, and states that this **understates** the true peak because it applies no
 diversity step and no seasonal correction.
@@ -1488,7 +1488,7 @@ the kind of second-order result the disposal variable exists to make visible.
 
 > **The annual-to-power conversion is the §5.6 gap in its clearest form.** Using mean flow over
 > operating hours understates the export peak, which is set by the CHP running flat against a
-> refrigeration load that dips at night. A peak-based conversion would shed more CHP. §5.6 must
+> refrigeration load that dips at night. A peak-based conversion would shed more CHP. C11's method (§5.6, open under `T23`) must
 > settle which, and until it does this figure is a floor.
 
 ### 8.7 The pathway
@@ -1537,7 +1537,7 @@ Three features of this pathway:
 ### 8.8 The relaxation ladder (§4.2)
 
 This premise is feasible at every period, so no rung is used. The ladder's order is
-**C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**, and at this dairy three rungs are live:
+**C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1** (C4b is leg (b) of C4, forced ageing), and at this dairy three rungs are live:
 
 - **C12 (siting cap) relaxes first.** An over-large PV array is an input-data problem about
   roof area, not a statement about the site's physics. Here the area is `measured`, so
@@ -1840,8 +1840,8 @@ One remains, and one is new:
 
 Two things stated rather than filed. **The objective charges direct carbon only** (§6.3): §5.4
 does not say whether an `is_indirect` carrier's emissions enter $Z^{\text{carbon}}$, and both
-worked examples charge direct and report indirect so that they remain comparable. And **§5.6 is
-cited and unwritten**, so nothing says how C11's peak is rebuilt, which year it reads, or how
+worked examples charge direct and report indirect so that they remain comparable. And **§5.6 defines
+only the peak factor $\lambda$**, so nothing says how C11's peak is rebuilt, which year it reads, or how
 an annual energy becomes a power for the export bound — this example uses mean flow over
 operating hours times the observed within-shift peak factor, applies no diversity step, and
 therefore **understates** both the import peak of §8.5 and the export peak of §8.6.

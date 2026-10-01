@@ -130,6 +130,23 @@ captured, and the works vents only about 2 kt/yr of biogenic CO₂. The scarcest
 the train, and `co2_fuel_biogenic` disposal drops to nothing from 2035. Treat the capture
 result as a data artefact until item 57 is closed.
 
+## Output tables
+
+With `--out-dir`, each solved premise writes eight parquet tables under `<out>/<premise_id>/`:
+six from the ledger and two from the run report. This is the slice's output, not the full
+spec §8 target contract.
+
+| Table | Rows | Columns (one row per) | Meaning |
+|---|---|---|---|
+| `cost_by_term.parquet` | one per term per period | capex, opex, fuel, carbon, discounted each | Cost contribution by term (capital, standing, fuel, carbon charge on disposal). The five terms must sum to `run_report.objective` |
+| `carrier_mix.parquet` | one per carrier per period | imported, produced, consumed, disposed | Carrier balance: flow in, flow out. C8 closure is checked here |
+| `dispatch.parquet` | one per duty per unit per period | quantity, carrier, grade_rank, role | Unit dispatched to duty (z_{u,q,t}), carrier and grade the duty is on, and how the unit serves it |
+| `build.parquet` | one per unit per period | new_capacity, capacity_available, survived_from_start | New capacity built in the period, total available (new plus incumbent), incumbent capacity per D11's survival function |
+| `disposal.parquet` | one per carrier per period | quantity | Amount vented to atmosphere (d_{c,t}); carbon is charged on this quantity for carriers where `carbon_charge` is 'charged' (spec §3.4) |
+| `unit_flow.parquet` | one per unit per carrier per role per period | quantity, signed | Flow into (negative) or out of (positive) each unit on each carrier in each role (fuel_input, emission_input, primary_output, coproduct_output, reject, or duty_output) |
+| `run_report.parquet` | one row | premise_id, status, objective, n_variables, n_constraints, wall_clock_seconds, n_units_admitted, n_units_dropped | The G1 (single-premise wall clock) measurement, solver status (optimal/infeasible/other), final objective, problem size, and the §3.2 admission screen count |
+| `screen_dropped.parquet` | one per dropped unit | unit_id, leg, detail | §3.2 admission screen's work list: which units were refused and why (blank capex, no coefficients, unpriced fuel). The work list is written even if empty |
+
 ## Against the live spec
 
 The slice implements a subset of spec §5, on purpose (note 21 §2). Out of scope: h_{c→c′,t},

@@ -149,7 +149,7 @@ its share or state one duty. The brief allows the latter: "if no split is publis
 for the dominant duty at 1.0 and state so." **No source in the repo or in the UK sector literature
 publishes a duty split for any process in this lane except the one in the worked example.** So:
 
-- **Site-overhead bundles get two rows.** Where `activity_process_energy_profile.csv` gives a
+- **Site-overhead bundles get two rows.** Where `activity_process_energy_share.csv` gives a
   `site_services`-type process **both** a heat vector and an electricity vector, **and** the
   activity has no separate `space_heating` register process, I wrote `SPC` + `MOT` at **0.55 /
   0.45** — the food-and-drink example's own delivered-energy ratio, used as an explicitly named

@@ -195,7 +195,7 @@ now excludes generators outright.
 
 ### 3. The fuel split does **not** come from renormalising the energy profile
 
-The brief says to use `activity_process_energy_profile.csv`'s vectors to pick the incumbent fuel
+The brief says to use `activity_process_energy_share.csv`'s vectors to pick the incumbent fuel
 unit. Its own example is the single-vector case, and that works. **For a multi-vector process it
 does not, and doing it naively is a real defect I hit and backed out of.** `energy_share` sums to
 1.00 *down the processes, per vector*: `Food Processing Centre` / `boiler_steam_hot_water` carries
@@ -206,7 +206,7 @@ to a meaningless 0.333 / 0.333 / 0.333.
 
 So the split is now **two sources**, and every row says so:
 
-- **which** fuels a process uses — `activity_process_energy_profile.csv`, as the brief directs;
+- **which** fuels a process uses — `activity_process_energy_share.csv`, as the brief directs;
 - **how much of each** — `[ECUK_2025_U4]` Table U4, 2024, the per-sector, per-end-use fuel columns
   (solid / oil / gas / electricity), renormalised over the vectors the process actually carries.
   Duty families map to ECUK end uses as `HTH`,`PHEAT` → High temperature process; `LTH`,`STM` →
@@ -242,7 +242,7 @@ unit is `duty_annual`, as both worked examples have it.
 
 ### 6. Where the energy profile has no row at all
 
-**18 rows** sit on processes `activity_process_energy_profile.csv` does not cover — the silent
+**18 rows** sit on processes `activity_process_energy_share.csv` does not cover — the silent
 coverage gaps §3.3.1 names, `Cement Works` / `clinker_cooling` and `site_services` among them.
 There is no evidenced incumbent fuel, so the row takes the duty family's default carrier
 (electricity for `MOT`/`REF`/`OTH`, natural gas otherwise), is `assumed`/`low`, and says so.

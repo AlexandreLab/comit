@@ -71,7 +71,7 @@ These are the ones with a consequence outside the reference data.
    lists three things — "plasma/oxy-fuel cutting tables; **plate rolls**; gas-fired plate/forge
    heating" — which is two duties, not one. Cutting is a >1000 °C thermal duty whichever way it
    is done; plate rolls and presses are motive. But
-   [`activity_process_energy_profile.csv`](data/activity_process_energy_profile.csv) describes
+   [`activity_process_energy_share.csv`](data/activity_process_energy_share.csv) describes
    this process's electricity as *"Plasma cutting and plate machinery"*, so the whole electric
    portion had been written as `MOT`.
 
@@ -792,6 +792,8 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     without one as outside every cluster — §3.7's own beyond-the-radius case — and records
     the gap here rather than adding a field to the specification from a lane.
     *Note 21 §2.3, §3.4; spec §3.1, §3.7.*
+    
+    **Resolved 2026-10-01:** `cluster_id` now defined on `premise_record` in spec §3.1.
 59. **Four more `co2_process` rows are small enough to look like item 56 and are not, and
     one of them is still hard to believe.** Item 56's fix raised the question of whether
     `rolling_mill_reheat_gas` and `rolling_mill_reheat_hydrogen` at **7.24827** and
@@ -990,3 +992,17 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     *Note 22 Task 10, 2026-09-25.* **Confirmed 2026-09-25 (PR #64) and written into the live
     spec §3.5.1**, with a table of the two groups and the carrier match for non-gradeable
     services; §3's *Section last updated* line is bumped and the generated documents rebuilt.
+
+67. **Non-energy use (§7.10) vs A6 fuel CO₂ derivation – which scope?** `petroleum_products_misc`
+    is burned as fuel by `chp_byproduct_ccgt` and four kilns, so a per-carrier exemption would
+    delete those real emissions. Decide per unit (each instance of the three FCC-regen units
+    or the four CHPs gets an exemption) or per role (all `emission_input` on this carrier is
+    non-energy), then update the reference tables and A6's derivation rule. *Note 21 §9,
+    deferred item 1; spec §7.10, A6.*
+
+68. **Capture train life bounded by its host – compatible with the lifecycle?** The CCS train's
+    remaining life equals the minimum over its abatement hosts (§3.5.3); in `mvp-cement`, the
+    hosts are kilns retiring 2034 and `ccs_amine` is available from 2035, so this bound would
+    prevent CCS from ever being built unless new-build kilns are deemed hosts. Also defers
+    Z^strand (the stranding charge on a trapped train) because reporting stranded capacity is
+    meaningless without a lifecycle model. *Note 21 §9, deferred item 2; spec §3.5.3, §5.2.*

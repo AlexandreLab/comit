@@ -232,6 +232,7 @@ with rationale, in **§1.6**; these tables are normative for validation.
 | `latitude` | real | degrees | yes | — | Within GB bounding box |
 | `longitude` | real | degrees | yes | — | Within GB bounding box |
 | `nation` | enum{England, Wales, Scotland} | — | yes | — | NI rejected with reason `out_of_scope_nation` |
+| `cluster_id` | string | — | no | → §3.7 `cluster_id` | One of the 9 clusters of `infrastructure_scenario` (§3.7), or `none`. The cluster A1 (premise ingest) assigns the premise to; C9 (infrastructure availability) reads it. **Blank or `none` ⇒ outside every cluster**, so hydrogen and CO₂ transport are unavailable (§3.7's beyond-the-radius case). A value that is neither blank, `none` nor a cluster of §3.7 is rejected at load |
 | `floorspace` | real | m² | no | — | > 0 if present |
 | `process_set_id` | string | — | no | → `activity_process_register` | Selects a named non-default process set (§3.2). Absent ⇒ the activity's default set |
 | `construction_year` | integer | year | no | — | **D11.** ≤ `data_year` if present. When the premise was built. Bounds plant age from above (§3.10.2, §5.3.1) |
@@ -402,7 +403,7 @@ fraction applied to the GIS footprint is the fallback, and it carries its eviden
 
 Which processes run at a premise of a given activity. Populated by
 [`../notes/data/activity_process_register.csv`](../notes/data/activity_process_register.csv) —
-376 rows covering all 55 activities, with provenance per row. That table supersedes
+375 rows covering all 55 activities, with provenance per row. That table supersedes
 [`carb3_factory_processes.json`](../notes/data/carb3_factory_processes.json), which
 remains as the narrower source it was expanded from.
 
@@ -490,7 +491,9 @@ carry a single duty family at 1.00 is therefore *unexamined*, not *confirmed sim
 
 **The default duty of each process, per activity.** The activity-level default that A2
 expands into a premise's `process_duty` (§3.9) wherever no site intelligence overrides it.
-This is the demand side of the carrier model, and **nothing holds it today** — see
+This is the demand side of the carrier model. Populated by
+[`../notes/data/activity_process_duty_profile.csv`](../notes/data/activity_process_duty_profile.csv) –
+427 rows covering all 375 of the register's keys, with provenance per row. Readiness is tracked in
 [notes/16](../notes/16_input_data_readiness.md).
 
 | Field | Type | Unit | Req | Key | Validation |
@@ -510,7 +513,7 @@ This is the demand side of the carrier model, and **nothing holds it today** —
 
 **Rule (shares sum to one).** For each `(carb3_activity, process_set_id, process_id)`,
 `duty_share` must sum to 1.00 ± 0.015. The tolerance is the one
-[`../notes/data/activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv)
+[`../notes/data/activity_process_energy_share.csv`](../notes/data/activity_process_energy_share.csv)
 is already validated against, so a single check covers both tables.
 
 **Rule (a heat or cooling duty must have a grade).** Where the carrier is gradeable,
@@ -568,8 +571,8 @@ period.
 
 **The activity-level default share of a premise's metered energy, per process per vector.**
 Populated by
-[`../notes/data/activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv) —
-490 rows covering 359 of the register's 376 processes, with provenance per row.
+[`../notes/data/activity_process_energy_share.csv`](../notes/data/activity_process_energy_share.csv) —
+489 rows covering 358 of the register's 375 processes, with provenance per row.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -596,7 +599,7 @@ requires every `premise_energy` row to carry.
 
 **Rule (a process consuming several sources gets several rows).** One row per
 `(process, vector)`. A cement kiln takes all of the coal, gas, biomass and waste fuel, a fifth
-of the oil and a fifth of the electricity — six rows. **104 of the 359 covered processes carry
+of the oil and a fifth of the electricity — six rows. **104 of the 358 covered processes carry
 more than one vector**, so multi-source processes are the ordinary case and not an exception.
 
 **Rule (absence is zero, and that is safe here — unlike §3.1.1).** Because the shares close to
@@ -782,8 +785,8 @@ coefficient per band rather than one for all.
 
 ### 3.5 `unit`
 
-What converts between carriers. Fuel is not part of a unit's identity — it enters through
-the unit's carrier bindings in §3.6.
+What converts between carriers. A unit's fuel is part of its identity (D13): it is named on the
+unit by `fuel_carrier_id` and enters the balance through the unit's `fuel_input` row in §3.6.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -793,6 +796,7 @@ the unit's carrier bindings in §3.6.
 | `spine` | enum{service, chemistry} | — | yes | — | Service units are family-keyed, chemistry node-keyed |
 | `duty_family` | string | — | no | — | Required if `spine` = service |
 | `process_id` | string | — | no | → `activity_process_register` | Required if `spine` = chemistry |
+| `fuel_carrier_id` | string | — | no | → `carrier` | **D13.** The one carrier the unit burns or draws as its fuel, which is what makes `boiler_lt_gas` and `boiler_lt_hydrogen` two units. Set on 131 of the 145 units in `unit.csv` and blank where a unit has no single fuel. Where the unit holds a `fuel_input` row (§3.6) the two name the same carrier. **A unit that names a fuel and holds no `fuel_input` row burns it free, and the admission screen drops it** (§5.7) |
 | `grade_out` | integer | — | no | → `carrier` | The furthest band it can deliver, in the `grade_family` of its primary output: the **highest** heat rank, or the **lowest** (coldest) cooling rank (§3.4). Required where the primary output is gradeable |
 | `grade_in_max` | integer | — | no | → `carrier` | Max heat grade rank it can consume as a source. Heat only |
 | `capex` | real | £m per capacity unit | yes | — | ≥ 0. **Levelised over components if hybrid** |
@@ -849,9 +853,9 @@ sector specificity lives.**
 |---|---|---|---|---|---|
 | `unit_id` | string | — | yes | PK part → `unit` | — |
 | `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
-| `process_id` | string | — | yes | PK part | → `activity_process_register` |
+| `process_id` | string | — | no | PK part | → `activity_process_register`. **Blank ⇒ activity-level supply**: the row reaches every process of `carb3_activity`, and the carrier and grade test of C10 (the grade cascade), not the key, decides which duties the unit may serve. 142 of the 3,314 rows in `unit_eligibility.csv` are blank. Where a unit has both an exact-process row and an activity-level row, the exact row wins |
 | `min_duty` | real | PJ/yr or Mt/yr | no | — | Below this the unit is not offered at all |
-| `max_share` | real | fraction | no | — | ∈ (0, 1]. Cap on this unit's share of the duty |
+| `max_share` | real | fraction | no | — | ∈ [0, 1]. Cap on this unit's share of the duty, $z_{u,q,t} \le \texttt{max\_share} \times D_{q,t}$. **0 is a hard prohibition**: the unit is removed from $U_q$, not bounded. Four rows carry one, one of them 0 |
 | `earliest_year` | integer | year | no | — | Availability |
 | `provenance` | enum{comit_reuse, bref, proxy} | — | yes | — | D6 |
 
@@ -1075,7 +1079,7 @@ was charged to the rejecting unit.
 | `period` | integer | year | yes | PK part | A model period |
 | `available` | boolean | — | yes | — | Whether the carrier can be used |
 | `capacity_limit` | real | PJ/yr or kt/yr | no | — | Optional per-premise cap; unbounded if absent |
-| `unit_tariff` | real | £m per PJ or kt | yes | — | **Replaces COMIT's four infrastructure PV terms** (§5.4) |
+| `unit_tariff` | real | £m per PJ or kt | no | — | **Replaces COMIT's four infrastructure PV terms** (§5.4). Blank on all 189 rows of `infrastructure_scenario.csv`, and **not read by the slice**: the CO₂ transport and storage tariff lives in `scenario_parameters` as the series `co2_transport_tariff` (§3.8), which has no cluster dimension |
 
 **Rule.** A premise is assigned to the nearest in-scope cluster on ingest (A1). Its
 availability is read from that cluster's rows. Premises beyond a configured cluster
@@ -1087,16 +1091,25 @@ Scalar and per-carrier series driving the objective and the constraints.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
-| `parameter_id` | string | — | yes | PK | — |
-| `carrier_id` | string | — | no | → `carrier` | Set for per-carrier series |
+| `parameter_id` | string | — | yes | PK part | — |
+| `carrier_id` | string | — | no | PK part → `carrier` | Set for per-carrier series |
 | `period` | integer | — | no | PK part | Period index |
 | `value` | real | varies | yes | — | — |
+
+**The key is `(parameter_id, carrier_id, period)`**, with a blank part where a series has none: `carbon_price` has no carrier and `discount_rate` has neither a carrier nor a period.
 
 New parameters: `import_price` and `export_price` per carrier per period; `export_price`
 must be **strictly below** `import_price` (V21, and it is physically true anyway);
 `reinforcement_cost` per voltage band. There is no site-wide area density: how much area a
 unit takes is the unit's own attribute, `area_per_capacity` in §3.5, so that C12 binds
 area-bound units and no others.
+
+**The series the slice reads.** `import_price` and `export_price` per carrier and period;
+`carbon_price` ($\pi_t$); `discount_rate` ($r$); `co2_transport_tariff` for the carrier
+`co2_captured`, the tariff $\tau_{c,t}$ that a site pays to export captured CO₂ (§5.4); and one
+**emission-factor series per carrier, `ef_<carrier_id>`**, in kt CO₂ per PJ, from which A6 (the
+problem builder) derives fuel CO₂ (§3.6). `scenario_parameters.csv` holds 16 `ef_` series.
+`ef_electricity_lrmf` is a second electricity series (long-run marginal) that the slice does not read.
 
 ### 3.9 `process_duty`
 
@@ -1437,11 +1450,11 @@ Values are indicative of the shape's character, not defaults to be adopted unexa
 `runs_when_idle` and `seasonality` are what the reference build can source; `duty_factor`
 and `peak_to_mean` are what it mostly cannot, because no published load profile survives
 the no-invention rule for most process types. A blank on either is therefore legitimate
-and means *shape known, magnitude not*. Where blank, §5.6 (the peak method) uses:
+and means *shape known, magnitude not*. Where blank, the peak method (§5.6 defines its peak factor $\lambda$, and the rest of it is open under T23, complete §5) uses:
 
 | Field | Default | What it assumes |
 |---|---|---|
-| `duty_factor` | 1.00 | The process draws power for the whole of the site's operating hours — its schedule is the plant's schedule (§3.12's `shifts_per_day`, `days_per_week`, `weeks_per_year`), and `runs_when_idle` says whether it also draws outside them |
+| `duty_factor` | 1.00 | The process draws power for the whole of the site's operating hours — its schedule is the plant's schedule (§3.12's `operating_hours_per_year`, `operating_days_per_week` and `shutdown_weeks`), and `runs_when_idle` says whether it also draws outside them |
 | `peak_to_mean` | 1.00 | The draw is flat across those hours |
 
 Together the defaults rebuild the peak as the **mean load over operating hours**, which
@@ -1500,9 +1513,10 @@ substantially.
 and `shoulder` weeks — 1,008 points, still small — or the annual peak cannot be
 attributed to the right process when the mix changes.
 
-**Open dependency (§5.6).** C11's peak is rebuilt from this entity by the §5.6 method, and
-**§5.6 is not written** — it is cited from here, from §3.12, from §4.2 and from C11 itself.
-Whoever writes it must select the base year on §3.1.1's rule. Recorded here so the choice is
+**Open dependency (§5.6).** C11 (connection capacity)'s peak is rebuilt from this entity, and
+§5.6 defines only the peak factor $\lambda$. The method itself, with its base-year selection and its
+diversity step, is open under T23 (complete §5). Whoever writes it must select the base year on
+§3.1.1's rule. Recorded here so the choice is
 made deliberately rather than discovered through a wrong connection size.
 
 ---
@@ -1526,7 +1540,7 @@ now, and the reason a site with a 20 MW CHP and one without are currently the sa
 | `process_set_id` | string | — | yes | PK part | → `activity_process_register` |
 | `process_id` | string | — | yes | PK part | → `activity_process_register` |
 | `duty_family` | string | — | yes | PK part | → `activity_process_duty_profile` |
-| `unit_id` | string | — | yes | PK part | → `unit`. Must be eligible for this activity and process (§3.4) |
+| `unit_id` | string | — | yes | PK part | → `unit`. Must be eligible for this activity and process (§3.5.1) |
 | `default_share` | real | fraction | yes | — | ∈ [0, 1]. Share of this duty the unit serves in the base year |
 | `sizing_basis` | enum{duty_annual, duty_peak, throughput} | — | yes | — | How installed capacity is derived from the duty |
 | `evidence_tier` | enum{sector_statistic, derived, assumed} | — | yes | — | **Non-nullable.** `sector_statistic` means a published figure (DUKES, CHPQA) |
@@ -1601,7 +1615,7 @@ would change a premise's answer without changing any input the reader can see.
 
 ## 4. Algorithms
 
-*Section last updated: 2026-09-17*
+*Section last updated: 2026-10-01*
 
 > **Partially written.** The numbered pseudocode for A1–A9 is outstanding; the delivery plan
 > names its owner. What each algorithm is responsible for, and the two rules that were open
@@ -1643,7 +1657,9 @@ all three properties.
 ### 4.2 A7 — the relaxation ladder
 
 An infeasible premise is relaxed in a fixed order, and every relaxation is reported. The
-order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
+order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**, where C4b is leg (b) of C4 (incumbent
+ageing), forced ageing (§5.5): capacity that has reached the end of its life is gone whether the
+model wants it or not.
 
 - **C12 (siting cap) relaxes first** of the three connection-and-physics constraints. It is
   the softest: an over-large PV array is an input-data problem about roof area, not a
@@ -1659,7 +1675,7 @@ order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**:
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-09-24*
+*Section last updated: 2026-10-01*
 
 **This section is authoritative.** Everything else serves it.
 
@@ -1763,6 +1779,15 @@ decides whether an import exists at all; the presence of a connection decides on
 indexed. Exports are always connection-indexed, because leaving the site means going onto a
 network.
 
+**What the slice builds.** The slice (`carb3/src/carb3/`) declares **site-level** import $m_{c,t}$
+for every importable carrier and **site-level** export $x_{c,t}$ for every exportable carrier
+with an availability window, whether or not a connection carries it. It is handed no
+`premise_connection` table, C11 and $Z^{\text{net}}$ are not built, and `import_price` and
+`export_price` have no connection dimension, so the index would carry no information and the two
+forms are numerically identical there. $z^{\circ}_{u,t}$ exists for **supply units only**: units
+that serve no duty and make a carrier no duty asks for (a kiln's `clinker`, a capture train's
+`co2_captured`). The connection-indexed forms $m_{c,k,t}$ and $x_{c,k,t}$ above are the target.
+
 **Total activity is a defined expression, not a variable.**
 $z_{u,t} \equiv \sum_{q \in Q_u} z_{u,q,t} + z^{\circ}_{u,t}$, and it is what C2, C6, C7 and §7
 read. **The duty index is what stops one unit being credited twice.** §3.5 makes service
@@ -1808,11 +1833,102 @@ expressible.
 | $p^{\text{imp}}_{c,t}, p^{\text{exp}}_{c,t}$ | `scenario_parameters` | Import and export prices |
 | $\overline{P}^{\text{imp}}_k, \overline{P}^{\text{exp}}_k$ | `premise_connection` | Connection capacities |
 | $A_k$ | `premise_connection` | Available area at connection $k$, m² |
-| $\lambda_u$ | `unit.area_per_capacity` | Area taken per capacity unit, m². Defined over $U^{\text{area}}$ only |
+| $\mu_u$ | `unit.area_per_capacity` | Area taken per capacity unit, m². Defined over $U^{\text{area}}$ only |
 | $\pi_t, \tau_{c,t}, \sigma, r, i$ | `scenario_parameters` | Carbon price, tariff, stability factor, discount and interest rates |
 
 **D11's survival function $\eta$ and mean remaining life $\bar R$ are parameters, computed
-per unit before the problem is built.** That is what keeps D11 free of binaries.
+per unit before the problem is built.** That is what keeps D11 free of binaries. §5.3.1 defines them.
+
+**The interest rate $i$ falls back to the discount rate $r$** where `scenario_parameters` holds no
+`interest_rate` row. It holds none today, so the slice annuitises capex at `discount_rate`.
+
+#### 5.3.1 Plant vintage and the survival function (D11)
+
+$\eta$ and $\bar R$ are **parameters, not variables**: A4 (back-solving capacity, carrier mix and
+vintage) computes them before the problem is built. That is what keeps D11 (existing plant has an
+age) free. The model gains an age without gaining a single binary, and §9's tractability argument
+is untouched.
+
+**The age window.** Every incumbent unit arrives at the start year $y_{t_0}$ with its capacity spread
+over a window of installation ages $[a^-_u, a^+_u]$, in years. Three tiers of evidence set the
+window, and they are tried in order:
+
+| Tier | Evidence | Window at $y_{t_0}$ |
+|---|---|---|
+| 1, `process_known` | A `premise_process_unit` row (§3.10.2) with `commissioned_year` $v$ | $a^- = a^+ = y_{t_0} - v$, a point mass |
+| 2, `premise_bounded` | `premise_record.construction_year`, or the earliest year of `construction_year_band` where only a band is held (§3.1), giving premise age $A = y_{t_0} - y^{\text{built}}$ | $a^- = 0,\ a^+ = \mathrm{clamp}(A,\ 0,\ L_u)$ |
+| 3, `uniform_default` | None, and `vintage_default = uniform_life` | $a^- = 0,\ a^+ = L_u$ |
+| 3n, `no_ageing` | None, and `vintage_default = no_ageing` | Not a window. $\eta_{u,t} = 1$ for all $t$ and $\bar R_{u,t} = L_u$ |
+
+**The clamp on tier 2 is load-bearing, not defensive.** §3.1 requires only `construction_year`
+$\le$ `data_year`, and nothing ties `data_year` to the start year, so $A$ can be zero (a works built
+in the base year) or negative (a `data_year` later than the start year). Without the clamp the
+window width below is zero or negative, and $\eta$ is undefined or negative.
+
+**Row 3n is a diagnostic, not an evidence tier.** `no_ageing` says "do not age anything", a
+scenario choice about absent evidence rather than a claim about the plant. It gets its own
+`vintage_evidence_tier` value so that a run with ageing switched off is never mistaken for one
+that aged its stock uniformly.
+
+A unit with several cohorts at one process is several point masses, weighted by `capacity_share`;
+$\eta$ and $\bar R$ below are then the share-weighted sum and the share-weighted mean.
+
+**Survival, tiers 2 and 3.** A unit installed at age $a$ is still standing after $(y_t - y_{t_0})$
+elapsed years if and only if $a + (y_t - y_{t_0}) < L_u$. With window width $W_u = a^+_u - a^-_u$,
+and writing $\bar a_{u,t} = \mathrm{clamp}\big(L_u - (y_t - y_{t_0}),\ a^-_u,\ a^+_u\big)$:
+
+$$\eta_{u,t} = \begin{cases} \dfrac{\bar a_{u,t} - a^-_u}{W_u} & W_u > 0 \\[6pt] \mathbb{1}\big[\,a^-_u + (y_t - y_{t_0}) < L_u\,\big] & W_u = 0 \end{cases} \qquad \bar R_{u,t} = \max\!\left(0,\ (L_u - (y_t - y_{t_0})) - \tfrac{1}{2}\big(a^-_u + \bar a_{u,t}\big)\right)$$
+
+**The $W_u = 0$ branch is not an edge case to be tidied away.** It is reachable from tier 2 whenever
+the clamp returns zero, and it is exactly the tier-1 point-mass formula below. Writing the division
+unguarded would divide by zero on a premise built in the start year, which is an ordinary input.
+
+**Survival, tier 1.** A cohort is a point mass, stated directly on its final operating year
+$\Omega_u$:
+
+$$\Omega_u = \max\big(v_u + L_u - 1,\ y_{t_0}\big) \qquad \eta_{u,t} = \mathbb{1}\big[\,y_t \le \Omega_u\,\big] \qquad \bar R_{u,t} = \max\big(0,\ v_u + L_u - y_t\big)$$
+
+**$\Omega$ is clamped and $\bar R$ is not, and the asymmetry is deliberate.** Survival is a
+statement about plant somebody has observed running, so it cannot be zero in the base period
+whatever the arithmetic says. Residual value is a statement about a loan, and on plant already
+past its nominal life that loan finished years ago. An asset commissioned in 1990 with a 25-year
+life, still turning in 2025, survives the base period and then goes, and can be scrapped at no
+charge because there is nothing left to write off.
+
+Across the ageing tiers $\eta$ is non-increasing in $t$, equals 1 at the start year, and reaches 0
+once the whole window has aged out. $\bar R$ is the mean remaining life *of what is still
+standing*, which is what the stranding charge of §5.4 needs.
+
+**What the slice implements.** Only tier 1, in `carb3/src/carb3/survival.py`. Tiers 2 and 3 are the
+target and are not built: the survival function there takes a single install year, so it cannot
+carry a window, and it is never handed `premise_record`, so the tier-2 bound is out of reach. A
+unit with no `premise_process_unit` row therefore carries **no** incumbent capacity rather than
+falling back to a uniform-life pool. **The slice also diverges from the tier-1 formula above on
+one point:** plant already past its life at the base year counts as zero, with no clamp on
+$\Omega_u$ (`survival.py`, `survival_fraction`). That is safe there only because C2 (activity
+limited by available capacity) is an inequality and no stranding charge reads $e_{u,t}$ yet.
+**Tier 3n needs a `vintage_default` setting that no file defines yet**: no column of
+`scenario_parameters.csv` or any other reference table carries it.
+
+**The known approximation.** Under tiers 2 and 3 the incumbent pool is a *distribution* of ages,
+but $e_{u,t}$ is one aggregate variable, so the model charges the pool's **mean** remaining life
+to whatever it retires. A real operator scraps the oldest plant first, which would be cheaper.
+Charging the mean overstates the cost of scrapping old capacity and understates it for young,
+and the two errors partly cancel in aggregate. Cohort-indexed variables would fix it at a
+multiple of the problem size for a second-order correction, so the approximation is accepted.
+It disappears only where tier-1 evidence resolves to a single cohort.
+
+**The other known gap: life extension.** Major refurbishment genuinely extends plant life and
+nothing here models it. $L_u$ is fixed, and §3.10.2 forbids recording an overhaul as a new
+commissioning year, so heavily refurbished plant retires earlier in the model than it will in
+reality. Representing it needs a life-extension option with its own capex competing against
+replacement, which is a unit-library change and is not attempted here.
+
+**Plant already past its life.** Tier 1 can hand back an asset older than $L_u$. The $\Omega$
+clamp is what keeps such a premise feasible on arrival, and the case should be reported as
+`plant_overage` (an advisory) rather than repaired in the input, because an over-age asset is
+usually a lifetime that is too short for the equipment class and not a wrong date. The slice does
+not yet report it.
 
 ### 5.4 Objective
 
@@ -1825,7 +1941,15 @@ and $d_t$ the **single-year** factor used for the stranding write-off, both as �
 them against the year vector. Capex is annuitised over $L_u$ at interest rate $i$; the
 annuity for a hybrid already contains its component replacements (§3.5).
 
-$$Z^{\text{fuel}}_t = \sum_{c}\Big(\sum_{k} m_{c,k,t} + m_{c,t}\Big)\big(p^{\text{imp}}_{c,t} + \tau_{c,t}\big) \cdot \varepsilon(c,t) \qquad Z^{\text{exp}}_t = \sum_{c,k} x_{c,k,t}\,p^{\text{exp}}_{c,t}$$
+$$Z^{\text{fuel}}_t = \sum_{c}\Big(\sum_{k} m_{c,k,t} + m_{c,t}\Big)\big(p^{\text{imp}}_{c,t} + \tau_{c,t}\big) \qquad Z^{\text{exp}}_t = \sum_{c,k} x_{c,k,t}\,\big(p^{\text{exp}}_{c,t} - \tau_{c,t}\big)$$
+
+**The flexible-load multiplier is $\varepsilon_u$, a coefficient of a unit, not of a carrier and a
+period.** §3.17 defines it as the purchase-price multiplier of a flexible-load hybrid: such a unit
+buys the carrier it draws at $\varepsilon_u\,(p^{\text{imp}}_{c,t} + \tau_{c,t})$, so the
+$Z^{\text{fuel}}$ above is exact where every $\varepsilon_u = 1$. An import flow carries no unit
+index, so how $\varepsilon_u$ weights the part of an import that unit $u$ draws is not settled
+here and is open under T23 (complete §5). **Tier A archetypes are deferred, so $\varepsilon_u = 1$
+for every unit in the slice.**
 
 **Both import terms are priced, and at the same price.** A delivered fuel arriving at
 $m_{c,t}$ (§5.2) costs what a networked one arriving at $m_{c,k,t}$ costs: the connection index
@@ -1837,6 +1961,15 @@ $$Z^{\text{net}}_t = \sum_{k} \gamma_k\big(w_{k,t}\big)$$
 **$Z^{\text{exp}}$ enters with a negative sign, so the objective now has a genuinely
 negative term.** No implementation may assume cost components are non-negative. V6 already
 records this trap for emissions; it now applies to costs.
+
+**$Z^{\text{exp}}$ is a revenue where an export price exists and a cost where only a tariff does.**
+Captured CO₂ has no buyer: the site pays the transport and storage tariff $\tau_{c,t}$ to be rid
+of it (the `co2_transport_tariff` series of §3.8). The per-unit term is $p^{\text{exp}}_{c,t} -
+\tau_{c,t}$ with either side absent read as zero, so $-Z^{\text{exp}}$ enters the objective
+**positive** where the tariff dominates. A carrier with an export variable and neither series
+complete in every period is refused at load, because an unpriced export is free disposal. **No
+carbon charge attaches**: exported CO₂ went into a pipe and not up a stack, and §5.4 charges
+carbon on what is vented.
 
 **Carbon is charged on what is vented, not on what is burnt (D15).** Every emission is a
 carrier, so produced CO₂ must either be captured or disposed of, and the disposal variable is
@@ -1885,12 +2018,32 @@ with $e_{u,t} \equiv 0$ for $u \notin U^0$. An abatement unit expires with its *
 host, not on its own life: its hosts are the rows of `unit_abatement_host` (§3.5.3) and the
 window it inherits is the minimum remaining life over them.
 
+**In the slice C3 is two rows**, `C3_incumbent` for units in $U^0$ (capacity available equals
+what was built and still stands, plus $e_{u,t}$) and `C3_new` for every other unit (capacity
+available equals what was built and still stands).
+
 **C4 — Incumbent ageing and early retirement (D11).** Incumbent capacity decays by the
 survival function $\eta$, may be retired early against a stranding charge in $\xi$, and the
 abatement rule reads `unit_abatement_host` (§3.5.3): an abatement unit **any** of whose hosts is
 still standing has not been scrapped, so it attracts no stranding charge, and the remaining life
 it inherits is the **minimum** over its hosts. Where the hosts share a vintage the minimum is
 that one value, which is the single-host rule this replaces.
+
+C4 has four legs, with $E^0_u$ the incumbent capacity at the start year (§3.10.2):
+
+$$\text{(a)}\; e_{u,t_0} = E^0_u \qquad \text{(b)}\; e_{u,t} \le \eta_{u,t}\,E^0_u \qquad \text{(c)}\; e_{u,t} \le e_{u,t-1} \qquad \text{(d)}\; r_{u,t} \ge \big(\eta_{u,t}E^0_u - e_{u,t}\big) - \big(\eta_{u,t-1}E^0_u - e_{u,t-1}\big)$$
+
+Leg (a) anchors the start year: the plant is observed running, so it exists. **Leg (b) is C4b,
+forced ageing**: capacity that has reached the end of its life is gone whether the model wants it
+or not, and this is the half of D11 that can *force* a replacement. It is also the constraint
+A7 (the relaxation ladder, §4.2) relaxes third. Leg (c) forbids resurrection. Leg (d) is the half
+that *discourages* early retirement: $r_{u,t}$ picks up the **increment** to the gap between what
+age alone would have left standing and what the model kept, so only the deliberate part of a
+retirement is charged against $\xi$, and plant that simply died of old age is not billed.
+
+**In the slice C4 is an equality**, $e_{u,t} = \eta_{u,t}E^0_u$ (row `C4`), with no $r_{u,t}$ and
+no stranding charge, so legs (c) and (d) are not built. It is mechanism and not driver: C2 is an
+inequality, so nothing compels an incumbent to run.
 
 **C5 — No building in the start year.** $n_{u,t_0} = 0 \;\; \forall u$.
 
@@ -1942,6 +2095,12 @@ in a period cannot run, and where a cap is specified the premise's draw respects
 covers `biomethane` as well as hydrogen and CO₂ transport: biomethane's real constraint is a
 shared catchment, which D2 forbids modelling per premise.
 
+**In the slice C9 is enforced only as the CO₂ export gate**: an upper bound of zero on $x_{c,t}$ in
+every period the premise's cluster (§3.1 `cluster_id`) cannot take the carrier, read from the
+`co2_transport` rows of §3.7. A bound and not a constraint row, because the window is a
+parameter and the LP has no decision to make about whether a pipeline exists. Hydrogen
+availability and `capacity_limit` are not yet enforced.
+
 **C10 — Grade cascade, heat and cooling.** A unit may serve a graded duty only in its own grade
 family and only at or below its output grade in service rank:
 
@@ -1954,7 +2113,8 @@ serve it. In practice the first is enforced by **eligibility at load** rather th
 the LP — a unit failing it is not in $U_q$, so the variable is never created — which is why
 V19 (no unit eligible beyond its `grade_out`) is a load-scope test. The second is the
 declaration set of $h$, so no variable against the cascade exists to relax. Stating both as
-constraints keeps §5 complete; implementing them as filters keeps the problem small.
+constraints keeps §5 complete; implementing them as filters keeps the problem small. **The slice
+applies C10 as an eligibility filter** when it builds $U_q$ (`carb3/src/carb3/sets.py`).
 
 **High grade may serve a low-grade duty, never the reverse — and for cooling, cold is high
 grade.** A steam boiler at 150–400 °C serves a 120 °C duty; a heat pump capped at 100 °C does
@@ -1978,8 +2138,9 @@ row (§5.2) has no connection to bound and never enters this constraint:
 $$P^{\text{peak}}_{k,t} \;\le\; \overline{P}^{\text{imp}}_{k} + w_{k,t} + \sum_{u} \beta_u\,a_{u,t} \qquad \forall k \in \mathcal{K},\, t$$
 
 and export bounded by $\sum_c x_{c,k,t} \le \overline{P}^{\text{exp}}_k$ after conversion to
-power. Peak is rebuilt from the solved pathway by the §5.6 method, using
-`process_load_shape` and the diversity step that must not be skipped.
+power. Peak is rebuilt from the solved pathway from `process_load_shape` and a diversity step that
+must not be skipped. §5.6 defines the peak factor $\lambda$ it uses; the rest of the method is open
+under T23 (complete §5). **The slice does not build C11.**
 
 **$\beta$ is how storage earns its keep here**, and it is the one place a standalone battery
 is worth building: it contributes firm capacity linearly, with no dependence on a sizing
@@ -1987,7 +2148,7 @@ ratio, so it needs no hybrid pairing.
 
 **C12 — Siting cap.** Area-bound units are bounded by usable area, each at its own footprint:
 
-$$\sum_{u \in U^{\text{area}}} \lambda_u\, a_{u,t} \;\le\; \sum_{k \in \mathcal{K}} A_k \qquad \forall t$$
+$$\sum_{u \in U^{\text{area}}} \mu_u\, a_{u,t} \;\le\; \sum_{k \in \mathcal{K}} A_k \qquad \forall t$$
 
 Without this the LP builds unbounded PV and exports it. This constraint is the reason
 `available_area` is the highest-priority missing input.
@@ -2006,21 +2167,82 @@ disagree on onsite capacity. The deterministic tie-break is lexicographic over
 $(\texttt{unit\_id}, \texttt{carrier\_id}, \texttt{role})$ — the §3.6 key, which the pair
 stopped being once a store and a fired capture train could hold two rows on one carrier.
 
+**What the slice builds.** C1 (duty satisfaction), C2 (activity limited by available capacity),
+C3 (capacity transfer), C4 (incumbent ageing, as an equality), C5 (no building in the start
+year) and C8 (carrier balance); C9 (infrastructure availability) as the CO₂ export gate; and C10
+(the grade cascade) as a filter. **C6 (unit stability), C7 (known changes), C11 (connection
+capacity) and C12 (siting cap) are not built.** The notes under each constraint above say where
+the slice departs from the form written here.
+
+### 5.6 The peak factor $\lambda$
+
+**Only the peak factor is defined here. C11 (connection capacity)'s method is not**, and is open
+under T23 (complete §5).
+
+Everything upstream is annual energy in PJ/yr, while a connection capacity is instantaneous
+power in MW. Where only a schedule is known, mean demand over operating hours follows directly,
+from annual energy $E$ in PJ/yr and operating hours $H$ in h/yr:
+
+$$\overline{P} = \frac{E \times 277{,}778}{H}\;[\text{MW}]$$
+
+**A schedule alone gives a mean, and the difference matters.** Treating $\overline{P}$ as the
+peak assumes demand is flat whenever the site is open, which no real site is: start-up surges,
+batch cycles and non-coincident equipment all push the true maximum above the mean. A
+schedule-derived peak is a **lower bound**, and using it unadjusted understates reinforcement
+need, which is the dangerous direction. The peak factor $\lambda$ closes the gap:
+
+$$P^{\text{peak}} = \overline{P} \times \lambda, \qquad \lambda \ge 1$$
+
+$\lambda$ is `premise_operating_profile.within_shift_peak_factor` (§3.12): peak divided by mean
+demand during operating hours. It is close to 1 for continuous processes and substantially above
+it for batch and single-shift operation. Where a site supplies both a schedule and a measured
+peak, $\lambda$ is observed rather than assumed, which is the cheap way to build a credible
+per-activity default for sites that have only a schedule. §3.13 gives the defaults used where
+$\lambda$ and its process-level counterparts are blank, and they are a floor, never a ceiling.
+
+**$\lambda$ is not $\mu_u$** (the area taken per capacity unit, §5.3), **and not $\xi$** (the
+stranding factor).
+
+**What remains open under T23.** The method that rebuilds a connection's peak from the solved
+pathway: which year it reads (the base year, on §3.1.1's rule, V24), the **diversity step**
+(summing per-process peaks assumes every process peaks at the same instant, which overstates the
+site maximum, so where §3.14 weekly profiles exist the diversity is observed and where they do not
+a per-activity factor is the fallback), per-connection routing, and calibration against the
+measured peak at the base year. The archived COMIT-parity baseline's §5.6 sketches these steps;
+this section does not restate them. Until they are written, any peak built from mean flow and
+$\lambda$ alone is a floor and must be reported as one.
+
+### 5.7 Pre-solve and post-solve checks
+
+Four checks surround the solve, in this order. The first three are **diagnoses, not exceptions**:
+an unservable duty, a start-year shortfall and a non-optimal solve are answers about the data and
+come back as a blocked premise carrying the reason. The fourth runs after a solve and reports.
+
+| # | Check | Where | What it does |
+|---|---|---|---|
+| 1 | **Admission screen** | `load.screen_units` | Applies the §3.2 rule that a unit the model cannot fully cost does not enter $U$. A unit is admitted only if it has `capex`, `lifetime`, `fixed_opex`, `availability_factor` and `capacity_to_activity_factor`; at least one `unit_input_output` row; a `fuel_input` row where its class requires one (a declared `fuel_carrier_id` with no `fuel_input` row fails); and an `import_price` in **every** period for every carrier it consumes that can be imported. A cost minimiser reads a gap as free energy, so a unit failing any leg is dropped and reported once per leg |
+| 2 | **Unservable duties** | `sets.diagnose_unservable_duties` | Before the LP is built, names every duty with an empty $U_q$ in a period, by premise and period, together with the units the screen removed |
+| 3 | **Start-year shortfall** | `sets.diagnose_start_year_shortfall` | C1 is an equality, C2 caps each unit at its deliverable capacity, and C5 forbids building in the start year, so the incumbents alone must cover every duty in the first period. This is a transportation problem (incumbents supply, duties demand, an edge wherever the unit is in $U_q$, a `max_share` capping its edge), answered exactly by a **maximum flow**, and the **minimum cut** names the smallest group of duties whose demand exceeds what the incumbents able to serve them can deliver. It is a necessary condition only: units that supply an internal product with no duty (D16) also draw on C2 and are not in the flow |
+| 4 | **Row check** | `build.check_constraint_rows` | After the solve, multiplies the built matrix by the returned solution and verifies every row independently of the solver, so a carrier node that does not balance is caught even when the solver reports `optimal`. Violations are reported with the row, not raised |
+
+§10.5 (failure modes and their handling) lists the failures these guard.
+
 ---
 
 ## 6. Constraint disposition
 
-*Section last updated: 2026-09-02*
+*Section last updated: 2026-10-01*
 
 **Not yet written.** Which constraints bind in practice, which are reported rather than
 enforced, and the "reported comparison, not constraint" pattern used for the national
-emissions cap and for minimum viable scale.
+emissions cap and for minimum viable scale. Until it is, §5.5's notes under each constraint say
+which the slice builds, builds in a reduced form, or leaves out.
 
 ---
 
 ## 7. Emissions accounting
 
-*Section last updated: 2026-09-16*
+*Section last updated: 2026-10-01*
 
 Emissions have two sources: combustion of a fuel carrier, and process chemistry tied to
 physical throughput. Under D15 both are **carriers**, so this section is a readout of the
@@ -2044,6 +2266,13 @@ and who they are attributed to; none of them is a second calculation.
 | 7.8 | **An indirect carrier is charged on the import, not on consumption.** Where a premise generates some of its own supply, $\sum_u$ consumption exceeds $\sum_k m_{c,k,t}$, and the grid factor applies only to the second |
 | 7.9 | **Disposal is where an emission carrier leaves the site.** $d_{c,t}$ on an `emission` carrier is the venting event and is reported as such (§5.2) |
 | 7.10 | **Non-energy use is not combustion.** A `NEUOTH` feedstock carrier is consumed as material and carries no combustion emissions (§3.4) |
+
+**Two internal role names appear in the slice and in no input table.** A6 (the problem builder)
+files each derived fuel-CO₂ coefficient under the role `emission_derived` (`build.A6_ROLE`), so a
+derived row is never confused with a declared `emission` row. And the output ledger files a unit's
+dispatch to a duty under the pseudo-role `duty_output` (`ledger.DUTY_OUTPUT_ROLE`), because C1
+(duty satisfaction) settles that flow and C8 (carrier balance) does not. Neither is a §3.6 role,
+and neither may appear in `unit_input_output`.
 
 **The rule that stops double-counting.** Emissions attach to the unit that consumes a
 **primary, non-indirect** carrier — gas, coal, biomass, the fuel oils, the works gases. A unit
@@ -2107,11 +2336,14 @@ accounted total; a further leg asserts that every unit's allocation sums back to
 
 ## 8. Output schema
 
-*Section last updated: 2026-09-02*
+*Section last updated: 2026-10-01*
 
 **Not yet written.** One row per premise per unit per carrier per period, plus the cost and
 network roll-ups. Every row carries its evidence tiers, including `mix_evidence_tier` from
 A4 (§4.1) and the archetype tier from §3.17.
+
+The slice's parquet tables are described in `carb3/README.md`, under "Output tables". That is a
+description of what the slice writes today and not this section's contract.
 
 ---
 
@@ -2155,7 +2387,7 @@ degeneracy that would otherwise let the solver report either of two equal-cost a
 
 ## 10. Validation
 
-*Section last updated: 2026-09-24*
+*Section last updated: 2026-10-01*
 
 ### 10.1 Scopes
 
@@ -2279,7 +2511,7 @@ pass mark.
 **before and after** the base year. A test that only adds older years passes against an
 implementation that silently reads `max(data_year)`, which is the most natural wrong thing to
 write. Its scope is the whole built problem, not just A3 and A4: the archetype match (§3.17),
-§7.6's reconciliation and, when it is written, §5.6's peak all read a year.
+§7.6's reconciliation and, once its method is written under T23 (complete §5), C11's peak (§5.6) all read a year.
 
 ### 10.4 What each new mechanism is guarded by
 
@@ -2322,12 +2554,13 @@ write. Its scope is the whole built problem, not just A3 and A4: the archetype m
   known plant, one row per unit    ───▶ V33               load+premise
   abatement host set and life      ───▶ V33 + V17          premise
   internal product has no duty     ───▶ V32 (b) + V18      premise
-  §5.6 peak selects the base year  ───▶ (none, §5.6 unwritten)
+  C11 peak selects the base year   ───▶ (none, method open under T23)
   §1.4 label ranges match the spec ───▶ (none, checked by hand)
 ```
 
-**Two rows carry no guard, and say so rather than hiding it.** §5.6 does not exist, so
-nothing can assert which year its peak method reads; that is closed when §5.6 is written.
+**Two rows carry no guard, and say so rather than hiding it.** §5.6 defines only the peak factor
+$\lambda$, so nothing can assert which year C11's peak method reads; that is closed when the method
+is written under T23 (complete §5).
 And the label ranges in §1.4 have no automated check for this document: `label_families()`
 runs only from the interface-doc generator, which is switched off for this specification
 while §8 is unwritten, and even where it runs it checks family *presence*, not range values.
@@ -2353,6 +2586,9 @@ Widening a range is a manual step in the same commit as the label.
 | 14 | A premise generating its own electricity is charged the grid factor on power that never came off the grid | V29 | §7.8 — an indirect carrier is charged on $m_{c,k,t}$, not on consumption |
 | 15 | A product a downstream unit consumes is given a duty as well, so C1 (duty satisfaction) and C8 (carrier balance) compete for the same tonne and one of them must fail | V32 (b) + V18 | Load assertion on the duty tables, premise assertion on the node |
 | 16 | A capture train is named one host of several, so two thirds of a co-firing kiln's CO₂ has no route to it and the train's life is read off whichever host happened to be named | V33 (b) + V17 | Load assertion on the host table, premise assertion on the inherited life |
+| 17 | A unit the model cannot fully cost enters $U$, so the optimiser reads the blank as free energy and builds it or burns the fuel at no price | §5.7 admission screen (`make data-report` counts it) | The unit is dropped at load and reported once per failed leg |
+| 18 | The incumbent plant cannot cover the start year's duties, so the LP is infeasible with nothing to say which duty failed | §5.7 start-year shortfall | Diagnosed before the LP is built by a maximum flow; the minimum cut names the duties, and the premise is reported blocked |
+| 19 | The solver reports `optimal` but a row of the built matrix is violated | §5.7 row check | Reported with the row, independently of the solver |
 
 ---
 
@@ -2401,7 +2637,7 @@ example is milestone M4's exit gate; the cement one is M2's.
 
 **Both documents carry an open-points table**, and four entries are shared between them: the
 absence of any per-premise tier over
-[`../notes/data/activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv);
+[`../notes/data/activity_process_energy_share.csv`](../notes/data/activity_process_energy_share.csv);
 C8 (carrier balance)'s lack of a disposal route for a carrier nothing consumes; §7's
 attribution once electricity is generated on site; and the service carrier a `MOT` or `REF`
 duty needs. They are recorded there rather than closed there, and T23 (complete §5) owns the

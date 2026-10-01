@@ -24,7 +24,7 @@ Produce `docs/notes/data/activity_default_unit.csv` with the §3.16 columns:
   cited, and name the CHP unit from `unit.csv`. Where DUKES gives sector totals but not a
   per-site share, derive the share from CHP heat output ÷ sector heat demand (ECUK) and cite
   both; mark `derived`.
-- Fuel split of the incumbent: use `activity_process_energy_profile.csv`'s vectors for the
+- Fuel split of the incumbent: use `activity_process_energy_share.csv`'s vectors for the
   process to pick the incumbent fuel unit(s) (a process with gas 1.0 has `boiler_lt_gas` at
   1.0); cite that file as provenance.
 - Blank rows are not allowed here (every duty is served), so where you cannot cite, use

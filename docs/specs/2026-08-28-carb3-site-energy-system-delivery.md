@@ -74,12 +74,42 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
 
 ## Implementation Tasks
 
+**Status at 2026-10-01.** The `carb3/` Python package (`carb3/src/carb3/`) is the first slice that
+implements part of the specification. The statuses below describe the specification and data
+deliverables of each task, not the slice's code, and the evidence column says what was checked.
+
+| Task | What | Status | Evidence |
+|---|---|---|---|
+| T1 | Data validator and green baseline | Done | `make data-check`: 30 blocking checks, all green |
+| T2 | Parameterise both spec generators | Done | `make docs-check` green |
+| T3 | Fix the dead interface link | Done | Folded into T2 |
+| T4 | Write §1–§5 | Done | §1–§5 written, including §5.3.1 (plant vintage and the survival function) and §5.7 (pre-solve and post-solve checks) |
+| T5 | Define V1b and the carrier-equivalent configuration | Done | §10.2 |
+| T6 | Fallback tier and evidence label for failure mode 5 | Partial | §8 (output schema) is unwritten, so the evidence label has no output column to sit in |
+| T7 | Tie-break key, price-wedge rule, §9.1 arithmetic | Partial | §9.1 is a stub, and the tie-break of §9.3 is not in the slice's code |
+| T8 | Group A and B taxonomy split | Done | `unit.csv`, `carrier.csv`, eligibility tables |
+| T9 | Group C options and the option-to-unit join | Done | `decarbonisation_option_unit.csv`, the hybrid-unit set |
+| T10 | Cement worked example | Done | Parity worked example |
+| T11–T12 | Register the documents | Done | `docs/notes/README.md` |
+| T13 | §4's numbered pseudocode for A1–A9 | Partial | §4 holds the carrier-mix rule (A4) and the relaxation ladder (A7) only |
+| T14 | §7 emissions attribution | Done | §7 states ten rules (7.1–7.10) and V22's four legs |
+| T15 | G4 Tier A scale gate and V20 (e) | Partial | V20 (e) is stated; G4 has no budget |
+| T16 | Food and drink worked example | Done | Carrier-mechanism worked example |
+| T17 | Duty family and heat grade per process | Done | `activity_process_duty_profile.csv`, 427 rows |
+| T18 | Default installed-unit table | Done | `activity_default_unit.csv` |
+| T19 | Site-composition archetype | Not started | `archetype_id` still has no referent |
+| T20 | Several years of history, one base year (D12) | Done | §3.1.1 |
+| T21 | Process list as at a year | Done | §3.10 |
+| T22 | Register the temporal-coverage work | Done | `docs/notes/README.md` |
+| T23 | Complete §5 | Partial | §5.3.1 written and C4 stated as algebra; §5.6 defines the peak factor λ only, so C11 (connection capacity)'s method is open; $Q$ has no period index; C6 (unit stability) has no algebra |
+| T24 | Declared forward process switch | Not started | Blocked by T23 |
+
 - [x] **T1 (P1, human: ~1 day / CC: ~30min)** — tooling — Write the stdlib-only data validator and establish a green baseline
   - Surfaced by: no generator and no validator existed for the seven hand-researched reference files
   - Files: `docs/notes/examples/validate_carb3_data.py`, `Makefile`
   - Verify: `make data-check` green on unmodified `docs/notes/data/`
-  - **Done.** 12 blocking checks + 2 advisory, all green on unmodified data. Baseline counts: 376 register keys, 359 profile keys, 137 share-sum groups, 1109 option mappings, 134 library options, 270 references, 198 cited. Advisory: 17 processes with no profile, 12 with no option, 4 unused options — **these numbers are the baseline; a change in them after migration is the signal**
-  - Surfaced while building it: only **37 of 490** profile rows carry uncertainty bands (8%), so V4's R3 band-ordering assertion barely runs today. Reported as advisory, not enforced — backfilling bands is research, not a correctness bug
+  - **Done.** 30 blocking checks + 6 advisory at 2026-10-01 (12 + 2 when first written), all green on unmodified data. Baseline counts, refreshed 2026-10-01: 375 register keys, 358 profile keys, 137 share-sum groups, 1105 option mappings, 134 library options, 332 references, 262 cited. Advisory: 17 processes with no profile, 12 with no option, 4 unused options — **these numbers are the baseline; a change in them after migration is the signal**
+  - Surfaced while building it: only **37 of 489** profile rows carry uncertainty bands (8%), so V4's R3 band-ordering assertion barely runs today. Reported as advisory, not enforced — backfilling bands is research, not a correctness bug
 - [x] **T2 (P1, human: ~1 day / CC: ~25min)** — tooling — Parameterise both spec generators, add `--check` to the diagram builder
   - Surfaced by: `build_interface_docs.py:38-39,58-59,168-169` hardcoded headings, own-prefix and label ranges
   - Files: `build_interface_docs.py`, `build_spec_flow_diagram.py`, `spec_docs_config.py`, `spec_docs.config.json`, `Makefile`
@@ -116,7 +146,7 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Surfaced by: PD1, PD2 and the unit-spine split
   - Files: `docs/specs/2026-08-28-carb3-site-energy-system-implementation.md`
   - Verify: `make docs-check`; diagrams regenerate
-  - **Done for §1, §2, §3 and §5.** 9 entities at the time (22 after T17 and the §3 consolidation), C1–C12, S0–S9
+  - **Done for §1, §2, §3 and §5**, including §5.3.1 (plant vintage and the survival function) and §5.7 (pre-solve and post-solve checks), added 2026-10-01. 9 entities at the time (22 after T17 and the §3 consolidation), C1–C12, S0–S9
   - Satisfies the diagram parser contract: all 9 entities and their 72 fields parse, 19 foreign-key arrows resolve. **Re-verified after T17 added §3.10 and §3.11:** 11 entities, 94 fields, 29 FK arrows
 - [x] **T5 (P1, human: ~4h / CC: ~20min)** — spec — Define V1b and the carrier-equivalent configuration
   - Surfaced by: V1's step 4 compares per-technology capacity by period, which does not exist under a unit/carrier model, so parity needs a second hop
@@ -149,7 +179,7 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Files: `docs/specs/2026-08-28-carb3-site-energy-system-worked-example-cement.md`
   - Verify: every asserted number recomputes; A6–A9 actually walked
   - Scope: this example covers the mass denominator (D5), tier-1 vintage, stranding and the CCS capture unit. It **cannot** show graded heat, unit competition or CHP; that is T16
-  - **Done 2026-09-15.** Thirteen sections, `A1`–`A9` walked end to end on premise `P-000123`, published as a fixture (`MF-22`). Every asserted figure recomputes; the process split runs on the **published** `Cement Works` shares from `activity_process_energy_profile.csv` rather than an invented one
+  - **Done 2026-09-15.** Thirteen sections, `A1`–`A9` walked end to end on premise `P-000123`, published as a fixture (`MF-22`). Every asserted figure recomputes; the process split runs on the **published** `Cement Works` shares from `activity_process_energy_share.csv` rather than an invented one
   - Carries the PV/battery/connection section: C12 caps PV at 2.47692 MW on a floorspace proxy and it supplies 1.86% of site electricity; the battery is **not** built, because β earns only against C11 and reinforcement is cheaper; capture pushes the works 1.00 MW past its 25 MW supply
   - Reworked onto D13 (the co-firing kiln is three per-fuel units) and D15 (three emission carriers, disposal, the biogenic credit). §13.3 records nine open points, five of them since closed
 - [x] **T16 (P1, human: ~1 day / CC: ~30min)** — spec — Write a second worked example on a **food & drink** site, exercising the carrier mechanism
@@ -199,8 +229,8 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
 - [x] **T14 (P1, human: ~1 day / CC: ~30min)** — spec — Write §7 (emissions attribution under carriers)
   - Surfaced by: the sign convention survives a move to carriers but the *attribution* does not, and attribution is the part that matters
   - Files: spec §7, §10 (V22)
-  - **Done.** §7 states the six accounting rules, the primary-carrier attribution rule that stops double-counting, and why recovered heat is emissions-free. V22's three legs are in §10.3
-  - Verify: V22's three legs pass on a `gas → boiler → heat → dryer` chain including a recovered-heat leg
+  - **Done.** §7 states ten accounting rules (7.1–7.10), the primary-carrier attribution rule that stops double-counting, and why recovered heat is emissions-free. V22's four legs are in §10.3
+  - Verify: V22's four legs pass on a `gas → boiler → heat → dryer` chain including a recovered-heat leg
 - [ ] **T15 (P2, human: ~2h / CC: ~10min)** — spec — Add the G4 Tier A scale gate and the V20 (e) concavity leg
   - Surfaced by: Review issues 7 and 8 — the archetype build has no cost gate, and the interpolation-safety argument is unchecked
   - Files: spec §9.2, §10 (V20)
@@ -224,12 +254,13 @@ L3's taxonomy split. L5 waits on L2. L6 last, so it describes what was actually 
   - Files: `docs/notes/README.md`, this document
   - Verify: every count in the index is produced by a `grep -c`, not carried over
   - **Done.** `docs/superpowers/plans/` had three plan documents and none of them was registered; the index now has a section for them
-- [ ] **T23 (P1, human: ~3 days / CC: ~90min)** — spec — Complete §5: write §5.6 and §5.3.1, period-index $Q$, give C4 and C6 their algebra
+- [ ] **T23 (P1, human: ~3 days / CC: ~90min)** — spec — Complete §5: write §5.6 and §5.3.1, period-index $Q$, give C4 and C6 their algebra. **§5.3.1 and C4's algebra are written (2026-10-01); §5.6 defines the peak factor λ only**
   - Surfaced by: the 2026-09-07 review of the temporal-coverage plan, in which three independent reviewers converged
   - Files: spec §5.1, §5.3.1, §5.5 (C4, C6), §5.6, §9.1
   - Verify: every §5 citation resolves to a heading that exists; C4 and C6 are stated as mathematics
   - **Four defects, all verified.** (a) §5.6 (C11's peak-rebuild method) and §5.3.1 (D11's vintage fallback ladder) are cited seven times between them and neither exists, while the document's status line says §5 is written. (b) §5.1 defines $Q$ as "duties at this premise" with no period index while C1 is written $\forall q \in Q$, so a duty appearing mid-horizon is never constrained. (c) $z_{u,t}$ carries no duty index, and §3.5 makes service units family-keyed, so one boiler at one premise can sit in two $U_q$ and its single activity variable is credited in full against both duties. (d) C4 and C6 are prose with no algebra, so nothing depending on their behaviour can be tested
   - **Blocks T24.** Also blocks any honest statement of §9.1's problem size
+  - **Partly done (2026-10-01).** §5.3.1 (plant vintage and the survival function, D11) is written with its three tiers and the slice's one divergence from it. §5.6 defines the peak factor λ and states that C11's method (base-year selection, diversity step) is open. C4 is stated as four legs, and C4b (leg (b), forced ageing) is defined. Still open: the C11 peak method, the period index on $Q$, C6's algebra, and the ladder's slack algebra
   - **Partly done (2026-09-08), ahead of the rest.** Three defects the MVP plan's review found were closed on their own. (c) is fixed: activity is $z_{u,q,t}$ per (unit, duty), with $z^{\circ}_{u,t}$ for output released to the balance and $h$ for the one-way cascade, so C1, C2, C8 and C10 now carry the algebra. C12 takes a per-unit area coefficient over area-bound units only, so a CHP is no longer roof-limited. And §1.1, §10.2 and §10.3 name the coupled-off R run as V1's comparison point and the lineage table as V1b's mapping, replacing the two-hop chain through a built baseline. Still open here: (a), (b), (d), assigning each unit's import and export to a connection for C11, and the ladder's slack algebra
 - [ ] **T24 (P2, human: ~1.5 days / CC: ~50min)** — spec — Accept a declared forward process switch
   - Surfaced by: the third gap in the temporal-coverage work — `process_duty` is keyed by period but nothing upstream varies with period, so A2 expands one process set flat across the horizon. Separately, C7 has no backing entity in §3
