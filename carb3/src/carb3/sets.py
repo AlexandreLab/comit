@@ -147,8 +147,10 @@ class EligibilityDrop:
     premise_id: str
     process_id: str
     unit_id: str
-    #: ``min_duty`` (the duty is below the unit's floor) or ``max_share`` (a 0.00 cap, which
-    #: is a prohibition and so removes the unit rather than bounding it).
+    #: ``min_duty`` (the duty is below the unit's floor), ``max_share`` (a 0.00 cap, which
+    #: is a prohibition and so removes the unit rather than bounding it) or
+    #: ``min_duty_unchecked`` (a supply unit's floor could not be read because
+    #: ``known_activity`` is blank; the unit is kept, so this is a note and not a drop).
     reason: str
     detail: str
 
@@ -178,6 +180,9 @@ class ModelSets:
     #: blank. Reported by the run report rather than silently absorbed — see
     #: :func:`derive_duties`.
     no_activity: tuple[str, ...] = ()
+    #: The subset of ``no_activity`` whose ``known_capacity`` is stated: they size an
+    #: incumbent but derive no duty.
+    capacity_only: tuple[str, ...] = ()
     #: ``earliest_year`` for the supply units above. They sit in no U_q, so the duty-keyed
     #: mapping cannot hold them, and without this ``ccs_amine``'s 2035 gate would not be
     #: applied to the one unit it exists for.
@@ -325,7 +330,7 @@ def derive_duties(
     Structure is read, magnitude is hand-written. For each §3.10 process valid at the base
     year, every ``activity_process_duty_profile`` row of that process becomes a duty on that
     row's ``carrier_id`` at that row's ``grade_rank``, and its quantity is the premise's
-    ``known_activity`` for the process split by the row's ``duty_share`` — which is the
+    ``known_activity`` for the process split by the row's ``duty_share``, which is the
     arithmetic §3.3 defines for a share ("share of this process's energy that is this
     duty"). Nothing else about the magnitude is derived: it is flat across ``periods``,
     because this slice models no demand growth.
@@ -535,6 +540,18 @@ def processes_without_activity(premise: PremiseTables) -> tuple[str, ...]:
     return tuple(sorted({str(process_id) for process_id in blank["process_id"]}))
 
 
+def processes_with_capacity_only(premise: PremiseTables) -> tuple[str, ...]:
+    """The processes of :func:`processes_without_activity` that state a ``known_capacity``."""
+    record = premise.premise_record.iloc[0]
+    processes = _processes_at(premise, int(record["data_year"]))
+    if processes.empty:
+        return ()
+    capacity_only = processes[
+        processes["known_activity"].isna() & processes["known_capacity"].notna()
+    ]
+    return tuple(sorted({str(process_id) for process_id in capacity_only["process_id"]}))
+
+
 def undutied_supply(
     reference: ReferenceTables,
     premise: PremiseTables,
@@ -629,7 +646,7 @@ def _undutied_supply(
             if not pd.isna(row["min_duty"])
         }
         # min_duty is a floor on a duty magnitude, and this process has no duty. The
-        # premise's own known_activity for it is the nearest thing the data holds — it is
+        # premise's own known_activity for it is the nearest thing the data holds, so it is
         # what a duty would have been sized at — so the floor is applied against that where
         # it exists, rather than dropped. ccs_amine's 0.25 clears the kiln's 0.85 Mt/yr.
         magnitude = process["known_activity"]
@@ -644,6 +661,13 @@ def _undutied_supply(
             }
             if not made:
                 continue
+            if unit_id in floor and pd.isna(magnitude):
+                # Not a drop: the unit still supplies. The floor just cannot be read.
+                refused.append(EligibilityDrop(
+                    premise_id, process_id, unit_id, "min_duty_unchecked",
+                    f"known_activity is blank, so min_duty {floor[unit_id]:g} was not checked; "
+                    f"the unit is kept as a supplier of {', '.join(sorted(made))}",
+                ))
             if (
                 unit_id in floor
                 and not pd.isna(magnitude)
@@ -1034,6 +1058,7 @@ def build_sets(
         min_duty=min_duty,
         supply=supply,
         no_activity=processes_without_activity(premise),
+        capacity_only=processes_with_capacity_only(premise),
         supply_earliest_year=supply_earliest_year,
         export_windows=windows,
         export_refused=refused,

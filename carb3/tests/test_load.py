@@ -559,7 +559,10 @@ def test_every_abatement_unit_in_the_data_has_a_host(
     abatement = set(reference.unit.loc[reference.unit["unit_class"] == "abatement", "unit_id"])
     assert len(abatement) == 13
     assert abatement <= set(reference.unit_abatement_host["unit_id"])
-    assert not [d for d in screen.dropped if d.leg == "abatement_host"]
+    assert not [
+        d for d in screen.dropped
+        if d.leg == "abatement_host" and "no unit_abatement_host row" in d.detail
+    ]
     assert "ccs_amine" in screen.admitted
 
 
@@ -573,7 +576,10 @@ def test_a_capture_unit_with_no_host_is_refused_naming_the_unit(
         reference, unit_abatement_host=hosts[hosts["unit_id"] != "ccs_amine"]
     )
     screened = load.screen_units(orphaned)
-    legs = [d for d in screened.dropped if d.leg == "abatement_host"]
+    legs = [
+        d for d in screened.dropped
+        if d.leg == "abatement_host" and "no unit_abatement_host row" in d.detail
+    ]
     assert [d.unit_id for d in legs] == ["ccs_amine"]
     assert "unit_abatement_host" in legs[0].detail
     assert "ccs_amine" not in screened.admitted
@@ -584,9 +590,57 @@ def test_a_converter_with_no_host_row_is_not_refused(reference: load.ReferenceTa
     none = dataclasses.replace(
         reference, unit_abatement_host=reference.unit_abatement_host.iloc[0:0]
     )
-    refused = {d.unit_id for d in load.screen_units(none).dropped if d.leg == "abatement_host"}
+    refused = {
+        d.unit_id for d in load.screen_units(none).dropped
+        if d.leg == "abatement_host" and "no unit_abatement_host row" in d.detail
+    }
     abatement = set(reference.unit.loc[reference.unit["unit_class"] == "abatement", "unit_id"])
     assert refused == abatement
+
+
+def test_a_capture_unit_whose_every_host_was_dropped_is_dropped_too(
+    reference: load.ReferenceTables,
+) -> None:
+    """The six trains on hosts the screen drops (steam crackers, the ammonia SMR, the lime
+    kilns) have nothing admitted to site on, and say so."""
+    screened = load.screen_units(reference)
+    legs = {
+        d.unit_id: d.detail for d in screened.dropped
+        if d.leg == "abatement_host" and "no admitted host" in d.detail
+    }
+    assert set(legs) == {
+        "ccs_amine_ammonia", "ccs_amine_hvc_biomass", "ccs_amine_hvc_elec",
+        "ccs_amine_hvc_gas", "ccs_amine_lime", "ccs_oxyfuel_lime",
+    }
+    assert "ammonia_smr_gas" in legs["ccs_amine_ammonia"]
+    assert not set(legs) & screened.admitted
+
+
+def test_a_capture_unit_keeps_one_admitted_host(reference: load.ReferenceTables) -> None:
+    """``ccs_amine`` has four hosts; losing some of them leaves it admitted."""
+    hosts = reference.unit_abatement_host
+    assert "ccs_amine" in load.screen_units(reference).admitted
+    assert {"kiln_dry_coal", "kiln_dry_gas"} <= set(
+        hosts.loc[hosts["unit_id"] == "ccs_amine", "host_unit_id"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("row", "needle"),
+    [
+        ("ccs_amine,ccs_amine,fixture,high", "hosts itself"),
+        ("kiln_dry_gas,kiln_dry_coal,fixture,high", "not abatement"),
+        ("ccs_amine,ccs_amine_lime,fixture,high", "not converter"),
+        ("ccs_amine,boiler_lt_gas,fixture,high", "is on process"),
+    ],
+    ids=["self_host", "train_is_not_abatement", "host_is_not_converter", "other_process"],
+)
+def test_a_host_row_breaking_v33_leg_b_fails_loud(tmp_path: Path, row: str, needle: str) -> None:
+    root = _reference_copy(tmp_path)
+    path = root / "unit_abatement_host.csv"
+    path.write_text(path.read_text() + row + "\n")
+    with pytest.raises(load.ResolutionError, match=needle):
+        load.load_reference_tables(root)
 
 
 # ------------------------------------ premise rules, in step with verify_premise_keys.py
@@ -627,8 +681,11 @@ def _edit(root: Path, table: str, premise_id: str, **changes: str) -> None:
         writer.writerows(rows)
 
 
-def _verifier_failures(tmp_path: Path) -> list[str]:
+def _verifier_failures(tmp_path: Path, *, expect_clean: bool = False) -> list[str]:
     """Run the stdlib verifier on the scratch tree and return its FAIL lines.
+
+    The exit status is asserted too, so a crash cannot pass as "no failures": a clean run
+    (``expect_clean``) must exit 0, and any other run must exit nonzero or print a FAIL line.
 
     The script reads ``docs/notes/data`` and ``carb3/data/premises`` relative to the working
     directory, so the scratch tree links the first and holds its own copy of the second.
@@ -642,7 +699,12 @@ def _verifier_failures(tmp_path: Path) -> list[str]:
         [sys.executable, str(_VERIFIER)], cwd=tmp_path, capture_output=True, text=True,
         check=False,
     )
-    return [line for line in done.stdout.splitlines() if line.startswith("FAIL")]
+    fails = [line for line in done.stdout.splitlines() if line.startswith("FAIL")]
+    if expect_clean:
+        assert done.returncode == 0, (done.returncode, done.stdout[-500:], done.stderr[-500:])
+    else:
+        assert done.returncode != 0 or fails, (done.stdout[-500:], done.stderr[-500:])
+    return fails
 
 
 def _loader_rejects(root: Path, reference: load.ReferenceTables, premise_id: str) -> str | None:
@@ -659,7 +721,7 @@ def test_the_real_premises_pass_both_the_verifier_and_the_loader(
     tmp_path: Path, reference: load.ReferenceTables
 ) -> None:
     root = _premise_copy(tmp_path)
-    assert _verifier_failures(tmp_path) == []
+    assert _verifier_failures(tmp_path, expect_clean=True) == []
     for premise_id in ("mvp-minimal", "mvp-dairy", "mvp-cement"):
         assert _loader_rejects(root, reference, premise_id) is None
 
@@ -677,8 +739,18 @@ def test_the_real_premises_pass_both_the_verifier_and_the_loader(
         ),
         # kiln_dry_gas is a cement unit: unit_eligibility has no Food Processing Centre row.
         ("premise_process_unit", "mvp-dairy", {"unit_id": "kiln_dry_gas"}, "not eligible"),
+        # The first mvp-dairy detail row states only a known_activity of 0.131579.
+        ("premise_process_detail", "mvp-dairy", {"known_capacity": "0"}, "known_capacity must be > 0"),
+        ("premise_process_detail", "mvp-dairy", {"known_activity": "0"}, "known_activity must be > 0"),
+        (
+            "premise_process_detail", "mvp-dairy", {"known_capacity": "0.01"},
+            "known_activity exceeds known_capacity",
+        ),
     ],
-    ids=["nation", "latitude", "longitude", "construction_year", "ineligible_incumbent"],
+    ids=[
+        "nation", "latitude", "longitude", "construction_year", "ineligible_incumbent",
+        "capacity_not_positive", "activity_not_positive", "activity_above_capacity",
+    ],
 )
 def test_loader_and_verifier_reject_the_same_broken_premise(
     tmp_path: Path,

@@ -1135,7 +1135,7 @@ def test_mvp_cement_known_activity_matches_the_throughput_that_sizes_its_duties(
     detail = premise.premise_process_detail.set_index(["process_id", "valid_from_year"])
     kiln = detail.loc[("kiln_pyroprocessing", 2004)]
     assert float(kiln["known_capacity"]) == pytest.approx(0.95)
-    assert float(kiln["known_activity"]) == pytest.approx(0.95 * 0.85 / 0.95)
+    assert float(kiln["known_activity"]) == pytest.approx(0.85)
     assert float(kiln["known_activity"]) <= float(kiln["known_capacity"])
     grinder = detail.loc[("cement_grinding", 1957)]
     assert float(grinder["known_activity"]) == pytest.approx(1.13)

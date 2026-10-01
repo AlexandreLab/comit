@@ -508,6 +508,45 @@ def test_a_supply_unit_dropped_by_min_duty_is_reported(reference, screen, tmp_pa
     assert "ccs_amine" not in model.supply.get("co2_captured", frozenset())
 
 
+def test_a_supply_floor_that_cannot_be_read_is_reported_not_applied(
+    reference, screen, tmp_path
+) -> None:
+    """A blank ``known_activity`` with a stated ``known_capacity`` leaves ``ccs_amine``'s
+    0.25 floor unreadable. The unit is kept, and the skip is recorded as
+    ``min_duty_unchecked`` rather than passing silently."""
+    root = write_premise_fixture(
+        tmp_path,
+        premise_process_detail=(
+            "premise_id,process_id,valid_from_year,known_capacity,known_activity,"
+            "provenance,confidence\n"
+            "fx-cement,kiln_pyroprocessing,2021,0.95,,fixture,high\n"
+            "fx-cement,cement_grinding,2021,,0.3,fixture,high\n"
+        ),
+    )
+    model = build(reference, screen, root, "fx-cement")
+    rows = [d for d in model.eligibility_dropped if d.unit_id == "ccs_amine"]
+    assert [(d.reason, d.process_id) for d in rows] == [
+        ("min_duty_unchecked", "kiln_pyroprocessing")
+    ]
+    assert "0.25" in rows[0].detail
+    assert "ccs_amine" in model.supply.get("co2_captured", frozenset())
+
+
+def test_the_run_report_words_the_blank_activity_note(dairy: sets.ModelSets, capsys) -> None:
+    import dataclasses
+
+    from carb3.__main__ import PremiseRun, _print_premise
+
+    model = dataclasses.replace(
+        dairy, no_activity=("a_process", "b_process"), capacity_only=("b_process",)
+    )
+    _print_premise(PremiseRun(premise_id="fx-dairy", sets=model, blocked="stub"))
+    out = capsys.readouterr().out
+    assert "no known_activity" in out
+    assert "b_process (capacity only)" in out
+    assert "a_process (capacity only)" not in out
+
+
 def test_the_run_report_prints_the_eligibility_drops(dairy: sets.ModelSets, capsys) -> None:
     from carb3.__main__ import PremiseRun, _print_premise
 

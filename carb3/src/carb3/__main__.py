@@ -389,9 +389,13 @@ def _print_premise(run: PremiseRun) -> None:
                 f"{drop.detail}"
             )
         if run.sets.no_activity:
+            labelled = [
+                f"{name} (capacity only)" if name in run.sets.capacity_only else name
+                for name in run.sets.no_activity
+            ]
             print(
-                "  no duty derived — known_activity is blank (§3.10 cannot state a known "
-                f"zero): {', '.join(run.sets.no_activity)}"
+                "  no duty derived: no known_activity (§3.10 cannot state a known zero): "
+                f"{', '.join(labelled)}"
             )
 
     if run.blocked:

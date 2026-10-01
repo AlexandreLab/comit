@@ -175,7 +175,7 @@ utilisation (§5.1: 0.85 declared throughput over 0.95 × γ 1.0 = 0.89474). Eac
 
 Two consequences worth knowing before reading a number:
 
-- **`known_activity` cannot state a known zero** — §3.10 requires `> 0 if present`. Two
+- **`known_activity` cannot state a known zero**: §3.10 requires `> 0 if present`. Two
   `mvp-cement` processes, `clinker_cooling` and `site_services`, have a genuine duty of
   0.00000 PJ/yr (the reference `activity_process_energy_share.csv` carries no row for
   either), and they are written blank with the reason in `provenance`. This is §3.1.1's

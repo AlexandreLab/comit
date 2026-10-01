@@ -145,7 +145,8 @@ def vintage_capacity(premise, unit: pd.DataFrame) -> pd.DataFrame:
 
     §3.10.2 carries a ``capacity_share`` and no capacity: the magnitude lives one table up, in
     ``premise_process_detail``. Where that row states ``known_capacity`` (a nameplate, from a
-    permit) it is the capacity, used directly. Otherwise ``known_activity`` is the process's
+    permit) it is in output units, so the capacity is ``known_capacity / γ_u`` (the
+    capacity-to-activity factor, not the availability). Otherwise ``known_activity`` is the process's
     annual activity in PJ/yr or Mt/yr, not a nameplate, so C2's ``a γ α`` has to be inverted
     to get the capacity behind it::
 
@@ -224,8 +225,11 @@ def vintage_capacity(premise, unit: pd.DataFrame) -> pd.DataFrame:
                 f"unit {unit_id!r} has a non-positive γα and cannot carry incumbent "
                 "capacity; the §3.2 admission screen should have dropped it"
             )
+        # A stated nameplate is in the process's output units (§3.10), so the build variable
+        # behind it is nameplate / γ; the activity path divides by γα, the availability too.
+        gamma = float(indexed.loc[unit_id, "capacity_to_activity_factor"])
         capacity = (
-            float(stated_capacity)
+            float(stated_capacity) / gamma
             if not pd.isna(stated_capacity)
             else float(activity) / deliverable
         )

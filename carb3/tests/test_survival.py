@@ -296,11 +296,11 @@ def test_vintage_capacity_inverts_gamma_alpha_to_get_the_capacity_behind_a_duty(
     assert deliverable == pytest.approx(0.1), "the incumbent must just cover its own duty"
 
 
-def test_vintage_capacity_takes_a_stated_known_capacity_directly() -> None:
-    """Where ``known_capacity`` is given it **is** the capacity; no ``1/(γα)`` is applied.
+def test_vintage_capacity_takes_a_stated_known_capacity_over_the_activity() -> None:
+    """Where ``known_capacity`` is given it wins over the activity; no ``1/(γα)`` is applied.
 
-    The cement kiln's permit states 0.95 Mt/yr and an activity of 0.85 Mt/yr. Dividing the
-    activity by γα would give 0.85/0.9823, not the permit's 0.95.
+    A permit-style row states 0.95 and an activity of 0.85 on ``boiler_lt_gas`` (γ = 1, α =
+    0.9823). Dividing the activity by γα would give 0.85/0.9823, not the stated 0.95.
     """
     premise = _premise(
         [
@@ -325,6 +325,72 @@ def test_vintage_capacity_takes_a_stated_known_capacity_directly() -> None:
     )
     frame = survival.vintage_capacity(premise, _costed_unit_table())
     assert float(frame.loc[0, "capacity"]) == pytest.approx(0.95)
+
+
+def test_vintage_capacity_divides_a_stated_known_capacity_by_gamma() -> None:
+    """§3.10 states ``known_capacity`` in output units; the worked examples define
+    utilisation = activity / (capacity × γ), so the build variable is ``known_capacity / γ``.
+
+    A unit with γ = 0.031536 (the PV rows' capacity-to-activity factor) and a stated 0.063072
+    PJ/yr is 2.0 units of capacity, not 0.063072. Availability is not part of the division.
+    """
+    premise = _premise(
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "valid_from_year": 2009,
+                "valid_to_year": None,
+                "known_capacity": 0.063072,
+                "known_activity": 0.05,
+            }
+        ],
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "unit_id": "pv_like",
+                "commissioned_year": 2009,
+                "capacity_share": 1.0,
+            }
+        ],
+    )
+    unit = pd.DataFrame(
+        [
+            {
+                "unit_id": "pv_like",
+                "lifetime": 30,
+                "capacity_to_activity_factor": 0.031536,
+                "availability_factor": 0.11,
+            }
+        ]
+    )
+    frame = survival.vintage_capacity(premise, unit)
+    assert float(frame.loc[0, "capacity"]) == pytest.approx(2.0)
+
+
+def test_real_premises_pin_the_incumbent_capacity() -> None:
+    """The cement kiln cohorts carry the 0.95 permit capacity and the dairy dryer 0.10.
+
+    Both units have γ = 1, so the stated nameplate is the capacity; ``surviving_capacity``
+    then splits the kiln's 0.95 by ``capacity_share`` (0.871369 coal, 0.128631 gas).
+    """
+    from carb3 import load
+
+    reference = load.load_reference_tables()
+    unit = reference.unit
+    cement = survival.vintage_capacity(load.load_premise_tables("mvp-cement"), unit)
+    kiln = cement[cement["process_id"] == "kiln_pyroprocessing"].set_index("unit_id")
+    assert set(kiln.index) == {"kiln_dry_coal", "kiln_dry_gas"}
+    assert float(kiln.loc["kiln_dry_coal", "capacity"]) == pytest.approx(0.95)
+    assert float(kiln.loc["kiln_dry_gas", "capacity"]) == pytest.approx(0.95)
+    shares = kiln["capacity"] * kiln["capacity_share"].astype(float)
+    assert float(shares["kiln_dry_coal"]) == pytest.approx(0.95 * 0.871369)
+    assert float(shares["kiln_dry_gas"]) == pytest.approx(0.95 * 0.128631)
+
+    dairy = survival.vintage_capacity(load.load_premise_tables("mvp-dairy"), unit)
+    dryer = dairy[dairy["unit_id"] == "dryer_direct_gas"]
+    assert [float(c) for c in dryer["capacity"]] == [pytest.approx(0.10)]
 
 
 def test_vintage_capacity_uses_known_capacity_when_activity_is_blank() -> None:

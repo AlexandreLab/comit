@@ -343,13 +343,45 @@ def load_reference_tables(root: Path = DEFAULT_REFERENCE_ROOT) -> ReferenceTable
 
 
 def _resolve_abatement_host_keys(hosts: pd.DataFrame, units: pd.DataFrame, root: Path) -> None:
-    """Both keys of every ``unit_abatement_host`` row are units (§3.5.3, both ``→ unit``)."""
+    """Both keys of every ``unit_abatement_host`` row are units (§3.5.3, both ``→ unit``).
+
+    V33 (plant is named one unit at a time) leg (b) then holds on each row: ``unit_id`` is an
+    ``abatement`` unit, ``host_unit_id`` is a ``converter`` with the same ``process_id``, and
+    no unit hosts itself.
+    """
     known = set(units["unit_id"])
     for column in ("unit_id", "host_unit_id"):
         for unit_id in sorted(set(hosts[column].dropna()) - known):
             raise ResolutionError(
                 f"{root}/unit_abatement_host.csv: {column} {unit_id!r} is not in unit.csv "
                 "(§3.5.3)"
+            )
+    by_id = units.set_index("unit_id")
+    where = f"{root}/unit_abatement_host.csv"
+    for train_id, host_id in zip(hosts["unit_id"], hosts["host_unit_id"], strict=True):
+        train, host = by_id.loc[train_id], by_id.loc[host_id]
+        if train_id == host_id:
+            raise ResolutionError(
+                f"{where}: {train_id!r} hosts itself (§3.5.3; V33, plant is named one unit "
+                "at a time, leg b)"
+            )
+        if train["unit_class"] != "abatement":
+            raise ResolutionError(
+                f"{where}: unit_id {train_id!r} has unit_class {train['unit_class']!r}, "
+                "not abatement (§3.5.3; V33 leg b)"
+            )
+        if host["unit_class"] != "converter":
+            raise ResolutionError(
+                f"{where}: host {host_id!r} of {train_id!r} has unit_class "
+                f"{host['unit_class']!r}, not converter (§3.5.3; V33 leg b)"
+            )
+        # Two blank process_ids count as the same: both sit on no named process.
+        if (train["process_id"] if not pd.isna(train["process_id"]) else "") != (
+            host["process_id"] if not pd.isna(host["process_id"]) else ""
+        ):
+            raise ResolutionError(
+                f"{where}: host {host_id!r} is on process {host['process_id']!r} but "
+                f"{train_id!r} is on {train['process_id']!r} (§3.5.3; V33 leg b)"
             )
 
 
@@ -447,6 +479,7 @@ def resolve_premise_references(
                 )
 
     _check_premise_record(record, premise_id)
+    _check_process_detail(premise, premise_id)
     _check_incumbents_eligible(reference, premise, premise_id, activity)
     _resolve_carrier_keys(reference, premise, premise_id)
     _resolve_cluster(reference, record, premise_id)
@@ -488,6 +521,26 @@ def _check_premise_record(record: pd.Series, premise_id: str) -> None:
             f"{premise_id}: construction_year {int(built)} is after data_year "
             f"{int(record['data_year'])} (§3.1)"
         )
+
+
+def _check_process_detail(premise: PremiseTables, premise_id: str) -> None:
+    """The three §3.10 magnitude rules the verifier script also enforces.
+
+    ``known_capacity`` and ``known_activity`` are each ``> 0`` where present, and where both
+    are stated the activity does not exceed the capacity (utilisation would be above 1).
+    """
+    for row in premise.premise_process_detail.itertuples(index=False):
+        where = f"{premise_id}: premise_process_detail[{row.process_id}]"
+        capacity, activity = row.known_capacity, row.known_activity
+        if not pd.isna(capacity) and float(capacity) <= 0:
+            raise ResolutionError(f"{where}: known_capacity must be > 0 if present (§3.10)")
+        if not pd.isna(activity) and float(activity) <= 0:
+            raise ResolutionError(f"{where}: known_activity must be > 0 if present (§3.10)")
+        if not pd.isna(capacity) and not pd.isna(activity) and float(activity) > float(capacity):
+            raise ResolutionError(
+                f"{where}: known_activity exceeds known_capacity "
+                "(utilisation would be above 1) (§3.10)"
+            )
 
 
 def incumbent_is_eligible(
@@ -733,5 +786,27 @@ def screen_units(
             dropped.extend(drops)
         else:
             admitted.append(unit_id)
+
+    # A train whose every host the screen dropped has no admitted unit to site on (§3.5.3).
+    gone = {d.unit_id for d in dropped}
+    abatement_ids = set(reference.unit.loc[reference.unit["unit_class"] == "abatement", "unit_id"])
+    hosts_of: dict[str, set[str]] = {}
+    if "unit_id" in reference.unit_abatement_host.columns:
+        for train_id, host_id in zip(
+            reference.unit_abatement_host["unit_id"],
+            reference.unit_abatement_host["host_unit_id"],
+            strict=True,
+        ):
+            hosts_of.setdefault(str(train_id), set()).add(str(host_id))
+    for train_id in sorted(abatement_ids & set(hosts_of)):
+        if hosts_of[train_id] <= gone:
+            dropped.append(UnitDrop(
+                train_id, "abatement_host",
+                f"no admitted host: every host ({', '.join(sorted(hosts_of[train_id]))}) "
+                "was dropped by the screen, so there is nothing to site the train on "
+                "(V33, plant is named one unit at a time, leg b)",
+            ))
+            if train_id in admitted:
+                admitted.remove(train_id)
 
     return AdmissionScreen(frozenset(admitted), tuple(dropped))
