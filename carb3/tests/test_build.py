@@ -1724,16 +1724,18 @@ RELAY = [("heat_60_100", 1.0, "primary_output"), ("heat_60_100", -1.0, "aux_inpu
          ("electricity", -0.01, "fuel_input")]
 HALF_RELAY = [("heat_60_100", 1.0, "primary_output"), ("heat_60_100", -0.5, "aux_input"),
               ("electricity", -0.01, "fuel_input")]
+#: Inputs sum to its output, as ``heat_pump_lt_reject``'s do: no free energy in a loop.
 REJECT_PUMP = [("heat_60_100", 1.0, "primary_output"), ("heat_lt60", -0.6875, "aux_input"),
-               ("electricity", -0.01, "fuel_input")]
+               ("electricity", -0.3125, "fuel_input")]
 LIFT = [("heat_100_150", 1.0, "primary_output"), ("heat_60_100", -0.5, "aux_input"),
         ("electricity", -0.5, "fuel_input")]
 
 
-def _c13_sets(reference, eligible: dict, **extra) -> ModelSets:
+def _c13_sets(reference, eligible: dict, *, demand: dict | None = None, **extra) -> ModelSets:
+    demand = demand or {}
     duties = tuple(
         _Duty(key[0], key[1], key[2], 3 if key[2] == "heat_100_150" else 2,
-              {year: 1.0 for year in PERIODS})
+              {year: demand.get(key, 1.0) for year in PERIODS})
         for key in eligible
     )
     supply = extra.get("supply", {})
@@ -1796,27 +1798,23 @@ def test_c13_holds_a_capped_boiler_to_its_share_routed_or_not() -> None:
 
 
 def test_c13_counts_a_consumers_output_at_its_energy_share() -> None:
-    """A consumer drawing 0.5 PJ of the boiler's heat per PJ it makes counts 0.5 against the
-    boiler's cap, not 1: the rest of its output is electricity's."""
+    """A relay making 1 PJ from 0.5 PJ of heat and a little electricity carries 0.5 PJ of the
+    boiler's energy per PJ it makes from the boiler's heat, not 1. The relay is the cheap
+    route and serves the whole duty, half on boiler heat and half on air-pump heat, so the
+    boiler runs to its full 0.3. Counting the relay's whole output against the cap would
+    hold the boiler to 0.15."""
     reference = _c13_reference({"relay": HALF_RELAY})
     sets = _c13_sets(
         reference,
         {Q_A: frozenset({"boiler_lt_gas", "heat_pump_lt_air", "relay"})},
         max_share={(Q_A, "boiler_lt_gas"): 0.3},
     )
-    model = build.build_model(
-        sets,
-        survival.surviving_capacity(_incumbent(), reference.unit, PERIODS),
-        _axis(),
-        reference,
-    )
-    row = next(name for name in model.constraints if name.startswith("C13|boiler_lt_gas|"))
-    lhs = model.constraints[row].lhs
-    zeta_labels = set(np.ravel(model.variables["zeta"].labels.values))
-    coeffs = [
-        c for c, v in zip(np.ravel(lhs.coeffs.values), np.ravel(lhs.vars.values)) if v in zeta_labels
-    ]
-    assert coeffs and all(c == pytest.approx(0.5) for c in coeffs)
+    model, result = _c13_solved(reference, sets)
+    assert result.termination_condition == "optimal"
+    relay = _z(model, f"relay@{Q_A[0]}|{Q_A[1]}|{Q_A[2]}")
+    for year in PERIODS:
+        assert _activity(model, "boiler_lt_gas")[year] == pytest.approx(0.3, abs=1e-6)
+        assert relay[year] == pytest.approx(1.0, abs=1e-6)
 
 
 def test_a_prohibition_blocks_routing_to_its_process_but_not_to_another() -> None:
@@ -1836,10 +1834,11 @@ def test_a_prohibition_blocks_routing_to_its_process_but_not_to_another() -> Non
     )
     model, result = _c13_solved(reference, sets)
     assert result.termination_condition == "optimal"
-    relay_a = _z(model, f"relay@{Q_A[0]}|{Q_A[1]}|{Q_A[2]}")
-    pump_release = _z(model, "heat_pump_lt_air@supply:heat_60_100")
+    # All the boiler's heat the relay draws must leave through the relay's B output.
+    relay_b = _z(model, f"relay@{Q_B[0]}|{Q_B[1]}|{Q_B[2]}")
+    boiler_release = _z(model, "boiler_lt_gas@supply:heat_60_100")
     for year in PERIODS:
-        assert relay_a[year] <= pump_release[year] + 1e-6
+        assert boiler_release[year] <= relay_b[year] * 1.01 + 1e-6
     assert _activity(model, "boiler_lt_gas")[2025] > 0.0
 
 
@@ -1866,19 +1865,19 @@ def test_c13_closes_the_reject_heat_route() -> None:
     assert build.check_constraint_rows(model, result) == ()
 
 
-def test_c13_charges_energy_passed_on_to_every_capped_duty_it_can_reach() -> None:
-    """The boiler is barred from the high-temperature process. Its reject heat feeds the
-    reject pump, whose own release feeds the lift pump serving that process. Tracking stops
-    at the reject pump, and what the boiler passes into its release is charged to the barred
-    duty, so none of it gets through: the lift pump runs on the air heat pump's heat alone."""
+def test_c13_traces_a_capped_units_energy_through_a_release() -> None:
+    """The boiler is barred from the high-temperature process. Its reject heat feeds a
+    reject pump that serves nothing and releases all it makes, which the lift pump draws for
+    that process. The tracer follows the boiler's energy through both units, so none of it
+    gets there: the reject heat is disposed of and the lift pump runs on air-pump heat."""
     reference = _c13_reference({"reject_pump": REJECT_PUMP, "lift": LIFT})
     sets = _c13_sets(
         reference,
         {
-            Q_A: frozenset({"heat_pump_lt_air", "reject_pump"}),
             Q_B: frozenset({"boiler_lt_gas"}),
-            Q_HIGH: frozenset({"lift"}),
+            Q_HIGH: frozenset({"lift", "heat_pump_lt_air"}),
         },
+        supply={"heat_60_100": frozenset({"reject_pump"})},
         eligibility_dropped=(
             EligibilityDrop(Q_HIGH[0], Q_HIGH[1], "boiler_lt_gas", "max_share", "0.00"),
         ),
@@ -1886,19 +1885,110 @@ def test_c13_charges_energy_passed_on_to_every_capped_duty_it_can_reach() -> Non
     model, result = _c13_solved(reference, sets)
     assert result.termination_condition == "optimal"
     assert (_z(model, "reject_pump@supply:heat_60_100") <= 1e-6).all()
-    lift = _z(model, f"lift@{Q_HIGH[0]}|{Q_HIGH[1]}|{Q_HIGH[2]}")
-    air = _z(model, "heat_pump_lt_air@supply:heat_60_100")
-    for year in PERIODS:
-        assert 0.5 * lift[year] <= air[year] + 1e-6
+    assert (model.variables["d"].solution.to_pandas().loc["heat_lt60"] > 0.0).all()
     assert build.check_constraint_rows(model, result) == ()
+
+
+#: A turbine-like unit: 60-100 °C heat in, electricity out for its own duty, and reject heat.
+TURBINE = [("electricity", 1.0, "primary_output"), ("heat_60_100", -3.0, "aux_input"),
+           ("heat_lt60", 1.5, "reject")]
+Q_E = ("mvp-minimal", "process_power", "electricity")
+#: The same on steam, made by a capped steam boiler or, dearer, an uncapped steam heat pump.
+STEAM_TURBINE = [("electricity", 1.0, "primary_output"), ("heat_100_150", -3.0, "aux_input"),
+                 ("heat_lt60", 1.5, "reject")]
+STEAM_BOILER = [("heat_100_150", 1.0, "primary_output"), ("natural_gas", -1.1, "fuel_input")]
+STEAM_PUMP = [("heat_100_150", 1.0, "primary_output"), ("electricity", -0.5, "fuel_input")]
+
+
+def test_c13_follows_a_capped_units_energy_into_a_consumers_by_products() -> None:
+    """The steam boiler is barred from process A. Its steam feeds a turbine serving its own
+    power duty, and the turbine's reject heat can only go to a reject pump serving A. The
+    reject carries the boiler's share of the turbine's input, so the turbine runs on the
+    dearer steam pump instead. Tracing only the first hop let the boiler's energy through."""
+    reference = _with_heat_family(
+        _c13_reference(
+            {"steam_boiler": STEAM_BOILER, "steam_pump": STEAM_PUMP,
+             "turbine": STEAM_TURBINE, "reject_pump": REJECT_PUMP},
+            heat_lt60_disposable=False,
+        )
+    )
+    sets = _c13_sets(
+        reference,
+        {
+            Q_A: frozenset({"heat_pump_lt_air", "reject_pump"}),
+            Q_B: frozenset({"steam_boiler"}),
+            Q_E: frozenset({"turbine"}),
+            Q_HIGH: frozenset({"steam_pump"}),
+        },
+        # A small power duty, so the turbine's reject fits the reject pump's A duty.
+        demand={Q_E: 0.2},
+        eligibility_dropped=(
+            EligibilityDrop(Q_A[0], Q_A[1], "steam_boiler", "max_share", "0.00"),
+        ),
+    )
+    model, result = _c13_solved(reference, sets)
+    assert result.termination_condition == "optimal"
+    assert (_z(model, "steam_boiler@supply:heat_100_150") <= 1e-6).all()
+    assert (_activity(model, "turbine") > 0.0).all()
+    assert build.check_constraint_rows(model, result) == ()
+
+
+def test_without_c13_the_by_product_route_is_used(monkeypatch) -> None:
+    """The fixture above bites: with C13 off, the cheap boiler steam does feed the turbine."""
+    monkeypatch.setattr(build, "_add_c13", lambda *a, **k: None)
+    reference = _with_heat_family(
+        _c13_reference(
+            {"steam_boiler": STEAM_BOILER, "steam_pump": STEAM_PUMP,
+             "turbine": STEAM_TURBINE, "reject_pump": REJECT_PUMP},
+            heat_lt60_disposable=False,
+        )
+    )
+    sets = _c13_sets(
+        reference,
+        {
+            Q_A: frozenset({"heat_pump_lt_air", "reject_pump"}),
+            Q_B: frozenset({"steam_boiler"}),
+            Q_E: frozenset({"turbine"}),
+            Q_HIGH: frozenset({"steam_pump"}),
+        },
+        # A small power duty, so the turbine's reject fits the reject pump's A duty.
+        demand={Q_E: 0.2},
+        eligibility_dropped=(
+            EligibilityDrop(Q_A[0], Q_A[1], "steam_boiler", "max_share", "0.00"),
+        ),
+    )
+    model, result = _c13_solved(reference, sets)
+    assert result.termination_condition == "optimal"
+    assert (_z(model, "steam_boiler@supply:heat_100_150") > 0.0).any()
+
+
+def test_c13_lets_a_capped_units_energy_leave_through_an_uncapped_use() -> None:
+    """The same boiler and turbine, but the turbine's reject heat may be disposed of. The
+    boiler's energy then leaves through the turbine's own power duty and the disposed
+    reject, never reaching A, so the cheap boiler heat does feed the turbine."""
+    reference = _c13_reference({"turbine": TURBINE, "reject_pump": REJECT_PUMP})
+    sets = _c13_sets(
+        reference,
+        {
+            Q_A: frozenset({"heat_pump_lt_air", "reject_pump"}),
+            Q_B: frozenset({"boiler_lt_gas"}),
+            Q_E: frozenset({"turbine"}),
+        },
+        eligibility_dropped=(
+            EligibilityDrop(Q_A[0], Q_A[1], "boiler_lt_gas", "max_share", "0.00"),
+        ),
+    )
+    model, result = _c13_solved(reference, sets)
+    assert result.termination_condition == "optimal"
+    assert (_z(model, "boiler_lt_gas@supply:heat_60_100") > 0.0).any()
 
 
 def test_c13_never_forces_a_capped_unit_to_zero_through_a_dutyless_consumer() -> None:
     """The boiler's reject heat cannot be disposed of here, and its only consumer is a supply
     unit with no duty whose release reaches the lift pump, on a duty the boiler is capped on
     at 0.3. Withholding the pass-on tag there would leave the reject nowhere to go and force
-    the boiler, and its B duty, to zero. Charged against the cap instead, it fits: the
-    boiler's 0.137 PJ of reject becomes 0.2 PJ of lifted heat, 0.1375 PJ of it the boiler's."""
+    the boiler, and its B duty, to zero. Traced instead, it fits: the boiler's 0.137 PJ of
+    reject becomes 0.2 PJ of heat carrying 0.137 PJ of the boiler's energy, under 0.3."""
     reference = _c13_reference({"reject_pump": REJECT_PUMP, "lift": LIFT}, heat_lt60_disposable=False)
     sets = _c13_sets(
         reference,
@@ -1917,25 +2007,28 @@ def test_c13_never_forces_a_capped_unit_to_zero_through_a_dutyless_consumer() ->
 
 def test_nothing_capped_builds_no_c13() -> None:
     model, _ = _solved()
-    assert not {"zeta", "zeta_pass", "upsilon"} & set(model.variables)
+    assert not {"tr_in", "tr_rel", "tr_duty", "tr_leave"} & set(model.variables)
     assert not [name for name in model.constraints if name.startswith("C13")]
 
 
 def test_c13_reads_a_units_output_net_as_c8_does() -> None:
     """A store charging −1 and discharging +0.9 on one carrier draws on balance; it puts
-    nothing on C8 for a consumer to lift, so C13 tracks no output for it."""
+    nothing on C8 for a consumer to lift, so C13 traces nothing from it."""
     ones = np.ones(len(PERIODS))
-    terms = {
-        "heat_60_100": {
-            "store": {"aux_input": -1.0 * ones, "coproduct": 0.9 * ones},
-            "relay": {"aux_input": -1.0 * ones},
-        }
-    }
+    parts = {"heat_60_100": ({"store": -0.1 * ones, "relay": -1.0 * ones}, {})}
     sets = dataclasses.replace(
         _sets(eligible=frozenset({"store", "relay"})),
         max_share={(DUTY_KEY, "store"): 0.3},
     )
-    assert build.c13_tracking(sets, terms).outputs == {}
+    assert build.c13_tracking(sets, _c13_reference({}), parts).traced == ()
+
+
+def _with_heat_family(reference: ReferenceTables) -> ReferenceTables:
+    carrier = reference.carrier.copy()
+    carrier["grade_family"] = [
+        "heat" if str(c).startswith("heat_") else "" for c in carrier["carrier_id"]
+    ]
+    return dataclasses.replace(reference, carrier=carrier)
 
 
 def test_c13_reads_a_cap_per_process_for_zero_and_non_zero_alike() -> None:
@@ -1950,5 +2043,5 @@ def test_c13_reads_a_cap_per_process_for_zero_and_non_zero_alike() -> None:
         eligible={**base.eligible, high: frozenset({"heat_pump_lt_air"})},
         max_share={(DUTY_KEY, "boiler_lt_gas"): 0.3},
     )
-    capped = build.c13_tracking(sets, {}).capped
+    capped = build.c13_tracking(sets, _with_heat_family(_c13_reference({})), {}).capped
     assert capped == {("boiler_lt_gas", DUTY_KEY): 0.3, ("boiler_lt_gas", high): 0.3}

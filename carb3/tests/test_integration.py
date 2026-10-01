@@ -242,16 +242,17 @@ def test_c13_tracks_the_banned_coal_boilers_reject_heat_at_the_dairy(
     """``boiler_lt_coal`` is barred (``max_share`` 0.00) from the boiler house at a Food
     Processing Centre and still serves other duties, so its ``heat_lt60`` reject could reach
     ``heat_pump_lt_reject`` and the boiler house. C13 (a cap is not routed through a
-    consumer) tracks exactly that route."""
+    consumer) traces that boiler's energy."""
     sets = runs["mvp-dairy"].sets
     units = sorted({pair.unit_id for pair in build._dispatch_pairs(sets)})
     terms = build._balance_terms(
         reference, units, sets.periods, build._carrier_facts(reference), build._supplied(sets)
     )
-    tracking = build.c13_tracking(sets, terms)
+    parts = build._balance_parts(terms, len(sets.periods))
+    tracking = build.c13_tracking(sets, reference, parts)
     assert {unit for unit, _duty in tracking.capped} >= {"boiler_lt_coal"}
-    assert tracking.outputs == {("boiler_lt_coal", "heat_lt60"): ("heat_pump_lt_reject",)}
-    assert "zeta" in runs["mvp-dairy"].model.variables
+    assert tracking.traced == ("boiler_lt_coal",)
+    assert "tr_in" in runs["mvp-dairy"].model.variables
 
 
 @pytest.mark.parametrize("premise_id", SOLVING_PREMISES)

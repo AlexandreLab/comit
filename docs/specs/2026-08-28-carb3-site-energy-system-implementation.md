@@ -1780,9 +1780,10 @@ All continuous and non-negative. **The problem is a pure LP and must stay one.**
 | $x_{c,k,t}$ | Export of carrier $c$ at connection $k$. Declared where `carrier.may_export` (§3.4) is true **and** a `premise_connection` row carries $c$ | PJ/yr |
 | $w_{k,t}$ | Reinforcement purchased at connection $k$ | MW |
 | $d_{c,t}$ | **Disposal of carrier $c$** — heat rejected to atmosphere, CO₂ vented. Declared only where `carrier.may_dispose` (§3.4) | PJ/yr or Mt/yr |
-| $\zeta_{u,c,v,q,t}$ | Activity of consumer $v$ dispatched to duty $q$ that is attributed to capped unit $u$'s output on carrier $c$ (C13). Declared only for a unit $u$ carrying a `max_share` cap, a carrier $u$ puts on the balance, a model unit $v \neq u$ that draws it, and $q \in Q_v$ | output units of $v$ |
-| $\zeta^{\circ}_{u,c,v,t}$ | Part of $v$'s activity not dispatched to a duty (its own $z^{\circ}$ and by-products) attributed to $u$'s output on $c$ (C13). Declared only where no unit reachable from $v$ through the balance serves a duty $u$ is capped on | output units of $v$ |
-| $\upsilon_{u,c,t}$ | Part of capped unit $u$'s output on $c$ that leaves the site, disposed of or exported (C13). Declared only where $c$ has $d_{c,t}$ or $x_{c,t}$ | PJ/yr or Mt/yr |
+| $\zeta^{\text{in}}_{k,w,c,t}$ | Energy of capped unit $k$ (its **tracer**) entering unit $w$ through carrier $c$ (C13). Declared only for a capped unit $k$, and a unit $w$ and energy carrier $c$ that $k$'s energy can reach through the balance | PJ/yr |
+| $\zeta^{\text{duty}}_{k,w,q,t}$ | $k$'s energy leaving $w$ in its dispatch to duty $q$ (C13) | PJ/yr |
+| $\zeta^{\text{rel}}_{k,w,t}$ | $k$'s energy leaving $w$ in its $z^{\circ}$ release (C13) | PJ/yr |
+| $\upsilon_{k,c,t}$ | $k$'s energy leaving the site from carrier $c$, disposed of or exported (C13). Declared only where $c$ has $d_{c,t}$ or $x_{c,t}$ | PJ/yr |
 
 **An import exists wherever `may_import` does; only some imports are connection-indexed.** A
 *networked* carrier — electricity, natural gas, hydrogen, CO₂ transport — arrives through a
@@ -2183,49 +2184,55 @@ carry theirs. Area is summed across connections here, unlike capacity in C11, be
 and land are one estate however many supplies serve it.
 
 **C13: a cap is not routed through a consumer.** `max_share` (§3.5) bounds a unit's own
-dispatch, $z_{u,q,t} \le s_{u,q} D_{q,t}$, and a 0.00 prohibition removes $u$ from $U_q$. Once a
-unit can put output on the balance (primary output through $z^{\circ}$, reject heat, a
-co-product, an emission), a consumer can lift it and serve the very duty $u$ is capped on: a
-coal boiler barred from a process rejects `heat_lt60` that `heat_pump_lt_reject` lifts back
-into that process. Pooled output carries no source, so for each capped unit $u$ the share of
-its output each consumer uses is tracked, and the cap bounds the **energy** of $q$ that came
-from $u$, directly or through one consumer. A cap is read **per process**, as
-`unit_eligibility` states it, so it covers every duty of that process, including one $u$ cannot
-serve itself; a 0.00 prohibition is a cap of 0.
+dispatch, $z_{u,q,t} \le s_{u,q} D_{q,t}$, and a 0.00 prohibition removes $u$ from $U_q$. Once
+units feed each other through the balance (primary output through $z^{\circ}$, reject heat, a
+co-product), a consumer can lift a capped unit's output into the very duty it is capped on, one
+unit away or several: a coal boiler barred from a process rejects `heat_lt60` that
+`heat_pump_lt_reject` lifts back into that process. So each capped unit $k$ gets a **tracer**:
+its energy, followed through every unit and energy carrier on the premise, and the cap bounds
+the energy of $q$ that came from $k$.
 
-$$\text{out}_{u,c,t} = \sum_{v} |\iota_{v,c}| \Big(\sum_{q \in Q_v} \zeta_{u,c,v,q,t} + \zeta^{\circ}_{u,c,v,t}\Big) + \upsilon_{u,c,t}$$
+A cap is read **per process**, as `unit_eligibility` states it, and covers the process's
+duties in the same carrier family (§3.4 `grade_family`) as $k$'s own output: a heat boiler's
+cap reaches the process's heat duties, not its motive power. A 0.00 prohibition is a cap of 0.
 
-$$\sum_{u} \upsilon_{u,c,t} \le d_{c,t} + x_{c,t}, \qquad \sum_{u} \zeta_{u,c,v,q,t} \le z_{v,q,t}, \qquad \sum_{u} \zeta^{\circ}_{u,c,v,t} \le z_{v,t} - \sum_{q \in Q_v} z_{v,q,t}$$
+For each capped $k$ and period $t$, with $I_w$ and $O_w$ the energy unit $w$ draws and makes per
+unit of activity (energy carriers only; a mass carrier carries no tracer), $o_{w,c}$ its net
+output of by-product $c$, and $\eta_w = \min(1, O_w/I_w)$:
 
-$$z_{u,q,t} + \sum_{c,v} \min\!\big(1, |\iota_{v,c}|\big)\, \zeta_{u,c,v,q,t} \;\le\; s_{u,q}\, D_{q,t} \qquad \forall (u,q) \text{ capped},\ t$$
+$$\text{src}_{k,c,t} \;=\; \sum_{w} \zeta^{\text{in}}_{k,w,c,t} + \upsilon_{k,c,t} \qquad \text{(each carrier } c\text{)}$$
 
-where $\text{out}_{u,c,t}$ is $u$'s output on $c$ **net of its own draw**, as C8 sees it, times
-the variable C8 scales it by: $z^{\circ}_{u,t}$ for the primary output, $z_{u,t}$ for every
-other role. A store charging and discharging one carrier, or a capture train drawing and
-emitting one, is a drawer, not an output. $|\iota_{v,c}|$
-is the net draw of $v$ on $c$ per unit of its activity.
+$$\text{src}_{k,c,t} = \text{out}_{k,c,t} \;+\; \sum_{w \neq k} \frac{\eta_w\, o_{w,c}}{O_w} \sum_{c'} \zeta^{\text{in}}_{k,w,c',t} \;+\; \sum_{w:\, c^\star_w = c} \zeta^{\text{rel}}_{k,w,t}$$
 
-**Energy share, not output share.** A consumer's output counts at $\min(1, |\iota_{v,c}|)$ per
-unit fed by $u$: `heat_pump_ht` makes a PJ of 100-150 °C heat from 0.524 PJ of lifted heat and
-0.476 PJ of electricity, so 0.524 of it is $u$'s. A lossy pass-through counts at most 1.
+$$\sum_{q \in Q_w} \zeta^{\text{duty}}_{k,w,q,t} + \zeta^{\text{rel}}_{k,w,t} \;=\; \frac{\eta_w}{O_w} \sum_{c'} \zeta^{\text{in}}_{k,w,c',t} \qquad (w \neq k,\ c^\star_w \text{ an energy carrier})$$
 
-**One hop.** $\zeta^{\circ}$ carries $u$'s energy into $v$'s own release and by-products, and
-C13 charges it in full, at $\min(1,|\iota_{v,c}|)$, to every duty $u$ is capped on that $v$'s
-output can reach through the balance:
+$$z_{k,q,t} + \sum_{w} \zeta^{\text{duty}}_{k,w,q,t} \;\le\; s_{k,q}\, D_{q,t} \qquad \forall (k,q) \text{ capped},\ t$$
 
-$$z_{u,q,t} + \sum_{c,v} \min\!\big(1, |\iota_{v,c}|\big)\Big(\zeta_{u,c,v,q,t} + \mathbb{1}[q \in R_v]\,\zeta^{\circ}_{u,c,v,t}\Big) \;\le\; s_{u,q}\, D_{q,t}$$
+where $\text{out}_{k,c,t}$ is $k$'s own output on $c$, **net of its own draw** as C8 sees it,
+times the variable C8 scales it by ($z^{\circ}_{k,t}$ for primary output, $z_{k,t}$ otherwise).
+Across tracers, the shares of a draw, a duty column, a release and what leaves the site never
+exceed the thing itself: $\sum_k \zeta^{\text{in}}_{k,w,c,t} \le |\iota_{w,c}|\, z_{w,t}$,
+$\sum_k \zeta^{\text{duty}}_{k,w,q,t} \le z_{w,q,t}$, $\sum_k \zeta^{\text{rel}}_{k,w,t} \le
+z^{\circ}_{w,t}$, $\sum_k \upsilon_{k,c,t} \le d_{c,t} + x_{c,t}$.
 
-with $R_v$ the duties served by units reachable from $v$. This replaces the row above. The reference data holds a heat loop (`heat_exchanger_spc_steam` →
-`heat_lt60` → `heat_pump_lt_reject` → `heat_60_100` → `heat_pump_ht` → `heat_100_150`), so a
-deeper trace would follow it round; charging at the first hop never lets a capped unit's
-energy through untagged, and never forces $u$ to zero where its consumer serves no duty (a
-turbine whose output is all released), at the cost of being conservative on that edge. A
-consumer drawing two carriers that $u$ makes is charged for each, so a lossy one can count more
-than its output: conservative, never a leak.
+**What the tracer guarantees.** A unit never creates $k$'s energy ($\eta_w \le 1$): a heat pump's
+ambient gain is not credited to $k$, so `heat_pump_ht` making a PJ from 0.524 PJ of $k$'s heat
+carries 0.524 PJ of it. Inside a unit, $k$'s energy leaves on every output **in the fixed
+proportion the unit makes them**, which is linear because the coefficients are per unit of
+activity: a turbine fed by a capped boiler sends that boiler's share into its reject heat too.
+There is no hop limit, so a chain or the heat loop in the reference data
+(`heat_exchanger_spc_steam` → `heat_lt60` → `heat_pump_lt_reject` → `heat_60_100` →
+`heat_pump_ht` → `heat_100_150`) is followed all the way round.
 
-**Nothing is built where nothing is tracked.** A premise with no capped unit, or none whose
-output another unit draws, gets no $\zeta$, $\zeta^{\circ}$ or $\upsilon$ and no C13 row. A
-capped unit with no routed output keeps only its bound on $z_{u,q,t}$. Checked by V35.
+**What the LP still chooses.** Which drawer of a pooled carrier, and which of one unit's duty
+columns or its release, carries $k$'s energy. Pooled heat, and a unit's single output stream,
+carry no source; the cap holds when some attribution respects it. An export, a disposal or an
+uncapped duty therefore absorbs a capped unit's energy rather than barring it. Strict
+proportional mixing at a pool would be bilinear and is not used.
+
+**Nothing is built where nothing is traced.** A premise with no capped unit, or none whose
+energy another unit draws, gets no tracer variable and no C13 row. A capped unit with no
+traced energy reaching its capped duty keeps only its bound on $z_{k,q,t}$. Checked by V35.
 
 **Non-degeneracy rule.** $p^{\text{exp}}_{c,t} < p^{\text{imp}}_{c,t}$ strictly, per carrier
 per period, asserted at load (V21). Equal prices make building and importing exactly
@@ -2545,7 +2552,7 @@ pass mark.
 | **V32** | load + premise | yes | **The site boundary is honoured (D16).** (a) connection-indexed $m_{c,k,t}$ and $x_{c,k,t}$ are declared only where `carrier.may_import` / `carrier.may_export` is true **and** a `premise_connection` row carries the carrier; site-level $m_{c,t}$ only where `may_import` is true and **no** connection carries it; nothing of either kind where the flag is false; (b) no `process_duty` row and no `activity_process_duty_profile` row names a `product` carrier whose `may_export` is false; (c) `may_import` and `may_export` are both false on every `emission` and every `intermediate` carrier. Failure names the carrier |
 | **V33** | load + premise | yes | **Plant is named one unit at a time.** (a) every `premise_process_unit` row (§3.10.2) names a unit that `unit_eligibility` admits for that process at the premise's activity, the rows of one parent name a unit twice only with different `commissioned_year` values, and `capacity_share` where given is present on every row of that parent and sums to 1 within 1e-6; (b) every `abatement` unit has at least one `unit_abatement_host` row (§3.5.3), each host is a `converter` on the same `process_id`, and no unit hosts itself; (c) the remaining life used for an abatement unit equals the **minimum** over its hosts. Failure names the unit |
 | **V34** | load | yes | **Duties are services at a grade (§3.3, §3.4).** (a) no `activity_process_duty_profile` or `process_duty` row names a `primary` or `emission` carrier, whatever its family — an `OTH` row on `electricity` fails here; (b) every row on a gradeable carrier carries a `grade_rank`, equal to that carrier's own, and no row on a non-gradeable carrier carries one; (c) each family's rows sit on the carrier §3.4's table names for it — `REF` on a cooling band, the six heat families on a heat band, `MOT` on `motive_power` — and no row carries `EN`, `NEUOTH` or `HRS`; (d) every gradeable carrier has a `grade_family`, and `grade_rank` is unique within it. Failure names the row |
-| **V35** | premise | yes | **A cap is not routed through a consumer (C13, §5.5).** On a fixture where a capped unit's output pays to launder: (a) with C13 off the unit exceeds its share, so the fixture bites; (b) with C13 on, its direct dispatch plus the energy routed through any one consumer stays within $s\,D$; (c) a 0.00 prohibition blocks routing into its own process but not into another; (d) the reject-heat route is closed as well as the $z^{\circ}$ one; (e) a consumer's output counts at $\min(1,|\iota|)$; (f) a premise with nothing tracked builds no C13 variable or row; (g) energy passed through a consumer with no duty is charged to the capped duties it reaches, not refused, so the capped unit is never forced to zero; (h) output is read net, so a store is never tracked as a source. Failure names the unit and the duty |
+| **V35** | premise | yes | **A cap is not routed through a consumer (C13, §5.5).** On fixtures where a capped unit's output pays to launder: (a) with C13 off the unit exceeds its share, so the fixture bites; (b) with C13 on, its own dispatch plus its traced energy in the duty stays within $s\,D$; (c) a 0.00 prohibition blocks routing into its own process but not into another; (d) the reject-heat route is closed as well as the $z^{\circ}$ one; (e) a consumer's output carries the capped unit's energy at $\eta_w$, never its ambient gain; (f) the energy follows a consumer's by-products, not only its primary output; (g) an uncapped use (export, disposal, another duty) absorbs it rather than barring the unit; (h) a release with no duty is followed through to the barred duty; (i) output is read net, so a store is never a source; (j) a premise with nothing traced builds no C13 variable or row. Failure names the unit and the duty |
 
 **V20's five legs.**
 
