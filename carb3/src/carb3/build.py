@@ -727,7 +727,8 @@ def _dispatch_pairs(sets: ModelSets) -> tuple[_Pair, ...]:
 
 
 def _supplied(sets: ModelSets) -> dict[str, frozenset[str]]:
-    """Carrier → the admitted units supplying it with no duty row (D16).
+    """Carrier → the admitted units supplying it with no duty row, under D16 (the site
+    boundary is a property of the carrier).
 
     The primary output of an internal-supply unit is the only one C8 (carrier balance) reads
     directly: every other unit's output is settled by C1 (duty satisfaction) instead, and
@@ -867,7 +868,13 @@ def _without_units(sets: ModelSets, drop: set[str]) -> ModelSets:
         sets,
         units=sets.units - drop,
         eligible={key: units - drop for key, units in sets.eligible.items()},
-        supply={carrier_id: units - drop for carrier_id, units in sets.supply.items()},
+        # An emptied U_q stays, so diagnose_unservable_duties can name the duty; an emptied
+        # supply set goes, since no constraint or report needs a carrier nobody supplies.
+        supply={
+            carrier_id: units - drop
+            for carrier_id, units in sets.supply.items()
+            if units - drop
+        },
         earliest_year={k: v for k, v in sets.earliest_year.items() if k[1] not in drop},
         max_share={k: v for k, v in sets.max_share.items() if k[1] not in drop},
         min_duty={k: v for k, v in sets.min_duty.items() if k[1] not in drop},

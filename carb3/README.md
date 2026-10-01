@@ -40,7 +40,9 @@ its consumers. It is per-premise because the §3.2 admission screen runs once fo
 premise and cannot know which other units are present: `chp_bfg_gas_turbine` reaches the
 dairy through the grade join in `unit_eligibility.csv`, burns `blast_furnace_gas`, and nothing
 at a dairy makes it. Such a unit was held at zero by C8 (carrier balance) anyway, so dropping
-it leaves the optimum unchanged and only clears its zero rows from the ledger. The drops are
+it clears its zero rows from the ledger and leaves the optimum unchanged, unless it is an
+incumbent: then its pinned capacity and fixed opex leave the model too, the objective moves,
+and its drop reason says so. No incumbent is dropped at the three premises today. The drops are
 printed per premise and written to `screen_dropped.parquet` under the leg
 `unreachable_input`. A carrier some unit makes as its primary output counts as made, even
 though a duty's output is settled by C1 (duty satisfaction) and never enters C8: so

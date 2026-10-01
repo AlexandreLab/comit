@@ -1202,6 +1202,17 @@ def test_screen_premise_removes_a_dropped_unit_from_every_set_and_bound() -> Non
     assert {unit_id for _key, unit_id in sets.max_share} == ALL_SCREEN_UNITS - gone
 
 
+def test_screen_premise_removes_a_supply_entry_it_empties() -> None:
+    """An emptied supply set is removed, so the run report never prints a supply line with
+    no supplier after the arrow."""
+    sets = dataclasses.replace(
+        _screen_sets(ALL_SCREEN_UNITS),
+        supply={"furnace_gas": frozenset({"furnace_chp"}), "heat_lt60": frozenset({"boiler_lt_gas"})},
+    )
+    screened, _ = build.screen_premise(sets, _screen_reference())
+    assert screened.supply == {"heat_lt60": frozenset({"boiler_lt_gas"})}
+
+
 def test_screen_premise_leaves_a_clean_premise_untouched() -> None:
     sets = _sets()
     screened, drops = build.screen_premise(sets, _reference())

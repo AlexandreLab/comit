@@ -201,7 +201,10 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
     G1 (single-premise wall clock) measurement, the solver status and the objective –
     ``screen_dropped.parquet``, the §3.2 screen's work list, which is the table note 20
     records, followed by this premise's ``unreachable_input`` drops
-    (:func:`carb3.build.screen_premise`; the ``leg`` column tells the two apart), and
+    (:func:`carb3.build.screen_premise`). Those are not data defects: the unit is sound and
+    was offered to a site that cannot fuel it, so a reader building note 20's list filters
+    them out on ``leg``; ``n_units_dropped`` counts the §3.2 screen's units only and
+    ``n_units_dropped_at_premise`` these. The ninth is
     ``eligibility_dropped.parquet``, the units a process refused by ``min_duty`` or a 0.00
     ``max_share`` (admitted units, so not in the screen's list). Both lists are written even
     when empty, because "nothing was dropped" is a finding too and an absent file cannot say

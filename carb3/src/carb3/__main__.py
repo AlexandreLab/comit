@@ -162,30 +162,28 @@ def run_premise(
     periods = axis.years
     premise = load_premise_tables(premise_id, premise_root)
     sets = build_sets(reference, premise, screen, periods)
-    incumbents = frozenset(str(unit_id) for unit_id in premise.premise_process_unit["unit_id"])
-    sets, premise_dropped = build.screen_premise(sets, reference, incumbents)
-
-    unservable = diagnose_unservable_duties(sets, screen)
-    if unservable:
-        return PremiseRun(
-            premise_id=premise_id,
-            sets=sets,
-            blocked=_explain_unservable(
-                reference, premise, sets, screen, unservable, premise_dropped
-            ),
-            premise_dropped=premise_dropped,
-        )
-
     vintages = survival.vintage_capacity(premise, reference.unit)
     surviving = survival.surviving_capacity(vintages, reference.unit, periods)
-    shortfall = diagnose_start_year_shortfall(sets, surviving, reference.unit)
-    if shortfall is not None:
-        return PremiseRun(
-            premise_id=premise_id,
-            sets=sets,
-            blocked=explain_start_year_shortfall(shortfall),
-            premise_dropped=premise_dropped,
-        )
+
+    # The two checks run before the screen as well as after it. Before, so a premise they
+    # block is reported exactly as it was before the screen existed: the screen reads C8's
+    # coefficients, whose A6 (fuel-CO₂ derivation) raises on a fuel with no emission factor,
+    # and that must not turn a NOT SOLVED answer into a traceback. After, because the screen
+    # can empty a duty or remove an incumbent the start year needed.
+    blocked = _pre_solve_block(reference, premise, sets, screen, surviving, ())
+    if blocked:
+        return PremiseRun(premise_id=premise_id, sets=sets, blocked=blocked)
+    incumbents = frozenset(str(unit_id) for unit_id in premise.premise_process_unit["unit_id"])
+    sets, premise_dropped = build.screen_premise(sets, reference, incumbents)
+    if premise_dropped:
+        blocked = _pre_solve_block(reference, premise, sets, screen, surviving, premise_dropped)
+        if blocked:
+            return PremiseRun(
+                premise_id=premise_id,
+                sets=sets,
+                blocked=blocked,
+                premise_dropped=premise_dropped,
+            )
     model = build.build_model(sets, surviving, axis, reference, tariff_override)
     result = build.solve(model)
     if result.solution is None:
@@ -281,6 +279,24 @@ def main(argv: Sequence[str] | None = None) -> int:
 # --------------------------------------------------------------------------------------
 # The run report
 # --------------------------------------------------------------------------------------
+
+
+def _pre_solve_block(
+    reference: ReferenceTables,
+    premise,
+    sets: ModelSets,
+    screen: AdmissionScreen,
+    surviving,
+    premise_dropped: tuple[UnitDrop, ...],
+) -> str:
+    """The reason no LP can be built, from the two §5.2 checks, or ``""`` if both pass."""
+    unservable = diagnose_unservable_duties(sets, screen)
+    if unservable:
+        return _explain_unservable(reference, premise, sets, screen, unservable, premise_dropped)
+    shortfall = diagnose_start_year_shortfall(sets, surviving, reference.unit)
+    if shortfall is not None:
+        return explain_start_year_shortfall(shortfall)
+    return ""
 
 
 def _explain_unservable(
