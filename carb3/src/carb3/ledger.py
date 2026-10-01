@@ -41,11 +41,12 @@ from carb3.build import (
     _dispatch_pairs,
     _scalar_parameter,
     _scenario_series,
+    _supplied,
     _unit_parameters,
     biogenic_capture_weights,
     export_unit_cost,
 )
-from carb3.load import AdmissionScreen, ReferenceTables
+from carb3.load import AdmissionScreen, ReferenceTables, UnitDrop
 from carb3.sets import EligibilityDrop, ModelSets
 
 #: The objective's five live terms, in §5.4's order. ``Z^infra``, ``Z^net`` and
@@ -110,6 +111,10 @@ class RunReport:
     #: own table because the unit stays admitted: ``screen_dropped`` is per unit, this is per
     #: process.
     eligibility_dropped: tuple[EligibilityDrop, ...] = ()
+    #: Units :func:`carb3.build.screen_premise` dropped at this premise, because an input
+    #: could be neither imported nor made here. Written beside the §3.2 screen's list in
+    #: ``screen_dropped.parquet`` under their own leg.
+    premise_dropped: tuple[UnitDrop, ...] = ()
 
 
 def build_ledger(
@@ -147,11 +152,7 @@ def build_ledger(
     model_units = sorted({pair.unit_id for pair in pairs})
     parameters = _unit_parameters(reference, model_units)
     carrier_facts = _carrier_facts(reference)
-    supplied = {
-        carrier_id: frozenset(units & sets.units)
-        for carrier_id, units in sorted(sets.supply.items())
-        if units & sets.units
-    }
+    supplied = _supplied(sets)
     terms = _balance_terms(reference, model_units, periods, carrier_facts, supplied)
     coefficients = {
         carrier_id: {
@@ -199,10 +200,12 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
     each other. Nine files: the six ledger tables, ``run_report.parquet`` – one row, the
     G1 (single-premise wall clock) measurement, the solver status and the objective –
     ``screen_dropped.parquet``, the §3.2 screen's work list, which is the table note 20
-    records, and ``eligibility_dropped.parquet``, the units a process refused by ``min_duty``
-    or a 0.00 ``max_share`` (admitted units, so not in the screen's list). Both lists are
-    written even when empty, because "nothing was dropped" is a finding too and an absent
-    file cannot say it.
+    records, followed by this premise's ``unreachable_input`` drops
+    (:func:`carb3.build.screen_premise`; the ``leg`` column tells the two apart), and
+    ``eligibility_dropped.parquet``, the units a process refused by ``min_duty`` or a 0.00
+    ``max_share`` (admitted units, so not in the screen's list). Both lists are written even
+    when empty, because "nothing was dropped" is a finding too and an absent file cannot say
+    it.
 
     Parquet, not CSV: §3.4's split is that hand-authored inputs stay diffable and outputs do
     not need to be.
@@ -228,6 +231,9 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
                 "wall_clock_seconds": report.wall_clock_seconds,
                 "n_units_admitted": len(report.screen.admitted),
                 "n_units_dropped": len({drop.unit_id for drop in report.screen.dropped}),
+                "n_units_dropped_at_premise": len(
+                    {drop.unit_id for drop in report.premise_dropped}
+                ),
             }
         ]
     ).to_parquet(report_path, index=False)
@@ -237,7 +243,7 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
     pd.DataFrame(
         [
             {"unit_id": drop.unit_id, "leg": drop.leg, "detail": drop.detail}
-            for drop in report.screen.dropped
+            for drop in (*report.screen.dropped, *report.premise_dropped)
         ],
         columns=["unit_id", "leg", "detail"],
     ).to_parquet(dropped_path, index=False)

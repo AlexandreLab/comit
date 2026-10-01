@@ -34,6 +34,7 @@ from carb3.load import (
     PERIOD_YEARS,
     AdmissionScreen,
     ReferenceTables,
+    UnitDrop,
     load_premise_tables,
     load_reference_tables,
     screen_units,
@@ -61,6 +62,8 @@ class PremiseRun:
     written: tuple[Path, ...] = ()
     row_violations: tuple[build.RowViolation, ...] = ()
     blocked: str = ""
+    #: Units :func:`carb3.build.screen_premise` dropped here, set on blocked runs too.
+    premise_dropped: tuple[UnitDrop, ...] = ()
 
     @property
     def ok(self) -> bool:
@@ -159,13 +162,18 @@ def run_premise(
     periods = axis.years
     premise = load_premise_tables(premise_id, premise_root)
     sets = build_sets(reference, premise, screen, periods)
+    incumbents = frozenset(str(unit_id) for unit_id in premise.premise_process_unit["unit_id"])
+    sets, premise_dropped = build.screen_premise(sets, reference, incumbents)
 
     unservable = diagnose_unservable_duties(sets, screen)
     if unservable:
         return PremiseRun(
             premise_id=premise_id,
             sets=sets,
-            blocked=_explain_unservable(reference, premise, sets, screen, unservable),
+            blocked=_explain_unservable(
+                reference, premise, sets, screen, unservable, premise_dropped
+            ),
+            premise_dropped=premise_dropped,
         )
 
     vintages = survival.vintage_capacity(premise, reference.unit)
@@ -173,7 +181,10 @@ def run_premise(
     shortfall = diagnose_start_year_shortfall(sets, surviving, reference.unit)
     if shortfall is not None:
         return PremiseRun(
-            premise_id=premise_id, sets=sets, blocked=explain_start_year_shortfall(shortfall)
+            premise_id=premise_id,
+            sets=sets,
+            blocked=explain_start_year_shortfall(shortfall),
+            premise_dropped=premise_dropped,
         )
     model = build.build_model(sets, surviving, axis, reference, tariff_override)
     result = build.solve(model)
@@ -183,6 +194,7 @@ def run_premise(
             sets=sets,
             result=result,
             blocked=f"the solve terminated {result.termination_condition!r}",
+            premise_dropped=premise_dropped,
         )
 
     violations = build.check_constraint_rows(model, result)
@@ -198,6 +210,7 @@ def run_premise(
             status=result.termination_condition,
             objective=result.objective,
             eligibility_dropped=sets.eligibility_dropped,
+            premise_dropped=premise_dropped,
         )
         written = ledger.write_parquet(tables, report, out_dir)
         if site_report:
@@ -209,6 +222,7 @@ def run_premise(
         tables=tables,
         written=written,
         row_violations=violations,
+        premise_dropped=premise_dropped,
     )
 
 
@@ -275,6 +289,7 @@ def _explain_unservable(
     sets: ModelSets,
     screen: AdmissionScreen,
     unservable,
+    premise_dropped: tuple[UnitDrop, ...] = (),
 ) -> str:
     """Why a duty has no eligible unit — by unit, not by count (§5.2).
 
@@ -295,6 +310,7 @@ def _explain_unservable(
     for unit_id, carrier_id in zip(outputs["unit_id"], outputs["carrier_id"], strict=True):
         primary.setdefault(str(unit_id), set()).add(str(carrier_id))
     dropped_units = {drop.unit_id for drop in screen.dropped}
+    unreachable = {drop.unit_id for drop in premise_dropped}
     duty_by_key = {duty.key: duty for duty in sets.duties}
 
     lines: list[str] = []
@@ -314,10 +330,24 @@ def _explain_unservable(
             lines.append(f"    unit_eligibility names no unit for ({activity}, {process_id})")
             continue
         screened = [unit_id for unit_id in candidates if unit_id in dropped_units]
-        survived = [unit_id for unit_id in candidates if unit_id not in dropped_units]
+        stranded = [
+            unit_id
+            for unit_id in candidates
+            if unit_id in unreachable and unit_id not in dropped_units
+        ]
+        survived = [
+            unit_id
+            for unit_id in candidates
+            if unit_id not in dropped_units and unit_id not in unreachable
+        ]
         if screened:
             lines.append(
                 f"    removed by the §3.2 screen ({len(screened)}): {', '.join(screened)}"
+            )
+        if stranded:
+            lines.append(
+                f"    removed here, an input can be neither imported nor made "
+                f"({len(stranded)}): {', '.join(stranded)}"
             )
         for unit_id in survived:
             made = ", ".join(sorted(primary.get(unit_id, set()))) or "nothing"
@@ -397,6 +427,12 @@ def _print_premise(run: PremiseRun) -> None:
                 "  no duty derived: no known_activity (§3.10 cannot state a known zero): "
                 f"{', '.join(labelled)}"
             )
+
+    if run.premise_dropped:
+        units = sorted({drop.unit_id for drop in run.premise_dropped})
+        print(f"input unreachable here, dropped ({len(units)}):")
+        for drop in run.premise_dropped:
+            print(f"    {drop.unit_id:<32} {drop.detail}")
 
     if run.blocked:
         print("NOT SOLVED — no LP was built (§5.2: an expected outcome, not an error)")

@@ -105,6 +105,8 @@ def test_write_parquet_writes_the_screen_list_even_when_it_is_empty(tmp_path: Pa
     refused = pd.read_parquet(tmp_path / "fx-empty" / "eligibility_dropped.parquet")
     assert list(refused.columns) == ["premise_id", "process_id", "unit_id", "reason", "detail"]
     assert refused.empty
+    run = pd.read_parquet(tmp_path / "fx-empty" / "run_report.parquet")
+    assert run.loc[0, "n_units_dropped_at_premise"] == 0
 
 
 def test_eligibility_drops_get_their_own_table_not_the_screens(tmp_path: Path) -> None:
@@ -132,6 +134,44 @@ def test_eligibility_drops_get_their_own_table_not_the_screens(tmp_path: Path) -
     refused = pd.read_parquet(tmp_path / "fx-dairy" / "eligibility_dropped.parquet")
     assert refused.to_dict("records") == [dataclasses.asdict(drop)]
     assert pd.read_parquet(tmp_path / "fx-dairy" / "screen_dropped.parquet").empty
+
+
+def test_write_parquet_lists_the_premise_drops_after_the_screen_list(tmp_path: Path) -> None:
+    """The per-premise screen's drops share the §3.2 list's file, told apart by ``leg``,
+    and the run report counts them separately from the §3.2 screen's."""
+    empty = pd.DataFrame()
+    tables = ledger.Ledger(
+        cost_by_term=empty,
+        carrier_mix=empty,
+        dispatch=empty,
+        build=empty,
+        disposal=empty,
+        unit_flow=empty,
+    )
+    report = ledger.RunReport(
+        premise_id="fx-dairy",
+        screen=AdmissionScreen(
+            frozenset(), (UnitDrop("heat_exchanger_lt_steam", "capex", "blank"),)
+        ),
+        n_variables=1,
+        n_constraints=1,
+        wall_clock_seconds=0.5,
+        status="optimal",
+        premise_dropped=(
+            UnitDrop(
+                "chp_bfg_gas_turbine",
+                build.UNREACHABLE_INPUT_LEG,
+                "consumes blast_furnace_gas, which this premise can neither import nor produce",
+            ),
+        ),
+    )
+    ledger.write_parquet(tables, report, tmp_path)
+    dropped = pd.read_parquet(tmp_path / "fx-dairy" / "screen_dropped.parquet")
+    assert list(dropped["leg"]) == ["capex", "unreachable_input"]
+    assert dropped.loc[1, "unit_id"] == "chp_bfg_gas_turbine"
+    run = pd.read_parquet(tmp_path / "fx-dairy" / "run_report.parquet")
+    assert run.loc[0, "n_units_dropped"] == 1
+    assert run.loc[0, "n_units_dropped_at_premise"] == 1
 
 
 def test_write_parquet_keeps_one_directory_per_premise(tmp_path: Path) -> None:

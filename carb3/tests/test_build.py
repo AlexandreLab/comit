@@ -406,6 +406,7 @@ def test_signatures(assert_signature) -> None:
         "build_model",
         ("sets", "surviving", "axis", "reference", "tariff_override"),
     )
+    assert_signature(build, "screen_premise", ("sets", "reference", "incumbents"))
     assert_signature(build, "solve", ("model", "settings"))
     assert_signature(build, "check_constraint_rows", ("model", "result", "tolerance"))
 
@@ -1074,3 +1075,158 @@ def test_a_declared_process_co2_row_is_vented_rather_than_making_the_premise_inf
         3.5 * EF_NATURAL_GAS[2021] * (1 - 0.0115)
     )
     assert build.check_constraint_rows(model, result) == ()
+
+
+# --------------------------------------------------------------------------------------
+# The per-premise reachability screen
+# --------------------------------------------------------------------------------------
+
+#: Two carriers no unit in the base fixture touches, neither importable. ``intermediate``
+#: so A6 (the fuel-CO₂ derivation) does not ask for an emission factor.
+_UNREACHABLE_CARRIERS = (
+    {"carrier_id": "furnace_gas", "may_import": "FALSE"},
+    {"carrier_id": "coke_feed", "may_import": "FALSE"},
+    {"carrier_id": "bottled_gas", "may_import": "TRUE"},
+)
+
+#: Units whose inputs exercise each branch of the rule, all serving the fixture's duty.
+#: ``coke_oven`` burns ``coke_feed``, which nothing makes, and is the only maker of
+#: ``furnace_gas``; ``furnace_chp`` burns that. ``reject_pump`` lifts the boiler's reject
+#: heat, ``lift_pump`` draws the duty carrier itself, ``bottled_burner`` burns an importable
+#: carrier nothing on site makes.
+_SCREEN_UNITS: dict[str, list[tuple[str, float, str]]] = {
+    "coke_oven": [("coke_feed", -1.0, "fuel_input"), ("furnace_gas", 0.5, "coproduct")],
+    "furnace_chp": [("furnace_gas", -2.4, "fuel_input")],
+    "reject_pump": [("heat_lt60", -0.5, "aux_input"), ("electricity", -0.2, "fuel_input")],
+    "lift_pump": [("heat_60_100", -0.5, "aux_input"), ("electricity", -0.3, "fuel_input")],
+    "bottled_burner": [("bottled_gas", -1.1, "fuel_input")],
+}
+
+
+def _screen_reference() -> ReferenceTables:
+    reference = _reference()
+    carriers = pd.DataFrame(
+        [
+            {
+                "carrier_kind": "intermediate",
+                "is_indirect": "FALSE",
+                "biogenic_fraction": "",
+                "carbon_charge": "",
+                "may_dispose": "FALSE",
+                **row,
+            }
+            for row in _UNREACHABLE_CARRIERS
+        ]
+    )
+    rows = [
+        {"unit_id": unit_id, "carrier_id": "heat_60_100", "coefficient": 1.0,
+         "role": "primary_output"}
+        for unit_id in _SCREEN_UNITS
+    ] + [
+        {"unit_id": unit_id, "carrier_id": carrier_id, "coefficient": value, "role": role}
+        for unit_id, flows in _SCREEN_UNITS.items()
+        for carrier_id, value, role in flows
+    ]
+    return dataclasses.replace(
+        reference,
+        carrier=pd.concat([reference.carrier, carriers], ignore_index=True),
+        unit_input_output=pd.concat(
+            [reference.unit_input_output, pd.DataFrame(rows)], ignore_index=True
+        ),
+    )
+
+
+def _screen_sets(units: frozenset[str]) -> ModelSets:
+    sets = _sets(eligible=units)
+    key = sets.duties[0].key
+    return dataclasses.replace(
+        sets,
+        earliest_year={(key, unit_id): 2025 for unit_id in units},
+        max_share={(key, unit_id): 0.9 for unit_id in units},
+        min_duty={(key, unit_id): 0.01 for unit_id in units},
+    )
+
+
+ALL_SCREEN_UNITS = frozenset({"boiler_lt_gas", "heat_pump_lt_air", *_SCREEN_UNITS})
+
+
+def test_screen_premise_drops_a_unit_whose_fuel_is_neither_imported_nor_made() -> None:
+    _, drops = build.screen_premise(_screen_sets(ALL_SCREEN_UNITS), _screen_reference())
+    by_unit = {drop.unit_id: drop for drop in drops}
+    assert by_unit["coke_oven"].leg == "unreachable_input"
+    assert "coke_feed" in by_unit["coke_oven"].detail
+    assert "neither import nor produce" in by_unit["coke_oven"].detail
+
+
+def test_screen_premise_repeats_until_a_stranded_consumer_is_dropped_too() -> None:
+    """``furnace_chp`` is fed until its only producer goes, so it falls on the second round."""
+    _, drops = build.screen_premise(_screen_sets(ALL_SCREEN_UNITS), _screen_reference())
+    assert [drop.unit_id for drop in drops] == ["coke_oven", "furnace_chp"]
+    assert "furnace_gas" in drops[1].detail
+    assert "coke_oven" in drops[1].detail
+
+
+def test_screen_premise_counts_a_reject_row_as_made_on_site() -> None:
+    """``heat_lt60`` cannot be imported; the boiler's ``reject`` row is its source."""
+    sets, drops = build.screen_premise(_screen_sets(ALL_SCREEN_UNITS), _screen_reference())
+    assert "reject_pump" in sets.units
+    assert "reject_pump" not in {drop.unit_id for drop in drops}
+
+    without_boiler = ALL_SCREEN_UNITS - {"boiler_lt_gas"}
+    _, drops = build.screen_premise(_screen_sets(without_boiler), _screen_reference())
+    assert "reject_pump" in {drop.unit_id for drop in drops}
+
+
+def test_screen_premise_counts_a_duty_carrier_as_made_on_site() -> None:
+    """A duty's output is settled by C1 (duty satisfaction) and never reaches C8 (carrier
+    balance), so C8 alone would call ``heat_60_100`` unsourced. It is made here, and a unit
+    drawing it must not be dropped for a reason that is false."""
+    sets, drops = build.screen_premise(_screen_sets(ALL_SCREEN_UNITS), _screen_reference())
+    assert "lift_pump" in sets.units
+    assert "lift_pump" not in {drop.unit_id for drop in drops}
+
+
+def test_screen_premise_never_drops_for_an_importable_carrier() -> None:
+    sets, drops = build.screen_premise(_screen_sets(ALL_SCREEN_UNITS), _screen_reference())
+    assert "bottled_burner" in sets.units
+    assert "bottled_burner" not in {drop.unit_id for drop in drops}
+
+
+def test_screen_premise_removes_a_dropped_unit_from_every_set_and_bound() -> None:
+    sets, _ = build.screen_premise(_screen_sets(ALL_SCREEN_UNITS), _screen_reference())
+    gone = {"coke_oven", "furnace_chp"}
+    assert not gone & sets.units
+    assert all(not gone & units for units in sets.eligible.values())
+    for bounds in (sets.earliest_year, sets.max_share, sets.min_duty):
+        assert not gone & {unit_id for _key, unit_id in bounds}
+    assert {unit_id for _key, unit_id in sets.max_share} == ALL_SCREEN_UNITS - gone
+
+
+def test_screen_premise_leaves_a_clean_premise_untouched() -> None:
+    sets = _sets()
+    screened, drops = build.screen_premise(sets, _reference())
+    assert drops == ()
+    assert screened == sets
+
+
+def test_screen_premise_names_an_incumbent_it_drops() -> None:
+    _, drops = build.screen_premise(
+        _screen_sets(ALL_SCREEN_UNITS), _screen_reference(), incumbents={"coke_oven"}
+    )
+    by_unit = {drop.unit_id: drop for drop in drops}
+    assert "incumbent" in by_unit["coke_oven"].detail
+    assert "incumbent" not in by_unit["furnace_chp"].detail
+
+
+def test_a_duty_the_screen_empties_is_reported_not_raised() -> None:
+    """The screen must hand an emptied duty to ``diagnose_unservable_duties``, which reports
+    it, rather than reach ``_dispatch_pairs``, which raises on it."""
+    from carb3.load import AdmissionScreen
+    from carb3.sets import diagnose_unservable_duties
+
+    sets, drops = build.screen_premise(
+        _screen_sets(frozenset({"coke_oven"})), _screen_reference()
+    )
+    assert [drop.unit_id for drop in drops] == ["coke_oven"]
+    assert sets.eligible[DUTY_KEY] == frozenset()
+    assert diagnose_unservable_duties(sets, AdmissionScreen(frozenset(), ()))
