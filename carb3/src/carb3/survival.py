@@ -1,12 +1,12 @@
 """D11 (existing plant has an age) survival function, computed before the LP.
 
 Surviving incumbent capacity e_{u,t} is a pure-parameter routine: it depends on the install
-year in ``premise_process_vintage`` and the unit's ``lifetime``, and on nothing the solver
+year in ``premise_process_unit`` and the unit's ``lifetime``, and on nothing the solver
 decides. Computing it ahead of the LP keeps C4 (incumbent ageing) a bound rather than a
 recursion.
 
 **This is mechanism, not driver** (§4.3). C4, e_{u,t}, this function and
-``premise_process_vintage`` change no number in the slice — C2 is an inequality and C1 is an
+``premise_process_unit`` change no number in the slice — C2 is an inequality and C1 is an
 equality, so nothing compels an incumbent to run, and §4.2's carbon term makes the model
 abandon it at the first buildable period whatever its age. They are built because ``MF-43``
 is a Must at M2. The test asserts **the decay itself**, that surviving capacity falls as
@@ -16,13 +16,13 @@ Lifetimes convert against **actual years remaining**, never against a uniform Δ
 
 **Which evidence tier this is, and why it is the only one reachable here.** The archived
 baseline §5.3.1 gives the survival function three tiers: tier 1 ``process_known``, a point
-mass on a ``premise_process_vintage`` cohort's commissioning year; tier 2
+mass on a ``premise_process_unit`` cohort's commissioning year; tier 2
 ``premise_bounded``, a window ``[0, clamp(A, 0, L)]`` from ``premise_record.construction_year``;
 and tier 3 ``uniform_default``, the window ``[0, L]`` whose η is COMIT's straight line. Only
 **tier 1** is expressible through the two signatures below. :func:`survival_fraction` takes a
 single ``install_year`` and so cannot carry a window, and :func:`surviving_capacity` is handed
 ``vintages`` and ``unit`` and never ``premise_record``, so the tier-2 bound is not in reach;
-tier 3 needs an incumbent capacity, which in this slice arrives only on a vintage row. A unit
+tier 3 needs an incumbent capacity, which in this slice arrives only on a row with a commissioned_year. A unit
 with no vintage row therefore carries **no** incumbent capacity, as the docstring below
 requires, rather than falling back to a uniform-life pool.
 
@@ -52,7 +52,7 @@ def survival_fraction(install_year: int, lifetime_years: int, year: int) -> floa
     — the failure this exists to prevent is a 25-year life read as 25 periods (§10).
 
     A cohort whose ``install_year`` is later than ``year`` is treated as standing in full.
-    §3.15 requires ``commissioned_year`` ≤ ``data_year``, so a negative age is a base-year
+    §3.10.2 requires ``commissioned_year`` ≤ ``data_year``, so a negative age is a base-year
     offset rather than a plant that has not been built, and clamping it is the harmless
     reading. Note the one divergence from §5.3.1: that section clamps the final operating
     year to the base year (Ω = max(g + L − 1, y_{t_0})) so a premise arriving with plant
@@ -77,9 +77,9 @@ def surviving_capacity(
     Long-form, one row per ``(unit_id, period)``. A unit with no vintage row carries no
     incumbent capacity rather than raising.
 
-    ``vintages`` is ``premise_process_vintage`` (§3.15), one row per cohort, and must carry
+    ``vintages`` is ``premise_process_unit`` (§3.10.2), one row per cohort, and must carry
     ``unit_id``, ``commissioned_year`` and ``capacity``. Where a ``capacity_share`` column is
-    present it scales that row's capacity, which is how §3.15's cohort split of one process's
+    present it scales that row's capacity, which is how §3.10.2's cohort split of one process's
     existing capacity is written: several rows for one unit, shares summing to 1. Cohorts are
     summed per unit, so the result is §5.3.1's share-weighted sum, and a two-cohort unit
     decays as a staircase rather than in one step.
@@ -87,7 +87,7 @@ def surviving_capacity(
     ``unit`` is the reference ``unit`` table and supplies ``lifetime`` in years. A vintage row
     naming a unit absent from it, or one whose ``lifetime`` is blank, is a broken input and
     raises: silently dropping it would understate incumbent capacity, which is the failure
-    §3.15's "shares sum" rule exists to prevent.
+    §3.10.2's "shares sum" rule exists to prevent.
     """
     period_years = [int(year) for year in periods]
     empty = pd.DataFrame(
@@ -103,7 +103,7 @@ def surviving_capacity(
     missing = {"unit_id", "commissioned_year", "capacity"} - set(vintages.columns)
     if missing:
         raise ValueError(
-            f"premise_process_vintage is missing {sorted(missing)}; "
+            f"premise_process_unit is missing {sorted(missing)}; "
             f"surviving_capacity needs {sorted({'unit_id', 'commissioned_year', 'capacity'})}"
         )
 
@@ -111,7 +111,7 @@ def surviving_capacity(
     unknown = sorted(set(vintages["unit_id"]) - set(lifetimes))
     if unknown:
         raise ValueError(
-            "premise_process_vintage names units with no usable lifetime in the reference "
+            "premise_process_unit names units with no usable lifetime in the reference "
             f"unit table: {unknown}. A vintage row cannot be aged without one"
         )
 
@@ -134,9 +134,16 @@ def surviving_capacity(
 
 
 def vintage_capacity(premise, unit: pd.DataFrame) -> pd.DataFrame:
-    """``premise_process_vintage`` with the ``capacity`` column :func:`surviving_capacity` needs.
+    """``premise_process_unit`` (§3.10.2) plus the ``capacity`` column :func:`surviving_capacity` needs.
 
-    §3.15 carries a ``capacity_share`` and no capacity: the magnitude lives one table up, in
+    Only rows under the window valid at the base year are kept, matched on
+    ``(process_id, valid_from_year)`` against the ``premise_process_detail`` row with
+    ``valid_from_year`` ≤ ``data_year`` and ``valid_to_year`` blank or ≥ ``data_year``. Rows
+    under a closed window are history and are skipped silently. Rows with a blank
+    ``commissioned_year`` are skipped too: they would be tier 2 (``premise_bounded``) of the
+    survival function, which is not reachable in this slice (see the module docstring).
+
+    §3.10.2 carries a ``capacity_share`` and no capacity: the magnitude lives one table up, in
     ``premise_process_detail.known_capacity``, which the premise README states is "the
     premise's annual magnitude for that process". That is an **activity** in PJ/yr or Mt/yr,
     not a nameplate, so C2's ``a γ α`` has to be inverted to get the capacity behind it::
@@ -155,35 +162,56 @@ def vintage_capacity(premise, unit: pd.DataFrame) -> pd.DataFrame:
     conservative; nothing in the model depends on which, because the kiln clears 0.85 Mt/yr
     either way.
 
-    A process valid at the base year with a blank ``known_capacity`` contributes no
-    incumbent capacity, which is the same silence :func:`carb3.sets.derive_duties` gives its
-    duty. A vintage row whose process has no such row at all is an unresolvable reference
-    and raises.
+    A window valid at the base year with a blank ``known_capacity`` contributes no incumbent
+    capacity, which is the same silence :func:`carb3.sets.derive_duties` gives its duty. A
+    row whose process has no ``premise_process_detail`` row at all is an unresolvable
+    reference and raises. A window valid at the base year with more than one row and a blank
+    ``capacity_share`` also raises: A4's carrier-mix split is not built, so the share must be
+    stated.
     """
-    vintages = premise.premise_process_vintage
-    if vintages is None or len(vintages) == 0:
-        return vintages.copy() if vintages is not None else pd.DataFrame()
+    children = premise.premise_process_unit
+    if children is None or len(children) == 0:
+        return children.copy() if children is not None else pd.DataFrame()
 
     detail = premise.premise_process_detail
     data_year = int(premise.premise_record.iloc[0]["data_year"])
     started = detail["valid_from_year"] <= data_year
     not_ended = detail["valid_to_year"].isna() | (detail["valid_to_year"] >= data_year)
-    magnitude = {
-        str(row.process_id): row.known_capacity
+    valid = {
+        (str(row.process_id), int(row.valid_from_year)): row.known_capacity
         for row in detail[started & not_ended].itertuples(index=False)
     }
+    known_processes = set(detail["process_id"].astype(str))
+
+    kept = []
+    for row in children.itertuples(index=False):
+        process_id = str(row.process_id)
+        if process_id not in known_processes:
+            raise ValueError(
+                f"premise_process_unit names process {process_id!r}, which has no "
+                "premise_process_detail row; §3.10.2's cohorts hang off §3.10's intervals"
+            )
+        if (process_id, int(row.valid_from_year)) not in valid:
+            continue
+        if pd.isna(row.commissioned_year):
+            continue
+        kept.append(row)
+
+    per_window: dict[tuple[str, int], list] = {}
+    for row in kept:
+        per_window.setdefault((str(row.process_id), int(row.valid_from_year)), []).append(row)
+    for (process_id, valid_from), rows in per_window.items():
+        if len(rows) > 1 and any(pd.isna(r.capacity_share) for r in rows):
+            raise ValueError(
+                f"premise_process_unit has {len(rows)} rows for process {process_id!r} "
+                f"window {valid_from} with a blank capacity_share; A4's carrier-mix split "
+                "is not built, so the share must be stated"
+            )
 
     indexed = unit.set_index("unit_id")
     rows = []
-    for row in vintages.itertuples(index=False):
-        process_id = str(row.process_id)
-        if process_id not in magnitude:
-            raise ValueError(
-                f"premise_process_vintage names process {process_id!r}, which has no "
-                "premise_process_detail row valid at the base year; §3.15's cohorts hang "
-                "off §3.10's intervals"
-            )
-        activity = magnitude[process_id]
+    for row in kept:
+        activity = valid[(str(row.process_id), int(row.valid_from_year))]
         if pd.isna(activity):
             continue
         unit_id = str(row.unit_id)
@@ -196,7 +224,7 @@ def vintage_capacity(premise, unit: pd.DataFrame) -> pd.DataFrame:
                 "capacity; the §3.2 admission screen should have dropped it"
             )
         rows.append({**row._asdict(), "capacity": float(activity) / deliverable})
-    return pd.DataFrame.from_records(rows, columns=[*vintages.columns, "capacity"])
+    return pd.DataFrame.from_records(rows, columns=[*children.columns, "capacity"])
 
 
 def _lifetimes(unit: pd.DataFrame) -> dict[str, int]:

@@ -169,7 +169,6 @@
             "entities": [
               "activity_process_register",
               "premise_process_detail",
-              "premise_process_vintage",
               "process_load_shape",
               "premise_process_energy",
               "premise_process_unit"

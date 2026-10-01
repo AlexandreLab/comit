@@ -220,17 +220,22 @@ def test_a_unit_table_without_a_lifetime_column_fails_loud() -> None:
 # ---------------------------------------------------------------------------------------
 
 
-def _premise(detail_rows, vintage_rows):
-    """A minimal :class:`~carb3.load.PremiseTables` stand-in for ``vintage_capacity``."""
+def _premise(detail_rows, unit_rows):
+    """A minimal :class:`~carb3.load.PremiseTables` stand-in for ``vintage_capacity``.
+
+    ``unit_rows`` are ``premise_process_unit`` rows; a row that states no ``valid_from_year``
+    hangs off the 2009 window and one that states no ``cohort_id`` is cohort ``"1"``.
+    """
     from carb3.load import PremiseTables
+
+    unit_rows = [{"valid_from_year": 2009, "cohort_id": "1", **row} for row in unit_rows]
 
     return PremiseTables(
         premise_record=pd.DataFrame([{"premise_id": "fx", "data_year": 2024}]),
         premise_connection=pd.DataFrame(),
         premise_throughput=pd.DataFrame(),
         premise_process_detail=pd.DataFrame(detail_rows),
-        premise_process_unit=pd.DataFrame(),
-        premise_process_vintage=pd.DataFrame(vintage_rows),
+        premise_process_unit=pd.DataFrame(unit_rows),
     )
 
 
@@ -250,7 +255,7 @@ def _costed_unit_table() -> pd.DataFrame:
 def test_vintage_capacity_inverts_gamma_alpha_to_get_the_capacity_behind_a_duty() -> None:
     """``known_capacity`` is the process's annual **activity**, and C2 reads a capacity.
 
-    §3.15 carries a ``capacity_share`` and no capacity; the magnitude is one table up. C2
+    §3.10.2 carries a ``capacity_share`` and no capacity; the magnitude is one table up. C2
     is ``z <= a γ α``, so the capacity behind an annual magnitude of ``D`` is ``D/(γα)``.
 
     **Reading ``known_capacity`` as a capacity instead makes ``mvp-minimal`` infeasible at
@@ -317,7 +322,7 @@ def test_vintage_capacity_skips_a_process_with_no_magnitude() -> None:
 
 
 def test_vintage_capacity_refuses_a_cohort_whose_process_is_not_valid_at_the_base_year() -> None:
-    """§3.15's cohorts hang off §3.10's intervals; an orphan is a broken input."""
+    """§3.10.2's cohorts hang off §3.10's intervals; an orphan is a broken input."""
     premise = _premise(
         [
             {
@@ -359,3 +364,51 @@ def test_a_blank_lifetime_arrives_as_pd_na_from_a_real_reference_table() -> None
     )
     standing = survival.surviving_capacity(vintages, unit, PERIODS)
     assert set(standing["unit_id"]) == {"boiler_lt_gas"}
+
+
+def _detail(valid_from_year: int, valid_to_year, known_capacity: float = 0.1) -> dict:
+    return {
+        "premise_id": "fx",
+        "process_id": "boiler_steam_hot_water",
+        "valid_from_year": valid_from_year,
+        "valid_to_year": valid_to_year,
+        "known_capacity": known_capacity,
+    }
+
+
+def _child(valid_from_year: int, commissioned_year, share, cohort_id: str = "1") -> dict:
+    return {
+        "premise_id": "fx",
+        "process_id": "boiler_steam_hot_water",
+        "valid_from_year": valid_from_year,
+        "cohort_id": cohort_id,
+        "unit_id": "boiler_lt_gas",
+        "commissioned_year": commissioned_year,
+        "capacity_share": share,
+    }
+
+
+def test_vintage_capacity_skips_a_row_under_a_closed_window_silently() -> None:
+    """A window that ended before the base year is history, not an error."""
+    premise = _premise(
+        [_detail(2000, 2010), _detail(2011, None)],
+        [_child(2000, 1995, 1.0), _child(2011, 2011, 1.0)],
+    )
+    frame = survival.vintage_capacity(premise, _costed_unit_table())
+    assert list(frame["valid_from_year"]) == [2011]
+
+
+def test_vintage_capacity_skips_a_row_with_a_blank_commissioned_year() -> None:
+    """Tier 2 (a bounded window) is not reachable in this slice, so the row carries nothing."""
+    premise = _premise([_detail(2009, None)], [_child(2009, None, 1.0)])
+    assert survival.vintage_capacity(premise, _costed_unit_table()).empty
+
+
+def test_vintage_capacity_refuses_a_multi_row_window_with_blank_shares() -> None:
+    """A4's carrier-mix split is not built, so several cohorts must state their shares."""
+    premise = _premise(
+        [_detail(2009, None)],
+        [_child(2009, 2009, None, "1"), _child(2009, 2015, None, "2")],
+    )
+    with pytest.raises(ValueError, match="share must be stated"):
+        survival.vintage_capacity(premise, _costed_unit_table())

@@ -132,7 +132,7 @@ REFERENCE_SCHEMA: dict[str, _ReferenceSchema] = {
     ),
 }
 
-#: Premise schemas are spec §3.1, §3.10, §3.10.2 and §3.15. Unlike the reference side they
+#: Premise schemas are spec §3.1, §3.10 and §3.10.2. Unlike the reference side they
 #: separate required from optional, because these files are hand-authored: a premise that
 #: states no ``connection_id`` should not have to carry an empty column.
 PREMISE_SCHEMA: dict[str, _ReferenceSchema] = {
@@ -163,14 +163,9 @@ PREMISE_SCHEMA: dict[str, _ReferenceSchema] = {
         ("valid_to_year", "connection_id", "known_capacity"),
     ),
     "premise_process_unit": (
-        ("premise_id", "process_id", "valid_from_year", "unit_id", "provenance",
-         "confidence"),
-        ("capacity_share",),
-    ),
-    "premise_process_vintage": (
-        ("premise_id", "process_id", "cohort_id", "unit_id", "commissioned_year",
-         "capacity_share", "provenance", "confidence"),
-        (),
+        ("premise_id", "process_id", "valid_from_year", "cohort_id", "unit_id",
+         "provenance", "confidence"),
+        ("commissioned_year", "capacity_share"),
     ),
 }
 
@@ -187,8 +182,7 @@ _INTEGER_COLUMNS: dict[str, tuple[str, ...]] = {
     "premise_record": ("data_year", "construction_year", "last_refurbishment_year"),
     "premise_throughput": ("data_year",),
     "premise_process_detail": ("valid_from_year", "valid_to_year"),
-    "premise_process_unit": ("valid_from_year",),
-    "premise_process_vintage": ("commissioned_year",),
+    "premise_process_unit": ("valid_from_year", "commissioned_year"),
 }
 
 _FLOAT_COLUMNS: dict[str, tuple[str, ...]] = {
@@ -209,7 +203,6 @@ _FLOAT_COLUMNS: dict[str, tuple[str, ...]] = {
     ),
     "premise_process_detail": ("known_capacity",),
     "premise_process_unit": ("capacity_share",),
-    "premise_process_vintage": ("capacity_share",),
 }
 
 _BOOLEAN_COLUMNS: dict[str, tuple[str, ...]] = {
@@ -257,7 +250,6 @@ class PremiseTables:
     premise_throughput: pd.DataFrame
     premise_process_detail: pd.DataFrame
     premise_process_unit: pd.DataFrame
-    premise_process_vintage: pd.DataFrame
 
 
 @dataclass(frozen=True)
@@ -416,14 +408,13 @@ def resolve_premise_references(
     )
     known_units = set(reference.unit["unit_id"])
 
-    for table_name in ("premise_process_detail", "premise_process_unit",
-                       "premise_process_vintage"):
+    for table_name in ("premise_process_detail", "premise_process_unit"):
         frame = getattr(premise, table_name)
         for process_id in sorted(set(frame["process_id"].dropna())):
             if process_id not in known_processes:
                 raise ResolutionError(
                     f"{premise_id}: {table_name}.process_id {process_id!r} is not a "
-                    f"process of ({activity!r}, {set_id!r}) (§3.10, §3.15)"
+                    f"process of ({activity!r}, {set_id!r}) (§3.10, §3.10.2)"
                 )
         if "unit_id" not in frame.columns:
             continue
@@ -431,7 +422,7 @@ def resolve_premise_references(
             if unit_id not in known_units:
                 raise ResolutionError(
                     f"{premise_id}: {table_name}.unit_id {unit_id!r} is not in unit.csv "
-                    f"(§3.10.2, §3.15)"
+                    f"(§3.10.2)"
                 )
 
     _resolve_carrier_keys(reference, premise, premise_id)

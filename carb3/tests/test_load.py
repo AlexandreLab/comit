@@ -47,14 +47,10 @@ PREMISE_FILES: dict[str, str] = {
         "fx-cement,cement_grinding,2021,0.3,fixture,high\n"
     ),
     "premise_process_unit": (
-        "premise_id,process_id,valid_from_year,unit_id,provenance,confidence\n"
-        "fx-dairy,boiler_steam_hot_water,2021,boiler_lt_gas,fixture,high\n"
-        "fx-cement,kiln_pyroprocessing,2021,kiln_dry_gas,fixture,high\n"
-    ),
-    "premise_process_vintage": (
-        "premise_id,process_id,cohort_id,unit_id,commissioned_year,capacity_share,"
-        "provenance,confidence\n"
-        "fx-dairy,boiler_steam_hot_water,1,boiler_lt_gas,2005,1.0,fixture,high\n"
+        "premise_id,process_id,valid_from_year,cohort_id,unit_id,commissioned_year,"
+        "capacity_share,provenance,confidence\n"
+        "fx-dairy,boiler_steam_hot_water,2021,1,boiler_lt_gas,2005,1.0,fixture,high\n"
+        "fx-cement,kiln_pyroprocessing,2021,1,kiln_dry_gas,,,fixture,high\n"
     ),
 }
 
@@ -132,7 +128,6 @@ def test_premise_tables_carry_six_and_not_process_duty() -> None:
         "premise_throughput",
         "premise_process_detail",
         "premise_process_unit",
-        "premise_process_vintage",
     }
     assert "process_duty" not in fields
 
@@ -241,7 +236,7 @@ def test_premise_years_are_integers(premise_root: Path) -> None:
     premise = load.load_premise_tables("fx-dairy", premise_root)
     assert premise.premise_record["data_year"].dtype == "Int64"
     assert int(premise.premise_record["data_year"].iloc[0]) == 2021
-    assert premise.premise_process_vintage["commissioned_year"].dtype == "Int64"
+    assert premise.premise_process_unit["commissioned_year"].dtype == "Int64"
 
 
 def test_booleans_round_trip_as_booleans(reference: load.ReferenceTables) -> None:
@@ -275,11 +270,8 @@ def test_unknown_activity_fails_loud(
             "premise_id,process_id,valid_from_year,known_capacity,provenance,confidence\n"
         ),
         premise_process_unit=(
-            "premise_id,process_id,valid_from_year,unit_id,provenance,confidence\n"
-        ),
-        premise_process_vintage=(
-            "premise_id,process_id,cohort_id,unit_id,commissioned_year,capacity_share,"
-            "provenance,confidence\n"
+            "premise_id,process_id,valid_from_year,cohort_id,unit_id,commissioned_year,"
+            "capacity_share,provenance,confidence\n"
         ),
     )
     premise = load.load_premise_tables("fx-dairy", root)
@@ -308,8 +300,8 @@ def test_unknown_unit_id_fails_loud(
     root = write_premise_fixture(
         tmp_path / "p",
         premise_process_unit=(
-            "premise_id,process_id,valid_from_year,unit_id,provenance,confidence\n"
-            "fx-dairy,boiler_steam_hot_water,2021,boiler_lt_unobtainium,fixture,high\n"
+            "premise_id,process_id,valid_from_year,cohort_id,unit_id,provenance,confidence\n"
+            "fx-dairy,boiler_steam_hot_water,2021,1,boiler_lt_unobtainium,fixture,high\n"
         ),
     )
     premise = load.load_premise_tables("fx-dairy", root)

@@ -2,13 +2,13 @@
 
 Generated from [the implementation specification](../2026-08-28-carb3-site-energy-system-implementation.md) by `docs/notes/examples/build_spec_flow_diagram.py`. Do not edit by hand — regenerate.
 
-The 26 entities of §3 and the 47 relationships between them, read straight out of the field tables: the Key column supplies the primary keys, and an arrow to a table name in either the Key or the Validation column supplies the foreign keys. Nothing here is maintained by hand, so a foreign key added to the spec appears on the next regeneration and one removed disappears.
+The 25 entities of §3 and the 44 relationships between them, read straight out of the field tables: the Key column supplies the primary keys, and an arrow to a table name in either the Key or the Validation column supplies the foreign keys. Nothing here is maintained by hand, so a foreign key added to the spec appears on the next regeneration and one removed disappears.
 
 ## How the tables relate
 
 Read `A ||--o{ B` as *one A, many B*. `|{` on the child end marks an **identifying** relationship — the foreign key is part of B's own primary key, so a B cannot exist without its A. `|o` on the parent end marks a foreign key the child may leave unset.
 
-A composite foreign key is drawn once, with its columns merged onto the label: 60 foreign-key columns become 47 arrows.
+A composite foreign key is drawn once, with its columns merged onto the label: 57 foreign-key columns become 44 arrows.
 
 ```mermaid
 erDiagram
@@ -44,7 +44,7 @@ erDiagram
     activity_process_register ||--|{ premise_process_energy : "process_id"
     carrier ||--|{ premise_process_energy : "carrier_id"
     premise_process_detail ||--|{ premise_process_unit : "premise_id"
-    unit ||--|{ premise_process_unit : "unit_id"
+    unit ||--o{ premise_process_unit : "unit_id"
     premise_record ||--|{ premise_measured_emissions : "premise_id"
     premise_record ||--|{ premise_operating_profile : "premise_id"
     premise_connection |o--|{ premise_operating_profile : "connection_id"
@@ -52,9 +52,6 @@ erDiagram
     premise_record ||--|{ premise_weekly_profile : "premise_id"
     premise_connection |o--|{ premise_weekly_profile : "connection_id"
     activity_process_register |o--|{ premise_weekly_profile : "process_id"
-    premise_record ||--|{ premise_process_vintage : "premise_id"
-    activity_process_register ||--|{ premise_process_vintage : "process_id"
-    unit |o--o{ premise_process_vintage : "unit_id"
     activity_process_register ||--|{ activity_default_unit : "carb3_activity, process_set_id, process_id"
     activity_process_duty_profile ||--|{ activity_default_unit : "duty_family"
     unit ||--|{ activity_default_unit : "unit_id"
@@ -81,7 +78,6 @@ flowchart LR
         direction TB
         activity_process_register["activity_process_register<br/>§3.2"]
         premise_process_detail["premise_process_detail<br/>§3.10"]
-        premise_process_vintage["premise_process_vintage<br/>§3.15"]
         process_load_shape["process_load_shape<br/>§3.13"]
         premise_process_energy["premise_process_energy<br/>§3.10.1"]
         premise_process_unit["premise_process_unit<br/>§3.10.2"]
@@ -157,9 +153,6 @@ flowchart LR
     premise_weekly_profile -->|premise_id| premise_record
     premise_weekly_profile -->|connection_id| premise_connection
     premise_weekly_profile -->|process_id| activity_process_register
-    premise_process_vintage -->|premise_id| premise_record
-    premise_process_vintage -->|process_id| activity_process_register
-    premise_process_vintage -->|unit_id| unit
     activity_default_unit -->|carb3_activity, process_set_id, process_id| activity_process_register
     activity_default_unit -->|duty_family| activity_process_duty_profile
     activity_default_unit -->|unit_id| unit
@@ -178,10 +171,9 @@ One row per table, in the order §3 defines them.
 | Connections | `premise_connection` | §3.1.3 | — | `import_capacity`, `export_capacity`, `connection_voltage`, `available_area` |
 | Processes | `activity_process_register` | §3.2 | activity → processes | `set_name`, `is_default`, `process_name`, `is_optional`, `provenance` |
 |  | `premise_process_detail` | §3.10 | known site processes and capacity | `valid_to_year`, `known_capacity`, `provenance`, `confidence` |
-|  | `premise_process_vintage` | §3.15 | when the plant was installed (D11) | `commissioned_year`, `capacity_share`, `provenance`, `confidence` |
 |  | `process_load_shape` | §3.13 | how a process presents its demand | `shape_id`, `shape_class`, `duty_factor`, `peak_to_mean`, `runs_when_idle`, `seasonality`, `provenance`, `confidence` |
 |  | `premise_process_energy` | §3.10.1 | sub-metered energy per process | `quantity`, `data_status`, `provenance`, `confidence` |
-|  | `premise_process_unit` | §3.10.2 | which units a known process runs | `capacity_share`, `provenance`, `confidence` |
+|  | `premise_process_unit` | §3.10.2 | which units a known process runs, and when each was installed | `commissioned_year`, `capacity_share`, `provenance`, `confidence` |
 | Duties | `activity_process_duty_profile` | §3.3 | — | `duty_share`, `share_low`, `share_high`, `evidence_tier`, `provenance`, `confidence` |
 |  | `process_duty` | §3.9 | — | `quantity`, `evidence_tier` |
 |  | `activity_process_energy_share` | §3.3.1 | how much energy each process takes | `energy_share`, `share_low`, `share_high`, `evidence_tier`, `provenance`, `confidence` |
@@ -238,7 +230,7 @@ erDiagram
     activity_process_register ||--|{ premise_process_energy : "process_id"
     carrier ||--|{ premise_process_energy : "carrier_id"
     premise_process_detail ||--|{ premise_process_unit : "premise_id"
-    unit ||--|{ premise_process_unit : "unit_id"
+    unit ||--o{ premise_process_unit : "unit_id"
     premise_record ||--|{ premise_measured_emissions : "premise_id"
     premise_record ||--|{ premise_operating_profile : "premise_id"
     premise_connection |o--|{ premise_operating_profile : "connection_id"
@@ -246,9 +238,6 @@ erDiagram
     premise_record ||--|{ premise_weekly_profile : "premise_id"
     premise_connection |o--|{ premise_weekly_profile : "connection_id"
     activity_process_register |o--|{ premise_weekly_profile : "process_id"
-    premise_record ||--|{ premise_process_vintage : "premise_id"
-    activity_process_register ||--|{ premise_process_vintage : "process_id"
-    unit |o--o{ premise_process_vintage : "unit_id"
     activity_process_register ||--|{ activity_default_unit : "carb3_activity, process_set_id, process_id"
     activity_process_duty_profile ||--|{ activity_default_unit : "duty_family"
     unit ||--|{ activity_default_unit : "unit_id"
@@ -446,7 +435,9 @@ erDiagram
     string premise_id PK,FK "required"
     string process_id PK "required"
     integer valid_from_year PK "required"
-    string unit_id PK,FK "required"
+    string cohort_id PK "required"
+    string unit_id FK "required"
+    integer commissioned_year "optional"
     real capacity_share "optional"
     string provenance "required"
     enum confidence "required"
@@ -500,16 +491,6 @@ erDiagram
     integer interval_index PK "required"
     real fraction_of_peak "required"
     real annual_peak "required"
-    string provenance "required"
-    enum confidence "required"
-    }
-    premise_process_vintage {
-    string premise_id PK,FK "required"
-    string process_id PK,FK "required"
-    string cohort_id PK "required"
-    string unit_id FK "optional"
-    integer commissioned_year "required"
-    real capacity_share "required"
     string provenance "required"
     enum confidence "required"
     }

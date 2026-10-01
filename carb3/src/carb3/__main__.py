@@ -38,7 +38,13 @@ from carb3.load import (
     load_reference_tables,
     screen_units,
 )
-from carb3.sets import ModelSets, build_sets, diagnose_unservable_duties
+from carb3.sets import (
+    ModelSets,
+    build_sets,
+    diagnose_start_year_shortfall,
+    diagnose_unservable_duties,
+    explain_start_year_shortfall,
+)
 
 #: The three synthetic premises of plan §3.4, in the order the report prints them.
 DEFAULT_PREMISES: tuple[str, ...] = ("mvp-minimal", "mvp-dairy", "mvp-cement")
@@ -142,8 +148,9 @@ def run_premise(
     """Load, derive, build, solve and (optionally) write one premise.
 
     Every stage that §5.2 calls an expected outcome returns a :class:`PremiseRun` carrying
-    ``blocked`` rather than raising: an unservable duty and a non-optimal solve are both
-    answers about the data, and a traceback would bury them.
+    ``blocked`` rather than raising: an unservable duty, a start-year shortfall in the
+    incumbent plant (:func:`carb3.sets.diagnose_start_year_shortfall`) and a non-optimal
+    solve are all answers about the data, and a traceback would bury them.
 
     With ``out_dir`` and ``site_report``, the premise's ``site_report.html`` is written
     beside its parquet. A premise that returns ``blocked`` never reaches that line, so a
@@ -163,6 +170,11 @@ def run_premise(
 
     vintages = survival.vintage_capacity(premise, reference.unit)
     surviving = survival.surviving_capacity(vintages, reference.unit, periods)
+    shortfall = diagnose_start_year_shortfall(sets, surviving, reference.unit)
+    if shortfall is not None:
+        return PremiseRun(
+            premise_id=premise_id, sets=sets, blocked=explain_start_year_shortfall(shortfall)
+        )
     model = build.build_model(sets, surviving, axis, reference, tariff_override)
     result = build.solve(model)
     if result.solution is None:

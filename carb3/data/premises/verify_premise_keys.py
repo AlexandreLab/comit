@@ -40,7 +40,6 @@ energy     = rd(PRE, "premise_energy.csv")
 through    = rd(PRE, "premise_throughput.csv")
 detail     = rd(PRE, "premise_process_detail.csv")
 ppunit     = rd(PRE, "premise_process_unit.csv")
-vintage    = rd(PRE, "premise_process_vintage.csv")
 
 ACT   = {r["premise_id"]: r["carb3_activity"] for r in record}
 DYEAR = {r["premise_id"]: int(r["data_year"]) for r in record}
@@ -144,55 +143,38 @@ for p in ACT:
 
 # --- premise_process_unit -------------------------------------------------
 shares = collections.defaultdict(list)
+ukeys = set()
+cohort_units = collections.defaultdict(list)
 for r in ppunit:
-    p, proc, vf, u = r["premise_id"], r["process_id"], int(r["valid_from_year"]), r["unit_id"]
+    p, proc, vf, coh, u = (r["premise_id"], r["process_id"], int(r["valid_from_year"]),
+                           r["cohort_id"], r["unit_id"])
+    if p not in ACT: E(f"premise_process_unit: unknown premise_id {p}"); continue
     if (p, proc, vf) not in parents:
         E(f"premise_process_unit[{p}/{proc}/{vf}]: no matching premise_process_detail row")
+    if not coh.strip(): E(f"premise_process_unit[{p}/{proc}/{vf}]: cohort_id is blank")
+    if (p, proc, vf, coh) in ukeys:
+        E(f"premise_process_unit: duplicate key ({p}, {proc}, {vf}, {coh})")
+    ukeys.add((p, proc, vf, coh))
     if u not in unit:
         E(f"premise_process_unit[{p}/{proc}]: unit_id {u!r} not in unit.csv"); continue
     if (u, ACT[p], proc) not in ELIG and (u, ACT[p]) not in ELIG_ACT:
         E(f"premise_process_unit[{p}/{proc}]: {u} not eligible for ({ACT[p]}, {proc}) in unit_eligibility.csv")
+    if r["commissioned_year"].strip() and int(r["commissioned_year"]) > DYEAR[p]:
+        E(f"premise_process_unit[{p}/{proc}/{vf}/{coh}]: commissioned_year after data_year (vintage_in_future)")
     if r["confidence"] not in ("high", "medium", "low"):
         E(f"premise_process_unit[{p}/{proc}/{u}]: confidence not in the enum")
+    cohort_units[(p, proc, vf)].append((u, r["commissioned_year"].strip()))
     shares[(p, proc, vf)].append((u, float(r["capacity_share"]) if r["capacity_share"] else None))
+for k, v in cohort_units.items():
+    if len(v) != len(set(v)):
+        E(f"premise_process_unit{k}: a unit repeats with the same commissioned_year (a second cohort needs a different one)")
 for k, v in shares.items():
-    us = [u for u, _ in v]
-    if len(us) != len(set(us)): E(f"premise_process_unit{k}: units are not distinct")
     given = [s for _, s in v if s is not None]
     if given and len(given) != len(v):
         E(f"premise_process_unit{k}: capacity_share given on some rows but not all")
     if given:
         if abs(sum(given) - 1.0) > 1e-6: E(f"premise_process_unit{k}: capacity_share sums to {sum(given)}, not 1 (V33)")
         if any(not (0 < s <= 1) for s in given): E(f"premise_process_unit{k}: capacity_share outside (0, 1]")
-
-# --- premise_process_vintage ---------------------------------------------
-vshares = collections.defaultdict(list)
-vkeys = set()
-for r in vintage:
-    p, proc, coh, u = r["premise_id"], r["process_id"], r["cohort_id"], r["unit_id"]
-    if p not in ACT: E(f"premise_process_vintage: unknown premise_id {p}"); continue
-    if (ACT[p], proc) not in REG_PROC:
-        E(f"premise_process_vintage[{p}]: ({ACT[p]}, {proc}) not in activity_process_register")
-    if (p, proc, coh) in vkeys: E(f"premise_process_vintage: duplicate key ({p}, {proc}, {coh})")
-    vkeys.add((p, proc, coh))
-    if u and u not in unit: E(f"premise_process_vintage[{p}/{proc}]: unit_id {u!r} not in unit.csv")
-    if int(r["commissioned_year"]) > DYEAR[p]:
-        E(f"premise_process_vintage[{p}/{proc}/{coh}]: commissioned_year after data_year (vintage_in_future)")
-    if r["confidence"] not in ("high", "medium", "low"):
-        E(f"premise_process_vintage[{p}/{proc}/{coh}]: confidence not in the enum")
-    vshares[(p, proc)].append(float(r["capacity_share"]))
-    # the cohort must name a unit the premise actually runs at the base year
-    live = {(pu["unit_id"]) for pu in ppunit
-            if pu["premise_id"] == p and pu["process_id"] == proc
-            and any(d["premise_id"] == p and d["process_id"] == proc
-                    and int(d["valid_from_year"]) == int(pu["valid_from_year"])
-                    and (int(d["valid_to_year"]) if d["valid_to_year"] else 9999) >= DYEAR[p]
-                    for d in detail)}
-    if u and live and u not in live:
-        E(f"premise_process_vintage[{p}/{proc}/{coh}]: {u} is not a base-year unit of that process")
-for k, v in vshares.items():
-    if abs(sum(v) - 1.0) > 1e-6: E(f"premise_process_vintage{k}: capacity_share sums to {sum(v)}, not 1 (vintage_shares_unbalanced)")
-    if any(not (0 < s <= 1) for s in v): E(f"premise_process_vintage{k}: capacity_share outside (0, 1]")
 
 # --- the admission screen, on the units these premises actually name -------
 REQ = ["capex", "lifetime", "fixed_opex", "availability_factor", "capacity_to_activity_factor"]
@@ -226,7 +208,7 @@ for p in ACT:
 print(f"reference root : {REF}   premise root: {PRE}")
 print(f"premises       : {', '.join(ACT)}")
 print(f"rows checked   : record {len(record)}, connection {len(conn)}, energy {len(energy)}, "
-      f"throughput {len(through)}, detail {len(detail)}, process_unit {len(ppunit)}, vintage {len(vintage)}")
+      f"throughput {len(through)}, detail {len(detail)}, process_unit {len(ppunit)}")
 print(f"distinct unit_id / process_id / carrier_id / carb3_activity resolved: "
       f"{len(named)} / {len({r['process_id'] for r in detail})} / "
       f"{len({r['carrier_id'] for r in energy} | {r['carrier_id'] for r in through} | {r['carrier_id'] for r in conn})} / "

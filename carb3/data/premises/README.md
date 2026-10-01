@@ -17,8 +17,7 @@ single row of it.
 | `premise_energy.csv` | §3.1.1 | Base-year consumption by carrier. Required entity; A1 (ingest and validate) rejects `no_energy` without it |
 | `premise_throughput.csv` | §3.1.2 | Base-year physical output. Required where the activity has a mass-denominated process. **Read**: an exportable product's row is the premise's D5 mass duty |
 | `premise_process_detail.csv` | §3.10 | Which processes run, over which validity interval, at what capacity |
-| `premise_process_unit.csv` | §3.10.2 | Which units each process runs — one row per unit, from the 2026-09-17 pass |
-| `premise_process_vintage.csv` | §3.15 | Install year per cohort (D11, existing plant has an age) |
+| `premise_process_unit.csv` | §3.10.2 | Which units each process runs, one row per cohort, and when each cohort was installed (D11, existing plant has an age) |
 | `verify_premise_keys.py` | — | Stdlib key- and rule-checker. See [Verification](#verification) |
 
 **`process_duty` is not here.** §3.9 derives it at run time by A2 (duties and candidate
@@ -36,12 +35,128 @@ worked examples' own §6.2. A premise with no `cluster_id` is treated as outside
 cluster. Recorded as a specification gap in
 [note 20](../../../docs/notes/20_reference_data_open_questions.md) item 58.
 
-**Four tables were commissioned; seven are written.** `premise_connection`, `premise_energy`
+**Four tables were commissioned; six are written.** `premise_process_vintage`, the fourth, was merged into `premise_process_unit` on 2026-10-01, because the two held the same units and the same shares twice. `premise_connection`, `premise_energy`
 and `premise_throughput` are the three §3.1 companions. §3.1 declares the first two
 **required** alongside `premise_record`, and without `premise_throughput` the cement premise
 has no `cement` duty at all — nothing draws clinker, the kiln never runs, and the process-CO₂
 and capture-train behaviour the premise exists to exercise never happens. They are small and
 they are the spec's own shape, so they are written rather than deferred.
+
+## Field reference
+
+Every field in the six tables, with what it means and a value from these premises. The
+spec section in each heading is the authority; this is the plain reading of it. **The base
+year (`premise_record.data_year`) is 2024 for all three premises**, and it is the only year
+the model reads.
+
+**Reading the Key column.** **PK** marks the fields that together identify a row: no two rows
+may share them, and "PK part" means the field is one of several that do so together. **→**
+means the value must exist in another table, so the field is a link to it. "Pointed to by"
+names the tables whose fields link to this one. A link that uses several fields at once, such
+as `premise_process_unit`'s `(premise_id, process_id, valid_from_year)`, is described on each
+of its fields.
+
+### `premise_record` (§3.1): the premise itself
+
+One row per premise.
+
+| Field | Required | Key | What it means | Example |
+|---|---|---|---|---|
+| `premise_id` | yes | **PK**. Every other premise table points here | The premise's unique, stable identifier. Every other table joins on it | `mvp-cement` |
+| `carb3_activity` | yes | → `activity_process_register.csv` | The CaRB3 activity class. It selects the default process list in `activity_process_register.csv` | `Cement Works` |
+| `latitude`, `longitude` | yes | | Location in degrees. Must fall inside the GB bounding box | `53.35`, `-1.75` for `mvp-cement` |
+| `nation` | yes | | England, Wales or Scotland. Northern Ireland is out of scope | `England` |
+| `cluster_id` | no | → `infrastructure_scenario.csv` | The industrial cluster the premise sits in, read by C9 (infrastructure availability) for hydrogen and CO₂ access. **Not a §3.1 field**: the spec has A1 assign it on ingest, and A1 is not built, so it is written down here (note 20 item 58). Blank means outside every cluster | `humber` for `mvp-cement`; `mersey` for the two food premises |
+| `floorspace` | no | | Floor area in m² | `46000` for `mvp-cement` |
+| `process_set_id` | no | → `activity_process_register.csv` | Picks a named, non-default process set for the activity. Blank means the activity's default set | blank on all three |
+| `construction_year` | no | | The year the premise was built. The upper bound on plant age for a unit with no `commissioned_year` (D11, existing plant has an age). Must be ≤ `data_year` | `1957` for `mvp-cement`; `2009` for `mvp-minimal` |
+| `construction_year_band` | no | | A build-year range, used only when `construction_year` is blank, read as its earliest year | `1965-1984` for `mvp-dairy`, read as 1965 |
+| `last_refurbishment_year` | no | | Collected for future use; nothing reads it. A refurbishment does not reset plant age | `2011` for `mvp-cement` |
+| `data_year` | yes | | **The base year**: the one year of measured data the model reads (D12, one base year) | `2024` on all three |
+| `source` | yes | | Where the row came from | `synthetic - cut from the cement worked example section 1.1 (premise P-000123)` |
+
+### `premise_connection` (§3.1.3): the site's network connections
+
+One row per networked connection. A delivered fuel (coal by road, oil by tanker) has no
+row and needs none.
+
+| Field | Required | Key | What it means | Example |
+|---|---|---|---|---|
+| `premise_id` | yes | **PK** part; → `premise_record` | The premise | `mvp-cement` |
+| `connection_id` | yes | **PK** part. Pointed to by `premise_energy.connection_id` and `premise_process_detail.connection_id` | The connection's name, unique within the premise. Other tables point at it | `C-01` |
+| `carrier_id` | yes | → `carrier.csv` | Which network it connects to | `C-01` is `electricity`, `C-02` is `natural_gas`, `C-03` is `co2_captured` |
+| `import_capacity` | no | | Maximum import in MW. Capacities are never summed across connections: each is its own limit in C11 (connection capacity) | `25` MW on `C-01`; `0` on `C-03` |
+| `export_capacity` | no | | Maximum export in MW. A site exports a carrier only through a connection carrying it | `2` MW on `mvp-dairy`'s `E-01`; blank on `C-03`, so CO₂ export is unlimited by the connection |
+| `connection_voltage` | no | | Voltage in kV, for electricity connections | `11` kV on `mvp-dairy`'s `E-01`; `33` kV on `mvp-cement`'s `C-01` |
+| `available_area` | no | | Roof plus land in m² available for onsite generation, read by C12 (siting cap). Without it PV is unbounded | `12000` m² on `mvp-dairy`'s `E-01`; blank on `mvp-cement` |
+
+### `premise_energy` (§3.1.1): what the site consumes, by carrier
+
+One row per carrier, per connection, per year. Required: a premise without it is rejected.
+
+| Field | Required | Key | What it means | Example |
+|---|---|---|---|---|
+| `premise_id` | yes | **PK** part; → `premise_record` | The premise | `mvp-dairy` |
+| `carrier_id` | yes | **PK** part; → `carrier.csv` | The carrier as metered | `natural_gas` |
+| `connection_id` | no | **PK** part; → `premise_connection` | The connection the quantity came through. Blank means the premise's default connection | blank on every row here |
+| `vector` | yes | | The broad grouping (electricity, gas, oil, coal, biomass, other) used to join the duty profile | `gas` for `natural_gas`; `other` for `waste_derived_fuel` |
+| `quantity` | yes | | Annual consumption in PJ/yr, ≥ 0 | `0.300000` PJ/yr of gas at `mvp-dairy` |
+| `data_status` | yes | | measured, estimated, modelled, or `not_consumed`. **A carrier known not to be used is written as a zero with `not_consumed`**, because a missing row means "nobody checked", not "zero" | `measured` for `mvp-dairy`'s gas; `not_consumed` for its coal; `modelled` for all of `mvp-cement` |
+| `data_year` | yes | **PK** part | The year the quantity was measured. Only the base-year row is read; other years are history | `2024` on every row |
+| `source` | yes | | Where this carrier's figure came from | `synthetic - duty 0.100000 PJ/yr through boiler_lt_gas at 1.13636 PJ gas per PJ heat` |
+
+### `premise_throughput` (§3.1.2): what the site makes, by mass
+
+One row per product carrier per year, in Mt/yr. Needed where the activity has a
+mass-denominated process (D5, hybrid denominators: energy in PJ, chemistry in Mt).
+
+| Field | Required | Key | What it means | Example |
+|---|---|---|---|---|
+| `premise_id` | yes | **PK** part; → `premise_record` | The premise | `mvp-cement` |
+| `carrier_id` | yes | **PK** part; → `carrier.csv` | The product. Must be a mass carrier. If the carrier may be exported, this row **is** the site's demand for it; if not, it is evidence only (D16, the site boundary is a property of the carrier) | `cement` is exported, so it is the 1.13 Mt/yr duty; `clinker` is not, so its row is evidence only |
+| `quantity` | yes | | Annual output in Mt/yr, > 0 | `1.130000` Mt/yr of cement; `0.850000` Mt/yr of clinker |
+| `data_year` | yes | **PK** part | The year it was measured. Only the base-year row is read | `2024` |
+| `data_status` | yes | | measured, estimated or modelled | `measured` on both rows |
+| `source` | yes | | Where the figure came from | `cement worked example section 1.3 base-year row` |
+
+### `premise_process_detail` (§3.10): which processes the site runs, when, and how big
+
+Optional. One row per process per validity window. Where it is given, it replaces the
+activity's default process list, and **the rows valid in a year are the site's complete
+process list for that year**.
+
+| Field | Required | Key | What it means | Example |
+|---|---|---|---|---|
+| `premise_id` | yes | **PK** part; → `premise_record` | The premise | `mvp-cement` |
+| `process_id` | yes | **PK** part; → `activity_process_register.csv`, on `(carb3_activity, process_id)` | The process. Must exist for the premise's activity in `activity_process_register.csv` | `kiln_pyroprocessing` |
+| `valid_from_year` | yes | **PK** part. The full key `(premise_id, process_id, valid_from_year)` is what `premise_process_unit` points to | The year the process **started at the site**. It can't be later than the base year, because a planned future change isn't an observation. If the start year is unknown, write the base year and say so in `provenance`. With `process_id` it identifies the row, so child tables repeat it to point at their parent | `mvp-cement`'s kiln has two rows: `1957` for the old wet line and `2004` for the current dry line |
+| `valid_to_year` | no | | The year the process **stopped**. Blank means it's still running. Must be ≥ `valid_from_year`. Windows for one process must not overlap, and only the window covering the base year is read; closed windows are history | `2003` closes the wet kiln line, which the model ignores; blank on the 2004 dry line, so that is the row read |
+| `connection_id` | no | → `premise_connection` | Which electricity connection serves this process, which decides where electrified load lands. Blank means the default. **These premises put the gas connection `G-01` on gas-fired processes**, which the spec's wording (an electricity connection) does not cover | `C-01` (electricity) on every `mvp-cement` row; `G-01` (gas) on `mvp-dairy`'s boiler |
+| `known_capacity` | no | | **The process's annual size**: PJ/yr for an energy process, Mt/yr for a mass one. A2 (duties and candidate units) splits it into duties. Must be > 0, so a known zero has to be left blank with the reason in `provenance` | `0.950000` Mt/yr clinker on the 2004 kiln line; `0.131579` PJ/yr on `mvp-dairy`'s boiler; blank on `mvp-cement`'s `clinker_cooling` (a genuine zero) |
+| `provenance` | yes | | Where the row came from, including the unit `known_capacity` is in | `Mt/yr clinker line capacity; cement worked example section 1.5 permit figure` |
+| `confidence` | yes | | high, medium or low. Carried through to the outputs | `high` on the 2004 kiln line; `medium` on the closed wet line |
+
+### `premise_process_unit` (§3.10.2): which units each process runs, and when each was installed
+
+Optional. One row per **cohort**: a batch of one unit's capacity installed in the same year,
+under one `premise_process_detail` window. The rows under one window are that process's
+**complete** list of plant. A window with no rows means the plant is unknown and A4 (the
+carrier-mix rule) resolves it from the candidate units. It feeds D11 (existing plant has an
+age); a row with no `commissioned_year` falls back to `construction_year`, then to the default.
+
+| Field | Required | Key | What it means | Example |
+|---|---|---|---|---|
+| `premise_id` | yes | **PK** part; with the next two fields, → `premise_process_detail` | The premise | `mvp-dairy` |
+| `process_id` | yes | **PK** part; part of the same link | The process. With `premise_id` and `valid_from_year`, points at the parent `premise_process_detail` row | `boiler_steam_hot_water` |
+| `valid_from_year` | yes | **PK** part; completes the link to `premise_process_detail`, so it must equal the parent row's value | **Not a date of its own.** It names which parent window this row belongs to, so it always equals that parent row's `valid_from_year`. Only rows under the window valid at the base year are aged: plant under a closed window is gone, and ageing it would strand an asset that no longer exists | `2011` on both boiler-house rows, though the boiler was installed in 2016 |
+| `cohort_id` | yes | **PK** part | The row's number within its window. `1`, `2`, … is enough | `1` and `2` on `mvp-dairy`'s boiler process |
+| `unit_id` | yes | → `unit.csv`, and must be admitted by `unit_eligibility.csv` | The unit this cohort is. Must be in `unit.csv` and eligible for this process at this activity. A unit appears twice in one window only with two different `commissioned_year` values | cohort 1 is `chp_gas_turbine`, cohort 2 is `boiler_lt_gas`; `mvp-cement`'s kiln line is `kiln_dry_coal` and `kiln_dry_gas` (D13, one primary carrier per unit) |
+| `commissioned_year` | no | | The year this equipment was **installed**. It can't be later than the base year. The unit is retired once `year − commissioned_year` reaches its `lifetime` in `unit.csv`. **A refurbishment does not reset it**: a 1998 kiln relined in 2019 is a 1998 cohort. It can differ from the process's `valid_from_year`, because a site can run a process for decades on newer equipment | `2011` for the CHP and `2016` for the boiler, though the process has run since `2011`; `mvp-cement`'s `grinder_mixer_elec` is `1998` on a process running since `1957`; `mvp-minimal`'s `boiler_lt_gas` is `2009` with a 25-year lifetime, so it retires in 2034 |
+| `capacity_share` | no | | The cohort's share of the parent's `known_capacity`, in (0, 1]. If one row in a window gives it, every row must, and they sum to 1 (V33, plant is named one unit at a time). Blank means A4 splits by the carrier mix, which only works when each unit is a single cohort, so **a unit with two cohorts needs it stated**. The slice does not build A4, so `survival.py` refuses a window of several rows with blank shares. **A share too small for the duties only that unit can serve makes the start year infeasible**: see "Incumbents too small for the start year" below | `0.350000` CHP and `0.650000` boiler; `0.871369` coal kiln and `0.128631` gas kiln |
+| `provenance` | yes | | Where the row came from, for both the unit and its install year | `cement worked example section 1.5.1 permit fuel schedule; share renormalised after dropping kiln_dry_wdf; commissioned_year: cement worked example section 1.6; share renormalised after dropping kiln_dry_wdf` |
+| `confidence` | yes | | high, medium or low. Where the unit and its install year came from sources of different quality, the lower one | `high` for the CHP; `medium` for the boiler, whose install year is less certain than its presence |
+
+---
 
 ## Where the duty magnitude lives
 
@@ -232,11 +347,10 @@ Stdlib only, because `pandas` is not installed in this repo. It checks, and curr
   without one is warned about, because C9 then permits it no CO₂ export at all;
 - the §3.10 rules: validity intervals disjoint, at least one row valid at the base year,
   `valid_from_year ≤ data_year`, `known_capacity > 0` where present;
-- the §3.10.2 rules: children distinct, `capacity_share` all-or-none and summing to 1 within
-  1e-6 — V33 (plant is named one unit at a time) — each child's parent triple present;
-- the §3.15 rules: `capacity_share` summing to 1 within 1e-6 per premise-process,
-  `commissioned_year ≤ data_year`, and every cohort naming a unit the premise runs at the
-  base year;
+- the §3.10.2 rules: `(window, cohort_id)` unique, a unit repeated in one window only with
+  different `commissioned_year` values, `capacity_share` all-or-none and summing to 1 within
+  1e-6 per window (V33, plant is named one unit at a time), each row's parent triple present,
+  and `commissioned_year ≤ data_year`;
 - **the note 21 §3.2 admission screen, applied to every incumbent these premises name** — no
   named unit has a blank cost field, a missing coefficient set, a declared fuel with no
   `fuel_input` row, or a consumed carrier that is not priced in all seven periods;
@@ -244,6 +358,22 @@ Stdlib only, because `pandas` is not installed in this repo. It checks, and curr
   is an equality and C5 (no building in the start year) forbids it, so a duty with no
   incumbent is infeasible at 2021. This is the check that decided the incumbent rows for
   the eleven processes the worked examples leave unnamed.
+
+### Incumbents too small for the start year
+
+`verify_premise_keys.py` checks that every process valid at the base year names at least one
+unit. It does **not** check that the named units are big enough. That is checked at run time,
+by `sets.diagnose_start_year_shortfall`, before any LP is built: in the first period C5 (no
+building in the start year) allows no new plant, so the units here must meet every duty on
+their own. A premise that fails it is reported `NOT SOLVED` with the duties that are short and
+by how much; [the package README](../../README.md#two-checks-before-the-solve) has the
+detail and a worked failure.
+
+The usual cause is a `capacity_share` that does not match the duties each unit can serve.
+Shares always add up to the process's `known_capacity`, so the total is never short; what
+goes wrong is giving a unit less than the duty **only it** can serve. `mvp-dairy`'s
+`site_services` shows it: its heat pump must carry the whole space-heating duty (54.9% of the
+process) because a motor cannot make heat, so its share must be at least 0.549.
 
 ## Findings for the reference data
 
