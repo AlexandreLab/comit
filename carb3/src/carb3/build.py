@@ -303,9 +303,8 @@ def build_model(
     parameters = _unit_parameters(reference, model_units)
     carrier_facts = _carrier_facts(reference)
     supplied = _supplied(sets)
-    parts = _balance_parts(
-        _balance_terms(reference, model_units, periods, carrier_facts, supplied), len(periods)
-    )
+    terms = _balance_terms(reference, model_units, periods, carrier_facts, supplied)
+    parts = _balance_parts(terms, len(periods))
     # Import, disposal and export read only which carriers have a C8 row.
     c8_carriers = frozenset(parts)
 
@@ -496,6 +495,22 @@ def build_model(
         if d_disposal is not None and carrier_id in disposal_carriers:
             balance = balance - d_disposal.sel(carrier=carrier_id, drop=True)
         model.add_constraints(balance == 0, name=f"C8_{carrier_id}")
+
+    # --- C13 a cap is not routed through a consumer ---------------------------------------
+    _add_c13(
+        model,
+        sets=sets,
+        terms=terms,
+        pairs=pairs,
+        z=z,
+        total_activity=total_activity,
+        demand=demand,
+        disposal=d_disposal,
+        disposal_carriers=disposal_carriers,
+        exports=x_export,
+        export_carriers=export_carriers,
+        period_index=period_index,
+    )
 
     # --- objective -----------------------------------------------------------------------
     model.add_objective(
@@ -1334,6 +1349,268 @@ def _balance_terms(
         for carrier_id, by_unit in coefficients.items()
         if any(_live(by_role) for by_role in by_unit.values())
     }
+
+
+@dataclass(frozen=True)
+class C13Tracking:
+    """What C13 (a cap is not routed through a consumer) tracks at a premise.
+
+    ``capped`` holds each (unit, duty) with a ``max_share`` cap s, including a 0.00
+    prohibition, which removes the unit from U_q and is recorded per process. ``outputs``
+    holds, per capped unit, the carriers it puts on C8 (carrier balance) that some other
+    model unit draws, with those drawers.
+    """
+
+    capped: dict[tuple[str, tuple[str, str, str]], float]
+    outputs: dict[tuple[str, str], tuple[str, ...]]
+
+
+def c13_tracking(
+    sets: ModelSets, terms: dict[str, dict[str, dict[str, np.ndarray]]]
+) -> C13Tracking:
+    """The capped (unit, duty) pairs and the outputs C13 follows; empty where nothing is
+    capped or no capped unit's output is drawn, and then C13 builds nothing."""
+    held = {pair_unit for pair_unit in _held_units(sets)}
+    capped: dict[tuple[str, tuple[str, str, str]], float] = {}
+    for (duty_key, unit_id), share in sets.max_share.items():
+        if unit_id in held:
+            capped[(unit_id, duty_key)] = float(share)
+    for drop in sets.eligibility_dropped:
+        if drop.reason != "max_share" or drop.unit_id not in held:
+            continue
+        for duty in sets.duties:
+            if duty.premise_id == drop.premise_id and duty.process_id == drop.process_id:
+                capped[(drop.unit_id, duty.key)] = 0.0
+
+    capped_units = {unit_id for unit_id, _ in capped}
+    outputs: dict[tuple[str, str], tuple[str, ...]] = {}
+    for carrier_id, by_unit in terms.items():
+        drawers = tuple(sorted(u for u, w in _activity_weights(by_unit).items() if np.any(w < 0)))
+        for unit_id in sorted(capped_units & set(by_unit)):
+            if _puts_on_balance(by_unit[unit_id]) and set(drawers) - {unit_id}:
+                outputs[(unit_id, carrier_id)] = tuple(d for d in drawers if d != unit_id)
+    return C13Tracking(capped=capped, outputs=outputs)
+
+
+def _held_units(sets: ModelSets) -> set[str]:
+    pairs, _ = _candidate_pairs(sets)
+    return {pair.unit_id for pair in pairs}
+
+
+def _activity_weights(
+    by_unit: dict[str, dict[str, np.ndarray]],
+) -> dict[str, np.ndarray]:
+    """Per unit, the roles C8 scales by total activity, summed."""
+    return {
+        unit_id: sum(
+            (v for role, v in by_role.items() if role != PRIMARY_OUTPUT_ROLE),
+            np.zeros(len(next(iter(by_role.values())))),
+        )
+        for unit_id, by_role in by_unit.items()
+    }
+
+
+def _puts_on_balance(by_role: dict[str, np.ndarray]) -> bool:
+    return any(np.any(values > 0.0) for values in by_role.values())
+
+
+def _add_c13(
+    model: linopy.Model,
+    *,
+    sets: ModelSets,
+    terms: dict[str, dict[str, dict[str, np.ndarray]]],
+    pairs: tuple[_Pair, ...],
+    z,
+    total_activity,
+    demand: xr.DataArray,
+    disposal,
+    disposal_carriers: Sequence[str],
+    exports,
+    export_carriers: Sequence[str],
+    period_index: pd.Index,
+) -> None:
+    """C13 (a cap is not routed through a consumer), by tracking the capped units' output.
+
+    ``max_share`` caps a unit's own dispatch to a duty. Once a unit can put output on C8
+    (carrier balance) – z° primary output, reject heat, a co-product – a consumer can lift it
+    and serve the very duty the unit is capped on. Pooled output carries no source, so for
+    each capped unit u this tracks where its output goes, and C13 bounds the energy of duty q
+    that came from u, directly or through one consumer, by s·D (implementation spec §5.5):
+
+    1. u's output on c is accounted for: out = Σ_v |ι_vc|·(Σ_q ζ_ucvq + ζ°_ucv) + υ_uc.
+    2. what leaves the site of it fits what leaves the node: Σ_u υ_uc ≤ d_c + x_c.
+    3. tags fit inside the consumer: Σ_u ζ_ucvq ≤ z_vq; Σ_u ζ°_ucv ≤ z_v − Σ_q z_vq.
+    4. C13: z_uq + Σ_cv min(1, |ι_vc|)·ζ_ucvq ≤ s·D_q.
+
+    ζ is in units of the consumer's activity; a consumer's output counts at min(1, |ι|) per
+    unit fed by u, the share of its energy that came from u (a heat pump's output is about
+    half lifted heat). Tracking stops after one hop: ζ° (u's energy passed into v's own
+    release and by-products) exists only where nothing reachable from v serves a duty u is
+    capped on; otherwise u's energy must be charged to v's duties. Nothing is built where
+    nothing is capped or no capped unit's output is drawn.
+    """
+    tracking = c13_tracking(sets, terms)
+    if not tracking.outputs:
+        return
+    periods = list(period_index)
+    duty_by_key = {duty.key: duty for duty in sets.duties}
+    duties_of: dict[str, list[tuple[str, str, str]]] = {}
+    for pair in pairs:
+        if pair.duty_key is not None:
+            duties_of.setdefault(pair.unit_id, []).append(pair.duty_key)
+    capped_of: dict[str, set[tuple[str, str, str]]] = {}
+    for unit_id, duty_key in tracking.capped:
+        capped_of.setdefault(unit_id, set()).add(duty_key)
+
+    # Onward reach for the one-hop rule: v -> w when v puts a carrier on C8 that w draws.
+    feeds: dict[str, set[str]] = {}
+    for carrier_id, by_unit in terms.items():
+        drawers = {u for u, w in _activity_weights(by_unit).items() if np.any(w < 0)}
+        for unit_id, by_role in by_unit.items():
+            if _puts_on_balance(by_role):
+                feeds.setdefault(unit_id, set()).update(drawers - {unit_id})
+
+    def reach(start: str) -> set[str]:
+        seen: set[str] = set()
+        frontier = set(feeds.get(start, set()))
+        while frontier:
+            unit_id = frontier.pop()
+            if unit_id in seen:
+                continue
+            seen.add(unit_id)
+            frontier |= feeds.get(unit_id, set()) - seen
+        return seen
+
+    tag_labels: list[str] = []
+    pass_labels: list[str] = []
+    leave_labels: list[str] = []
+    rows = []  # (u, c, v, q or None, label, kind)
+    for (unit_id, carrier_id), drawers in sorted(tracking.outputs.items()):
+        for consumer in drawers:
+            for duty_key in duties_of.get(consumer, []):
+                label = f"{unit_id}|{carrier_id}|{consumer}|{_duty_label(duty_key)}"
+                tag_labels.append(label)
+                rows.append((unit_id, carrier_id, consumer, duty_key, label))
+            onward = reach(consumer)
+            if not any(
+                set(duties_of.get(w, [])) & capped_of.get(unit_id, set()) for w in onward
+            ):
+                label = f"{unit_id}|{carrier_id}|{consumer}"
+                pass_labels.append(label)
+                rows.append((unit_id, carrier_id, consumer, None, label))
+        if carrier_id in disposal_carriers or carrier_id in export_carriers:
+            leave_labels.append(f"{unit_id}|{carrier_id}")
+
+    def declare(labels: list[str], name: str):
+        if not labels:
+            return None
+        return model.add_variables(
+            lower=0.0, coords=[pd.Index(labels, name=f"{name}_key"), period_index], name=name
+        )
+
+    zeta = declare(tag_labels, "zeta")
+    zeta_pass = declare(pass_labels, "zeta_pass")
+    upsilon = declare(leave_labels, "upsilon")
+
+    def draw(consumer: str, carrier_id: str) -> xr.DataArray:
+        weights = _activity_weights(terms[carrier_id])[consumer]
+        return xr.DataArray(-np.asarray(weights, dtype=float), coords=[period_index])
+
+    # Row 1, per (u, c).
+    for (unit_id, carrier_id), _drawers in sorted(tracking.outputs.items()):
+        by_role = terms[carrier_id][unit_id]
+        out = 0
+        activity_part = sum(
+            (np.clip(v, 0.0, None) for role, v in by_role.items() if role != PRIMARY_OUTPUT_ROLE),
+            np.zeros(len(periods)),
+        )
+        if np.any(activity_part > 0.0):
+            out = total_activity.sel(unit=unit_id) * xr.DataArray(activity_part, coords=[period_index])
+        if PRIMARY_OUTPUT_ROLE in by_role:
+            released = z.sel(dispatch=_release_coordinate(unit_id, carrier_id)) * xr.DataArray(
+                np.asarray(by_role[PRIMARY_OUTPUT_ROLE], dtype=float), coords=[period_index]
+            )
+            out = released if isinstance(out, int) else out + released
+        accounted = []
+        for (u, c, consumer, duty_key, label) in rows:
+            if (u, c) != (unit_id, carrier_id):
+                continue
+            variable = zeta if duty_key is not None else zeta_pass
+            key = "zeta_key" if duty_key is not None else "zeta_pass_key"
+            accounted.append(variable.sel({key: label}) * draw(consumer, c))
+        leave_label = f"{unit_id}|{carrier_id}"
+        if upsilon is not None and leave_label in leave_labels:
+            accounted.append(1.0 * upsilon.sel(upsilon_key=leave_label))
+        lhs = out
+        for term in accounted:
+            lhs = lhs - term
+        model.add_constraints(lhs == 0, name=f"C13_out_{unit_id}_{carrier_id}")
+
+    # Row 2, per c.
+    if upsilon is not None:
+        for carrier_id in sorted({label.split("|")[1] for label in leave_labels}):
+            left = sum(
+                upsilon.sel(upsilon_key=label)
+                for label in leave_labels
+                if label.split("|")[1] == carrier_id
+            )
+            node = 0
+            if disposal is not None and carrier_id in disposal_carriers:
+                node = disposal.sel(carrier=carrier_id, drop=True)
+            if exports is not None and carrier_id in export_carriers:
+                exported = exports.sel(carrier=carrier_id, drop=True)
+                node = exported if isinstance(node, int) else node + exported
+            model.add_constraints(left - node <= 0, name=f"C13_leave_{carrier_id}")
+
+    # Row 3, per (c, v, q) and per (c, v).
+    grouped: dict[tuple[str, str, object], list[str]] = {}
+    for (u, c, consumer, duty_key, label) in rows:
+        grouped.setdefault((c, consumer, duty_key), []).append(label)
+    for (carrier_id, consumer, duty_key), labels in sorted(
+        grouped.items(), key=lambda item: (item[0][0], item[0][1], str(item[0][2]))
+    ):
+        if duty_key is not None:
+            tagged = sum(zeta.sel(zeta_key=label) for label in labels)
+            served = z.sel(dispatch=f"{consumer}@{_duty_label(duty_key)}")
+            model.add_constraints(
+                tagged - served <= 0,
+                name=f"C13_fit_{carrier_id}_{consumer}_{_duty_label(duty_key)}",
+            )
+        else:
+            passed = sum(zeta_pass.sel(zeta_pass_key=label) for label in labels)
+            to_duties = [
+                z.sel(dispatch=f"{consumer}@{_duty_label(key)}")
+                for key in duties_of.get(consumer, [])
+            ]
+            rest = total_activity.sel(unit=consumer)
+            for column in to_duties:
+                rest = rest - column
+            model.add_constraints(passed - rest <= 0, name=f"C13_pass_{carrier_id}_{consumer}")
+
+    # Row 4, C13 itself, per capped (u, q).
+    for (unit_id, duty_key), share in sorted(tracking.capped.items()):
+        routed = [
+            (label, consumer, c)
+            for (u, c, consumer, key, label) in rows
+            if u == unit_id and key == duty_key
+        ]
+        direct = f"{unit_id}@{_duty_label(duty_key)}"
+        has_direct = duty_key in duties_of.get(unit_id, [])
+        if not routed:
+            continue  # the max_share bound on z already says it
+        lhs = 0
+        if has_direct:
+            lhs = 1.0 * z.sel(dispatch=direct)
+        for label, consumer, carrier_id in routed:
+            energy = xr.DataArray(
+                np.minimum(1.0, np.asarray(draw(consumer, carrier_id))), coords=[period_index]
+            )
+            term = zeta.sel(zeta_key=label) * energy
+            lhs = term if isinstance(lhs, int) else lhs + term
+        if isinstance(lhs, int):
+            continue
+        cap = share * demand.sel(duty=_duty_label(duty_key), drop=True)
+        model.add_constraints(lhs - cap <= 0, name=f"C13_{unit_id}_{_duty_label(duty_key)}")
 
 
 def _balance_parts(
