@@ -1683,10 +1683,12 @@ Q_HIGH = ("mvp-minimal", "process_high", "heat_100_150")
 NO_CARBON = {year: 0.0 for year in PERIODS}
 
 
-def _c13_reference(units: dict[str, list[tuple[str, float, str]]]) -> ReferenceTables:
+def _c13_reference(
+    units: dict[str, list[tuple[str, float, str]]], *, heat_lt60_disposable: bool = True
+) -> ReferenceTables:
     """The base fixture with carbon off (so the gas boiler is the cheap heat and a cap on it
     binds) plus extra units, each given as its unit_input_output rows."""
-    reference = _reference(carbon_price=NO_CARBON)
+    reference = _reference(carbon_price=NO_CARBON, heat_lt60_disposable=heat_lt60_disposable)
     carrier = pd.DataFrame(
         [
             {"carrier_id": "heat_100_150", "carrier_kind": "intermediate", "is_indirect": "FALSE",
@@ -1734,10 +1736,11 @@ def _c13_sets(reference, eligible: dict, **extra) -> ModelSets:
               {year: 1.0 for year in PERIODS})
         for key in eligible
     )
+    supply = extra.get("supply", {})
     sets = ModelSets(
         periods=PERIODS,
         duties=duties,
-        units=frozenset().union(*eligible.values()),
+        units=frozenset().union(*eligible.values(), *supply.values()),
         eligible=dict(eligible),
         earliest_year={},
         max_share=extra.pop("max_share", {}),
@@ -1748,7 +1751,7 @@ def _c13_sets(reference, eligible: dict, **extra) -> ModelSets:
 
 
 def _c13_solved(reference, sets):
-    units = sorted({u for us in sets.eligible.values() for u in us})
+    units = sorted(sets.units)
     surviving = survival.surviving_capacity(
         pd.DataFrame([{"unit_id": u, "commissioned_year": 2015, "capacity": 5.0} for u in units]),
         reference.unit,
@@ -1807,7 +1810,7 @@ def test_c13_counts_a_consumers_output_at_its_energy_share() -> None:
         _axis(),
         reference,
     )
-    row = next(name for name in model.constraints if name.startswith("C13_boiler_lt_gas_"))
+    row = next(name for name in model.constraints if name.startswith("C13|boiler_lt_gas|"))
     lhs = model.constraints[row].lhs
     zeta_labels = set(np.ravel(model.variables["zeta"].labels.values))
     coeffs = [
@@ -1863,10 +1866,11 @@ def test_c13_closes_the_reject_heat_route() -> None:
     assert build.check_constraint_rows(model, result) == ()
 
 
-def test_c13_stops_at_one_hop_and_withholds_the_pass_on_tag() -> None:
-    """The reject pump's own output feeds the lift pump, which serves a duty the boiler is
-    capped on. Tracking stops at the reject pump, so the boiler's heat may not pass through it
-    untagged: no pass-on variable exists for that edge, and the premise still solves."""
+def test_c13_charges_energy_passed_on_to_every_capped_duty_it_can_reach() -> None:
+    """The boiler is barred from the high-temperature process. Its reject heat feeds the
+    reject pump, whose own release feeds the lift pump serving that process. Tracking stops
+    at the reject pump, and what the boiler passes into its release is charged to the barred
+    duty, so none of it gets through: the lift pump runs on the air heat pump's heat alone."""
     reference = _c13_reference({"reject_pump": REJECT_PUMP, "lift": LIFT})
     sets = _c13_sets(
         reference,
@@ -1875,19 +1879,76 @@ def test_c13_stops_at_one_hop_and_withholds_the_pass_on_tag() -> None:
             Q_B: frozenset({"boiler_lt_gas"}),
             Q_HIGH: frozenset({"lift"}),
         },
-        max_share={(Q_B, "boiler_lt_gas"): 1.0},
         eligibility_dropped=(
             EligibilityDrop(Q_HIGH[0], Q_HIGH[1], "boiler_lt_gas", "max_share", "0.00"),
         ),
     )
     model, result = _c13_solved(reference, sets)
     assert result.termination_condition == "optimal"
-    if "zeta_pass" in model.variables:
-        keys = set(model.variables["zeta_pass"].coords["zeta_pass_key"].values)
-        assert "boiler_lt_gas|heat_lt60|reject_pump" not in keys
+    assert (_z(model, "reject_pump@supply:heat_60_100") <= 1e-6).all()
+    lift = _z(model, f"lift@{Q_HIGH[0]}|{Q_HIGH[1]}|{Q_HIGH[2]}")
+    air = _z(model, "heat_pump_lt_air@supply:heat_60_100")
+    for year in PERIODS:
+        assert 0.5 * lift[year] <= air[year] + 1e-6
+    assert build.check_constraint_rows(model, result) == ()
+
+
+def test_c13_never_forces_a_capped_unit_to_zero_through_a_dutyless_consumer() -> None:
+    """The boiler's reject heat cannot be disposed of here, and its only consumer is a supply
+    unit with no duty whose release reaches the lift pump, on a duty the boiler is capped on
+    at 0.3. Withholding the pass-on tag there would leave the reject nowhere to go and force
+    the boiler, and its B duty, to zero. Charged against the cap instead, it fits: the
+    boiler's 0.137 PJ of reject becomes 0.2 PJ of lifted heat, 0.1375 PJ of it the boiler's."""
+    reference = _c13_reference({"reject_pump": REJECT_PUMP, "lift": LIFT}, heat_lt60_disposable=False)
+    sets = _c13_sets(
+        reference,
+        {
+            Q_B: frozenset({"boiler_lt_gas"}),
+            Q_HIGH: frozenset({"lift", "heat_pump_lt_air"}),
+        },
+        max_share={(Q_HIGH, "boiler_lt_gas"): 0.3},
+        supply={"heat_60_100": frozenset({"reject_pump"})},
+    )
+    model, result = _c13_solved(reference, sets)
+    assert result.termination_condition == "optimal"
+    assert (_z(model, f"boiler_lt_gas@{Q_B[0]}|{Q_B[1]}|{Q_B[2]}") >= 1.0 - 1e-6).all()
+    assert (_z(model, "reject_pump@supply:heat_60_100") > 0.0).all()
 
 
 def test_nothing_capped_builds_no_c13() -> None:
     model, _ = _solved()
     assert not {"zeta", "zeta_pass", "upsilon"} & set(model.variables)
     assert not [name for name in model.constraints if name.startswith("C13")]
+
+
+def test_c13_reads_a_units_output_net_as_c8_does() -> None:
+    """A store charging −1 and discharging +0.9 on one carrier draws on balance; it puts
+    nothing on C8 for a consumer to lift, so C13 tracks no output for it."""
+    ones = np.ones(len(PERIODS))
+    terms = {
+        "heat_60_100": {
+            "store": {"aux_input": -1.0 * ones, "coproduct": 0.9 * ones},
+            "relay": {"aux_input": -1.0 * ones},
+        }
+    }
+    sets = dataclasses.replace(
+        _sets(eligible=frozenset({"store", "relay"})),
+        max_share={(DUTY_KEY, "store"): 0.3},
+    )
+    assert build.c13_tracking(sets, terms).outputs == {}
+
+
+def test_c13_reads_a_cap_per_process_for_zero_and_non_zero_alike() -> None:
+    """``unit_eligibility`` states a cap per process, so it covers each of the process's
+    duties, including one the unit cannot serve itself, whether it is 0.3 or 0.00."""
+    high = ("mvp-minimal", DUTY_KEY[1], "heat_100_150")
+    base = _sets()
+    second = _Duty(high[0], high[1], high[2], 3, {year: 1.0 for year in PERIODS})
+    sets = dataclasses.replace(
+        base,
+        duties=(*base.duties, second),
+        eligible={**base.eligible, high: frozenset({"heat_pump_lt_air"})},
+        max_share={(DUTY_KEY, "boiler_lt_gas"): 0.3},
+    )
+    capped = build.c13_tracking(sets, {}).capped
+    assert capped == {("boiler_lt_gas", DUTY_KEY): 0.3, ("boiler_lt_gas", high): 0.3}
