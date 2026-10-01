@@ -171,48 +171,39 @@ Only the kiln carries a capacity; the rest are listed to establish that they exi
 more. **Which units a process runs is not on this table** — §3.10 no longer carries a
 `unit_id` at all — and that is §1.5.1.
 
-### 1.5.1 `premise_process_unit` (§3.10.2) — which units a known process runs
+### 1.5.1 `premise_process_unit` (§3.10.2) — which units a known process runs, and when each was installed
 
-| `process_id` | `valid_from_year` | `unit_id` | `capacity_share` | `provenance` | `confidence` |
-|---|---|---|---|---|---|
-| `kiln_pyroprocessing` | **2004** | `kiln_dry_coal` | — | permit, fuel schedule | high |
-| `kiln_pyroprocessing` | **2004** | `kiln_dry_wdf` | — | permit, fuel schedule | high |
-| `kiln_pyroprocessing` | **2004** | `kiln_dry_gas` | — | permit, fuel schedule | high |
-| `kiln_pyroprocessing` | **1957** | `kiln_wet_ICMCLK` | — | permit, superseded line | medium |
+From the same permit, which records the kiln line's fuel schedule and its commissioning:
 
-**One row per unit, so a co-firing kiln is expressible and a single-fuel one is
+| `process_id` | `valid_from_year` | `cohort_id` | `unit_id` | `commissioned_year` | `capacity_share` | `provenance` | `confidence` |
+|---|---|---|---|---|---|---|---|
+| `kiln_pyroprocessing` | **2004** | `1` | `kiln_dry_coal` | **2004** | — | permit, fuel schedule | high |
+| `kiln_pyroprocessing` | **2004** | `2` | `kiln_dry_wdf` | **2004** | — | permit, fuel schedule | high |
+| `kiln_pyroprocessing` | **2004** | `3` | `kiln_dry_gas` | **2004** | — | permit, fuel schedule | high |
+| `kiln_pyroprocessing` | **1957** | `1` | `kiln_wet_ICMCLK` | — | — | permit, superseded line | medium |
+
+**One row per cohort, so a co-firing kiln is expressible and a single-fuel one is
 distinguishable.** The first three fields are a foreign key to the §1.5 row above, so the
 dry line's three children hang off the 2004 interval and the wet line's single child off the
 closed 1957–2003 one. `known_capacity` stays on the **parent**, because a permit states the
 line's capacity once: the 0.95 Mt/yr is the whole dry kiln, and `A4` splits it across the
-three children on the §5.2 carrier mix — 0.503788 / 0.371843 / 0.074369 Mt/yr at §8.1 —
-because `capacity_share` is blank here. A works that genuinely ran one fuel would write one
-child row and be fully determined; under the old singular field it looked exactly like this
-one. The other seven processes have **no child rows**, which means the unit is unknown and is
-what a blank `unit_id` used to mean.
+three children on the §5.2 carrier mix (0.503788 / 0.371843 / 0.074369 Mt/yr at §8.1),
+because `capacity_share` is blank here. Blank is allowed because each unit is a single
+cohort: the carrier mix splits capacity between units, and only a unit with two install years
+would need the shares stated. A works that genuinely ran one fuel would write one child row
+and be fully determined. The other seven processes have **no child rows**, which means the
+unit is unknown and A4 resolves it from the candidate set.
 
-### 1.6 `premise_process_vintage` (§3.15) — `D11` tier 1
+### 1.6 Plant age (§3.10.2's `commissioned_year`) — `D11` tier 1
 
-From the same permit, which records the kiln line's commissioning:
-
-| `process_id` | `cohort_id` | `unit_id` | `commissioned_year` | `capacity_share` | `confidence` |
-|---|---|---|---|---|---|
-| `kiln_pyroprocessing` | `1` | `kiln_dry_coal` | **2004** | 0.530303 | high |
-| `kiln_pyroprocessing` | `2` | `kiln_dry_wdf` | **2004** | 0.391414 | high |
-| `kiln_pyroprocessing` | `3` | `kiln_dry_gas` | **2004** | 0.078283 | high |
-
-Three rows at one commissioning year, because §3.15 is keyed per **cohort** —
-`(premise_id, process_id, cohort_id)`, with `unit_id` a plain field on the row — and D13 (one
-primary carrier per unit) makes this one physical kiln line three units, one cohort each, each
-naming its own `unit_id`. The shares are the base-year fuel split of §5.2, quoted at six
-decimal places so that they sum to **1.000000** as §3.15 requires. This and §1.5.1 now have the
-same **one row per unit** shape, which is what a co-firing kiln needs from both: vintage states
-it as shares, the process–unit table as rows, and either way the kiln decomposes naturally.
-All three cohorts carry the same year because they are the same steel. **No rows for the other seven processes**, and unlike §1.5 that is not an omission:
-this table asserts nothing about completeness. They fall to tier 2 and are aged from the
-works' 1957 construction year, where the bound is slack. The cohort is read only because
-`kiln_pyroprocessing` is valid at the base year (§3.15's last rule); the wet line's plant is
-already gone and ageing it under `D11` would strand an asset that no longer exists.
+The `commissioned_year` column above is the vintage evidence. Three cohorts at one
+commissioning year, because D13 (one primary carrier per unit) makes this one physical kiln
+line three units, one cohort each. All three carry the same year because they are the same
+steel. **The wet line's row carries no year**, and needs none: only cohorts under the interval
+valid at the base year are aged (§3.10.2), and the wet line's plant is already gone, so ageing
+it under `D11` would strand an asset that no longer exists. The other seven processes have no
+rows at all, so they fall to tier 2 and are aged from the works' 1957 construction year,
+where the bound is slack.
 
 ### 1.7 `premise_measured_emissions` (§3.11)
 
@@ -570,7 +561,7 @@ Ten checks, all passing.
 | 3 | Base-year energy sums to 4.38000 PJ/yr > 0 | pass — not `no_energy` |
 | 4 | No duplicate `(premise_id, carrier_id, connection_id, data_year)` | pass — not `duplicate_year_row` |
 | 5 | A `premise_throughput` row exists for every **exported** product carrier — `cement` here; the `clinker` row is evidence under `D16` and is not required | pass — not `missing_throughput` |
-| 6 | `commissioned_year` 2004 ≤ `data_year` 2024; cohort shares sum to 1.00 | pass — not `vintage_in_future` / `vintage_shares_unbalanced` |
+| 6 | `commissioned_year` 2004 ≤ `data_year` 2024; no `capacity_share` is given, so the sum rule is vacuous | pass — not `vintage_in_future` |
 | 7 | `construction_year` 1957 ≤ `data_year`; `last_refurbishment_year` 2011 between them | pass |
 | 8 | `premise_process_detail` intervals per `(premise, process)` are disjoint, and at least one is valid at 2024 | pass — not `process_intervals_overlap` / `no_process_valid_in_base_year` |
 | 9 | `premise_measured_emissions` has a base-year row | pass — not `emissions_year_unmatched` |
@@ -880,9 +871,7 @@ waste_derived_fuel    1.55000 / 3.96000 = 0.391414
                                           1.000000
 ```
 
-The shares are quoted at **six decimal places**, which is what §1.6's `capacity_share` column
-carries for the same three cohorts: these are the same three numbers and they must not differ
-between the two sections. At five places they sum to 0.99999 rather than to one, and every
+The shares are quoted at **six decimal places**, so that they sum to one. At five places they sum to 0.99999 rather than to one, and every
 figure derived from them inherits the shortfall.
 
 **Under D13 the mix is a dispatch split, not a coefficient blend.** Before, one kiln carried
@@ -1580,7 +1569,7 @@ Tests are the specification's, at §10.3. Scope is `load`, `premise` or `release
 | **V23** | load + premise | §5.2 — one tier resolves, `carrier_bounded`, and it appears on every output row |
 | **V24** | load + premise | §1.2 — one row per key at the base year or a recorded substitution; no duplicate `(key, year)` |
 | **V25** | premise | §1.2 — the 2022 and 2023 rows move nothing by more than 1e-9 |
-| **V26** | premise | §1.5 — `kiln_pyroprocessing`'s two intervals are disjoint, one is valid at 2024, and `A2`, `A4` and §3.15's cohort read touch no row outside it |
+| **V26** | premise | §1.5 — `kiln_pyroprocessing`'s two intervals are disjoint, one is valid at 2024, and `A2`, `A4` and §3.10.2's cohort read touch no row outside it |
 | **V27** | load | §1.11 — each kiln unit carries exactly one `fuel_input` row; `ccs_amine`'s auxiliary electricity is `primary` and is `aux_input`, so it is not counted against it |
 | **V28** | load + premise | §3.2 — the published `Cement Works` shares sum to 1.00 per vector, and the oil vector renormalises over the processes this premise runs |
 | **V29** | premise | §8.1 — disposal exists only on the `may_dispose` carriers — the three CO₂ carriers and `heat_lt60`, which takes the kilns' unused reject heat — and every non-zero quantity is an output row |
@@ -1740,7 +1729,7 @@ written:
 
 | # | Open point | Where it bites | Closed by |
 |---|---|---|---|
-| **6** | **§5.3.1 is cited and unwritten.** The vintage tier ladder, the survival function and the stranding formula are cited from §3.15, §5.3 and §5.5, and the section does not exist | §5.3 — the tier-2 window is read from the archived COMIT-parity baseline rather than from the live specification | `T23` / `MF-18` |
+| **6** | **§5.3.1 is cited and unwritten.** The vintage tier ladder, the survival function and the stranding formula are cited from §3.10.2, §5.3 and §5.5, and the section does not exist | §5.3 — the tier-2 window is read from the archived COMIT-parity baseline rather than from the live specification | `T23` / `MF-18` |
 | **7** | **§5.6 is cited and unwritten**, so nothing says how C11's peak is rebuilt or which year it reads | §8.3 — this example uses mean import × the observed within-shift peak factor, with no diversity step, and **understates** the peak | `T23` / `MF-18`; §10.4 records that this row carries no automated guard |
 
 And five more — points 8 to 10 from the 2026-09-15 review, 11 and 12 from the 2026-09-17 pass.

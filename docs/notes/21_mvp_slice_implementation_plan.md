@@ -341,8 +341,7 @@ Four premise-side tables, three premises, **CSV** so every file a human edits st
 |---|---|---|
 | `premise_record` | §3.1 | Premise identity, `carb3_activity`, connections for networked carriers (§3.1.3) |
 | `premise_process_detail` | §3.10 | Which processes run at the premise, and at what capacity |
-| `premise_process_unit` | §3.10.2 | Which units each process runs — the one-row-per-unit table from the 2026-09-17 pass |
-| `premise_process_vintage` | §3.15 | Install year per unit. Mechanism input for C4; see §4.3 for why it changes no result |
+| `premise_process_unit` | §3.10.2 | Which units each process runs, one row per cohort, with each cohort's install year. The install year is a mechanism input for C4 (incumbent ageing); see §4.3 for why it changes no result. It carried a separate `premise_process_vintage` table until 2026-10-01 |
 | `premise_throughput` | §3.1.2 | Base-year physical output. **Read from 2026-09-20**: it is where the cement works' mass duty comes from (§3.3) |
 | `premise_connection` | §3.1.3 | One row per networked connection. **Read from 2026-09-20**: §5.2 declares an export only where one carries the carrier |
 
@@ -429,7 +428,7 @@ inequality and C1 is an equality, so nothing compels an incumbent to run; idling
 `fixed_opex` on standing capacity. Given §4.2, the model abandons the incumbent at the first
 buildable period regardless of how old it is.
 
-C4, $e_{u,t}$, the survival function and `premise_process_vintage` are all built anyway,
+C4, $e_{u,t}$, the survival function and `premise_process_unit.commissioned_year` are all built anyway,
 because `MF-43` is a Must at M2 and the survival function is a short pure-parameter routine.
 The test asserts **the decay itself** — that surviving incumbent capacity falls as
 $\eta_{u,t}$ says — not that a build waits for it.

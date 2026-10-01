@@ -125,14 +125,14 @@ The 2 MW `export_capacity` is load-bearing here: it binds in 2050 and curtails P
 
 From the site's Climate Change Agreement audit, 2024:
 
-| `process_id` | `valid_from_year` | `valid_to_year` | `connection_id` | `known_capacity` | `unit_id` | `confidence` |
-|---|---|---|---|---|---|---|
-| `boiler_steam_hot_water` | 2011 | — | `G-01` | — | — | high |
-| `direct_heating` | **2019** | — | `G-01` | **0.10000 PJ/yr** | `dryer_direct_gas` | **high** |
-| `refrigeration` | 2016 | — | `E-01` | — | — | high |
-| `machinery_motors` | 2011 | — | `E-01` | — | — | medium |
-| `compressed_air` | 2011 | — | `E-01` | — | — | medium |
-| `site_services` | 2011 | — | `E-01` | — | — | medium |
+| `process_id` | `valid_from_year` | `valid_to_year` | `connection_id` | `known_capacity` | `confidence` |
+|---|---|---|---|---|---|
+| `boiler_steam_hot_water` | 2011 | — | `G-01` | — | high |
+| `direct_heating` | **2019** | — | `G-01` | **0.10000 PJ/yr** | **high** |
+| `refrigeration` | 2016 | — | `E-01` | — | high |
+| `machinery_motors` | 2011 | — | `E-01` | — | medium |
+| `compressed_air` | 2011 | — | `E-01` | — | medium |
+| `site_services` | 2011 | — | `E-01` | — | medium |
 
 Six rows, matching the register's default set for `Food Processing Centre` exactly, so this is
 the site's **complete** process list as at any year in range (§3.10's completeness rule). No
@@ -145,36 +145,42 @@ rule is to state `premise_record.data_year` and say so in `provenance`. Here the
 give one date — the 2011 rebuild that installed the boiler house and the CHP — so 2011 is a
 genuine observation and the `provenance` field records which document it came from.
 
-**Only `direct_heating` names a unit and a capacity.** Under §3.10's precedence rule that
-makes the spray dryer's plant known: `A4` does not choose among candidates for it, and it
-back-solves *utilisation* rather than capacity (§5.1). `boiler_steam_hot_water` names neither,
-and that gap is the whole argument of §3.16: **a CHP is not inferable from a heat duty**,
-because the same heat is equally consistent with a boiler. The supply side for that process
-therefore falls to `activity_default_unit` (§1.12), and the CHP becomes visible only because
-that entity exists.
+**Only `direct_heating` carries a capacity.** Which units each process runs is not on this
+table; that is §1.5.1.
 
-### 1.6 `premise_process_vintage` (§3.15) — `D11` tier 1
+### 1.5.1 `premise_process_unit` (§3.10.2) — which units a known process runs, and when each was installed
 
 From the same audit:
 
-| `process_id` | `cohort_id` | `unit_id` | `commissioned_year` | `capacity_share` | `confidence` |
-|---|---|---|---|---|---|
-| `boiler_steam_hot_water` | `1` | `chp_gas_turbine` | **2011** | 0.35 | high |
-| `boiler_steam_hot_water` | `2` | `boiler_lt_gas` | **2016** | 0.65 | medium |
-| `direct_heating` | `1` | `dryer_direct_gas` | **2019** | 1.00 | high |
+| `process_id` | `valid_from_year` | `cohort_id` | `unit_id` | `commissioned_year` | `capacity_share` | `confidence` |
+|---|---|---|---|---|---|---|
+| `boiler_steam_hot_water` | 2011 | `1` | `chp_gas_turbine` | **2011** | — | high |
+| `boiler_steam_hot_water` | 2011 | `2` | `boiler_lt_gas` | **2016** | — | medium |
+| `direct_heating` | 2019 | `1` | `dryer_direct_gas` | **2019** | — | high |
 
-**Two cohorts inside one premise-process**, which is precisely why §3.15 is keyed per cohort
-rather than per process: the CHP and the boiler serve the same duty family from the same
-boiler house and were commissioned five years apart. Shares sum to 1.00 within 1e-6 on each
-process, as §3.15 requires; a set that did not close would be rejected with
-`vintage_shares_unbalanced` and the process would fall to the next tier rather than silently
-shrink the site's capacity.
+**The audit names the plant of two processes, and that makes it known.** Under §3.10's
+precedence rule `A4` does not choose among candidates for `boiler_steam_hot_water` or
+`direct_heating`: the boiler house is a CHP plus a gas boiler, and the spray dryer is a direct
+gas dryer. For `direct_heating`, with a `known_capacity` on the parent, `A4` back-solves
+*utilisation* rather than capacity (§5.1). The other four processes have no rows, so their
+plant is unknown and comes from `activity_default_unit` (§1.12).
 
-**Shares, not capacities.** The absolute capacity of each process is `A4`'s business and is
-back-solved in §5.1. Stating vintage as a share keeps the two independent, so this site can
-supply ages without supplying capacities.
+**What the audit does not give is the split.** `capacity_share` is blank, which §3.10.2
+allows because each unit is a single cohort. The boiler house's two units both burn
+`natural_gas`, so the meter cannot separate them either, and the split between CHP and boiler
+falls to the activity default of §1.12: 0.60 / 0.40 on the steam duty (§5.2). **Naming a CHP
+does not size it.** Had the audit not named it at all, §1.12 would be the only thing putting
+a CHP on this site.
 
-**Refurbishment is not recommissioning** (§3.15). The 2019 entry in `last_refurbishment_year`
+### 1.6 Plant age (§3.10.2's `commissioned_year`) — `D11` tier 1
+
+The `commissioned_year` column above is the vintage evidence. **Two cohorts inside one
+premise-process**: the CHP and the boiler serve the same duty family from the same boiler
+house and were commissioned five years apart, which is why §3.10.2 is keyed per cohort rather
+than per process. Each is aged on its own year rather than on an average of the two; that both
+reach end of life in 2035 below is the lifetimes, not the dates.
+
+**Refurbishment is not recommissioning** (§3.10.2). The 2019 entry in `last_refurbishment_year`
 (§1.1) is a packing-hall extension, not a recommissioning of any of these three units, and it
 stays collected and unread.
 
@@ -539,10 +545,13 @@ every row has a `unit_eligibility` entry, which §3.16 makes a precondition — 
 cannot assert plant the model would refuse to build, or `A4` back-solves a baseline the
 optimiser cannot reproduce.
 
-**This is the entity the whole example turns on.** §1.5 gives the dairy its process list but
-not its boiler-house plant, and `A4` cannot infer a CHP from metered heat and electricity —
-the same heat is equally consistent with a boiler. Without this table a dairy with a 2.5 MWe
-CHP and one without are the same row, and the base year has no electricity co-product at all.
+**This entity sizes the boiler house, and it is the only source of plant where the site is
+silent.** §1.5.1 names the CHP and the boiler but not their split, and `A4` cannot infer one
+from metered heat and electricity — the same heat is equally consistent with a boiler. The
+0.60 / 0.40 here is that split. For the four processes the audit leaves unnamed, this table
+is the plant itself, and for a dairy whose audit named nothing it would be the only thing
+telling a site with a 2.5 MWe CHP from one without; the base year would then have no
+electricity co-product at all.
 `MF-13` (default installed-unit table) is a Must for exactly this reason: milestone M4 has to
 show an **existing** CHP, not only a new one.
 
@@ -563,7 +572,7 @@ Ten checks, all passing.
 | 3 | Base-year energy sums to 0.36000 PJ/yr > 0 | pass — not `no_energy` |
 | 4 | No duplicate `(premise_id, carrier_id, connection_id, data_year)` | pass — not `duplicate_year_row` |
 | 5 | **No `premise_throughput` row is required** — no mass-denominated process (§1.3) | pass — not `missing_throughput` |
-| 6 | `commissioned_year` 2011, 2016, 2019 ≤ `data_year` 2024; shares sum to 1.00 per process | pass — not `vintage_in_future` / `vintage_shares_unbalanced` |
+| 6 | `commissioned_year` 2011, 2016, 2019 ≤ `data_year` 2024; no `capacity_share` is given, so the sum rule is vacuous | pass — not `vintage_in_future` |
 | 7 | `construction_year_band` resolves to 1965 ≤ `data_year`; `last_refurbishment_year` 2019 between them | pass |
 | 8 | `premise_process_detail` intervals per `(premise, process)` are disjoint, and all six are valid at 2024 | pass — not `process_intervals_overlap` / `no_process_valid_in_base_year` |
 | 9 | `premise_measured_emissions` has rows but **none at the base year** | **reported `emissions_year_unmatched`** — never a rejection (§3.1.1) |
@@ -636,7 +645,7 @@ taken on that. Applying them to the meter would have sized the chiller and the m
 small.
 
 **Step two: the duty split within each process**, from §3.3, and the conversion to useful
-energy through the incumbent units of §1.12 and their coefficients:
+energy through the incumbent units of §1.5.1 and §1.12 and their coefficients:
 
 | `process_id` | `duty_family` | `carrier_id` | Grade | `duty_share` | Delivered PJ/yr | **Duty PJ/yr** |
 |---|---|---|---|---|---|---|
@@ -894,7 +903,7 @@ Tiers are tried in order and exactly one resolves:
 
 | Tier | Test at this premise | Resolves? |
 |---|---|---|
-| 1 — `site_known` | `premise_process_detail` names `dryer_direct_gas` for `direct_heating`, but names no carrier, and names no unit at all for `boiler_steam_hot_water` | **no** |
+| 1 — `site_known` | `premise_process_unit` (§1.5.1) names the CHP and the boiler for `boiler_steam_hot_water`, but gives no `capacity_share`, so the split between them is not stated | **no** |
 | 2 — `carrier_bounded` | `premise_energy` gives a site total for `natural_gas`, but **three units** at this premise consume it | **no** — not determined by division |
 | 3 — `activity_default` | the activity-default mix applies, carried as an assumption | **yes** |
 
@@ -907,8 +916,8 @@ the only consumer of coal, gas and waste-derived fuel, so tier 2 determined the 
 division. Here three units share `natural_gas` and division cannot separate them. §4.1's rule
 is that where several units share a carrier at tier 2 the split is made by duty share and
 **recorded as an assumption rather than presented as measured** — and at this premise even that
-is unavailable, because the boiler-house plant itself is asserted by §1.12 rather than
-observed. The gas split of §5.1 is therefore an assumption end to end, and every output row
+is unavailable, because the audit names the boiler-house plant but not its split, and the
+split comes from §1.12. The gas split of §5.1 is therefore an assumption end to end, and every output row
 says so.
 
 `V23` (the mix resolves to exactly one tier, tiers are tried in order, and `mix_evidence_tier`
@@ -1311,7 +1320,7 @@ electricity credit is the displaced import price, because the site is a net impo
 
 - **The incumbent wins on avoidable cost, not on merit against a new build.** A new gas turbine
   at £22.69m/PJ loses to the boiler; the one already standing wins because its capex is sunk.
-  That distinction only exists because §1.12 asserted the CHP and §5.3 gave it a vintage, and
+  That distinction only exists because the audit named the CHP and dated it (§1.5.1), and
   it is the difference between a model that keeps working plant and one that rebuilds the
   country every period.
 - **The high-temperature heat pump is £0.92m/PJ behind at 2035 and ahead by 2040.** At 2040
@@ -1680,7 +1689,7 @@ Tests are the specification's, at §10.3. Scope is `load`, `premise` or `release
 | **V23** | load + premise | §5.2 — one tier resolves, `activity_default`, tiers were tried in order, and it appears on every output row |
 | **V24** | load + premise | §1.2, §1.7 — one row per key at the base year; no duplicate `(key, year)`; the optional entities **report** rather than reject, and §1.7 exercises that branch |
 | **V25** | premise | §1.2, §10.2 — the 2022 and 2023 rows move nothing by more than 1e-9, including §7.6's reported reconciliation |
-| **V26** | premise | §1.5 — six disjoint intervals, all valid at 2024, and `A2`, `A4` and §3.15's cohort read touch no row outside them |
+| **V26** | premise | §1.5 — six disjoint intervals, all valid at 2024, and `A2`, `A4` and §3.10.2's cohort read touch no row outside them |
 | **V27** | load | §1.11 — each of the five boilers, three dryers and three heat pumps carries exactly one `fuel_input` row; the heat pumps' source-heat inputs are auxiliary `intermediate` carriers and are not counted |
 | **V28** | load + premise | §3.2 — the published `Food Processing Centre` shares sum to 1.00 per vector, all six register processes carry rows, and no renormalisation is needed |
 | **V29** | premise | §8.1, §8.1.1 — disposal exists only on `heat_lt60` and the two CO₂ carriers; the CHP's §7.7 allocation sums to its 4.18815 kt accounted figure exactly; the two layers are never added |
@@ -1694,7 +1703,7 @@ Tests are the specification's, at §10.3. Scope is `load`, `premise` or `release
 | ⚠ *Restated under D13* — **84 low-temperature-heat rows across eleven sectors collapse to eight units**, of which this dairy reaches seven | §3.3 |
 | A 120 °C duty has boiler, CHP, heat pump and electric resistance competing under C10 | §3.4, §8.3 |
 | The heat pump is absent from the drying duty's candidate set | §3.4 |
-| The premise's existing CHP from the default installed-unit table appears in the baseline with its electricity co-product | §1.12, §5.1, §8.1 |
+| The premise's existing CHP, named by the audit and sized by the default installed-unit table, appears in the baseline with its electricity co-product | §1.5.1, §1.12, §5.1, §8.1 |
 | The CHP produces heat **and** electricity into the balance | §8.1 |
 | Surplus electricity exports below the import price | §8.6 |
 | PV is bounded by the area and the CHP is not | §8.2 |
@@ -1756,10 +1765,11 @@ expected tables. Table snapshots of the fixture outputs, rounded, are the regres
    a duty through C1 and never touches the `heat_100_150` node; its electricity enters C8
    regardless, because a unit's co-products scale with total activity. That asymmetry is what
    makes onsite generation, self-consumption and export expressible at all.
-3. **The meter hides a third of this site's electrical load** (§5.1), and only
-   `activity_default_unit` recovers it. A dairy with a CHP and one without are the same row
-   until §3.16 exists, and every electrification decision downstream runs on a base that is 32%
-   too small.
+3. **The meter hides a third of this site's electrical load** (§5.1), and only a known CHP
+   recovers it. Here the audit names it (§1.5.1) and `activity_default_unit` sizes it; for a
+   dairy whose audit named nothing, §3.16 alone would put it there. Without either, a dairy with
+   a CHP and one without are the same row, and every electrification decision downstream runs on
+   a base that is 32% too small.
 4. **The grade ladder separates two duties a flat coefficient would have merged** (§3.4, §8.4).
    The 80 °C duty goes to a heat pump and the 120 °C duty to a CHP, because the rank-3 heat
    pump must buy rank-2 source heat and the rank-2 one cannot reach rank 3 at all. Today

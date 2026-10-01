@@ -199,11 +199,11 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-09-25*
+*Section last updated: 2026-10-01*
 
-**Twenty-six entities.** Every one of them is defined here in full: fields, types, units,
+**Twenty-five entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, nine by the
-modelling team, two by scenario definition, one is derived at run time, eight are optional
+modelling team, two by scenario definition, one is derived at run time, seven are optional
 per-premise intelligence, and two carry defaults and the offline archetype layer.
 
 | | Supplied by | Entities |
@@ -234,7 +234,7 @@ with rationale, in **§1.6**; these tables are normative for validation.
 | `nation` | enum{England, Wales, Scotland} | — | yes | — | NI rejected with reason `out_of_scope_nation` |
 | `floorspace` | real | m² | no | — | > 0 if present |
 | `process_set_id` | string | — | no | → `activity_process_register` | Selects a named non-default process set (§3.2). Absent ⇒ the activity's default set |
-| `construction_year` | integer | year | no | — | **D11.** ≤ `data_year` if present. When the premise was built. Bounds plant age from above (§3.15, §5.3.1) |
+| `construction_year` | integer | year | no | — | **D11.** ≤ `data_year` if present. When the premise was built. Bounds plant age from above (§3.10.2, §5.3.1) |
 | `construction_year_band` | string | — | no | — | **D11.** Where only a band is held, e.g. `1945-1964`. Used only if `construction_year` is absent, and read as its **earliest** year |
 | `last_refurbishment_year` | integer | year | no | — | **Future use.** ≥ `construction_year`, ≤ `data_year` if present. Collected, not read |
 | `data_year` | integer | year | yes | — | **The base year.** The one year the model reads, on §3.1.1's base-year rule. Where it differs from the scenario's start year the offset is recorded and reported, never silently absorbed |
@@ -1170,7 +1170,7 @@ names the processes a site runs without saying when each began, and `valid_from_
 required. Where the year is unknown, state `premise_record.data_year` and say so in
 `provenance`. That is the reading which asserts least: the process is known to run in the
 base year, which is the only year the model reads, and nothing is claimed about years the
-evidence does not cover. This mirrors §3.15's residual cohort, and the alternative — every
+evidence does not cover. This mirrors §3.10.2's residual cohort, and the alternative — every
 data supplier inventing a convention — is what makes the field unusable.
 
 **Rule (precedence).** Where a row has **child rows in `premise_process_unit` (§3.10.2)**,
@@ -1193,11 +1193,12 @@ existed. And it explains a step change in `premise_energy`'s history (§3.1.1) t
 otherwise look like a data error. The optimisation starts from the base year and never
 looks back.
 
-**On vintage (D11).** When the plant was commissioned lives in `premise_process_vintage`
-(§3.15), not here. The two answer different questions. This table says **which processes
-the site ran, and when it ran them**; §3.15 says **when the plant serving a process was
-installed**, one row per cohort. A works running two lines of the same process installed
-decades apart — a 1998 kiln line and a 2016 one — has one row here and two there. No
+**On vintage (D11).** When the plant was commissioned lives on the child rows in
+`premise_process_unit` (§3.10.2), not here. The two answer different questions. This table
+says **which processes the site ran, and when it ran them**; §3.10.2 says **which plant serves
+a process and when each part of it was installed**, one row per cohort. A works running two
+lines of the same process installed decades apart — a 1998 kiln line and a 2016 one — has one
+row here and two there. No
 interval on this table can express those two commissioning years, and averaging them is the
 thing D11 exists to stop.
 
@@ -1244,48 +1245,77 @@ whole vector falls back to the activity default. Never a rejection: the sub-mete
 evidence, and discarding the premise would discard them.
 
 **The evidence tier resolves per `(process, carrier)`, not per premise.** `sub_metered` where
-a row exists, `activity_default` for the residual, in the same solve — the pattern §3.15 uses
+a row exists, `activity_default` for the residual, in the same solve — the pattern §3.10.2 uses
 for vintage, where a works may know its kiln's age and not its mills'. §8 carries it as
 `energy_evidence_tier`.
 
-#### 3.10.2 `premise_process_unit` — which units a known process runs
+#### 3.10.2 `premise_process_unit` — which units a known process runs, and when each was installed
 
-**Optional per-premise intelligence.** One row per known unit per §3.10 interval. Zero rows
-under a parent is the normal case and means the plant is unknown; A4 resolves it from the
-candidate set.
+**Optional per-premise intelligence.** One row per **cohort** per §3.10 interval: a tranche of
+one unit's capacity installed in the same year. A works with one kiln has one row; a works
+whose second line of the same unit was added eighteen years after the first has two. Zero
+rows under a parent is the normal case and means the plant is unknown; A4 resolves it from
+the candidate set.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_process_detail`, on the triple `(premise_id, process_id, valid_from_year)` |
 | `process_id` | string | — | yes | PK part | Part of the same triple |
-| `valid_from_year` | integer | year | yes | PK part | Part of the same triple. The parent interval this row belongs to |
-| `unit_id` | string | — | yes | PK part | → `unit`. Must be eligible for this process at the premise's activity (§3.5.1) |
-| `capacity_share` | real | fraction | no | — | ∈ (0, 1]. Where any row of one parent gives it, every row must, and they sum to 1 within 1e-6 |
-| `provenance` | string | — | yes | — | Citation: permit number, audit reference, disclosure |
+| `valid_from_year` | integer | year | yes | PK part | Part of the same triple. The parent interval this row belongs to, not a date of its own |
+| `cohort_id` | string | — | yes | PK part | Stable within the parent interval. `1`, `2`, … is sufficient |
+| `unit_id` | string | — | yes | — | → `unit`. Must be eligible for this process at the premise's activity (§3.5.1) |
+| `commissioned_year` | integer | year | no | — | **D11.** When this cohort was installed. ≤ `premise_record.data_year`, rejected with reason `vintage_in_future` otherwise. Absent ⇒ the cohort falls through to `premise_record.construction_year`, and then to the default (§5.3.1) |
+| `capacity_share` | real | fraction | no | — | ∈ (0, 1]. The cohort's share of the parent's `known_capacity`. Where any row of one parent gives it, every row must, and they sum to 1 within 1e-6 |
+| `provenance` | string | — | yes | — | Citation: permit number, audit reference, asset register, disclosure |
 | `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
 
-**Why a child table rather than a field.** §3.10 carried a single optional `unit_id`, which
-could say "this process runs this unit" but not "this process runs these three". D13 (one
-primary carrier per unit) makes that the common case, not an edge case: a co-firing kiln line
-is three units. A single field forced a choice between naming the dominant unit and losing the
+**Why a child table rather than a field.** A single optional `unit_id` on §3.10 could say
+"this process runs this unit" but not "this process runs these three". D13 (one primary
+carrier per unit) makes that the common case, not an edge case: a co-firing kiln line is
+three units. A single field forced a choice between naming the dominant unit and losing the
 rest, or leaving the field blank — which made a site that genuinely runs one fuel
-indistinguishable from one that runs three. A single-fuel works now writes one row, and the
+indistinguishable from one that runs three. A single-fuel works writes one row, and the
 distinction is in the data.
+
+**Why plant age is a field here rather than an entity of its own.** Which units a process runs
+and how old each is are two facts about the same row of plant. Held in two tables they have
+to agree on how many units there are and on every unit's share, and nothing makes them.
+`commissioned_year` is optional so the evidence can still arrive separately: a permit that
+names the plant and does not date it writes the row with the year blank, and an asset
+register dates it later by filling the field in. A premise may date its kiln and not its
+mills, and the mills simply fall to the next tier. **That evidence tier resolves per cohort**,
+`process_known` where `commissioned_year` is given and the next tier where it is not (§5.3.1).
 
 **Rule (a parent's children are its complete plant list).** The rows under one §3.10 interval
 are treated as the whole of what that process runs in that interval, the same completeness
-reading §3.10 takes over the process list itself. They must name distinct units.
+reading §3.10 takes over the process list itself. The same `unit_id` may appear in more than
+one cohort of a parent only with a different `commissioned_year`; otherwise it is one cohort.
+
+**Rule (only the base-year interval is aged).** D11 ages the cohorts under the interval valid
+at the base year and no others. A closed interval's cohorts describe plant the site no longer
+runs: it is not incumbent capacity, and ageing it would strand an asset that is already gone.
+
+**Rule (refurbishment is not recommissioning).** A cohort's year is when the plant was
+*installed*, not when it was last overhauled. A 1998 kiln relined in 2019 is a 1998 cohort.
+Life extension through major refurbishment is real and is a known gap, noted in §5.3.1;
+recording an overhaul as a new commissioning date is the wrong way to represent it, because
+it also resets the residual value the asset is carrying and makes early replacement look more
+expensive than it is. `premise_process_detail.valid_from_year` is a different date again: when
+the *process* started at the site, which may be decades before its present plant was installed.
 
 **`capacity_share` is optional because the split is usually derivable.** Where it is absent,
-A4 divides the parent's `known_capacity` by the §4.1 carrier mix — for a co-firing kiln, the
+A4 divides the parent's `known_capacity` by the §4.1 carrier mix: for a co-firing kiln, the
 base-year fuel split. Where a permit states the split, giving it here pins the back-solve
-instead. V33 (plant is named one unit at a time) checks the sum.
+instead. **A unit with two cohorts in one parent needs the shares stated**, because the carrier
+mix splits capacity between units and cannot split one unit between its install years.
+Partial vintage knowledge is a cohort with the year that is known plus a residual cohort with
+the best estimate, never shares that do not close, which would silently shrink the site's
+capacity. V33 (plant is named one unit at a time) checks the sum.
 
-**§3.15 already has this shape, and that is the argument for it.** `premise_process_vintage`
-is keyed per cohort with `unit_id` a plain field on the row, so a co-firing kiln decomposes
-into three cohorts naturally and states vintage as shares. This table gives §3.10 the same
-one-row-per-unit structure, so the two tables now answer *which units* and *how old each is*
-in the same grain instead of disagreeing about how many there are.
+**Rule (shares, not capacities).** The absolute capacity of the process is the parent's
+`known_capacity`, or A4's back-solve where that is blank. Stating each cohort as a share keeps
+the two independent, so a site can supply its plant list and ages without supplying
+capacities, and vice versa.
 
 ### 3.11 `premise_measured_emissions` — reported emissions, where they exist
 
@@ -1477,60 +1507,12 @@ made deliberately rather than discovered through a wrong connection size.
 
 ---
 
-### 3.15 `premise_process_vintage` — when the plant was installed (D11)
+### 3.15 Plant age (D11)
 
-**Optional per-premise intelligence, and the highest tier of vintage evidence.** Where
-the commissioning date of the plant serving a process is known — from a permit, a
-BAT/BREF review, an asset register, a site visit or an operator disclosure — it is stated
-here. Zero rows for a premise is the normal case and means "fall through to
-`premise_record.construction_year`, and then to the default" (§5.3.1).
-
-One row per **cohort**: a distinct tranche of capacity commissioned in the same year. A
-works with one kiln has one row; a works whose second line was added eighteen years after
-the first has two.
-
-| Field | Type | Unit | Req | Key | Validation |
-|---|---|---|---|---|---|
-| `premise_id` | string | — | yes | PK part | → `premise_record` |
-| `process_id` | string | — | yes | PK part | → `activity_process_register`, on the pair `(premise_record.carb3_activity, process_id)` |
-| `cohort_id` | string | — | yes | PK part | Stable within the premise-process. `1`, `2`, … is sufficient |
-| `unit_id` | string | — | no | → `unit` | The unit this cohort is. Absent ⇒ whatever A4 resolves for the process |
-| `commissioned_year` | integer | year | yes | — | ≤ `premise_record.data_year`. Rejected with reason `vintage_in_future` otherwise |
-| `capacity_share` | real | fraction | yes | — | ∈ (0, 1]. Share of the process's existing capacity in this cohort |
-| `provenance` | string | — | yes | — | Citation: permit number, asset register, disclosure |
-| `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
-
-**Rule (shares sum).** For each `(premise_id, process_id)` the `capacity_share` values
-must sum to 1 within 1e-6, or the premise's vintage rows are rejected with reason
-`vintage_shares_unbalanced` and that process falls back to the next tier. Partial vintage
-knowledge is expressed as a cohort with the year you do know plus a residual cohort with
-your best estimate — not as shares that do not close, which would silently shrink the
-site's capacity.
-
-**Rule (units are shares, not capacities).** The absolute capacity of the process is A4's
-business and may be back-solved rather than known. Stating vintage as a share keeps the
-two independent, so a site can supply ages without supplying capacities and vice versa.
-
-**Rule (refurbishment is not recommissioning).** A cohort's year is when the plant was
-*installed*, not when it was last overhauled. A 1998 kiln relined in 2019 is a 1998
-cohort. Life extension through major refurbishment is real and is a known gap, noted in
-§5.3.1 — recording an overhaul as a new commissioning date is the wrong way to represent
-it, because it also resets the residual value the asset is carrying and makes early
-replacement look more expensive than it is.
-
-**Rule (the reference is to a process, not to a row).** This entity's `(premise_id,
-process_id)` names a process identity at a premise, not one `premise_process_detail` row —
-that table is keyed one field wider since it gained validity intervals (§3.10). Cohorts are
-read only for processes valid at the base year. Plant serving a process the site has stopped
-running is not incumbent capacity, and ageing it under D11 would strand an asset that is
-already gone.
-
-**Why a separate entity from §3.10.** `premise_process_detail` asserts a *complete* process
-list as at a year; this table is keyed finer still, per cohort within a premise-process, and
-asserts nothing about completeness. A premise may have vintage rows for its kiln and none
-for its mills, and the mills simply fall to the next tier. Forcing the two into one table
-would have made vintage all-or-nothing for a site, which is the opposite of how the evidence
-actually arrives.
+**Not an entity.** When each unit was installed is `premise_process_unit.commissioned_year`
+(§3.10.2), one row per cohort, with its rules there. The number is kept so that a `§3.x`
+reference means the same thing here as in the COMIT-parity baseline specification, where
+§3.15 is a separate vintage entity.
 
 ### 3.16 `activity_default_unit`
 
@@ -1748,7 +1730,7 @@ than a fact, and it is written down here so that two implementations make the sa
 **What reads the vector.** Everything that crosses between a period index and a calendar
 year: $\delta_t$ and $d_t$ above; C3's (capacity transfer) build window, through
 $\ell_{u,s}$; C4's (incumbent ageing and early retirement) survival function $\eta_{u,t}$,
-which ages a `commissioned_year` (§3.15) by elapsed years; C5 (no building in the start
+which ages a `commissioned_year` (§3.10.2) by elapsed years; C5 (no building in the start
 year), which pins $t_0$ and so the year $y_0$ that bears no investment; and the
 `earliest_year` screen of §3.5.1, which compares a calendar year against $y_t$ rather than
 against $t$.
@@ -2254,14 +2236,14 @@ pass mark.
 | **V23** | load + premise | yes | A4's carrier mix resolves to exactly one tier per unit, tiers are tried in order, and `mix_evidence_tier` appears on every output row |
 | **V24** | load + premise | yes | One measured row per key at the base year or a recorded substitution; no duplicate `(key, year)`; the optional entities of §3.1.1's table report rather than reject |
 | **V25** | premise | yes | **History is never read.** Adding history rows at years both **before and after** the base year leaves every §5.3 parameter, every constraint coefficient, the solution, **and every reported reconciliation (§7.6)** identical to 1e-9 |
-| **V26** | premise | yes | Validity intervals per `(premise_id, process_id)` are disjoint, at least one row is valid at the base year, and A2, A4 and §3.15's cohort read touch no row outside it |
+| **V26** | premise | yes | Validity intervals per `(premise_id, process_id)` are disjoint, at least one row is valid at the base year, and A2, A4 and §3.10.2's cohort read touch no row outside it |
 | **V27** | load | yes | **Unit fuel identity (D13).** At most one row per unit carries `role = fuel_input`; two is rejected `unit_multi_fuel`. Auxiliary primary inputs — a capture train's electricity — are permitted and are not counted. Units flagged `draws_ambient` are exempt from V2's energy-closure leg and from nothing else |
 | **V28** | load + premise | yes | **Process energy.** §3.3.1's `energy_share` sums to 1.00 ± 0.015 for every `(activity, set, vector)`; renormalisation over absent processes preserves that; a premise's sub-metered quantities never exceed its meter for a vector without being reported `submeter_exceeds_meter`; and `energy_evidence_tier` resolves per `(process, carrier)` |
 | **V29** | premise | yes | **Disposal and allocation.** $d_{c,t}$ exists only where `carrier.may_dispose`, and every non-zero disposal appears as an output row. Every generating unit's §7.7 allocated emissions sum to its §7.1 accounted emissions to 1e-6, and no reported total adds the two layers together |
 | **V30** | premise | yes | **Emissions close through the balance (D15).** Every emission carrier balances to 1e-6 like any other; §7's reported direct total equals the objective's $Z^{\text{carbon}}_t \div \pi_t \times 10^{3}$ exactly; a fuel's derived fossil and biogenic coefficients sum to its factor; and capture of a `zero_rated` carrier returns a **negative** contribution rather than zero |
 | **V31** | load | yes | **Role and sign agree (§3.6).** `(unit_id, carrier_id, role)` is unique; `fuel_input`, `aux_input` and `emission_input` carry a negative coefficient and `primary_output`, `coproduct`, `reject` and `emission` a positive one; `emission` and `emission_input` appear on an emission carrier and no other role does. Exactly one `primary_output` per unit with coefficients |
 | **V32** | load + premise | yes | **The site boundary is honoured (D16).** (a) connection-indexed $m_{c,k,t}$ and $x_{c,k,t}$ are declared only where `carrier.may_import` / `carrier.may_export` is true **and** a `premise_connection` row carries the carrier; site-level $m_{c,t}$ only where `may_import` is true and **no** connection carries it; nothing of either kind where the flag is false; (b) no `process_duty` row and no `activity_process_duty_profile` row names a `product` carrier whose `may_export` is false; (c) `may_import` and `may_export` are both false on every `emission` and every `intermediate` carrier. Failure names the carrier |
-| **V33** | load + premise | yes | **Plant is named one unit at a time.** (a) every `premise_process_unit` row (§3.10.2) names a unit that `unit_eligibility` admits for that process at the premise's activity, the rows of one parent name distinct units, and `capacity_share` where given is present on every row of that parent and sums to 1 within 1e-6; (b) every `abatement` unit has at least one `unit_abatement_host` row (§3.5.3), each host is a `converter` on the same `process_id`, and no unit hosts itself; (c) the remaining life used for an abatement unit equals the **minimum** over its hosts. Failure names the unit |
+| **V33** | load + premise | yes | **Plant is named one unit at a time.** (a) every `premise_process_unit` row (§3.10.2) names a unit that `unit_eligibility` admits for that process at the premise's activity, the rows of one parent name a unit twice only with different `commissioned_year` values, and `capacity_share` where given is present on every row of that parent and sums to 1 within 1e-6; (b) every `abatement` unit has at least one `unit_abatement_host` row (§3.5.3), each host is a `converter` on the same `process_id`, and no unit hosts itself; (c) the remaining life used for an abatement unit equals the **minimum** over its hosts. Failure names the unit |
 | **V34** | load | yes | **Duties are services at a grade (§3.3, §3.4).** (a) no `activity_process_duty_profile` or `process_duty` row names a `primary` or `emission` carrier, whatever its family — an `OTH` row on `electricity` fails here; (b) every row on a gradeable carrier carries a `grade_rank`, equal to that carrier's own, and no row on a non-gradeable carrier carries one; (c) each family's rows sit on the carrier §3.4's table names for it — `REF` on a cooling band, the six heat families on a heat band, `MOT` on `motive_power` — and no row carries `EN`, `NEUOTH` or `HRS`; (d) every gradeable carrier has a `grade_family`, and `grade_rank` is unique within it. Failure names the row |
 
 **V20's five legs.**
