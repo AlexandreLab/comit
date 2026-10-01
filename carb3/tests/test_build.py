@@ -1471,5 +1471,6 @@ def test_build_model_refuses_a_d16_supplier_that_also_serves_a_duty() -> None:
     sets = dataclasses.replace(
         _lift_sets(reference), supply={"heat_60_100": frozenset({"boiler_lt_gas"})}
     )
+    sets = dataclasses.replace(sets, released=released_supply(reference, sets))
     with pytest.raises(ValueError, match="D16"):
         build.build_model(sets, _lift_surviving(reference), _axis(), reference)

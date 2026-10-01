@@ -57,6 +57,7 @@ from dataclasses import dataclass, field, replace
 import pandas as pd
 
 from carb3.load import (
+    INPUT_ROLES,
     AdmissionScreen,
     PremiseTables,
     ReferenceTables,
@@ -1073,10 +1074,6 @@ def build_sets(
     return replace(sets, released=released_supply(reference, sets))
 
 
-#: The roles that draw a carrier, as :data:`carb3.load.INPUT_ROLES` reads them.
-_DRAWING_ROLES: frozenset[str] = frozenset({"fuel_input", "aux_input", "emission_input"})
-
-
 def model_units(sets: ModelSets) -> frozenset[str]:
     """The units the LP holds: every unit in some U_q or supply set, intersected with U.
 
@@ -1112,13 +1109,15 @@ def released_supply(reference: ReferenceTables, sets: ModelSets) -> dict[str, fr
             continue
         if role == "primary_output":
             makers.setdefault(carrier_id, set()).add(unit_id)
-        elif role in _DRAWING_ROLES:
+        elif role in INPUT_ROLES:
             drawers.setdefault(carrier_id, set()).add(unit_id)
     released: dict[str, frozenset[str]] = {}
     for carrier_id in sorted(makers):
+        # A D16 supplier already has its z° column on this carrier through ``supply``.
+        d16 = sets.supply.get(carrier_id, frozenset())
         feeding = frozenset(
             unit_id
-            for unit_id in makers[carrier_id]
+            for unit_id in makers[carrier_id] - d16
             if drawers.get(carrier_id, set()) - {unit_id}
         )
         if feeding:

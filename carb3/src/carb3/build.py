@@ -307,7 +307,7 @@ def build_model(
         _balance_terms(reference, model_units, periods, carrier_facts, supplied), len(periods)
     )
     # Import, disposal and export read only which carriers have a C8 row.
-    coefficients = parts
+    c8_carriers = frozenset(parts)
 
     period_index = pd.Index(periods, name="period")
     dispatch_index = pd.Index([pair.coordinate for pair in pairs], name="dispatch")
@@ -352,11 +352,11 @@ def build_model(
         )
 
     import_carriers = sorted(
-        carrier for carrier in coefficients if carrier_facts[carrier].may_import
+        carrier for carrier in c8_carriers if carrier_facts[carrier].may_import
     )
     disposal_carriers = sorted(
         carrier
-        for carrier in coefficients
+        for carrier in c8_carriers
         if carrier_facts[carrier].may_dispose
         and carrier_facts[carrier].kind in DISPOSABLE_KINDS
     )
@@ -382,7 +382,7 @@ def build_model(
     export_carriers = sorted(
         window.carrier_id
         for window in sets.export_windows
-        if window.carrier_id in coefficients
+        if window.carrier_id in c8_carriers
     )
     x_export = None
     if export_carriers:
@@ -713,12 +713,12 @@ def _dispatch_pairs(sets: ModelSets) -> tuple[_Pair, ...]:
     """The coordinates of the flattened ``dispatch`` dimension.
 
     Two kinds of column sit on it. Most are the eligible **(duty, unit)** pairs and are
-    summed into C1 (duty satisfaction) by ``groupby``. The rest are the **internal-supply**
-    columns :func:`carb3.sets.undutied_supply` found — a unit producing a carrier that
-    carries no duty row — and they carry ``duty_key`` ``None``, so C1 never selects their
-    label and their level is settled by C8 (carrier balance) alone. That is exactly what
-    note 21 §2.2 means by "C8 pins the kiln through the ``clinker`` balance instead", and it
-    is the smallest use of z° that makes the sentence true.
+    summed into C1 (duty satisfaction) by ``groupby``. The rest are **z° columns**, labelled
+    ``supply:<carrier>``: a unit's primary output released to C8 (carrier balance) rather
+    than dispatched to a duty. They come from D16 supply (:func:`carb3.sets.undutied_supply`,
+    a unit making a carrier that carries no duty row, such as the kilns' ``clinker``) and from
+    duty units whose output another unit draws (:func:`carb3.sets.released_supply`). They
+    carry ``duty_key`` ``None``, so C1 never selects them and C8 alone settles their level.
 
     A duty with an empty U_q is refused here rather than silently dropped. C1 built by
     ``groupby`` would simply not emit a row for it, and the duty would go unmet with the
@@ -869,13 +869,25 @@ def screen_premise(
     present = {pair.unit_id for pair in candidates}
     # A unit's coefficients do not depend on which other units are present, so one build
     # serves every round: each round only reads them over the units still standing.
-    coefficients = _balance_coefficients(
-        reference, sorted(present), periods, carrier_facts, _supplied(sets), screening=True
+    # Read C8 split as the LP builds it: a primary output scales with z°, every other role
+    # with total activity, so a unit's +1 output cannot net away its own draw here either.
+    parts = _balance_parts(
+        _balance_terms(
+            reference, sorted(present), periods, carrier_facts, _supplied(sets), screening=True
+        ),
+        len(periods),
     )
     producers: dict[str, set[str]] = {
-        carrier_id: {unit_id for unit_id, values in by_unit.items() if np.any(values > 0.0)}
-        for carrier_id, by_unit in coefficients.items()
+        carrier_id: {
+            unit_id
+            for half in (by_activity, by_release)
+            for unit_id, values in half.items()
+            if np.any(values > 0.0)
+        }
+        for carrier_id, (by_activity, by_release) in parts.items()
     }
+    # A draw is always a role scaled by total activity.
+    coefficients = {carrier_id: by_activity for carrier_id, (by_activity, _) in parts.items()}
     # Only for the reason text: a unit whose primary output is the carrier it lacks.
     io = reference.unit_input_output
     self_made = {

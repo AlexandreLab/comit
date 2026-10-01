@@ -337,10 +337,12 @@ def _activity_by_unit(
 def _dispatch_table(pairs, z: dict[str, np.ndarray], periods: tuple[int, ...]) -> pd.DataFrame:
     """z_{u,q,t}, one row per ``(unit_id, duty, period)``.
 
-    A supply column carries ``kind`` ``supply`` and no process: it is a unit producing a
-    carrier that carries no duty row, settled by C8 (carrier balance) rather than by C1
-    (duty satisfaction). Two families sit here — the cement kilns making ``clinker``, an
-    internal product, and ``ccs_amine`` making ``co2_captured``, an exportable one.
+    A z° column carries ``kind`` ``supply`` and no process: output released to C8 (carrier
+    balance) rather than dispatched to a duty in C1 (duty satisfaction). Two sources sit
+    here. D16 supply is a unit making a carrier that carries no duty row: the cement kilns'
+    ``clinker`` and ``ccs_amine``'s ``co2_captured``. A released duty unit makes a carrier
+    another unit draws: ``heat_pump_lt_reject``'s ``heat_60_100``, lifted by ``heat_pump_ht``.
+    ``ModelSets.supply`` and ``ModelSets.released`` tell the two apart.
     """
     records = []
     for pair in pairs:

@@ -38,6 +38,7 @@ from carb3.sets import (
     diagnose_unservable_duties,
     released_supply,
 )
+from carb3.sets import model_units as sets_model_units
 
 #: The three premises that solve on the reference tables as they stand today.
 #: ``mvp-cement`` joined them when A2 learned to read ``premise_throughput`` for a D5 mass
@@ -200,10 +201,8 @@ def test_the_cement_works_gains_no_released_column(runs: dict[str, Run]) -> None
     ``co2_captured``) or importable, so z° for duty units changes nothing there."""
     sets = runs["mvp-cement"].sets
     assert set(sets.supply) == {"clinker", "co2_captured"}
-    assert set(sets.released) <= {"clinker"}
-    assert not {unit for units in sets.released.values() for unit in units} - set(
-        sets.supply.get("clinker", frozenset())
-    )
+    # The kilns already release clinker as D16 supply, so they are not listed again.
+    assert sets.released == {}
 
 
 @pytest.mark.parametrize("premise_id", ["mvp-minimal", "mvp-dairy"])
@@ -666,6 +665,8 @@ def test_the_problem_is_sparse_not_dense(runs: dict[str, Run], premise_id: str) 
     assert run.model.variables["z"].size == pairs * periods
 
     model_units = {pair.unit_id for pair in build._dispatch_pairs(sets)}
+    # Two copies of "which units the LP holds" (sets.py cannot import build.py); one answer.
+    assert model_units == set(sets_model_units(sets))
     # n, a, e and at most one import and one disposal variable per carrier in the tables.
     ceiling = (pairs + 3 * len(model_units) + 2 * len(sets.units)) * periods
     assert pairs * periods <= run.result.n_variables <= ceiling
