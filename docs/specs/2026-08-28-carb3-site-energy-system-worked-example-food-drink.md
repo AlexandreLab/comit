@@ -125,14 +125,14 @@ The 2 MW `export_capacity` is load-bearing here: it binds in 2050 and curtails P
 
 From the site's Climate Change Agreement audit, 2024:
 
-| `process_id` | `valid_from_year` | `valid_to_year` | `connection_id` | `known_capacity` | `confidence` |
-|---|---|---|---|---|---|
-| `boiler_steam_hot_water` | 2011 | — | `G-01` | — | high |
-| `direct_heating` | **2019** | — | `G-01` | **0.10000 PJ/yr** | **high** |
-| `refrigeration` | 2016 | — | `E-01` | — | high |
-| `machinery_motors` | 2011 | — | `E-01` | — | medium |
-| `compressed_air` | 2011 | — | `E-01` | — | medium |
-| `site_services` | 2011 | — | `E-01` | — | medium |
+| `process_id` | `valid_from_year` | `valid_to_year` | `connection_id` | `known_capacity` | `known_activity` | `confidence` |
+|---|---|---|---|---|---|---|
+| `boiler_steam_hot_water` | 2011 | — | `G-01` | — | — | high |
+| `direct_heating` | **2019** | — | `G-01` | **0.10000 PJ/yr** | 0.07905 PJ/yr (the §3.2 duty) | **high** |
+| `refrigeration` | 2016 | — | `E-01` | — | — | high |
+| `machinery_motors` | 2011 | — | `E-01` | — | — | medium |
+| `compressed_air` | 2011 | — | `E-01` | — | — | medium |
+| `site_services` | 2011 | — | `E-01` | — | — | medium |
 
 Six rows, matching the register's default set for `Food Processing Centre` exactly, so this is
 the site's **complete** process list as at any year in range (§3.10's completeness rule). No
@@ -161,7 +161,7 @@ From the same audit:
 **The audit names the plant of two processes, and that makes it known.** Under §3.10's
 precedence rule `A4` does not choose among candidates for `boiler_steam_hot_water` or
 `direct_heating`: the boiler house is a CHP plus a gas boiler, and the spray dryer is a direct
-gas dryer. For `direct_heating`, with a `known_capacity` on the parent, `A4` back-solves
+gas dryer. For `direct_heating`, with a `known_capacity` on the parent (and `known_activity`, the duty it runs at), `A4` back-solves
 *utilisation* rather than capacity (§5.1). The other four processes have no rows, so their
 plant is unknown and comes from `activity_default_unit` (§1.12).
 

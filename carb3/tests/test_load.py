@@ -39,7 +39,7 @@ PREMISE_FILES: dict[str, str] = {
         "fx-cement,cement,0.3,2021,measured,fixture\n"
     ),
     "premise_process_detail": (
-        "premise_id,process_id,valid_from_year,known_capacity,provenance,confidence\n"
+        "premise_id,process_id,valid_from_year,known_activity,provenance,confidence\n"
         "fx-dairy,boiler_steam_hot_water,2021,1.0,fixture,high\n"
         "fx-dairy,direct_heating,2021,0.4,fixture,high\n"
         "fx-dairy,site_services,2021,0.5,fixture,high\n"
@@ -267,7 +267,7 @@ def test_unknown_activity_fails_loud(
             "fx-dairy,Interstellar Cheese,52.0,-1.0,England,2021,fixture\n"
         ),
         premise_process_detail=(
-            "premise_id,process_id,valid_from_year,known_capacity,provenance,confidence\n"
+            "premise_id,process_id,valid_from_year,known_activity,provenance,confidence\n"
         ),
         premise_process_unit=(
             "premise_id,process_id,valid_from_year,cohort_id,unit_id,commissioned_year,"
@@ -285,7 +285,7 @@ def test_unknown_process_id_fails_loud(
     root = write_premise_fixture(
         tmp_path / "p",
         premise_process_detail=(
-            "premise_id,process_id,valid_from_year,known_capacity,provenance,confidence\n"
+            "premise_id,process_id,valid_from_year,known_activity,provenance,confidence\n"
             "fx-dairy,kiln_pyroprocessing,2021,1.0,fixture,high\n"
         ),
     )

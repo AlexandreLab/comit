@@ -350,8 +350,8 @@ def test_mvp_cement_reports_the_two_processes_it_could_not_size(
     """
     premise = load_premise_tables("mvp-cement")
     sets = build_sets(reference, premise, screen, PERIOD_YEARS)
-    assert sets.no_magnitude == ("clinker_cooling", "site_services")
-    assert not [duty for duty in sets.duties if duty.process_id in sets.no_magnitude]
+    assert sets.no_activity == ("clinker_cooling", "site_services")
+    assert not [duty for duty in sets.duties if duty.process_id in sets.no_activity]
 
 
 # --------------------------------------------------------------------------------------
@@ -1122,3 +1122,24 @@ def test_an_export_with_no_price_at_all_fails_loud(reference: ReferenceTables) -
     """
     with pytest.raises(ValueError, match="unpriced export is free disposal"):
         build.export_unit_cost(reference, "clinker", PERIOD_YEARS)
+
+
+def test_mvp_cement_known_activity_matches_the_throughput_that_sizes_its_duties() -> None:
+    """``known_activity`` is the annual activity, ``known_capacity`` the nameplate.
+
+    The kiln's activity is the clinker throughput 0.85 Mt/yr (cement worked example §5.1:
+    utilisation 0.89474 on the 0.95 Mt/yr permit capacity), the grinder's is the cement
+    throughput 1.13 Mt/yr, and the kiln's capacity stays the permit's 0.95.
+    """
+    premise = load_premise_tables("mvp-cement")
+    detail = premise.premise_process_detail.set_index(["process_id", "valid_from_year"])
+    kiln = detail.loc[("kiln_pyroprocessing", 2004)]
+    assert float(kiln["known_capacity"]) == pytest.approx(0.95)
+    assert float(kiln["known_activity"]) == pytest.approx(0.95 * 0.85 / 0.95)
+    assert float(kiln["known_activity"]) <= float(kiln["known_capacity"])
+    grinder = detail.loc[("cement_grinding", 1957)]
+    assert float(grinder["known_activity"]) == pytest.approx(1.13)
+    assert pd.isna(grinder["known_capacity"])
+    throughput = premise.premise_throughput.set_index("carrier_id")["quantity"]
+    assert float(kiln["known_activity"]) == pytest.approx(float(throughput["clinker"]))
+    assert float(grinder["known_activity"]) == pytest.approx(float(throughput["cement"]))

@@ -160,7 +160,7 @@ PREMISE_SCHEMA: dict[str, _ReferenceSchema] = {
     ),
     "premise_process_detail": (
         ("premise_id", "process_id", "valid_from_year", "provenance", "confidence"),
-        ("valid_to_year", "connection_id", "known_capacity"),
+        ("valid_to_year", "connection_id", "known_capacity", "known_activity"),
     ),
     "premise_process_unit": (
         ("premise_id", "process_id", "valid_from_year", "cohort_id", "unit_id",
@@ -201,7 +201,7 @@ _FLOAT_COLUMNS: dict[str, tuple[str, ...]] = {
     "premise_connection": (
         "import_capacity", "export_capacity", "connection_voltage", "available_area",
     ),
-    "premise_process_detail": ("known_capacity",),
+    "premise_process_detail": ("known_capacity", "known_activity"),
     "premise_process_unit": ("capacity_share",),
 }
 

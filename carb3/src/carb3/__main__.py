@@ -382,10 +382,10 @@ def _print_premise(run: PremiseRun) -> None:
             print(f"  export x_c,t: {window.carrier_id} available {span}{gate}")
         for refusal in run.sets.export_refused:
             print(f"  export refused: {refusal.carrier_id} — {refusal.reason}")
-        if run.sets.no_magnitude:
+        if run.sets.no_activity:
             print(
-                "  no duty derived — known_capacity is blank (§3.10 cannot state a known "
-                f"zero): {', '.join(run.sets.no_magnitude)}"
+                "  no duty derived — known_activity is blank (§3.10 cannot state a known "
+                f"zero): {', '.join(run.sets.no_activity)}"
             )
 
     if run.blocked:

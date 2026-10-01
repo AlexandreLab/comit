@@ -120,6 +120,17 @@ for r in detail:
         E(f"premise_process_detail[{p}/{proc}]: connection_id {r['connection_id']!r} not in premise_connection")
     if r["known_capacity"].strip() and float(r["known_capacity"]) <= 0:
         E(f"premise_process_detail[{p}/{proc}]: known_capacity must be > 0 if present")
+    if r["known_activity"].strip() and float(r["known_activity"]) <= 0:
+        E(f"premise_process_detail[{p}/{proc}]: known_activity must be > 0 if present")
+    if (
+        r["known_capacity"].strip()
+        and r["known_activity"].strip()
+        and float(r["known_activity"]) > float(r["known_capacity"])
+    ):
+        E(
+            f"premise_process_detail[{p}/{proc}]: known_activity exceeds known_capacity "
+            "(utilisation would be above 1)"
+        )
     if r["confidence"] not in ("high", "medium", "low"):
         E(f"premise_process_detail[{p}/{proc}]: confidence {r['confidence']!r} not in the enum")
     if (p, proc, vf) in parents:

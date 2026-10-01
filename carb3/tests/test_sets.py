@@ -18,7 +18,7 @@ from carb3 import load, sets
 
 # The two duties of ``boiler_steam_hot_water`` at the dairy fixture, whose shares are read
 # from ``activity_process_duty_profile``: LTH on heat_60_100 at grade 2, STM on heat_100_150
-# at grade 3. ``known_capacity`` is 1.0 PJ/yr, so quantity is the share itself.
+# at grade 3. ``known_activity`` is 1.0 PJ/yr, so quantity is the share itself.
 DAIRY_G2 = ("fx-dairy", "boiler_steam_hot_water", "heat_60_100")
 DAIRY_G3 = ("fx-dairy", "boiler_steam_hot_water", "heat_100_150")
 DAIRY_G4 = ("fx-dairy", "direct_heating", "heat_150_400")
@@ -124,7 +124,7 @@ def test_a2_grade_rank_is_none_only_where_the_carrier_is_not_gradeable(
 
 
 def test_a2_takes_only_the_magnitude_from_the_premise(dairy: sets.ModelSets) -> None:
-    """quantity = known_capacity x duty_share, which is §3.3's own arithmetic for a share."""
+    """quantity = known_activity x duty_share, which is §3.3's own arithmetic for a share."""
     by_key = {d.key: d for d in dairy.duties}
     assert by_key[DAIRY_G2].quantity[2021] == pytest.approx(1.0 * 0.46180)
     assert by_key[DAIRY_G3].quantity[2021] == pytest.approx(1.0 * 0.53820)
@@ -163,10 +163,10 @@ def test_d16_removes_the_kiln_duty_and_keeps_the_grinder(
 def test_a2_reports_a_process_it_cannot_size_rather_than_raising(
     reference, premise_root: Path
 ) -> None:
-    """A blank ``known_capacity`` yields no duty, and the process is **named**.
+    """A blank ``known_activity`` yields no duty, and the process is **named**.
 
     This test asserted a raise until the synthetic premises met it. §3.10 requires
-    ``known_capacity > 0 if present``, so the column cannot state a *known* zero, and two
+    ``known_activity > 0 if present``, so the column cannot state a *known* zero, and two
     ``mvp-cement`` processes — ``clinker_cooling`` and ``site_services`` — have a genuine
     duty of 0.00000 PJ/yr and are written blank with the reason in ``provenance``
     (the premise README's finding 5). Raising made a legitimate premise unloadable, and
@@ -177,13 +177,13 @@ def test_a2_reports_a_process_it_cannot_size_rather_than_raising(
     root = write_premise_fixture(
         premise_root,
         premise_process_detail=(
-            "premise_id,process_id,valid_from_year,known_capacity,provenance,confidence\n"
+            "premise_id,process_id,valid_from_year,known_activity,provenance,confidence\n"
             "fx-dairy,boiler_steam_hot_water,2021,,fixture,high\n"
         ),
     )
     premise = load.load_premise_tables("fx-dairy", root)
     assert sets.derive_duties(reference, premise, load.PERIOD_YEARS) == ()
-    assert sets.processes_without_magnitude(premise) == ("boiler_steam_hot_water",)
+    assert sets.processes_without_activity(premise) == ("boiler_steam_hot_water",)
 
 
 def test_a2_fails_loud_with_no_process_valid_at_the_base_year(
@@ -193,7 +193,7 @@ def test_a2_fails_loud_with_no_process_valid_at_the_base_year(
     root = write_premise_fixture(
         premise_root,
         premise_process_detail=(
-            "premise_id,process_id,valid_from_year,valid_to_year,known_capacity,"
+            "premise_id,process_id,valid_from_year,valid_to_year,known_activity,"
             "provenance,confidence\n"
             "fx-dairy,boiler_steam_hot_water,1990,2010,1.0,fixture,high\n"
         ),
@@ -403,7 +403,7 @@ def test_min_duty_screens_a_unit_out_below_its_floor(
     root = write_premise_fixture(
         premise_root,
         premise_process_detail=(
-            "premise_id,process_id,valid_from_year,known_capacity,provenance,confidence\n"
+            "premise_id,process_id,valid_from_year,known_activity,provenance,confidence\n"
             "fx-dairy,boiler_steam_hot_water,2021,0.001,fixture,high\n"
         ),
     )

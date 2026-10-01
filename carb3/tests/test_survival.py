@@ -229,12 +229,16 @@ def _premise(detail_rows, unit_rows):
     from carb3.load import PremiseTables
 
     unit_rows = [{"valid_from_year": 2009, "cohort_id": "1", **row} for row in unit_rows]
+    detail = pd.DataFrame(detail_rows)
+    for column in ("known_capacity", "known_activity"):  # the loader adds blank optionals
+        if column not in detail.columns:
+            detail[column] = float("nan")
 
     return PremiseTables(
         premise_record=pd.DataFrame([{"premise_id": "fx", "data_year": 2024}]),
         premise_connection=pd.DataFrame(),
         premise_throughput=pd.DataFrame(),
-        premise_process_detail=pd.DataFrame(detail_rows),
+        premise_process_detail=detail,
         premise_process_unit=pd.DataFrame(unit_rows),
     )
 
@@ -253,12 +257,12 @@ def _costed_unit_table() -> pd.DataFrame:
 
 
 def test_vintage_capacity_inverts_gamma_alpha_to_get_the_capacity_behind_a_duty() -> None:
-    """``known_capacity`` is the process's annual **activity**, and C2 reads a capacity.
+    """``known_activity`` is the process's annual **activity**, and C2 reads a capacity.
 
     §3.10.2 carries a ``capacity_share`` and no capacity; the magnitude is one table up. C2
     is ``z <= a γ α``, so the capacity behind an annual magnitude of ``D`` is ``D/(γα)``.
 
-    **Reading ``known_capacity`` as a capacity instead makes ``mvp-minimal`` infeasible at
+    **Reading ``known_activity`` as a capacity instead makes ``mvp-minimal`` infeasible at
     the base year**, which is how the two readings are told apart: 0.100000 PJ/yr at
     ``availability_factor`` 0.9823 delivers only 0.098230, C5 (no building in the start
     year) forbids topping it up, and C1 (duty satisfaction) cannot close.
@@ -270,7 +274,7 @@ def test_vintage_capacity_inverts_gamma_alpha_to_get_the_capacity_behind_a_duty(
                 "process_id": "boiler_steam_hot_water",
                 "valid_from_year": 2009,
                 "valid_to_year": None,
-                "known_capacity": 0.1,
+                "known_activity": 0.1,
             }
         ],
         [
@@ -292,8 +296,74 @@ def test_vintage_capacity_inverts_gamma_alpha_to_get_the_capacity_behind_a_duty(
     assert deliverable == pytest.approx(0.1), "the incumbent must just cover its own duty"
 
 
-def test_vintage_capacity_skips_a_process_with_no_magnitude() -> None:
-    """A blank ``known_capacity`` gives no duty, so it must give no incumbent either.
+def test_vintage_capacity_takes_a_stated_known_capacity_directly() -> None:
+    """Where ``known_capacity`` is given it **is** the capacity; no ``1/(γα)`` is applied.
+
+    The cement kiln's permit states 0.95 Mt/yr and an activity of 0.85 Mt/yr. Dividing the
+    activity by γα would give 0.85/0.9823, not the permit's 0.95.
+    """
+    premise = _premise(
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "valid_from_year": 2009,
+                "valid_to_year": None,
+                "known_capacity": 0.95,
+                "known_activity": 0.85,
+            }
+        ],
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "unit_id": "boiler_lt_gas",
+                "commissioned_year": 2009,
+                "capacity_share": 1.0,
+            }
+        ],
+    )
+    frame = survival.vintage_capacity(premise, _costed_unit_table())
+    assert float(frame.loc[0, "capacity"]) == pytest.approx(0.95)
+
+
+def test_vintage_capacity_uses_known_capacity_when_activity_is_blank() -> None:
+    """A capacity with no activity still sizes the incumbent (the wet-line style row)."""
+    premise = _premise(
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "valid_from_year": 2009,
+                "valid_to_year": None,
+                "known_capacity": 0.7,
+                "known_activity": None,
+            }
+        ],
+        [
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "unit_id": "boiler_lt_gas",
+                "commissioned_year": 2009,
+                "capacity_share": 0.5,
+            },
+            {
+                "premise_id": "fx",
+                "process_id": "boiler_steam_hot_water",
+                "unit_id": "boiler_lt_gas",
+                "cohort_id": "2",
+                "commissioned_year": 2010,
+                "capacity_share": 0.5,
+            },
+        ],
+    )
+    frame = survival.vintage_capacity(premise, _costed_unit_table())
+    assert list(frame["capacity"]) == pytest.approx([0.7, 0.7])  # the line total; capacity_share splits it later
+
+
+def test_vintage_capacity_skips_a_process_with_no_activity() -> None:
+    """A blank ``known_activity`` and ``known_capacity`` give no duty, so it must give no incumbent either.
 
     ``mvp-cement``'s ``clinker_cooling`` and ``site_services`` are the case. Giving them a
     capacity while A2 gives them no duty would add fixed opex for plant with nothing to do.
@@ -305,7 +375,7 @@ def test_vintage_capacity_skips_a_process_with_no_magnitude() -> None:
                 "process_id": "boiler_steam_hot_water",
                 "valid_from_year": 2009,
                 "valid_to_year": None,
-                "known_capacity": None,
+                "known_activity": None,
             }
         ],
         [
@@ -330,7 +400,7 @@ def test_vintage_capacity_refuses_a_cohort_whose_process_is_not_valid_at_the_bas
                 "process_id": "boiler_steam_hot_water",
                 "valid_from_year": 2009,
                 "valid_to_year": None,
-                "known_capacity": 0.1,
+                "known_activity": 0.1,
             }
         ],
         [
@@ -366,13 +436,13 @@ def test_a_blank_lifetime_arrives_as_pd_na_from_a_real_reference_table() -> None
     assert set(standing["unit_id"]) == {"boiler_lt_gas"}
 
 
-def _detail(valid_from_year: int, valid_to_year, known_capacity: float = 0.1) -> dict:
+def _detail(valid_from_year: int, valid_to_year, known_activity: float = 0.1) -> dict:
     return {
         "premise_id": "fx",
         "process_id": "boiler_steam_hot_water",
         "valid_from_year": valid_from_year,
         "valid_to_year": valid_to_year,
-        "known_capacity": known_capacity,
+        "known_activity": known_activity,
     }
 
 

@@ -14,7 +14,7 @@ among them — so a mass duty cannot come from it. §3.1.2 already says where it
 duty on that product under D5 — a cement works' 1.13 Mt/yr of cement is what C1 makes it
 produce." So A2 reads ``premise_throughput`` too, for product duties only, at the base year
 only (D12). Without it A2 read the cement works' ``MOT`` profile row against a
-``known_capacity`` that is 1.13 **Mt of cement** and produced a 1.13 **PJ** motive-power
+``known_activity`` that is 1.13 **Mt of cement** and produced a 1.13 **PJ** motive-power
 duty no unit could serve.
 
 **Export, and C9's gate, are assembled here too** (:func:`export_windows`). §5.2 declares
@@ -154,10 +154,10 @@ class ModelSets:
     #: :func:`undutied_supply`: without this the cement kilns have no activity variable and
     #: the ``clinker`` node can never be met, and ``ccs_amine`` has none either.
     supply: Mapping[str, frozenset[str]] = field(default_factory=dict)
-    #: Processes valid at the base year that yielded no duty because ``known_capacity`` is
+    #: Processes valid at the base year that yielded no duty because ``known_activity`` is
     #: blank. Reported by the run report rather than silently absorbed — see
     #: :func:`derive_duties`.
-    no_magnitude: tuple[str, ...] = ()
+    no_activity: tuple[str, ...] = ()
     #: ``earliest_year`` for the supply units above. They sit in no U_q, so the duty-keyed
     #: mapping cannot hold them, and without this ``ccs_amine``'s 2035 gate would not be
     #: applied to the one unit it exists for.
@@ -302,7 +302,7 @@ def derive_duties(
     Structure is read, magnitude is hand-written. For each §3.10 process valid at the base
     year, every ``activity_process_duty_profile`` row of that process becomes a duty on that
     row's ``carrier_id`` at that row's ``grade_rank``, and its quantity is the premise's
-    ``known_capacity`` for the process split by the row's ``duty_share`` — which is the
+    ``known_activity`` for the process split by the row's ``duty_share`` — which is the
     arithmetic §3.3 defines for a share ("share of this process's energy that is this
     duty"). Nothing else about the magnitude is derived: it is flat across ``periods``,
     because this slice models no demand growth.
@@ -323,15 +323,15 @@ def derive_duties(
     that need reaches C8 through the unit's own input coefficients — and exactly one
     throughput duty instead. Only the base year is read (D12); the rest is history.
 
-    **A process with a blank ``known_capacity`` yields no duty, and is reported rather than
-    raised on.** §3.10 requires ``known_capacity > 0 if present``, so the column cannot state
+    **A process with a blank ``known_activity`` yields no duty, and is reported rather than
+    raised on.** §3.10 requires ``known_activity > 0 if present``, so the column cannot state
     a *known* zero, and two ``mvp-cement`` processes — ``clinker_cooling`` and
     ``site_services`` — have a genuine duty of 0.00000 PJ/yr and are written blank with the
     reason in ``provenance``. That is the premise README's finding 5 and §3.1.1's
     absence-is-not-zero trap in a table with no ``data_status`` column to resolve it. The
     minimal A2 has no A4 back-solve, so it cannot recover a magnitude it was not given; a
     duty it cannot size is one it must not invent. Silence is what would be wrong, so
-    :func:`processes_without_magnitude` names every one of them and the run report prints
+    :func:`processes_without_activity` names every one of them and the run report prints
     them beside the screen's dropped units.
 
     Fails loud rather than yielding a thinner Q: an unknown activity, a process with no
@@ -370,9 +370,9 @@ def derive_duties(
             # premise_throughput below; its profile row is a classification (§3.1.2, §3.9).
             continue
 
-        capacity = process["known_capacity"]
-        if pd.isna(capacity):
-            continue  # no magnitude, so no duty; :func:`processes_without_magnitude` reports it
+        activity_size = process["known_activity"]
+        if pd.isna(activity_size):
+            continue  # no magnitude, so no duty; :func:`processes_without_activity` reports it
 
         for _, row in rows.iterrows():
             carrier_id = str(row["carrier_id"])
@@ -395,7 +395,7 @@ def derive_duties(
                     )
                 grade_rank = int(row["grade_rank"])
 
-            quantity = float(capacity) * float(row["duty_share"])
+            quantity = float(activity_size) * float(row["duty_share"])
             duty = Duty(
                 premise_id=premise_id,
                 process_id=process_id,
@@ -498,8 +498,8 @@ def _throughput_duties(
     return tuple(derived)
 
 
-def processes_without_magnitude(premise: PremiseTables) -> tuple[str, ...]:
-    """Processes valid at the base year whose ``known_capacity`` is blank (§3.10).
+def processes_without_activity(premise: PremiseTables) -> tuple[str, ...]:
+    """Processes valid at the base year whose ``known_activity`` is blank (§3.10).
 
     :func:`derive_duties` derives no duty for these. They are named here so the run report
     can print them: a duty that quietly does not exist is the failure mode, not the blank.
@@ -508,7 +508,7 @@ def processes_without_magnitude(premise: PremiseTables) -> tuple[str, ...]:
     processes = _processes_at(premise, int(record["data_year"]))
     if processes.empty:
         return ()
-    blank = processes[processes["known_capacity"].isna()]
+    blank = processes[processes["known_activity"].isna()]
     return tuple(sorted({str(process_id) for process_id in blank["process_id"]}))
 
 
@@ -584,10 +584,10 @@ def undutied_supply(
             if not pd.isna(row["min_duty"])
         }
         # min_duty is a floor on a duty magnitude, and this process has no duty. The
-        # premise's own known_capacity for it is the nearest thing the data holds — it is
+        # premise's own known_activity for it is the nearest thing the data holds — it is
         # what a duty would have been sized at — so the floor is applied against that where
-        # it exists, rather than dropped. ccs_amine's 0.25 clears the kiln's 0.95 Mt/yr.
-        magnitude = process["known_capacity"]
+        # it exists, rather than dropped. ccs_amine's 0.25 clears the kiln's 0.85 Mt/yr.
+        magnitude = process["known_activity"]
         candidates = {str(unit_id) for unit_id in rows["unit_id"]} | runs
         for unit_id in sorted(candidates & admitted):
             made = {
@@ -900,8 +900,8 @@ def build_sets(
     """Assemble Q, U, U_q and the three eligibility columns for one premise.
 
     Two fields beyond Q, U and U_q: ``supply`` carries the D16-suppressed producers
-    :func:`undutied_supply` finds, and ``no_magnitude`` the processes
-    :func:`processes_without_magnitude` could not size.
+    :func:`undutied_supply` finds, and ``no_activity`` the processes
+    :func:`processes_without_activity` could not size.
 
     ``min_duty`` is applied against the duty's largest quantity over the horizon: "below this
     the unit is not offered at all" (§3.5.1) is a statement about the duty, and U_q is not
@@ -952,7 +952,7 @@ def build_sets(
         max_share=max_share,
         min_duty=min_duty,
         supply=supply,
-        no_magnitude=processes_without_magnitude(premise),
+        no_activity=processes_without_activity(premise),
         supply_earliest_year=supply_earliest_year,
         export_windows=windows,
         export_refused=refused,
@@ -1199,5 +1199,6 @@ def explain_start_year_shortfall(shortfall: StartYearShortfall) -> str:
         f"{duties} need {shortfall.demand:.6f} together, and the incumbents able to serve "
         f"them ({units}) can deliver {shortfall.deliverable:.6f}, short by "
         f"{shortfall.shortfall:.6f}. Check premise_process_unit's capacity_share against "
-        f"the duties each unit can serve, and premise_process_detail's known_capacity"
+        f"the duties each unit can serve, and premise_process_detail's known_activity "
+        f"and known_capacity"
     )

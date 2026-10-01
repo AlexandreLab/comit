@@ -34,7 +34,7 @@ with the reason, never as a traceback (§5.2, infeasibility is an expected outco
 | Check | Function | Fails when | What to fix |
 |---|---|---|---|
 | Unservable duty | `sets.diagnose_unservable_duties` | A duty has **no** eligible unit in some period | The unit library or eligibility: nothing on the site's candidate list makes that carrier at that grade |
-| Start-year shortfall | `sets.diagnose_start_year_shortfall` | The incumbent plant is **too small** to meet the first period's duties | `premise_process_unit.capacity_share` against the duties each unit can serve, or `premise_process_detail.known_capacity` |
+| Start-year shortfall | `sets.diagnose_start_year_shortfall` | The incumbent plant is **too small** to meet the first period's duties | `premise_process_unit.capacity_share` against the duties each unit can serve, or `premise_process_detail.known_activity` or `known_capacity` |
 
 **Why the start year is special.** C1 (duty satisfaction) is an equality and C5 (no building
 in the start year) allows no new capacity in the first period, so the plant named in
@@ -169,7 +169,7 @@ the reference data has not caught up either.
   that unit with no code change. None of the three premises draws an OTH duty, so nothing here
   exercises it.
 
-The `duty_share` handling matches §3.3. A duty's quantity is the premise's `known_capacity`
+The `duty_share` handling matches §3.3. A duty's quantity is the premise's `known_activity`
 for the process times the row's `duty_share`. A gradeable carrier with no `grade_rank` stops
 the run, following §3.3's rule that a heat or cooling duty must have a grade. A process whose
 units make a non-exportable `product`, such as `clinker`, yields no duty (D16, an internal
