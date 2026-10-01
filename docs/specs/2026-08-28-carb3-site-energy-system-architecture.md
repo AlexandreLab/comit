@@ -239,7 +239,7 @@ tooling that this design leans on directly, and re-deriving any of them would be
 |---|---|---|
 | **Signed input/output coefficients** | implementation spec §3.6 | Consumed negative, produced positive. This convention is exactly what the carrier balance needs, and §7's emissions formulae depend on it |
 | **`premise_connection`** | implementation spec §3.1.3 | Already carries `import_capacity`, `export_capacity`, `connection_voltage` and the onsite-generation fields. C11 bounds import against it and C12 bounds onsite generation against `available_area` |
-| **Peak derivation** | implementation spec §5.6 | The 14-step method, fed by `process_load_shape` (§3.13), `premise_operating_profile` (§3.12) and `premise_weekly_profile` (§3.14). These are also the Tier A inputs. Do not invent a parallel mechanism |
+| **Peak derivation** | implementation spec §5.6 (the peak factor λ is defined there; the 14-step method is archived baseline §5.6, and its restatement is open under T23, complete §5) | The 14-step method, fed by `process_load_shape` (§3.13), `premise_operating_profile` (§3.12) and `premise_weekly_profile` (§3.14). These are also the Tier A inputs. Do not invent a parallel mechanism |
 | **D10 three-tier evidence pattern** | implementation spec §1.6, §3.3 | Reused verbatim for heat grades, usable areas, COPs, carrier mixes (A4) and the ψ/β provenance |
 | **D11 vintage and stranding** | implementation spec §5.3, C4 | Generalises from technologies to units unchanged. η and R̄ stay parameters, which is what keeps the problem a pure LP |
 | **The tariff term $Z^{\text{infra}}$** | implementation spec §5.4 | Becomes the import-tariff term for **every** carrier, not only hydrogen and CO₂ |

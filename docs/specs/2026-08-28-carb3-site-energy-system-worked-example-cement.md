@@ -52,10 +52,9 @@ source                       CaRB3 stock model v3.1
 `construction_year` 1957 bounds plant age at 67 years under `D11` (existing plant has an
 age) — longer than any lifetime on site, so the bound is slack and buys nothing here. That
 is the expected outcome for heavy industry, and it is the *young* premise, not this one, on
-which the §5.3.1 tier-2 formula binds. §5.3.1 is cited throughout the specification and is
-**not written** (`T23`, complete §5); the tier-2 window quoted in §5 below is therefore read
-from the [COMIT-parity baseline specification](archive/2026-08-19-carb3-site-decarbonisation-implementation.md)
-and must be re-derived when §5.3.1 lands.
+which the §5.3.1 tier-2 formula binds. §5.3.1 (plant vintage and the survival function) defines
+that formula, and the tier-2 window quoted in §5 below follows it; the slice implements only
+tier 1 of that section.
 
 ### 1.2 `premise_energy` (§3.1.1) — consumption by carrier per year
 
@@ -351,7 +350,7 @@ works has no `REF` duty, so no cooling carrier is in play.
 **Units (§3.5), the rows this premise can reach.** Capacity units follow `D5`: Mt/yr for
 chemistry, PJ/yr for energy services, MW for PV and storage.
 
-| `unit_id` | `unit_class` | `spine` | `process_id` / `duty_family` | **fuel** | `capex` | `fixed_opex` | `L` | `α` | `γ` | `λ` area |
+| `unit_id` | `unit_class` | `spine` | `process_id` / `duty_family` | **fuel** | `capex` | `fixed_opex` | `L` | `α` | `γ` | `μ` area |
 |---|---|---|---|---|---|---|---|---|---|---|
 | `kiln_dry_coal` | converter | chemistry | `kiln_pyroprocessing` | **coal** | 260 £m/(Mt/yr) | 8.00 | 40 | 0.90 | 1.0 | — |
 | `kiln_dry_gas` | converter | chemistry | `kiln_pyroprocessing` | **natural_gas** | 252 | 7.60 | 40 | 0.90 | 1.0 | — |
@@ -640,7 +639,7 @@ the model's grade mechanism.
 under `D5`.
 The energy duties are derived from the premise's metered energy by the published process
 shares in
-[`activity_process_energy_profile.csv`](../notes/data/activity_process_energy_profile.csv),
+[`activity_process_energy_share.csv`](../notes/data/activity_process_energy_share.csv),
 which is keyed `(carb3_activity, process_set_id, process_id, vector)` and carries an
 `energy_share` summing to 1.00 ± 0.015 down the **process** column **for each vector**. The
 `Cement Works` rows, verbatim:
@@ -1232,7 +1231,7 @@ electricity because nothing is generated on site until PV arrives in 2030.
 
 ### 8.2 C12 and the PV decision
 
-$$\sum_{u \in U^{\text{area}}} \lambda_u\, a_{u,t} \;\le\; \sum_{k \in \mathcal{K}} A_k \qquad \Longrightarrow \qquad 6{,}500 \times a_{\text{pv},t} \;\le\; 16{,}100$$
+$$\sum_{u \in U^{\text{area}}} \mu_u\, a_{u,t} \;\le\; \sum_{k \in \mathcal{K}} A_k \qquad \Longrightarrow \qquad 6{,}500 \times a_{\text{pv},t} \;\le\; 16{,}100$$
 
 so $a_{\text{pv},t} \le$ **2.47692 MW**. Area is summed across connections here, unlike
 capacity in C11, because roof and land are one estate however many supplies serve them
@@ -1269,8 +1268,8 @@ C11 is written per connection and never summed across them:
 
 $$P^{\text{peak}}_{k,t} \;\le\; \overline{P}^{\text{imp}}_{k} + w_{k,t} + \sum_{u} \beta_u\,a_{u,t}$$
 
-Peak is rebuilt from the solved pathway by the §5.6 method. **§5.6 is not written** (`T23`),
-so this example uses mean import over operating hours multiplied by the observed within-shift
+Peak is rebuilt from the solved pathway by C11's method. **§5.6 defines only the peak factor
+$\lambda$ and the method is open** (`T23`), so this example uses mean import over operating hours multiplied by the observed within-shift
 peak factor of §1.8, and states that this **understates** the true peak because it applies no
 diversity step and no seasonal correction:
 
@@ -1419,7 +1418,7 @@ Three features of this pathway:
 ### 8.6 The relaxation ladder (§4.2)
 
 This premise is feasible at every period, so no rung is used. The ladder's order is
-**C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**, and at this works only C12 (siting cap), C11
+**C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1** (C4b is leg (b) of C4, forced ageing), and at this works only C12 (siting cap), C11
 (connection capacity) and C9 (infrastructure availability) could ever be reached: C6 (unit
 stability) and C7 (known changes) have no instances, and C10 (grade cascade) has no rows. Had
 `import_capacity` at `C-01` been 20 MW rather than 25 MW, C11 would have relaxed in 2035 —
@@ -1729,8 +1728,8 @@ written:
 
 | # | Open point | Where it bites | Closed by |
 |---|---|---|---|
-| **6** | **§5.3.1 is cited and unwritten.** The vintage tier ladder, the survival function and the stranding formula are cited from §3.10.2, §5.3 and §5.5, and the section does not exist | §5.3 — the tier-2 window is read from the archived COMIT-parity baseline rather than from the live specification | `T23` / `MF-18` |
-| **7** | **§5.6 is cited and unwritten**, so nothing says how C11's peak is rebuilt or which year it reads | §8.3 — this example uses mean import × the observed within-shift peak factor, with no diversity step, and **understates** the peak | `T23` / `MF-18`; §10.4 records that this row carries no automated guard |
+| **6** | **§5.3.1 is written; the stranding formula is not.** The vintage tier ladder and the survival function are in §5.3.1, but $Z^{\text{strand}}$ is named in §5.4's objective and has no defining expression | §5.3 – the tier-2 window follows §5.3.1, and no stranding charge is quoted | `T23` / `MF-18` |
+| **7** | **§5.6 defines only the peak factor $\lambda$**, so nothing says how C11's peak is rebuilt or which year it reads | §8.3 — this example uses mean import × the observed within-shift peak factor, with no diversity step, and **understates** the peak | `T23` / `MF-18`; §10.4 records that this row carries no automated guard |
 
 And five more — points 8 to 10 from the 2026-09-15 review, 11 and 12 from the 2026-09-17 pass.
 **All five are now closed**, and with points 1 to 5 above that is **all twelve this example has

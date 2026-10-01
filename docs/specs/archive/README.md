@@ -64,6 +64,10 @@ rather than as an input.
 
 Moving or renaming anything here without updating those will break `make docs-check`.
 
+## Renamed data file
+
+`activity_process_energy_profile.csv` was renamed `activity_process_energy_share.csv` on 2026-10-01, so the links in the baseline (around line 3378) and the review log (around line 99) point at the old name. The frozen files are left as they are.
+
 ## Known defects, recorded rather than fixed
 
 The frozen documents contain three known errors. They are listed in the

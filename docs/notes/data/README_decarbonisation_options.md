@@ -1,7 +1,7 @@
 # Decarbonisation options register — first draft
 
 **Date:** 2026-08-24 · **Status:** Draft v0.1 for review · **Companion to:**
-`activity_process_register.csv` / `activity_process_energy_profile.csv` (see
+`activity_process_register.csv` / `activity_process_energy_share.csv` (see
 `README_activity_process_tables.md`)
 
 Evidence-based first draft of decarbonisation options for all **55 CaRB3 Factory-class

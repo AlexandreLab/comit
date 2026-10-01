@@ -349,11 +349,11 @@ Four premise-side tables, three premises, **CSV** so every file a human edits st
 for M2 are **parquet**.
 
 **Six tables, not the four this plan commissioned.** The premise lane wrote
-`premise_throughput`, `premise_connection` and `premise_energy` anyway, on the grounds that
-§3.1 declares the first two required; the plan named four and read four. Two of the three
-are now read, and each closed one of the two reasons `mvp-cement` did not solve.
-`premise_energy` remains written and unread: nothing in this slice consumes a base-year
-metered total.
+`premise_throughput`, `premise_connection` and `premise_energy` anyway. §3.1 declares
+`premise_energy` and `premise_throughput` required, and `premise_connection` optional; the
+plan named four and read four. Two of the three are now read, and each closed one of the
+two reasons `mvp-cement` did not solve. `premise_energy` remains written and unread:
+nothing in this slice consumes a base-year metered total.
 
 **`premise_record` carries a `cluster_id`, and §3 has no field for it.** §3.7's rule is that
 "a premise is assigned to the nearest in-scope cluster on ingest (A1)", and A1 is out of
@@ -525,11 +525,12 @@ carb3/                          # new; R/ is untouched
     survival.py                 # D11 survival function, computed before the LP
     build.py                    # variables, C1-C5, C8, C10, objective, solve
     ledger.py                   # cost by term, carrier mix, dispatch, build, disposal -> parquet
+    report/                     # renders the site report
   data/premises/*.csv
   tests/
 ```
 
-One line, `^carb3$`, is added to `.Rbuildignore` so `R CMD check` ignores the directory.
+The five top-level modules remain; the `report/` subpackage renders the site report. One line, `^carb3$`, is added to `.Rbuildignore` so `R CMD check` ignores the directory.
 
 **Nothing in the stack is installed today.** Of numpy, pandas, xarray, linopy, highspy,
 pandera and pyarrow, only `pydantic` is present. The slice introduces a second Python
@@ -622,8 +623,9 @@ both Musts and both out. Degenerate optima are left **visible** rather than sile
 `MF-52` (§7's attribution rules), `MF-53` (evidence tiers) and `MF-79` (an indirect carrier
 charged on import) are out. `MF-77` and `MF-78` are **in**, pulled forward by §2.2.
 
-**Repaid at:** M2. `MF-79` cannot bite here: it exists because on-site generation makes
-consumption exceed import, and there is no on-site generation.
+**Repaid at:** M2. `MF-79` (electricity charged on import) cannot bite here: the slice
+admits on-site generation (a gas CHP is built at mvp-dairy) but §7.8's allocation
+layer is not yet in scope, so consumption and its carbon intensity are both unassigned.
 
 ### 6.4 Periods are a vector, not a formula — a spec defect
 
@@ -682,12 +684,46 @@ specification a change.
 | Emissions attribution (`MF-52`, `MF-53`, `MF-79`, `MF-80`) | Reporting layers; none changes a pathway |
 | C6, C7, C11, C12 | Each needs machinery the slice has no use for; C12 exists for PV, which is out |
 | ~~C9~~ | **Partly in scope from 2026-09-20** (§2.3). The export of CO₂ is bounded to zero where `infrastructure_scenario` marks the premise's cluster unavailable. Still out: `capacity_limit` (blank on all 63 `co2_transport` rows), hydrogen, and `grid_headroom` |
-| On-site generation, CHP, PV, storage | The exclusion that was meant to make `MF-42`, `MF-79` and `MF-80` moot rather than skipped. **Nothing enforces it** — 23 `coproduct` rows are live and four gas CHPs clear the screen; see [note 20](20_reference_data_open_questions.md) item 52 |
+| PV, storage, grid capacity | Excluded because they add machinery the slice does not need; CHP is **in** (a gas CHP builds at mvp-dairy). C11 and C12, which would gate them, remain out |
 | ~~Export~~ | **In scope from 2026-09-20** (§2.2), for carriers that pass the connection and price tests. Today that is `co2_captured` at `mvp-cement` and nothing else: electricity is refused because its `export_price` misses 2021 |
 | Collapsing $m_{c,k,t}$ to $m_{c,t}$ | The connection index carries no information while C11, $Z^{\text{net}}$ and export are all out, and `import_price` has no connection dimension. Left as-is to stay close to §5.2; see the TODO |
 | A PyPSA / Calliope spike | Note 08 §2 names it as a prerequisite — "a spike might show 70% of COMIT is configuration rather than code" — and it has never been run. Not blocking a first slice, but it is owed before the architecture hardens |
 | CI, packaging, distribution | No `.github/` exists and `make check` has no `carb3` target. The package's tests would sit outside every gate in the repo. A separate call, flagged rather than silently dropped |
 | Filling the 10 missing `import_price` carriers | A sourcing task with real scenario implications, especially hydrogen. The screen makes the gap visible and precise instead |
+
+### Deferred, in order of value
+
+Post-MVP: where to go next. Ordered by value; dependencies on later items are noted inline, and an item may call for a user decision.
+
+1. **Non-energy use (§7.10) vs A6 fuel CO₂ derivation** – A non-energy carrier is one a process consumes but does not burn; `petroleum_products_misc` is a `fuel_input` of one CHP, an `aux_input` of four kilns, and a feedstock or coproduct on five steam crackers (note 20 item 67), so a per-carrier exemption would delete real emissions; decide per unit or per role, then update the reference tables and A6's derivation.
+
+2. **Capture train life bounded by its host (§3.5.3)** – The CCS train's remaining life is the minimum over its abatement hosts; mvp-cement kilns retire 2034 and `ccs_amine` is available from 2035, so the bound would prevent CCS unless new-build kilns are deemed hosts. Also requires Z^strand (item 12) to report stranded capture capacity.
+
+3. **Survival tiers 2 and 3 with vintage_default defined** – Tier 1 vintage is all that exists today; tiers 2 and 3 require `activity_default_unit` and a `vintage_default` scenario setting (§5.3.1; it is not a per-unit column), which the stock model supplies.
+
+4. **Emissions output table (note 12 categories)** – Eight parquet tables today; add the emissions ledger with CO₂ flow by carrier, period, fate (vented / captured) and evidence tier (accounted / allocated).
+
+5. **V10 (determinism)** – Requires the lexicographic tie-break over $(\texttt{unit\_id}, \texttt{carrier\_id}, \texttt{role})$ on M2's gate.
+
+6. **§7.8 indirect emissions on electricity imports** – A unit consuming imported electricity is charged the grid carbon factor per §7.8; requires the allocation layer.
+
+7. **A3 and A4** – The energy-share split and the carrier-mix tiering, both today unwritten; A3 feeds forward to §3.1.1's duty derivation.
+
+8. **A7 relaxation ladder** – Six of eight rungs above what is built (C10 and C1 alone); the machinery is there, the step function on infeasibility is not.
+
+9. **C6 and C7** – Unit stability (a two-legged ramp limit, still a pure LP) and known changes (announced retirements and expansions); both MustHave features.
+
+10. **C11 with T23 and C12** – Connection capacity and siting bounds; C11 gates CHP and infrastructure, C12 gates PV; T23 (complete §5) owns both.
+
+11. **Cascade variable h and connection-indexed import/export** – §5.2 admits $h_{c \to c',t}$; m and x today are site-level for simplicity; connection indexing and the cascade follow.
+
+12. **Z^strand and early retirement r** – The stranding charge and early-retirement variable; both driven by D11 (plant age) but neither exists in the slice, so neither can be studied.
+
+13. **§7.6 reconciliation against premise_measured_emissions** – Reported as a data difference, never enforced; requires §3.11's `premise_measured_emissions` table to be present.
+
+14. **Scale gates G2–G4** – Multi-premise, multi-sector and GB-level solve time and memory; only G1 (single-premise wall clock) exists today.
+
+15. **Tier A archetypes (S0, T19)** – The offline hourly dispatch and the archetype set definition; unlocks the full emission attribution machinery of §7.7.
 
 ---
 
@@ -714,50 +750,50 @@ handler. The two marked were critical before this review.
 
 Synthesized from the review's findings. Each derives from a specific finding above.
 
-- [ ] **T1 (P1, human: ~1 day / CC: ~30min)** — scaffolding — Create `carb3/` with `pyproject.toml`, the five modules, `.Rbuildignore` entry, and a `carb3` target in the Makefile
+- [x] **T1 (P1, human: ~1 day / CC: ~30min)** — scaffolding — Create `carb3/` with `pyproject.toml`, the five modules, `.Rbuildignore` entry, and a `carb3` target in the Makefile
   - Surfaced by: Step 0 complexity check; NOT-in-scope CI gap
   - Files: `carb3/`, `Makefile`, `.Rbuildignore`
   - Verify: `uv run pytest` collects; `make check` still green
-- [ ] **T2 (P0, human: ~1 day / CC: ~35min)** — load — Admission screen over capex, lifetime, opex, coefficients and fuel prices; dropped units reported
+- [x] **T2 (P0, human: ~1 day / CC: ~35min)** — load — Admission screen over capex, lifetime, opex, coefficients and fuel prices; dropped units reported
   - Surfaced by: Architecture issue 2 and issue 14 — `unit.csv:12`; only 4 of 15 `may_import` carriers priced for every period
   - Files: `carb3/src/carb3/load.py`
   - Verify: `heat_exchanger_lt_steam` and `boiler_lt_hydrogen` both dropped with reasons
-- [ ] **T3 (P0, human: ~2 days / CC: ~60min)** — build — Restore $d_{c,t}$ gated on `carrier_kind`, add its term to C8, charge carbon on venting per §5.4
+- [x] **T3 (P0, human: ~2 days / CC: ~60min)** — build — Restore $d_{c,t}$ gated on `carrier_kind`, add its term to C8, charge carbon on venting per §5.4
   - Surfaced by: Outside voice issue 11 — 59 `reject` rows into `heat_lt60`; 34 `co2_process` producers, 2 consumers
   - Files: `carb3/src/carb3/build.py`
   - Verify: `boiler_lt_gas` runs without a co-built reject heat pump; `mvp-cement` solves
-- [ ] **T4 (P1, human: ~1 day / CC: ~40min)** — sets — Build $U_q$ as the three-table join; honour `earliest_year`, `max_share`, `min_duty`; rule for the 142 blank-`process_id` rows
+- [x] **T4 (P1, human: ~1 day / CC: ~40min)** — sets — Build $U_q$ as the three-table join; honour `earliest_year`, `max_share`, `min_duty`; rule for the 142 blank-`process_id` rows
   - Surfaced by: Outside voice issue 15 — `max_share` 0.00 at `Food Processing Centre`
   - Files: `carb3/src/carb3/sets.py`
   - Verify: no capture train built before its `earliest_year`; `boiler_lt_coal` held at zero at the dairy
-- [ ] **T5 (P1, human: ~1 day / CC: ~45min)** — sets — Minimal A2: duty structure from `activity_process_duty_profile` and `activity_process_register`
+- [x] **T5 (P1, human: ~1 day / CC: ~45min)** — sets — Minimal A2: duty structure from `activity_process_duty_profile` and `activity_process_register`
   - Surfaced by: Architecture issue 4 — spec §3.9 derives `process_duty` at run time
   - Files: `carb3/src/carb3/sets.py`
   - Verify: both premises' duties resolve with `grade_rank` where gradeable
-- [ ] **T6 (P1, human: ~2h / CC: ~15min)** — sets — Pre-solve unservable-duty diagnosis and explicit solver-status handling
+- [x] **T6 (P1, human: ~2h / CC: ~15min)** — sets — Pre-solve unservable-duty diagnosis and explicit solver-status handling
   - Surfaced by: Architecture issue 3 — plan mentioned infeasibility zero times
   - Files: `carb3/src/carb3/sets.py`, `carb3/src/carb3/build.py`
   - Verify: a duty with an empty $U_q$ is named with premise and period
-- [ ] **T7 (P2, human: ~4h / CC: ~25min)** — build — Explicit period year vector; per-period $\delta_t$ and lifetime conversion
+- [x] **T7 (P2, human: ~4h / CC: ~25min)** — build — Explicit period year vector; per-period $\delta_t$ and lifetime conversion
   - Surfaced by: Outside voice issue 16 — first gap is 4 years, the rest 5
   - Files: `carb3/src/carb3/build.py`, `carb3/src/carb3/survival.py`
   - Verify: 2021→2025 discounting differs from 2025→2030
-- [ ] **T8 (P1, human: ~3 days / CC: ~90min)** — tests — All 25 paths per §5.3, including the four critical and the problem-size assertion
+- [x] **T8 (P1, human: ~3 days / CC: ~90min)** — tests — All 25 paths per §5.3, including the four critical and the problem-size assertion
   - Surfaced by: Test review — 6 of 25 paths planned
   - Files: `carb3/tests/`
   - Verify: `uv run pytest` green; coverage report shows no untested branch
-- [ ] **T9 (P2, human: ~3h / CC: ~20min)** — data — Advisory cost-completeness count in `validate_carb3_data.py`, surfaced by `make data-report`
+- [x] **T9 (P2, human: ~3h / CC: ~20min)** — data — Advisory cost-completeness count in `validate_carb3_data.py`, surfaced by `make data-report`
   - Surfaced by: Code quality issue 8 — root cause, `make data-check` is blind
   - Files: `docs/notes/examples/validate_carb3_data.py`
   - Verify: `make data-check` still green; `make data-report` names the count
-- [ ] **T10 (P2, human: ~1h / CC: ~10min)** — docs — Correct CLAUDE.md's "COMIT never reads it" line; fold the screen's dropped-unit list into note 20
+- [x] **T10 (P2, human: ~1h / CC: ~10min)** — docs — Correct CLAUDE.md's "COMIT never reads it" line; fold the screen's dropped-unit list into note 20
   - Surfaced by: Architecture issue 5
   - Files: `CLAUDE.md`, `docs/notes/20_reference_data_open_questions.md`
   - Verify: no stale claim remains
-- [ ] **T11 (P2, human: ~2h / CC: ~15min)** — spec — Raise §5.1's uniform-Δ assumption as a defect
+- [x] **T11 (P2, human: ~2h / CC: ~15min)** — spec — Raise §5.1's uniform-Δ assumption as a defect; carry the year vector to explicit period-span aggregation
   - Surfaced by: §6.4
-  - Files: `docs/specs/2026-08-28-carb3-site-energy-system-implementation.md`
-  - Verify: `make docs-check` green after the edit
+  - Files: live spec §5.1 (~lines 1691-1736)
+  - Verify: year vector present, per-period $\delta_t$ aggregation holds
 
 - [x] **T12 (P0)** — sets — Minimal A2 reads `premise_throughput` for product duties (§3.3);
       a process that makes a `product` yields no profile duty

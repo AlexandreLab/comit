@@ -23,7 +23,7 @@ exist yet. Do not "implement" it into `R/` unless asked explicitly.
 
 ## The spec set, and which document is authoritative
 
-**`docs/specs/` holds five self-contained documents. Everything frozen or superseded is in
+**`docs/specs/` holds five self-contained documents and two worked examples. Everything frozen or superseded is in
 `docs/specs/archive/`** — see its [README](docs/specs/archive/README.md).
 
 The live five define every entity, label and symbol they use. **They deliberately contain no
@@ -34,11 +34,13 @@ COMIT-parity baseline specification".
 
 | Document | Status |
 |---|---|
-| `2026-08-28-…-implementation.md` | **The live specification.** §1–§5, §7, §9 and §10 written; §6, §8 and §11–§13 are stubs |
+| `2026-08-28-…-implementation.md` | **The live specification.** §1–§5 (including §5.3.1 survival, §5.6 the peak factor λ and §5.7 the pre- and post-solve checks), §7, §9, §10 and §13 written; §6, §11 and §12 are stubs, and §8 is a stub that points to `carb3/README.md` for the slice's output tables. §5.6 defines λ only: C11's (connection peak) method is still open under T23 (complete §5) |
 | `2026-08-28-…-overview.md` | Entry point: what the system is, why, `PD1`–`PD2`, boundaries |
 | `2026-08-28-…-architecture.md` | The design and its reasoning; the foundations it reuses |
 | `2026-08-28-…-data-migration.md` | The reference-data work list, 23 items in five groups |
-| `2026-08-28-…-delivery.md` | Files, 23 tasks spanning T1–T24 (T11 and T12 combined), lanes, scope boundary, verification |
+| `2026-08-28-…-delivery.md` | Files, 23 tasks spanning T1–T24 (T11 and T12 combined), lanes, scope boundary, verification; a status column per task |
+| `2026-08-28-…-worked-example-cement.md` | The parity case: one cement works end to end against the live spec |
+| `2026-08-28-…-worked-example-food-drink.md` | The mechanism case: a dairy exercising the grade cascade, CHP and export |
 | `archive/2026-08-19-…-implementation.md` | **The COMIT-parity baseline. Frozen.** Says what the R run's tables mean; §10.2's configuration is defined against it. Do not restructure it |
 | `archive/2026-08-19-…-vision.md` | The rationale behind `D1`–`D11`. The decisions themselves now live in the live spec §1.6, so nothing depends on this |
 | `archive/2026-08-19-…-worked-example.md` | One cement premise end to end, against the baseline |

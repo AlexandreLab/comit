@@ -15,7 +15,7 @@ carries a provenance pointer into `references.csv`.
 | File | Spec entity | Rows |
 |---|---|---|
 | `activity_process_register.csv` | §3.2 `activity_process_register` | 375 |
-| `activity_process_energy_profile.csv` | §3.3 `activity_process_energy_profile` | 489 |
+| `activity_process_energy_share.csv` | §3.3 `activity_process_energy_share` | 489 |
 | `references.csv` | reference table (keyed `ref_id`) | 79 |
 | `activity_profile_coverage_notes.csv` | per-activity evidence notes and known gaps | 55 |
 

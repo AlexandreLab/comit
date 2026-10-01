@@ -23,7 +23,7 @@ items **C1–C4 and C8**.
 | `docs/notes/data/build/check_eligibility.py` | 10 blocking checks, **all passing** |
 
 Nothing outside this list was touched. `carrier.csv`, `unit.csv`,
-`activity_process_register.csv`, `activity_process_energy_profile.csv`,
+`activity_process_register.csv`, `activity_process_energy_share.csv`,
 `decarbonisation_options_library.csv`, `process_decarbonisation_options.csv`,
 `references.csv`, the specs and the READMEs are all unmodified.
 
@@ -354,7 +354,7 @@ lime kilns. Sourcing them is new research, not a data-migration exercise. **Ques
 6. **Fuel plausibility was deliberately not used to prune.** Every unit of a family is
    offered for every process of that family, including `boiler_lt_coal` at a laboratory.
    Restricting eligibility to the fuels an activity burns *today* — which
-   `activity_process_energy_profile.csv`'s `vector` column would have allowed — would forbid
+   `activity_process_energy_share.csv`'s `vector` column would have allowed — would forbid
    the fuel switching the whole model exists to find. The worked examples take the same line
    and cap rather than omit: the food-and-drink table lists `boiler_lt_coal` and gives it
    `max_share` 0.00. Caps were not invented anywhere the examples do not give one.

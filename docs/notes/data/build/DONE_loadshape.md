@@ -76,7 +76,7 @@ where a source states or lets you compute it, and says the §3.13 indicative ran
 source. I found no published load profile, sub-metering study or stated load factor for any
 of these 230 process types that would survive that test. What I have is:
 
-- **In repo.** The register's provenance and `activity_process_energy_profile.csv` are
+- **In repo.** The register's provenance and `activity_process_energy_share.csv` are
   *energy share* citations ("clinker production accounts for over 90% of total energy"),
   which say nothing about duty factor or peakiness. `docs/notes/data/` holds no load-shape
   data at all.

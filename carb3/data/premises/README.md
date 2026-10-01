@@ -36,11 +36,12 @@ cluster. Recorded as a specification gap in
 [note 20](../../../docs/notes/20_reference_data_open_questions.md) item 58.
 
 **Four tables were commissioned; six are written.** `premise_process_vintage`, the fourth, was merged into `premise_process_unit` on 2026-10-01, because the two held the same units and the same shares twice. `premise_connection`, `premise_energy`
-and `premise_throughput` are the three §3.1 companions. §3.1 declares the first two
-**required** alongside `premise_record`, and without `premise_throughput` the cement premise
-has no `cement` duty at all — nothing draws clinker, the kiln never runs, and the process-CO₂
-and capture-train behaviour the premise exists to exercise never happens. They are small and
-they are the spec's own shape, so they are written rather than deferred.
+and `premise_throughput` are the three §3.1 companions. §3.1 declares `premise_energy`
+and `premise_throughput` **required** alongside `premise_record`, and `premise_connection`
+optional. Without `premise_throughput`, the cement premise has no `cement` duty at all:
+nothing draws clinker, the kiln never runs, and the process-CO₂ and capture-train
+behaviour the premise exists to exercise never happens. They are small and they are the
+spec's own shape, so they are written rather than deferred.
 
 ## Field reference
 
@@ -172,7 +173,7 @@ Two consequences worth knowing before reading a number:
 
 - **`known_capacity` cannot state a known zero** — §3.10 requires `> 0 if present`. Two
   `mvp-cement` processes, `clinker_cooling` and `site_services`, have a genuine duty of
-  0.00000 PJ/yr (the reference `activity_process_energy_profile.csv` carries no row for
+  0.00000 PJ/yr (the reference `activity_process_energy_share.csv` carries no row for
   either), and they are written blank with the reason in `provenance`. This is §3.1.1's
   absence-is-not-zero trap in a table that has no `data_status` column to resolve it.
 - **The duty split is the reference table's, not the worked example's.** Each example derives

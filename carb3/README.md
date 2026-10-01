@@ -130,6 +130,23 @@ captured, and the works vents only about 2 kt/yr of biogenic CO₂. The scarcest
 the train, and `co2_fuel_biogenic` disposal drops to nothing from 2035. Treat the capture
 result as a data artefact until item 57 is closed.
 
+## Output tables
+
+With `--out-dir`, each solved premise writes eight parquet tables under `<out>/<premise_id>/`:
+six from the ledger and two from the run report. This is the slice's output, not the full
+spec §8 target contract.
+
+| Table | Rows | Columns (one row per) | Meaning |
+|---|---|---|---|
+| `cost_by_term.parquet` | one per term per period (long format) | `period`, `term`, `annual`, `discount_factor`, `discounted` | Cost contribution by term. Five terms: `capex`, `opex`, `fuel`, `carbon`, `export` (the one term that can be a revenue or a cost, with the CO₂ transport tariff folded in). `annual` is undiscounted, `discounted` is `annual` times `discount_factor`. The `discounted` values must sum to `run_report.objective` |
+| `carrier_mix.parquet` | one per carrier per period | `carrier_id`, `period`, `carrier_kind`, `imported`, `produced`, `consumed`, `disposed`, `exported`, `dispatched`, `net` | Carrier balance, flow in and flow out. `produced` and `consumed` are the two halves of C8 (carrier balance) read separately; `net` is C8's own residual and is zero where the balance closes |
+| `dispatch.parquet` | one per unit per duty per period | `unit_id`, `premise_id`, `process_id`, `carrier_id`, `duty`, `kind`, `period`, `activity` | Activity of a unit on a duty (z_{u,q,t}). `kind` is `supply` for a unit making a carrier that no duty asks for, which carries no process and is settled by C8 rather than C1 (duty satisfaction) |
+| `build.parquet` | one per unit per period | `unit_id`, `period`, `new_capacity`, `available_capacity`, `surviving_capacity`, `built_standing` | n_{u,t}, a_{u,t} and e_{u,t}. `built_standing` is `a - e`, the new capacity standing that capex is charged on |
+| `disposal.parquet` | one per carrier per period | `carrier_id`, `period`, `quantity`, `carbon_charge`, `carbon_price`, `carbon_cost` | Amount vented (d_{c,t}); `carbon_cost` is non-zero only where `carbon_charge` is 'charged' (spec §3.4) |
+| `unit_flow.parquet` | one per unit per carrier per role per period | `unit_id`, `carrier_id`, `role`, `period`, `carrier_kind`, `flow` | Signed flow of each unit on each carrier in each role: a single `flow` column, drawn from the solved activity times the C8 coefficient set |
+| `run_report.parquet` | one row | `premise_id`, `status`, `objective`, `n_variables`, `n_constraints`, `wall_clock_seconds`, `n_units_admitted`, `n_units_dropped` | The G1 (single-premise wall clock) measurement, solver status, final objective, problem size, and the §3.2 admission screen counts |
+| `screen_dropped.parquet` | one per dropped unit per failed leg | `unit_id`, `leg`, `detail` | §3.2 admission screen's work list: which units were refused and why. Written even if empty |
+
 ## Against the live spec
 
 The slice implements a subset of spec §5, on purpose (note 21 §2). Out of scope: h_{c→c′,t},

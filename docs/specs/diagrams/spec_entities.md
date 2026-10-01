@@ -8,7 +8,7 @@ The 25 entities of §3 and the 44 relationships between them, read straight out 
 
 Read `A ||--o{ B` as *one A, many B*. `|{` on the child end marks an **identifying** relationship — the foreign key is part of B's own primary key, so a B cannot exist without its A. `|o` on the parent end marks a foreign key the child may leave unset.
 
-A composite foreign key is drawn once, with its columns merged onto the label: 57 foreign-key columns become 44 arrows.
+A composite foreign key is drawn once, with its columns merged onto the label: 58 foreign-key columns become 44 arrows.
 
 ```mermaid
 erDiagram
@@ -25,15 +25,15 @@ erDiagram
     activity_process_register ||--|{ activity_process_energy_share : "carb3_activity, process_set_id, process_id"
     scenario_parameters |o--o{ carrier : "emission_factor_source"
     activity_process_register |o--o{ unit : "process_id"
-    carrier |o--o{ unit : "grade_out, grade_in_max"
+    carrier |o--o{ unit : "fuel_carrier_id, grade_out, grade_in_max"
     process_load_shape |o--o{ unit : "load_shape_override"
     unit ||--|{ unit_eligibility : "unit_id"
-    activity_process_register ||--|{ unit_eligibility : "carb3_activity, process_id"
+    activity_process_register |o--|{ unit_eligibility : "carb3_activity, process_id"
     unit ||--|{ unit_bill_of_materials : "unit_id"
     unit ||--|{ unit_abatement_host : "unit_id, host_unit_id"
     unit ||--|{ unit_input_output : "unit_id"
     carrier ||--|{ unit_input_output : "carrier_id"
-    carrier |o--o{ scenario_parameters : "carrier_id"
+    carrier |o--|{ scenario_parameters : "carrier_id"
     premise_record ||--|{ process_duty : "premise_id"
     activity_process_register ||--|{ process_duty : "process_id"
     carrier |o--o{ process_duty : "carrier_id, grade_rank"
@@ -126,7 +126,7 @@ flowchart LR
     activity_process_energy_share -->|carb3_activity, process_set_id, process_id| activity_process_register
     carrier -->|emission_factor_source| scenario_parameters
     unit -->|process_id| activity_process_register
-    unit -->|grade_out, grade_in_max| carrier
+    unit -->|fuel_carrier_id, grade_out, grade_in_max| carrier
     unit -->|load_shape_override| process_load_shape
     unit_eligibility -->|unit_id| unit
     unit_eligibility -->|carb3_activity, process_id| activity_process_register
@@ -165,7 +165,7 @@ One row per table, in the order §3 defines them.
 
 | Subject | Table | § | What it is | Columns |
 |---|---|---|---|---|
-| The premise | `premise_record` | §3.1 | the premise itself | `latitude`, `longitude`, `nation`, `floorspace`, `construction_year`, `construction_year_band`, `last_refurbishment_year`, `data_year`, `source` |
+| The premise | `premise_record` | §3.1 | the premise itself | `latitude`, `longitude`, `nation`, `cluster_id`, `floorspace`, `construction_year`, `construction_year_band`, `last_refurbishment_year`, `data_year`, `source` |
 |  | `premise_energy` | §3.1.1 | consumption by carrier | `vector`, `quantity`, `data_status`, `source` |
 |  | `premise_throughput` | §3.1.2 | physical output by carrier | `quantity`, `data_status`, `source` |
 | Connections | `premise_connection` | §3.1.3 | — | `import_capacity`, `export_capacity`, `connection_voltage`, `available_area` |
@@ -211,15 +211,15 @@ erDiagram
     activity_process_register ||--|{ activity_process_energy_share : "carb3_activity, process_set_id, process_id"
     scenario_parameters |o--o{ carrier : "emission_factor_source"
     activity_process_register |o--o{ unit : "process_id"
-    carrier |o--o{ unit : "grade_out, grade_in_max"
+    carrier |o--o{ unit : "fuel_carrier_id, grade_out, grade_in_max"
     process_load_shape |o--o{ unit : "load_shape_override"
     unit ||--|{ unit_eligibility : "unit_id"
-    activity_process_register ||--|{ unit_eligibility : "carb3_activity, process_id"
+    activity_process_register |o--|{ unit_eligibility : "carb3_activity, process_id"
     unit ||--|{ unit_bill_of_materials : "unit_id"
     unit ||--|{ unit_abatement_host : "unit_id, host_unit_id"
     unit ||--|{ unit_input_output : "unit_id"
     carrier ||--|{ unit_input_output : "carrier_id"
-    carrier |o--o{ scenario_parameters : "carrier_id"
+    carrier |o--|{ scenario_parameters : "carrier_id"
     premise_record ||--|{ process_duty : "premise_id"
     activity_process_register ||--|{ process_duty : "process_id"
     carrier |o--o{ process_duty : "carrier_id, grade_rank"
@@ -248,6 +248,7 @@ erDiagram
     real latitude "required"
     real longitude "required"
     enum nation "required"
+    string cluster_id "optional"
     real floorspace "optional"
     string process_set_id FK "optional"
     integer construction_year "optional"
@@ -343,6 +344,7 @@ erDiagram
     enum spine "required"
     string duty_family "optional"
     string process_id FK "optional"
+    string fuel_carrier_id FK "optional"
     integer grade_out FK "optional"
     integer grade_in_max FK "optional"
     real capex "required"
@@ -362,7 +364,7 @@ erDiagram
     unit_eligibility {
     string unit_id PK,FK "required"
     string carb3_activity PK,FK "required"
-    string process_id PK,FK "required"
+    string process_id PK,FK "optional"
     real min_duty "optional"
     real max_share "optional"
     integer earliest_year "optional"
@@ -394,11 +396,11 @@ erDiagram
     integer period PK "required"
     boolean available "required"
     real capacity_limit "optional"
-    real unit_tariff "required"
+    real unit_tariff "optional"
     }
     scenario_parameters {
     string parameter_id PK "required"
-    string carrier_id FK "optional"
+    string carrier_id PK,FK "optional"
     integer period PK "optional"
     real value "required"
     }

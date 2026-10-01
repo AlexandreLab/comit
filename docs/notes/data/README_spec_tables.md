@@ -12,9 +12,9 @@ quoting a number from its table.** The questions are consolidated in
 [note 20](../20_reference_data_open_questions.md).
 
 The existing tables — `activity_process_register.csv` (§3.2) and
-`activity_process_energy_profile.csv` (§3.3.1) — already carry the spec's columns and were not
+`activity_process_energy_share.csv` (§3.3.1) — already carry the spec's columns and were not
 changed. `decarbonisation_options_library.csv` gained three columns (below). File names are
-kept as the spec cites them, so `activity_process_energy_profile.csv` still populates the entity
+kept as the spec cites them, so `activity_process_energy_share.csv` still populates the entity
 the spec calls `activity_process_energy_share`.
 
 ## Files

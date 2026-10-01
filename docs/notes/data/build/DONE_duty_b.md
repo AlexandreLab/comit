@@ -79,7 +79,7 @@ diesel handlers — both shaft work), and 11 others. 149 of the 180 processes ar
 the 9 refinery units the split is computed from **published vector weights**: `[oil_roadmap_2015]`
 p37 gives electricity as 3.3 % of UK refinery energy and p36 gives the fuel mix (refinery fuel gas
 47.3 %, petroleum coke 24.8 %, natural gas 21.3 %, fuel oil 6.7 %). For the other 22 the split is the
-process's own `activity_process_energy_profile.csv` vector shares renormalised across the vectors it
+process's own `activity_process_energy_share.csv` vector shares renormalised across the vectors it
 draws — **a structural placeholder, not evidence**, so every one of those rows is
 `evidence_tier = fallback, confidence = low` and says so.
 
@@ -96,7 +96,7 @@ welding, semiconductor process tools and electrolysis are none of heat, motive p
 **6. Where no source exists at all, the family is read off the register's own equipment list.**
 9 rows (Maltings grain handling and germination, Mineral Production - Oil lift and injection,
 Tannery compressed air, and three others) have no citable source: `activity_process_register.csv`
-names the equipment and `activity_process_energy_profile.csv` records its own share as "engineering
+names the equipment and `activity_process_energy_share.csv` records its own share as "engineering
 rationale" with no reference. Those rows are `fallback / low` and carry **no `[REF_ID]`**, with the
 provenance saying exactly that. This is a deliberate departure from convention 2 of
 `00_CONVENTIONS.md`: I would rather have a row that says "no source" than one that cites a repo file
@@ -165,7 +165,7 @@ that displaced it, so nothing is silently lost:
 | Works | `surface_treatment` | `OTH` (the electrolytic rectifier load) | **probably the larger of the two duties.** The bath-heating `LTH` row is the one the evidence supports |
 | Works, Workshop, Large industrial NEC | `process_heating` | the low-temperature stoving/paint-drying part | the register bundles duties spanning bands 3 to 6 into one process |
 
-**Six register rows have no `activity_process_energy_profile.csv` row at all**, so their energy is
+**Six register rows have no `activity_process_energy_share.csv` row at all**, so their energy is
 unquantified upstream; I still wrote a duty row for each (the duty exists whether or not its share
 is known), at `fallback / low`:
 `Mineral Production - Brine / brine_purification` · `Mineral Production - Inert /
@@ -259,7 +259,7 @@ probably collapse them. Nothing currently checks for it.
 **Q9 — `Mill` cannot be crosswalked and probably cannot be modelled.** `carb3_comit_crosswalk.csv`
 records it `ambiguous` — "could be flour, paper, textile or metal". I wrote its eight duty rows
 against a flour-mill reading (`[WORLDGRAIN2010]`, `[ALIU2018]`) because that is what
-`activity_process_energy_profile.csv` already assumes, and left all eight crosswalk rows `none`.
+`activity_process_energy_share.csv` already assumes, and left all eight crosswalk rows `none`.
 If the stock model can tell flour mills from paper mills, the duty rows should be redone per type.
 
 **Q10 — Laboratory, Post Office Sorting Centre and Vehicle repair are `absent` from COMIT and their

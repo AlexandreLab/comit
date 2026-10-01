@@ -53,7 +53,7 @@ examples keep resolving.
    UPPER_SNAKE, ≤ 24 chars, unique. Do **not** edit `references.csv` itself; the coordinator
    merges.
 6. **Write only the files your brief names.** Do not touch `carrier.csv`,
-   `activity_process_register.csv`, `activity_process_energy_profile.csv`, the options
+   `activity_process_register.csv`, `activity_process_energy_share.csv`, the options
    library, the spec, the READMEs or any file another lane owns. If you believe another table
    needs a change, write the request into your `DONE_<lane>.md`.
 7. **Enums exactly as the spec spells them.** Booleans as `TRUE`/`FALSE`. Blanks as empty

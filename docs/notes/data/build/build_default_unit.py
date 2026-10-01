@@ -8,7 +8,7 @@ OUT = B + 'activity_default_unit.csv'
 dp  = list(csv.DictReader(open(B+'activity_process_duty_profile.csv')))
 el  = list(csv.DictReader(open(B+'unit_eligibility.csv')))
 un  = {u['unit_id']: u for u in csv.DictReader(open(B+'unit.csv'))}
-ep  = list(csv.DictReader(open(B+'activity_process_energy_profile.csv')))
+ep  = list(csv.DictReader(open(B+'activity_process_energy_share.csv')))
 xw  = {r['carb3_activity']: r['comit_sector'] for r in csv.DictReader(open(B+'carb3_comit_crosswalk.csv'))}
 
 elig = collections.defaultdict(set)
