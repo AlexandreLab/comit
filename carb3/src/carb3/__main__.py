@@ -166,14 +166,16 @@ def run_premise(
     surviving = survival.surviving_capacity(vintages, reference.unit, periods)
 
     # The two checks run before the screen as well as after it. Before, so a premise they
-    # block is reported exactly as it was before the screen existed: the screen reads C8's
-    # coefficients, whose A6 (fuel-CO₂ derivation) raises on a fuel with no emission factor,
-    # and that must not turn a NOT SOLVED answer into a traceback. After, because the screen
-    # can empty a duty or remove an incumbent the start year needed.
+    # block is reported exactly as it was before the screen existed. After, because the
+    # screen can empty a duty.
     blocked = _pre_solve_block(reference, premise, sets, screen, surviving, ())
     if blocked:
         return PremiseRun(premise_id=premise_id, sets=sets, blocked=blocked)
-    incumbents = frozenset(str(unit_id) for unit_id in premise.premise_process_unit["unit_id"])
+    # Incumbents are the units with capacity left, not every premise_process_unit row: a
+    # cohort whose process closed before the data year leaves nothing standing to protect.
+    incumbents = frozenset(
+        str(unit_id) for unit_id in surviving.loc[surviving["capacity"] > 0.0, "unit_id"]
+    )
     sets, premise_dropped = build.screen_premise(sets, reference, incumbents)
     if premise_dropped:
         blocked = _pre_solve_block(reference, premise, sets, screen, surviving, premise_dropped)

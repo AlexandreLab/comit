@@ -1213,20 +1213,68 @@ def test_screen_premise_removes_a_supply_entry_it_empties() -> None:
     assert screened.supply == {"heat_lt60": frozenset({"boiler_lt_gas"})}
 
 
+def test_screen_premise_never_counts_a_unit_as_its_own_source() -> None:
+    """``lift_pump`` draws ``heat_60_100`` and makes it. Alone, nothing else makes it, and
+    C8 (carrier balance) would pin the pump at zero, so it is dropped."""
+    _, drops = build.screen_premise(_screen_sets(frozenset({"lift_pump"})), _screen_reference())
+    assert [drop.unit_id for drop in drops] == ["lift_pump"]
+    assert "a unit cannot feed itself" in drops[0].detail
+
+
+def test_screen_premise_never_drops_an_incumbent() -> None:
+    """The site pays an incumbent's fixed opex whether it runs or not, so dropping one would
+    lower the objective by a real cost. It stays, held at zero by C8."""
+    units = frozenset({"boiler_lt_gas", "coke_oven"})
+    sets, drops = build.screen_premise(
+        _screen_sets(units), _screen_reference(), incumbents={"coke_oven"}
+    )
+    assert drops == ()
+    assert "coke_oven" in sets.units
+
+
+def _fired_screen_reference() -> ReferenceTables:
+    """``furnace_gas`` as a burnt fuel with no ``ef_`` series and no ``biogenic_fraction``,
+    and a ``scrubber`` drawing the fuel CO₂ A6 (the fuel-CO₂ derivation) derives from it."""
+    reference = _screen_reference()
+    carrier = reference.carrier.copy()
+    carrier.loc[carrier["carrier_id"] == "furnace_gas", "carrier_kind"] = "primary"
+    rows = pd.DataFrame(
+        [
+            {"unit_id": "scrubber", "carrier_id": "heat_60_100", "coefficient": 1.0,
+             "role": "primary_output"},
+            {"unit_id": "scrubber", "carrier_id": build.FOSSIL_FUEL_CO2, "coefficient": -0.9,
+             "role": "emission_input"},
+        ]
+    )
+    return dataclasses.replace(
+        reference,
+        carrier=carrier,
+        unit_input_output=pd.concat([reference.unit_input_output, rows], ignore_index=True),
+    )
+
+
+def test_screen_premise_drops_a_unit_whose_fuel_has_no_emission_factor() -> None:
+    """A6 would refuse ``furnace_gas`` for want of an ``ef_`` series; the screen reads only
+    signs, so the unit it strands is dropped instead of stopping the run."""
+    units = frozenset({"heat_pump_lt_air", "furnace_chp"})
+    sets, drops = build.screen_premise(_screen_sets(units), _fired_screen_reference())
+    assert [drop.unit_id for drop in drops] == ["furnace_chp"]
+    assert "furnace_chp" not in sets.units
+
+
+def test_screen_premise_names_a_dropped_producer_of_derived_co2() -> None:
+    """``scrubber``'s only CO₂ source is the A6 row of ``furnace_chp``, which falls first."""
+    units = frozenset({"heat_pump_lt_air", "furnace_chp", "scrubber"})
+    _, drops = build.screen_premise(_screen_sets(units), _fired_screen_reference())
+    assert [drop.unit_id for drop in drops] == ["furnace_chp", "scrubber"]
+    assert "its only producer here, furnace_chp, was dropped" in drops[1].detail
+
+
 def test_screen_premise_leaves_a_clean_premise_untouched() -> None:
     sets = _sets()
     screened, drops = build.screen_premise(sets, _reference())
     assert drops == ()
     assert screened == sets
-
-
-def test_screen_premise_names_an_incumbent_it_drops() -> None:
-    _, drops = build.screen_premise(
-        _screen_sets(ALL_SCREEN_UNITS), _screen_reference(), incumbents={"coke_oven"}
-    )
-    by_unit = {drop.unit_id: drop for drop in drops}
-    assert "incumbent" in by_unit["coke_oven"].detail
-    assert "incumbent" not in by_unit["furnace_chp"].detail
 
 
 def test_a_duty_the_screen_empties_is_reported_not_raised() -> None:

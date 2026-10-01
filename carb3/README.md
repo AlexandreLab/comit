@@ -34,20 +34,23 @@ make carb3                                       # the tests; also part of `make
 ## Before the solve: one screen and two checks
 
 **The per-premise screen runs first.** `build.screen_premise` drops a unit when it consumes a
-carrier that can be neither imported (`carrier.may_import`) nor made by any other unit in
+carrier that can be neither imported (`carrier.may_import`) nor made by any *other* unit in
 this premise's model, and repeats until nothing changes, since a dropped producer can strand
 its consumers. It is per-premise because the §3.2 admission screen runs once for every
 premise and cannot know which other units are present: `chp_bfg_gas_turbine` reaches the
 dairy through the grade join in `unit_eligibility.csv`, burns `blast_furnace_gas`, and nothing
 at a dairy makes it. Such a unit was held at zero by C8 (carrier balance) anyway, so dropping
-it clears its zero rows from the ledger and leaves the optimum unchanged, unless it is an
-incumbent: then its pinned capacity and fixed opex leave the model too, the objective moves,
-and its drop reason says so. No incumbent is dropped at the three premises today. The drops are
-printed per premise and written to `screen_dropped.parquet` under the leg
-`unreachable_input`. A carrier some unit makes as its primary output counts as made, even
-though a duty's output is settled by C1 (duty satisfaction) and never enters C8: so
-`heat_pump_ht`, which draws `heat_60_100`, is kept, and still cannot run (C8 has no source
-for duty heat).
+it clears its zero rows from the ledger and leaves the optimum unchanged. **Incumbents (units
+with surviving capacity) are never dropped**: the site pays their fixed opex whether they run
+or not, so removing one would lower the objective by a real cost. An incumbent with an
+unsourceable input stays, held at zero by C8. The drops are printed per premise and written to
+`screen_dropped.parquet` under the leg `unreachable_input`. A carrier some unit makes as its
+primary output counts as made, even though a duty's output is settled by C1 (duty
+satisfaction) and never enters C8: so `heat_pump_ht`, which draws `heat_60_100`, is kept, and
+still cannot run (C8 has no source for duty heat). A unit is never its own source. The
+screen reads only the signs of C8's coefficients, so a stranded unit burning a fuel with no
+emission factor is dropped rather than stopping the run; one that survives still fails loud
+when the model is built.
 
 A premise can then fail before any LP is built, and both failures are reported as
 `NOT SOLVED` with the reason, never as a traceback (§5.2, infeasibility is an expected

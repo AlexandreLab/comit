@@ -262,11 +262,16 @@ class PremiseTables:
 
 @dataclass(frozen=True)
 class UnitDrop:
-    """One unit refused by the §3.2 screen, with the reason the run report prints."""
+    """One unit refused by a screen, with the reason the run report prints.
+
+    The §3.2 admission screen refuses a unit for every premise; the per-premise screen
+    (:func:`carb3.build.screen_premise`) refuses one at a single premise.
+    """
 
     unit_id: str
-    #: Which leg of the screen failed: ``capex``, ``cost_columns``, ``coefficients``,
-    #: ``fuel_input``, ``import_price`` or ``abatement_host``.
+    #: Which leg failed. The §3.2 screen's six: ``capex``, ``cost_columns``,
+    #: ``coefficients``, ``fuel_input``, ``import_price`` and ``abatement_host``. The
+    #: per-premise screen's one: ``unreachable_input``.
     leg: str
     #: Human-readable detail. For the price leg this names the carrier and the periods whose
     #: ``import_price`` is missing, which is what note 20 needs to record (§3.2).
