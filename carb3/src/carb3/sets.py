@@ -1,5 +1,5 @@
 """Minimal A2; Q, U, U_q via the three-table join; C10 widening; the eligibility columns;
-unservable-duty diagnosis.
+unservable-duty diagnosis; the start-year adequacy check.
 
 **Minimal A2** (§3.3). Spec §3.9 is explicit that ``process_duty`` is derived at run time
 from ``activity_process_register`` and ``activity_process_duty_profile``; it is not an input
@@ -50,6 +50,7 @@ Owed by T4, T5 and T6.
 
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
@@ -991,3 +992,212 @@ def diagnose_unservable_duties(
             if not available:
                 unservable.append(UnservableDuty(duty.key, period, removed))
     return tuple(unservable)
+
+
+#: Relative tolerance on a shortfall. A premise written so that its incumbents exactly meet
+#: its duties (``mvp-minimal``) lands within floating-point noise of zero, which is not a gap.
+SHORTFALL_TOLERANCE = 1e-9
+
+
+@dataclass(frozen=True)
+class StartYearShortfall:
+    """A group of duties the incumbents cannot meet together in the first period.
+
+    ``duties`` and ``units`` are the sink side of the minimum cut: every incumbent eligible for
+    one of these duties is in ``units`` (or reaches it only through a ``max_share`` cap), and
+    all of them are already running flat out. ``demand`` exceeds ``deliverable`` by
+    ``shortfall``, in the duties' own units (PJ/yr, or Mt/yr for a mass duty).
+    """
+
+    period: int
+    duties: tuple[DutyKey, ...]
+    demand: float
+    units: tuple[str, ...]
+    deliverable: float
+    shortfall: float
+
+
+def deliverable_incumbent_activity(
+    surviving: pd.DataFrame, unit: pd.DataFrame, period: int
+) -> dict[str, float]:
+    """``e_{u,t} × γ_u × α_u`` per incumbent unit in ``period``: the most C2 lets it produce."""
+    if surviving is None or len(surviving) == 0:
+        return {}
+    indexed = unit.set_index("unit_id")
+    standing = surviving[surviving["period"] == period]
+    deliverable: dict[str, float] = {}
+    for row in standing.itertuples(index=False):
+        capacity = float(row.capacity)
+        if capacity <= 0:
+            continue
+        unit_id = str(row.unit_id)
+        gamma = float(indexed.loc[unit_id, "capacity_to_activity_factor"])
+        alpha = float(indexed.loc[unit_id, "availability_factor"])
+        deliverable[unit_id] = deliverable.get(unit_id, 0.0) + capacity * gamma * alpha
+    return deliverable
+
+
+def diagnose_start_year_shortfall(
+    sets: ModelSets, surviving: pd.DataFrame, unit: pd.DataFrame
+) -> StartYearShortfall | None:
+    """The group of duties the incumbents cannot meet in the first period, or ``None``.
+
+    C1 (duty satisfaction) is an equality, C2 (activity limited by available capacity) caps
+    each unit at ``e × γ × α``, and C5 (no building in the start year) forbids any new
+    capacity in the first period. So in that period the plant named in
+    ``premise_process_unit`` must cover every duty on its own, and if it cannot the LP comes
+    back infeasible with nothing to say which duty failed. This check runs before the LP is
+    built and names the duties instead.
+
+    **Why a flow, not a per-duty sum.** C2 is written per ``unit_id``, not per process, so one
+    unit's capacity is a single pool that every duty it is eligible for draws on. Comparing
+    each duty with the total capacity of its eligible incumbents counts that pool once per
+    duty and passes plant that cannot cover all of them at once. The question is a
+    transportation problem (incumbents supply, duties demand, an edge wherever the unit is in
+    U_q), and it is answered exactly by a maximum flow. Where the flow falls short, the
+    minimum cut names a group of duties whose combined demand exceeds everything the
+    incumbents able to serve them can deliver.
+
+    **What it does not check.** Units that supply an internal product with no duty (D16, the
+    cement works' clinker kiln) also draw on C2, through C8 (carrier balance) rather than C1,
+    and are left out. The flow is therefore a necessary condition only: a premise that fails
+    it is certainly infeasible in the start year, and one that passes it can still be
+    infeasible for a reason this does not see.
+
+    ``surviving`` is :func:`carb3.survival.surviving_capacity`'s frame and ``unit`` the
+    reference unit table, for γ and α. Edges follow U_q (``sets.eligible``); a ``max_share``
+    caps its edge at ``share × demand`` exactly as the LP's dispatch bound does.
+    ``earliest_year`` is ignored: it gates building, and no incumbent is built.
+    """
+    period = sets.periods[0]
+    supply = deliverable_incumbent_activity(surviving, unit, period)
+    demand = {
+        duty.key: float(duty.quantity[period])
+        for duty in sets.duties
+        if float(duty.quantity[period]) > 0
+    }
+    total = sum(demand.values())
+    if total == 0:
+        return None
+
+    edges: dict[tuple[str, DutyKey], float] = {}
+    for duty_key in demand:
+        for unit_id in sorted(sets.eligible.get(duty_key, frozenset())):
+            if unit_id not in supply:
+                continue
+            share = sets.max_share.get((duty_key, unit_id))
+            edges[(unit_id, duty_key)] = (
+                float("inf") if share is None else float(share) * demand[duty_key]
+            )
+
+    flow, short_side = _max_flow(supply, demand, edges)
+    if total - flow <= SHORTFALL_TOLERANCE * total:
+        return None
+
+    duties = tuple(sorted(key for key in demand if ("duty", key) in short_side))
+    units = tuple(sorted(u for u in supply if ("unit", u) in short_side))
+    cut_demand = sum(demand[key] for key in duties)
+    capped = sum(
+        capacity
+        for (unit_id, duty_key), capacity in edges.items()
+        if duty_key in duties and ("unit", unit_id) not in short_side
+    )
+    deliverable = sum(supply[u] for u in units) + capped
+    return StartYearShortfall(
+        period=period,
+        duties=duties,
+        demand=cut_demand,
+        units=units,
+        deliverable=deliverable,
+        shortfall=cut_demand - deliverable,
+    )
+
+
+def _max_flow(
+    supply: Mapping[str, float],
+    demand: Mapping[DutyKey, float],
+    edges: Mapping[tuple[str, DutyKey], float],
+) -> tuple[float, set[tuple[str, object]]]:
+    """Edmonds-Karp on source → unit → duty → sink, and the sink side of the minimum cut.
+
+    The sink side is every node that can still reach the sink in the residual graph: the
+    duties left short, the units that could serve them, the other duties those units are
+    already busy with, and so on. It is the **smallest** group whose demand exceeds what its
+    incumbents can deliver, which is what makes the report point at the shortfall rather
+    than at the whole site.
+
+    The graphs here have tens of nodes, so a plain breadth-first search per augmentation is
+    ample. Nodes are visited in sorted order so the report is the same on every run.
+    """
+    source, sink = ("source", ""), ("sink", "")
+    residual: dict[tuple, dict[tuple, float]] = {source: {}, sink: {}}
+
+    def add(a: tuple, b: tuple, capacity: float) -> None:
+        residual.setdefault(a, {})
+        residual.setdefault(b, {})
+        residual[a][b] = residual[a].get(b, 0.0) + capacity
+        residual[b].setdefault(a, 0.0)
+
+    for unit_id, amount in supply.items():
+        add(source, ("unit", unit_id), amount)
+    for duty_key, amount in demand.items():
+        add(("duty", duty_key), sink, amount)
+    for (unit_id, duty_key), capacity in edges.items():
+        add(("unit", unit_id), ("duty", duty_key), capacity)
+
+    epsilon = SHORTFALL_TOLERANCE * max(sum(demand.values()), 1.0) * 1e-3
+    flow = 0.0
+    while True:
+        parent = _residual_search(residual, source, epsilon)
+        if sink not in parent:
+            break
+        path = []
+        node = sink
+        while node != source:
+            path.append((parent[node], node))
+            node = parent[node]
+        push = min(residual[a][b] for a, b in path)
+        for a, b in path:
+            residual[a][b] -= push
+            residual[b][a] += push
+        flow += push
+    reverse: dict[tuple, dict[tuple, float]] = {node: {} for node in residual}
+    for a, neighbours in residual.items():
+        for b, capacity in neighbours.items():
+            reverse[b][a] = capacity
+    return flow, set(_residual_search(reverse, sink, epsilon))
+
+
+def _residual_search(
+    residual: Mapping[tuple, Mapping[tuple, float]], source: tuple, epsilon: float
+) -> dict[tuple, tuple]:
+    """Breadth-first search over edges with residual capacity; returns each node's parent.
+
+    Handed the reversed graph, the edges it follows are those *into* each node, so it finds
+    every node that can reach ``source`` rather than every node ``source`` can reach.
+    """
+    parent: dict[tuple, tuple] = {source: source}
+    queue = deque([source])
+    while queue:
+        node = queue.popleft()
+        for neighbour in sorted(residual[node], key=repr):
+            if neighbour not in parent and residual[node][neighbour] > epsilon:
+                parent[neighbour] = node
+                queue.append(neighbour)
+    return parent
+
+
+def explain_start_year_shortfall(shortfall: StartYearShortfall) -> str:
+    """The run report's sentence for a start-year shortfall."""
+    duties = ", ".join(
+        f"{process_id} on {carrier_id}" for _p, process_id, carrier_id in shortfall.duties
+    )
+    units = ", ".join(shortfall.units) if shortfall.units else "none"
+    return (
+        f"the incumbent plant cannot meet its duties in {shortfall.period}, the start year, "
+        f"where C5 (no building in the start year) allows no new capacity: "
+        f"{duties} need {shortfall.demand:.6f} together, and the incumbents able to serve "
+        f"them ({units}) can deliver {shortfall.deliverable:.6f}, short by "
+        f"{shortfall.shortfall:.6f}. Check premise_process_unit's capacity_share against "
+        f"the duties each unit can serve, and premise_process_detail's known_capacity"
+    )

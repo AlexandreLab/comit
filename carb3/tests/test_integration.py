@@ -31,7 +31,12 @@ from carb3.load import (
     load_reference_tables,
     screen_units,
 )
-from carb3.sets import ModelSets, build_sets, diagnose_unservable_duties
+from carb3.sets import (
+    ModelSets,
+    build_sets,
+    diagnose_start_year_shortfall,
+    diagnose_unservable_duties,
+)
 
 #: The three premises that solve on the reference tables as they stand today.
 #: ``mvp-cement`` joined them when A2 learned to read ``premise_throughput`` for a D5 mass
@@ -113,6 +118,23 @@ def runs(
 # --------------------------------------------------------------------------------------
 # The solve itself
 # --------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("premise_id", SOLVING_PREMISES)
+def test_the_incumbents_meet_every_duty_in_the_start_year(
+    reference: ReferenceTables, screen: AdmissionScreen, premise_id: str
+) -> None:
+    """The start-year adequacy check passes on every premise that solves.
+
+    A premise that solves to optimality cannot fail it, because the check is a necessary
+    condition for the start year's C1 (duty satisfaction) under C5 (no building in the start
+    year). Failing here would mean the check is too strict, not that the data is wrong.
+    """
+    premise = load_premise_tables(premise_id)
+    sets = build_sets(reference, premise, screen, PERIOD_YEARS)
+    vintages = survival.vintage_capacity(premise, reference.unit)
+    surviving = survival.surviving_capacity(vintages, reference.unit, PERIOD_YEARS)
+    assert diagnose_start_year_shortfall(sets, surviving, reference.unit) is None
 
 
 @pytest.mark.parametrize("premise_id", SOLVING_PREMISES)

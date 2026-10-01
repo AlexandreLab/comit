@@ -17,7 +17,8 @@ uv run --directory carb3 python -m carb3 --help  # the flags, including --refere
 ```
 
 The run report prints what §5.2 and §5.3 ask for: the units the §3.2 admission screen
-dropped and why, any unservable duty with its premise and period, the solver status, the
+dropped and why, any unservable duty with its premise and period, any start-year shortfall
+in the incumbent plant (below), the solver status, the
 variable and constraint counts, the wall clock (the `G1` measurement), the objective
 decomposition, and the disposal and dispatch tables.
 
@@ -25,12 +26,53 @@ decomposition, and the disposal and dispatch tables.
 make carb3                                       # the tests; also part of `make check`
 ```
 
+## Two checks before the solve
+
+A premise can fail before any LP is built, and both failures are reported as `NOT SOLVED`
+with the reason, never as a traceback (§5.2, infeasibility is an expected outcome).
+
+| Check | Function | Fails when | What to fix |
+|---|---|---|---|
+| Unservable duty | `sets.diagnose_unservable_duties` | A duty has **no** eligible unit in some period | The unit library or eligibility: nothing on the site's candidate list makes that carrier at that grade |
+| Start-year shortfall | `sets.diagnose_start_year_shortfall` | The incumbent plant is **too small** to meet the first period's duties | `premise_process_unit.capacity_share` against the duties each unit can serve, or `premise_process_detail.known_capacity` |
+
+**Why the start year is special.** C1 (duty satisfaction) is an equality and C5 (no building
+in the start year) allows no new capacity in the first period, so the plant named in
+`premise_process_unit` has to meet every duty on its own, each unit capped by C2 (activity
+limited by available capacity) at its capacity × γ × α. From the second period on, a
+shortfall is simply built, and costs money rather than failing.
+
+**How it decides.** C2 is written per `unit_id`, so one unit's capacity is a pool shared by
+every duty it is eligible for. Comparing each duty with its eligible units one at a time
+would count that pool once per duty, so the check solves a small maximum flow instead
+(incumbents supply, duties demand) and, where it falls short, reports the smallest group of
+duties whose demand exceeds what the incumbents able to serve them can deliver. A
+`max_share` caps its unit's contribution exactly as it caps the LP's dispatch.
+
+```
+the incumbent plant cannot meet its duties in 2021, the start year, where C5 (no building in
+the start year) allows no new capacity: boiler_steam_hot_water on heat_100_150,
+boiler_steam_hot_water on heat_60_100, site_services on heat_60_100 need 0.150059 together,
+and the incumbents able to serve them (boiler_lt_gas, chp_gas_turbine, heat_pump_lt_air) can
+deliver 0.145043, short by 0.005015. ...
+```
+
+That is `mvp-dairy` with `site_services` split 0.40 / 0.60 instead of 0.549 / 0.451: the
+heat pump is 0.149 × 0.033661 PJ/yr short of the space-heating duty, the motor's spare
+capacity cannot make heat, and the boilers that could are fully used by the boiler house, so
+all three duties are named together.
+
+**It is a necessary condition, not a proof.** Units making an internal product with no duty
+(D16, the cement works' clinker kiln) draw on C2 through C8 (carrier balance) rather than C1,
+and are not in the flow. A premise that fails the check is certainly infeasible in the start
+year; one that passes can still be infeasible for another reason.
+
 ## What is here
 
 | Module | Owes |
 |---|---|
 | `load.py` | Reference + premise tables → typed records; the §3.2 admission screen |
-| `sets.py` | Minimal A2; Q, U, U_q via the three-table join; C10 widening; unservable-duty diagnosis |
+| `sets.py` | Minimal A2; Q, U, U_q via the three-table join; C10 widening; unservable-duty diagnosis; the start-year adequacy check |
 | `survival.py` | D11 survival function and the capacity behind a cohort, computed before the LP |
 | `build.py` | Variables, C1–C5, C8, C10 via eligibility, C9 for CO₂ export only, the objective, the solve |
 | `ledger.py` | Cost by term, carrier mix, dispatch, build, disposal, unit flow → parquet |

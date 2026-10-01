@@ -152,7 +152,7 @@ age); a row with no `commissioned_year` falls back to `construction_year`, then 
 | `cohort_id` | yes | **PK** part | The row's number within its window. `1`, `2`, … is enough | `1` and `2` on `mvp-dairy`'s boiler process |
 | `unit_id` | yes | → `unit.csv`, and must be admitted by `unit_eligibility.csv` | The unit this cohort is. Must be in `unit.csv` and eligible for this process at this activity. A unit appears twice in one window only with two different `commissioned_year` values | cohort 1 is `chp_gas_turbine`, cohort 2 is `boiler_lt_gas`; `mvp-cement`'s kiln line is `kiln_dry_coal` and `kiln_dry_gas` (D13, one primary carrier per unit) |
 | `commissioned_year` | no | | The year this equipment was **installed**. It can't be later than the base year. The unit is retired once `year − commissioned_year` reaches its `lifetime` in `unit.csv`. **A refurbishment does not reset it**: a 1998 kiln relined in 2019 is a 1998 cohort. It can differ from the process's `valid_from_year`, because a site can run a process for decades on newer equipment | `2011` for the CHP and `2016` for the boiler, though the process has run since `2011`; `mvp-cement`'s `grinder_mixer_elec` is `1998` on a process running since `1957`; `mvp-minimal`'s `boiler_lt_gas` is `2009` with a 25-year lifetime, so it retires in 2034 |
-| `capacity_share` | no | | The cohort's share of the parent's `known_capacity`, in (0, 1]. If one row in a window gives it, every row must, and they sum to 1 (V33, plant is named one unit at a time). Blank means A4 splits by the carrier mix, which only works when each unit is a single cohort, so **a unit with two cohorts needs it stated**. The slice does not build A4, so `survival.py` refuses a window of several rows with blank shares | `0.350000` CHP and `0.650000` boiler; `0.871369` coal kiln and `0.128631` gas kiln |
+| `capacity_share` | no | | The cohort's share of the parent's `known_capacity`, in (0, 1]. If one row in a window gives it, every row must, and they sum to 1 (V33, plant is named one unit at a time). Blank means A4 splits by the carrier mix, which only works when each unit is a single cohort, so **a unit with two cohorts needs it stated**. The slice does not build A4, so `survival.py` refuses a window of several rows with blank shares. **A share too small for the duties only that unit can serve makes the start year infeasible**: see "Incumbents too small for the start year" below | `0.350000` CHP and `0.650000` boiler; `0.871369` coal kiln and `0.128631` gas kiln |
 | `provenance` | yes | | Where the row came from, for both the unit and its install year | `cement worked example section 1.5.1 permit fuel schedule; share renormalised after dropping kiln_dry_wdf; commissioned_year: cement worked example section 1.6; share renormalised after dropping kiln_dry_wdf` |
 | `confidence` | yes | | high, medium or low. Where the unit and its install year came from sources of different quality, the lower one | `high` for the CHP; `medium` for the boiler, whose install year is less certain than its presence |
 
@@ -358,6 +358,22 @@ Stdlib only, because `pandas` is not installed in this repo. It checks, and curr
   is an equality and C5 (no building in the start year) forbids it, so a duty with no
   incumbent is infeasible at 2021. This is the check that decided the incumbent rows for
   the eleven processes the worked examples leave unnamed.
+
+### Incumbents too small for the start year
+
+`verify_premise_keys.py` checks that every process valid at the base year names at least one
+unit. It does **not** check that the named units are big enough. That is checked at run time,
+by `sets.diagnose_start_year_shortfall`, before any LP is built: in the first period C5 (no
+building in the start year) allows no new plant, so the units here must meet every duty on
+their own. A premise that fails it is reported `NOT SOLVED` with the duties that are short and
+by how much; [the package README](../../README.md#two-checks-before-the-solve) has the
+detail and a worked failure.
+
+The usual cause is a `capacity_share` that does not match the duties each unit can serve.
+Shares always add up to the process's `known_capacity`, so the total is never short; what
+goes wrong is giving a unit less than the duty **only it** can serve. `mvp-dairy`'s
+`site_services` shows it: its heat pump must carry the whole space-heating duty (54.9% of the
+process) because a motor cannot make heat, so its share must be at least 0.549.
 
 ## Findings for the reference data
 
