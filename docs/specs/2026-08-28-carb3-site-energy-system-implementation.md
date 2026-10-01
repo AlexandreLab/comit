@@ -1780,9 +1780,11 @@ indexed. Exports are always connection-indexed, because leaving the site means g
 network.
 
 **What the slice builds.** The slice (`carb3/src/carb3/`) declares **site-level** import $m_{c,t}$
-for every importable carrier and **site-level** export $x_{c,t}$ for every exportable carrier
-with an availability window, whether or not a connection carries it. It is handed no
-`premise_connection` table, C11 and $Z^{\text{net}}$ are not built, and `import_price` and
+for every importable carrier, whether or not a connection carries it. It declares **site-level**
+export $x_{c,t}$ where `may_export` is true, a `premise_connection` row carries the carrier, and an
+`export_price` or `co2_transport_tariff` series covers every period (`sets.export_windows`). Import
+ignores connections; export reads them to decide which carriers exist, and the connection index is
+collapsed, not ignored. C11 and $Z^{\text{net}}$ are not built, and `import_price` and
 `export_price` have no connection dimension, so the index would carry no information and the two
 forms are numerically identical there. $z^{\circ}_{u,t}$ exists for **supply units only**: units
 that serve no duty and make a carrier no duty asks for (a kiln's `clinker`, a capture train's
@@ -1875,9 +1877,9 @@ $\eta$ and $\bar R$ below are then the share-weighted sum and the share-weighted
 
 **Survival, tiers 2 and 3.** A unit installed at age $a$ is still standing after $(y_t - y_{t_0})$
 elapsed years if and only if $a + (y_t - y_{t_0}) < L_u$. With window width $W_u = a^+_u - a^-_u$,
-and writing $\bar a_{u,t} = \mathrm{clamp}\big(L_u - (y_t - y_{t_0}),\ a^-_u,\ a^+_u\big)$:
+and writing $b_{u,t} = \mathrm{clamp}\big(L_u - (y_t - y_{t_0}),\ a^-_u,\ a^+_u\big)$:
 
-$$\eta_{u,t} = \begin{cases} \dfrac{\bar a_{u,t} - a^-_u}{W_u} & W_u > 0 \\[6pt] \mathbb{1}\big[\,a^-_u + (y_t - y_{t_0}) < L_u\,\big] & W_u = 0 \end{cases} \qquad \bar R_{u,t} = \max\!\left(0,\ (L_u - (y_t - y_{t_0})) - \tfrac{1}{2}\big(a^-_u + \bar a_{u,t}\big)\right)$$
+$$\eta_{u,t} = \begin{cases} \dfrac{b_{u,t} - a^-_u}{W_u} & W_u > 0 \\[6pt] \mathbb{1}\big[\,a^-_u + (y_t - y_{t_0}) < L_u\,\big] & W_u = 0 \end{cases} \qquad \bar R_{u,t} = \max\!\left(0,\ (L_u - (y_t - y_{t_0})) - \tfrac{1}{2}\big(a^-_u + b_{u,t}\big)\right)$$
 
 **The $W_u = 0$ branch is not an edge case to be tidied away.** It is reachable from tier 2 whenever
 the clamp returns zero, and it is exactly the tier-1 point-mass formula below. Writing the division
@@ -2029,9 +2031,9 @@ still standing has not been scrapped, so it attracts no stranding charge, and th
 it inherits is the **minimum** over its hosts. Where the hosts share a vintage the minimum is
 that one value, which is the single-host rule this replaces.
 
-C4 has four legs, with $E^0_u$ the incumbent capacity at the start year (§3.10.2):
+C4 has four legs, with $E^0_u$ the incumbent capacity at the start year (§3.10.2) and $U^0$ the set of incumbent units:
 
-$$\text{(a)}\; e_{u,t_0} = E^0_u \qquad \text{(b)}\; e_{u,t} \le \eta_{u,t}\,E^0_u \qquad \text{(c)}\; e_{u,t} \le e_{u,t-1} \qquad \text{(d)}\; r_{u,t} \ge \big(\eta_{u,t}E^0_u - e_{u,t}\big) - \big(\eta_{u,t-1}E^0_u - e_{u,t-1}\big)$$
+$$\text{(a)}\; e_{u,t_0} = E^0_u \quad \forall u \in U^0 \qquad \text{(b)}\; e_{u,t} \le \eta_{u,t}\,E^0_u \quad \forall u \in U^0,\, t \qquad \text{(c)}\; e_{u,t} \le e_{u,t-1} \quad \forall u \in U^0,\, t > t_0 \qquad \text{(d)}\; r_{u,t} \ge \big(\eta_{u,t}E^0_u - e_{u,t}\big) - \big(\eta_{u,t-1}E^0_u - e_{u,t-1}\big) \quad \forall u \in U^0,\, t > t_0$$
 
 Leg (a) anchors the start year: the plant is observed running, so it exists. **Leg (b) is C4b,
 forced ageing**: capacity that has reached the end of its life is gone whether the model wants it
@@ -2099,7 +2101,7 @@ shared catchment, which D2 forbids modelling per premise.
 every period the premise's cluster (§3.1 `cluster_id`) cannot take the carrier, read from the
 `co2_transport` rows of §3.7. A bound and not a constraint row, because the window is a
 parameter and the LP has no decision to make about whether a pipeline exists. Hydrogen
-availability and `capacity_limit` are not yet enforced.
+import availability and `capacity_limit` are not yet enforced.
 
 **C10 — Grade cascade, heat and cooling.** A unit may serve a graded duty only in its own grade
 family and only at or below its output grade in service rank:
@@ -2204,7 +2206,7 @@ $\lambda$ and its process-level counterparts are blank, and they are a floor, ne
 stranding factor).
 
 **What remains open under T23.** The method that rebuilds a connection's peak from the solved
-pathway: which year it reads (the base year, on §3.1.1's rule, V24), the **diversity step**
+pathway: which year it reads (the base year, on §3.1.1's rule, V24 (one measured row per key at the base year), the **diversity step**
 (summing per-process peaks assumes every process peaks at the same instant, which overstates the
 site maximum, so where §3.14 weekly profiles exist the diversity is observed and where they do not
 a per-activity factor is the fallback), per-connection routing, and calibration against the
@@ -2214,9 +2216,10 @@ $\lambda$ alone is a floor and must be reported as one.
 
 ### 5.7 Pre-solve and post-solve checks
 
-Four checks surround the solve, in this order. The first three are **diagnoses, not exceptions**:
-an unservable duty, a start-year shortfall and a non-optimal solve are answers about the data and
-come back as a blocked premise carrying the reason. The fourth runs after a solve and reports.
+Four checks surround the solve, in this order. Check 1 (the admission screen) drops units and
+reports each one. Checks 2 and 3 (an unservable duty, a start-year shortfall), like a non-optimal
+solve, are **diagnoses, not exceptions**: they are answers about the data and come back as a blocked
+premise carrying the reason. Check 4 (the row check) runs after a solve and reports.
 
 | # | Check | Where | What it does |
 |---|---|---|---|
@@ -2610,7 +2613,7 @@ Widening a range is a manual step in the same commit as the label.
 
 ## 13. Worked examples
 
-*Section last updated: 2026-09-17*
+*Section last updated: 2026-10-01*
 
 Two examples, both written, each a document of its own because each is long enough to be one
 and because both are published as test fixtures. They share a thirteen-section structure so

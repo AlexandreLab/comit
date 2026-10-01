@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, and items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64 — **twenty-one of the sixty-six, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, and item 58 on 2026-10-01 – **twenty-two of the sixty-eight, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -994,10 +994,14 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     services; §3's *Section last updated* line is bumped and the generated documents rebuilt.
 
 67. **Non-energy use (§7.10) vs A6 fuel CO₂ derivation – which scope?** `petroleum_products_misc`
-    is burned as fuel by `chp_byproduct_ccgt` and four kilns, so a per-carrier exemption would
-    delete those real emissions. Decide per unit (each instance of the three FCC-regen units
-    or the four CHPs gets an exemption) or per role (all `emission_input` on this carrier is
-    non-energy), then update the reference tables and A6's derivation rule. *Note 21 §9,
+    appears in `unit_input_output.csv` on ten rows. It is a `fuel_input` of one CHP
+    (`chp_byproduct_ccgt`), an `aux_input` of four kilns (`kiln_dry_oil`, `lime_kiln_dry_gas`,
+    `lime_kiln_dry_coal`, `lime_kiln_dry_wdf`), and on five `steam_cracker_*` units either a
+    feedstock draw (`steam_cracker_naphtha` and `steam_cracker_byproduct` as `fuel_input`,
+    `steam_cracker_hydrogen` as `aux_input`) or a by-product `coproduct` (`steam_cracker_gas`
+    and `steam_cracker_elec`). A per-carrier exemption would delete the emissions of the
+    burned uses along with the non-energy ones. Decide per unit (each instance gets an
+    exemption) or per role (all `emission_input` on this carrier is non-energy), then update the reference tables and A6's derivation rule. *Note 21 §9,
     deferred item 1; spec §7.10, A6.*
 
 68. **Capture train life bounded by its host – compatible with the lifecycle?** The CCS train's

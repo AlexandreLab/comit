@@ -138,14 +138,14 @@ spec §8 target contract.
 
 | Table | Rows | Columns (one row per) | Meaning |
 |---|---|---|---|
-| `cost_by_term.parquet` | one per term per period | capex, opex, fuel, carbon, discounted each | Cost contribution by term (capital, standing, fuel, carbon charge on disposal). The five terms must sum to `run_report.objective` |
-| `carrier_mix.parquet` | one per carrier per period | imported, produced, consumed, disposed | Carrier balance: flow in, flow out. C8 closure is checked here |
-| `dispatch.parquet` | one per duty per unit per period | quantity, carrier, grade_rank, role | Unit dispatched to duty (z_{u,q,t}), carrier and grade the duty is on, and how the unit serves it |
-| `build.parquet` | one per unit per period | new_capacity, capacity_available, survived_from_start | New capacity built in the period, total available (new plus incumbent), incumbent capacity per D11's survival function |
-| `disposal.parquet` | one per carrier per period | quantity | Amount vented to atmosphere (d_{c,t}); carbon is charged on this quantity for carriers where `carbon_charge` is 'charged' (spec §3.4) |
-| `unit_flow.parquet` | one per unit per carrier per role per period | quantity, signed | Flow into (negative) or out of (positive) each unit on each carrier in each role (fuel_input, emission_input, primary_output, coproduct_output, reject, or duty_output) |
-| `run_report.parquet` | one row | premise_id, status, objective, n_variables, n_constraints, wall_clock_seconds, n_units_admitted, n_units_dropped | The G1 (single-premise wall clock) measurement, solver status (optimal/infeasible/other), final objective, problem size, and the §3.2 admission screen count |
-| `screen_dropped.parquet` | one per dropped unit | unit_id, leg, detail | §3.2 admission screen's work list: which units were refused and why (blank capex, no coefficients, unpriced fuel). The work list is written even if empty |
+| `cost_by_term.parquet` | one per term per period (long format) | `period`, `term`, `annual`, `discount_factor`, `discounted` | Cost contribution by term. Five terms: `capex`, `opex`, `fuel`, `carbon`, `export` (the one term that can be a revenue or a cost, with the CO₂ transport tariff folded in). `annual` is undiscounted, `discounted` is `annual` times `discount_factor`. The `discounted` values must sum to `run_report.objective` |
+| `carrier_mix.parquet` | one per carrier per period | `carrier_id`, `period`, `carrier_kind`, `imported`, `produced`, `consumed`, `disposed`, `exported`, `dispatched`, `net` | Carrier balance, flow in and flow out. `produced` and `consumed` are the two halves of C8 (carrier balance) read separately; `net` is C8's own residual and is zero where the balance closes |
+| `dispatch.parquet` | one per unit per duty per period | `unit_id`, `premise_id`, `process_id`, `carrier_id`, `duty`, `kind`, `period`, `activity` | Activity of a unit on a duty (z_{u,q,t}). `kind` is `supply` for a unit making a carrier that no duty asks for, which carries no process and is settled by C8 rather than C1 (duty satisfaction) |
+| `build.parquet` | one per unit per period | `unit_id`, `period`, `new_capacity`, `available_capacity`, `surviving_capacity`, `built_standing` | n_{u,t}, a_{u,t} and e_{u,t}. `built_standing` is `a - e`, the new capacity standing that capex is charged on |
+| `disposal.parquet` | one per carrier per period | `carrier_id`, `period`, `quantity`, `carbon_charge`, `carbon_price`, `carbon_cost` | Amount vented (d_{c,t}); `carbon_cost` is non-zero only where `carbon_charge` is 'charged' (spec §3.4) |
+| `unit_flow.parquet` | one per unit per carrier per role per period | `unit_id`, `carrier_id`, `role`, `period`, `carrier_kind`, `flow` | Signed flow of each unit on each carrier in each role: a single `flow` column, drawn from the solved activity times the C8 coefficient set |
+| `run_report.parquet` | one row | `premise_id`, `status`, `objective`, `n_variables`, `n_constraints`, `wall_clock_seconds`, `n_units_admitted`, `n_units_dropped` | The G1 (single-premise wall clock) measurement, solver status, final objective, problem size, and the §3.2 admission screen counts |
+| `screen_dropped.parquet` | one per dropped unit per failed leg | `unit_id`, `leg`, `detail` | §3.2 admission screen's work list: which units were refused and why. Written even if empty |
 
 ## Against the live spec
 

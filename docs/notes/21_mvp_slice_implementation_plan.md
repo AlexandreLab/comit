@@ -693,13 +693,13 @@ specification a change.
 
 ### Deferred, in order of value
 
-Post-MVP: where to go next. Each item depends only on prior items in the list, or explicitly calls for a user decision.
+Post-MVP: where to go next. Ordered by value; dependencies on later items are noted inline, and an item may call for a user decision.
 
-1. **Non-energy use (§7.10) vs A6 fuel CO₂ derivation** – A non-energy carrier is one a process consumes but does not burn; `petroleum_products_misc` is used as a lubricant by four CHPs and a kiln, so a per-carrier exemption would delete real emissions; decide per unit or per role, then update the reference tables and A6's derivation.
+1. **Non-energy use (§7.10) vs A6 fuel CO₂ derivation** – A non-energy carrier is one a process consumes but does not burn; `petroleum_products_misc` is a `fuel_input` of one CHP, an `aux_input` of four kilns, and a feedstock or coproduct on five steam crackers (note 20 item 67), so a per-carrier exemption would delete real emissions; decide per unit or per role, then update the reference tables and A6's derivation.
 
 2. **Capture train life bounded by its host (§3.5.3)** – The CCS train's remaining life is the minimum over its abatement hosts; mvp-cement kilns retire 2034 and `ccs_amine` is available from 2035, so the bound would prevent CCS unless new-build kilns are deemed hosts. Also requires Z^strand (item 12) to report stranded capture capacity.
 
-3. **Survival tiers 2 and 3 with vintage_default defined** – Tier 1 vintage is all that exists today; tiers 2 and 3 require `activity_default_unit` and a backward-compatible `vintage_default` column for each unit, which the stock model supplies.
+3. **Survival tiers 2 and 3 with vintage_default defined** – Tier 1 vintage is all that exists today; tiers 2 and 3 require `activity_default_unit` and a `vintage_default` scenario setting (§5.3.1; it is not a per-unit column), which the stock model supplies.
 
 4. **Emissions output table (note 12 categories)** – Eight parquet tables today; add the emissions ledger with CO₂ flow by carrier, period, fate (vented / captured) and evidence tier (accounted / allocated).
 
@@ -711,7 +711,7 @@ Post-MVP: where to go next. Each item depends only on prior items in the list, o
 
 8. **A7 relaxation ladder** – Six of eight rungs above what is built (C10 and C1 alone); the machinery is there, the step function on infeasibility is not.
 
-9. **C6 and C7** – Unit stability (binaries for on/off) and known changes (announced retirements and expansions); both MustHave features.
+9. **C6 and C7** – Unit stability (a two-legged ramp limit, still a pure LP) and known changes (announced retirements and expansions); both MustHave features.
 
 10. **C11 with T23 and C12** – Connection capacity and siting bounds; C11 gates CHP and infrastructure, C12 gates PV; T23 (complete §5) owns both.
 
@@ -719,7 +719,7 @@ Post-MVP: where to go next. Each item depends only on prior items in the list, o
 
 12. **Z^strand and early retirement r** – The stranding charge and early-retirement variable; both driven by D11 (plant age) but neither exists in the slice, so neither can be studied.
 
-13. **§7.6 reconciliation against premise_measured_emissions** – Reported as a data difference, never enforced; requires §3.1.1's measured-emissions table (item 3) to be present.
+13. **§7.6 reconciliation against premise_measured_emissions** – Reported as a data difference, never enforced; requires §3.11's `premise_measured_emissions` table to be present.
 
 14. **Scale gates G2–G4** – Multi-premise, multi-sector and GB-level solve time and memory; only G1 (single-premise wall clock) exists today.
 
