@@ -9,7 +9,11 @@ change.
 
 from __future__ import annotations
 
+import csv
 import dataclasses
+import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -56,7 +60,7 @@ PREMISE_FILES: dict[str, str] = {
 
 
 def write_premise_fixture(root: Path, **overrides: str) -> Path:
-    """Write the four premise tables under ``root``. Lane D's real CSVs are not depended on.
+    """Write the five premise tables under ``root``. Lane D's real CSVs are not depended on.
 
     ``overrides`` replaces one file's whole text, which is how the fail-loud and
     FK-resolution cases below state the one thing they are breaking.
@@ -97,9 +101,11 @@ def test_period_years_are_the_real_vector() -> None:
     assert load.PERIOD_YEARS == (2021, 2025, 2030, 2035, 2040, 2045, 2050)
 
 
-def test_reference_tables_carry_the_eight_tables() -> None:
+def test_reference_tables_carry_the_nine_tables() -> None:
     """``infrastructure_scenario`` is the eighth: C9 (infrastructure availability) came
-    partially back into scope for CO₂ transport, and its 63 rows are where the gate is."""
+    partially back into scope for CO₂ transport, and its 63 rows are where the gate is.
+    ``unit_abatement_host`` is the ninth: V33 (plant is named one unit at a time) leg (b)
+    needs it to say which converters each capture train sits on."""
     fields = {f.name for f in dataclasses.fields(load.ReferenceTables)}
     assert fields == {
         "carrier",
@@ -110,13 +116,14 @@ def test_reference_tables_carry_the_eight_tables() -> None:
         "activity_process_duty_profile",
         "activity_process_register",
         "infrastructure_scenario",
+        "unit_abatement_host",
     }
 
 
-def test_premise_tables_carry_six_and_not_process_duty() -> None:
+def test_premise_tables_carry_five_and_not_process_duty() -> None:
     """Plan §3.4: process_duty is derived by the minimal A2, not an input table.
 
-    Six, not the four the plan commissioned. ``premise_throughput`` (§3.1.2) carries the
+    Five, not the four the plan commissioned. ``premise_throughput`` (§3.1.2) carries the
     cement works' mass duty, which the duty profile cannot state because it holds no mass
     carrier; ``premise_connection`` (§3.1.3) is what §5.2 requires before an export
     variable may be declared. Both were written by the premise lane and read by nothing.
@@ -486,6 +493,7 @@ def test_a_drop_is_reported_once_per_failing_leg(screen: load.AdmissionScreen) -
     assert all(d.detail for d in screen.dropped)
     assert {d.leg for d in screen.dropped} <= {
         "capex", "cost_columns", "coefficients", "fuel_input", "import_price",
+        "abatement_host",
     }
 
 
@@ -498,3 +506,208 @@ def test_shortening_the_horizon_admits_more(reference: load.ReferenceTables) -> 
     wide = load.screen_units(reference, periods=load.PERIOD_YEARS)
     assert len(narrow.admitted) > len(wide.admitted)
     assert "heavy_fuel_oil" not in load._unpriced_carriers(reference, (2021,))
+
+
+# ---------------------------------------------------- unit_abatement_host (V33 leg b)
+
+#: The nine files ``load_reference_tables`` reads, so a test can copy exactly those.
+_REFERENCE_FILES: tuple[str, ...] = tuple(load.REFERENCE_SCHEMA)
+
+
+def _reference_copy(tmp_path: Path) -> Path:
+    """A scratch reference root holding a copy of each table, for a test to corrupt."""
+    root = tmp_path / "reference"
+    root.mkdir()
+    for name in _REFERENCE_FILES:
+        shutil.copy(load.DEFAULT_REFERENCE_ROOT / f"{name}.csv", root / f"{name}.csv")
+    return root
+
+
+def test_abatement_hosts_are_loaded_and_every_key_resolves(
+    reference: load.ReferenceTables,
+) -> None:
+    hosts = reference.unit_abatement_host
+    units = set(reference.unit["unit_id"])
+    assert set(hosts["unit_id"]) <= units
+    assert set(hosts["host_unit_id"]) <= units
+    assert len(hosts) == 37
+    assert set(hosts.loc[hosts["unit_id"] == "ccs_amine", "host_unit_id"]) == {
+        "kiln_dry_coal", "kiln_dry_gas", "kiln_dry_wdf", "kiln_dry_oil",
+    }
+
+
+def test_an_unresolved_host_key_fails_loud(tmp_path: Path) -> None:
+    root = _reference_copy(tmp_path)
+    path = root / "unit_abatement_host.csv"
+    path.write_text(path.read_text() + "ccs_amine,no_such_kiln,fixture,high\n")
+    with pytest.raises(load.ResolutionError, match="no_such_kiln"):
+        load.load_reference_tables(root)
+
+
+def test_an_unresolved_capture_unit_key_fails_loud(tmp_path: Path) -> None:
+    root = _reference_copy(tmp_path)
+    path = root / "unit_abatement_host.csv"
+    path.write_text(path.read_text() + "no_such_train,kiln_dry_gas,fixture,high\n")
+    with pytest.raises(load.ResolutionError, match="no_such_train"):
+        load.load_reference_tables(root)
+
+
+def test_every_abatement_unit_in_the_data_has_a_host(
+    reference: load.ReferenceTables, screen: load.AdmissionScreen
+) -> None:
+    """The new leg refuses nothing today: all 13 capture trains name a host."""
+    abatement = set(reference.unit.loc[reference.unit["unit_class"] == "abatement", "unit_id"])
+    assert len(abatement) == 13
+    assert abatement <= set(reference.unit_abatement_host["unit_id"])
+    assert not [d for d in screen.dropped if d.leg == "abatement_host"]
+    assert "ccs_amine" in screen.admitted
+
+
+def test_a_capture_unit_with_no_host_is_refused_naming_the_unit(
+    reference: load.ReferenceTables,
+) -> None:
+    """V33 (plant is named one unit at a time) leg (b): an abatement unit with no
+    ``unit_abatement_host`` row has no CO2 stream, no process to sit on and no life."""
+    hosts = reference.unit_abatement_host
+    orphaned = dataclasses.replace(
+        reference, unit_abatement_host=hosts[hosts["unit_id"] != "ccs_amine"]
+    )
+    screened = load.screen_units(orphaned)
+    legs = [d for d in screened.dropped if d.leg == "abatement_host"]
+    assert [d.unit_id for d in legs] == ["ccs_amine"]
+    assert "unit_abatement_host" in legs[0].detail
+    assert "ccs_amine" not in screened.admitted
+
+
+def test_a_converter_with_no_host_row_is_not_refused(reference: load.ReferenceTables) -> None:
+    """The leg is keyed on ``unit_class = abatement`` (§3.5.3), not on every unit."""
+    none = dataclasses.replace(
+        reference, unit_abatement_host=reference.unit_abatement_host.iloc[0:0]
+    )
+    refused = {d.unit_id for d in load.screen_units(none).dropped if d.leg == "abatement_host"}
+    abatement = set(reference.unit.loc[reference.unit["unit_class"] == "abatement", "unit_id"])
+    assert refused == abatement
+
+
+# ------------------------------------ premise rules, in step with verify_premise_keys.py
+#
+# ``carb3/data/premises/verify_premise_keys.py`` is stdlib-only and keeps its own copy of the
+# premise-side rules, so a premise can be checked where pandas is not installed. The loader
+# enforces the same four at run time, and the parity tests below feed both the same broken
+# premise so that the two copies cannot drift apart unnoticed.
+
+_VERIFIER = load.DEFAULT_PREMISE_ROOT / "verify_premise_keys.py"
+
+
+def _premise_copy(tmp_path: Path) -> Path:
+    """A scratch premise root holding a copy of the real premise tables."""
+    root = tmp_path / "carb3" / "data" / "premises"
+    root.mkdir(parents=True)
+    for source in load.DEFAULT_PREMISE_ROOT.glob("*.csv"):
+        shutil.copy(source, root / source.name)
+    return root
+
+
+def _edit(root: Path, table: str, premise_id: str, **changes: str) -> None:
+    """Set columns on the first row of ``table`` for ``premise_id``."""
+    path = root / f"{table}.csv"
+    with path.open(newline="") as handle:
+        reader = csv.DictReader(handle)
+        fields = list(reader.fieldnames or [])
+        rows = list(reader)
+    for row in rows:
+        if row["premise_id"] == premise_id:
+            row.update(changes)
+            break
+    else:
+        raise AssertionError(f"{table}: no row for {premise_id}")
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _verifier_failures(tmp_path: Path) -> list[str]:
+    """Run the stdlib verifier on the scratch tree and return its FAIL lines.
+
+    The script reads ``docs/notes/data`` and ``carb3/data/premises`` relative to the working
+    directory, so the scratch tree links the first and holds its own copy of the second.
+    """
+    docs = tmp_path / "docs" / "notes"
+    docs.mkdir(parents=True, exist_ok=True)
+    link = docs / "data"
+    if not link.exists():
+        link.symlink_to(load.DEFAULT_REFERENCE_ROOT, target_is_directory=True)
+    done = subprocess.run(
+        [sys.executable, str(_VERIFIER)], cwd=tmp_path, capture_output=True, text=True,
+        check=False,
+    )
+    return [line for line in done.stdout.splitlines() if line.startswith("FAIL")]
+
+
+def _loader_rejects(root: Path, reference: load.ReferenceTables, premise_id: str) -> str | None:
+    """The loader's error message for the premise, or ``None`` if it accepts it."""
+    premise = load.load_premise_tables(premise_id, root)
+    try:
+        load.resolve_premise_references(reference, premise)
+    except load.ResolutionError as error:
+        return str(error)
+    return None
+
+
+def test_the_real_premises_pass_both_the_verifier_and_the_loader(
+    tmp_path: Path, reference: load.ReferenceTables
+) -> None:
+    root = _premise_copy(tmp_path)
+    assert _verifier_failures(tmp_path) == []
+    for premise_id in ("mvp-minimal", "mvp-dairy", "mvp-cement"):
+        assert _loader_rejects(root, reference, premise_id) is None
+
+
+@pytest.mark.parametrize(
+    ("table", "premise_id", "changes", "needle"),
+    [
+        ("premise_record", "mvp-dairy", {"nation": "Atlantis"}, "nation"),
+        ("premise_record", "mvp-dairy", {"latitude": "70.0"}, "bounding box"),
+        ("premise_record", "mvp-dairy", {"longitude": "5.0"}, "bounding box"),
+        (
+            "premise_record", "mvp-dairy",
+            {"construction_year": "2030", "construction_year_band": ""},
+            "construction_year",
+        ),
+        # kiln_dry_gas is a cement unit: unit_eligibility has no Food Processing Centre row.
+        ("premise_process_unit", "mvp-dairy", {"unit_id": "kiln_dry_gas"}, "not eligible"),
+    ],
+    ids=["nation", "latitude", "longitude", "construction_year", "ineligible_incumbent"],
+)
+def test_loader_and_verifier_reject_the_same_broken_premise(
+    tmp_path: Path,
+    reference: load.ReferenceTables,
+    table: str,
+    premise_id: str,
+    changes: dict[str, str],
+    needle: str,
+) -> None:
+    root = _premise_copy(tmp_path)
+    _edit(root, table, premise_id, **changes)
+    failures = _verifier_failures(tmp_path)
+    assert any(needle in line for line in failures), failures
+    message = _loader_rejects(root, reference, premise_id)
+    assert message is not None, "the loader accepted what the verifier rejects"
+    assert premise_id in message
+    assert needle in message
+
+
+def test_an_activity_level_eligibility_row_admits_an_incumbent(
+    reference: load.ReferenceTables,
+) -> None:
+    """A blank ``process_id`` in ``unit_eligibility`` is activity-level supply and reaches
+    every process of the activity, so an incumbent it names is eligible."""
+    elig = reference.unit_eligibility
+    blank = elig[elig["process_id"].isna() | (elig["process_id"] == "")].iloc[0]
+    assert load.incumbent_is_eligible(
+        reference, str(blank["unit_id"]), str(blank["carb3_activity"]), "any_process"
+    )
+    assert not load.incumbent_is_eligible(
+        reference, "no_such_unit", str(blank["carb3_activity"]), "any_process"
+    )

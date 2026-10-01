@@ -20,13 +20,13 @@ cannot take the carrier. Exporting CO₂ is a **cost**, not a revenue: the site 
 transport-and-storage tariff. What leaves through the pipe was not vented, so it never
 reaches Z^carbon, and getting that sign wrong inverts the whole result.
 
-**z°_{u,t} is in, but only for the D16 carriers, and note 21 §2.2 was wrong to put it
-out.** §2.2's reason is "no internal ``product`` carriers in the synthetic premises", and
-``mvp-cement``'s kilns make ``clinker`` — a ``product`` with ``may_export`` false, whose
-premise-level duty row §3.9 therefore removes. The plan says C8 pins those kilns through the
-``clinker`` balance, which is right, but a unit serving no duty has no z_{u,q,t} to be
-pinned: without a variable the node has no producer, the grinder is forced to zero and the
-1.13 Mt cement duty is infeasible. :func:`carb3.sets.undutied_supply` names those units and
+**z°_{u,t} is in, but only for the D16 carriers, and note 21 §2.2 lists it as In on that
+basis.** The first draft of §2.2 put it out, because "no internal ``product`` carriers in the
+synthetic premises", and ``mvp-cement``'s kilns make ``clinker`` – a ``product`` with
+``may_export`` false, whose premise-level duty row §3.9 therefore removes. The plan says C8
+pins those kilns through the ``clinker`` balance, which is right, but a unit serving no duty
+has no z_{u,q,t} to be pinned: without a variable the node has no producer, the grinder is
+forced to zero and the 1.13 Mt cement duty is infeasible. :func:`carb3.sets.undutied_supply` names those units and
 they take a column on the ``dispatch`` dimension that C1 does not select. Nothing else about
 z° is restored — an ordinary unit's output is still fully dispatched and settled by C1.
 
@@ -75,9 +75,9 @@ import variable is site-level ``m_{c,t}`` only: :func:`build_model` is handed ``
 and ``ReferenceTables`` and neither carries ``premise_connection`` (§3.1.3), so which
 carriers are networked is not knowable here and ``m_{c,k,t}`` cannot be declared. Note 21 §9
 already records that the connection index carries no information while C11 (connection
-capacity), Z^net and export are all out, and ``import_price`` has no connection dimension, so
-the two forms are numerically identical in this slice — but restoring the index needs a
-connections argument, not a change here. **x_{c,t} is site-level for the same reason and no
+capacity) and Z^net are out and export is site-level, and ``import_price`` has no connection
+dimension, so the two forms are numerically identical in this slice – but restoring the
+index needs a connections argument, not a change here. **x_{c,t} is site-level for the same reason and no
 other**: §5.2 indexes every export by connection, and the index would carry no information
 while C11 is out and the tariff has no connection dimension. Which carriers *have* a
 connection is knowable, because :class:`~carb3.sets.ModelSets` now carries the windows
@@ -163,9 +163,10 @@ class SolverSettings:
 class PeriodAxis:
     """The explicit period year vector and what is derived from it (§6.4).
 
-    Spec §5.1 assumes a uniform timestep and neither of its formulas holds: the real periods
-    are 2021, 2025, 2030, 2035, 2040, 2045, 2050 — a 4-year first gap and 5-year gaps
-    thereafter. This is a defect in §5.1, raised by T11.
+    The real periods are 2021, 2025, 2030, 2035, 2040, 2045, 2050 – a 4-year first gap and
+    5-year gaps thereafter. Spec §5.1 reads them from a year vector rather than assuming a
+    uniform timestep, so the axis is exactly what §5.1 defines; a uniform Δ is the special
+    case, not the definition.
     """
 
     years: tuple[int, ...]
@@ -263,7 +264,8 @@ def build_model(
     """Build the LP: the §2.2 variables, C1-C5, C8, C10 via eligibility, and the objective.
 
     The objective is min Z = sum_t delta_t (Z^capex + Z^opex + Z^fuel + Z^carbon), with capex
-    annuitised over each unit's ``lifetime``. Z^infra, Z^net, Z^exp and Z^strand are out.
+    annuitised over each unit's ``lifetime``. Z^exp is in, for the carriers the premise may
+    export; Z^infra, Z^net and Z^strand are out.
 
     Sparsity is load-bearing: linopy #248 documents that an ineffective mask silently builds
     a dense model rather than raising, and at three premises HiGHS solves either version in
@@ -396,8 +398,9 @@ def build_model(
     duty_of = xr.DataArray(
         [pair.label for pair in pairs], coords=[dispatch_index], name="duty"
     )
-    # z_{u,t} of §5.2, the total activity C2 and C8 read. z° is out, so this is the whole of
-    # it; groupby keeps the sum sparse — one term per eligible pair, never |U| x |Q|.
+    # z_{u,t} of §5.2, the total activity C2 and C8 read. z° adds no column beyond the
+    # supply columns already in the dispatch index, so this is the whole of it; groupby keeps
+    # the sum sparse, one term per eligible pair, never |U| x |Q|.
     total_activity = z.to_linexpr().groupby(unit_of).sum().sel(unit=model_units)
 
     # --- C1 duty satisfaction ------------------------------------------------------------
@@ -697,7 +700,7 @@ def _dispatch_pairs(sets: ModelSets) -> tuple[_Pair, ...]:
     carries no duty row — and they carry ``duty_key`` ``None``, so C1 never selects their
     label and their level is settled by C8 (carrier balance) alone. That is exactly what
     note 21 §2.2 means by "C8 pins the kiln through the ``clinker`` balance instead", and it
-    is the smallest restoration of z° that makes the sentence true.
+    is the smallest use of z° that makes the sentence true.
 
     A duty with an empty U_q is refused here rather than silently dropped. C1 built by
     ``groupby`` would simply not emit a row for it, and the duty would go unmet with the
@@ -873,7 +876,7 @@ def _incumbent_capacity(
     """e_{u,t}'s right-hand side, read from :func:`carb3.survival.surviving_capacity`.
 
     A unit absent from the frame carries no incumbent capacity (§survival). A unit present in
-    it but eligible for no duty is skipped: with z° out it has no activity variable, so
+    it but eligible for no duty is skipped: unless it is a supply unit (z°) it has no activity variable, so
     standing capacity for it would only carry fixed opex for a unit that cannot run.
     """
     if surviving is None or len(surviving) == 0:
@@ -1005,9 +1008,9 @@ def _balance_terms(
     """C8's coefficient set by role: carrier → unit → role → ι over the periods.
 
     Every role except ``primary_output`` enters, because C8 reads a primary output through
-    z° and z° is out of this slice — a unit's whole output is dispatched to duties and is
-    settled by C1 instead. The inner sum is over **roles**, per §5.5: a store holding a charge
-    row and a discharge row on one carrier, or a fired capture train holding an
+    z° and z° exists in this slice only for the supply units below – an ordinary unit's whole
+    output is dispatched to duties and is settled by C1 instead. The inner sum is over
+    **roles**, per §5.5: a store holding a charge row and a discharge row on one carrier, or a fired capture train holding an
     ``emission_input`` and a derived ``emission`` row on ``co2_fuel_fossil``, sums both here.
 
     **``supplied`` is the one exception, and it is the D16 case.** A carrier D16 left with no
@@ -1146,7 +1149,9 @@ def _objective(
     export_carriers: Sequence[str] = (),
     tariff_override: float | None = None,
 ):
-    """min Z = Σ_t δ_t (Z^capex + Z^opex + Z^fuel + Z^carbon + Z^exp). Three terms are out.
+    """min Z = Σ_t δ_t (Z^capex + Z^opex + Z^fuel + Z^carbon + Z^exp).
+
+    Z^infra, Z^net and Z^strand are out.
 
     Capex is annuitised over each unit's lifetime and charged on the **new** capacity standing
     in the period, which is exactly C3's build convolution: an incumbent's capex is sunk and

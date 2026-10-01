@@ -33,8 +33,8 @@ DEFAULT_REFERENCE_ROOT: Path = REPO_ROOT / "docs" / "notes" / "data"
 #: Default premise root — synthetic, CSV so every file a human edits stays diffable (§3.4).
 DEFAULT_PREMISE_ROOT: Path = REPO_ROOT / "carb3" / "data" / "premises"
 
-#: The real period vector (§6.4). A 4-year first gap and 5-year gaps thereafter: spec §5.1's
-#: uniform-Δt assumption does not hold and neither of its two formulas can be used.
+#: The real period vector (§6.4). A 4-year first gap and 5-year gaps thereafter, so Δt is not
+#: uniform; spec §5.1 takes the periods from a year vector for exactly that reason.
 PERIOD_YEARS: tuple[int, ...] = (2021, 2025, 2030, 2035, 2040, 2045, 2050)
 
 #: The cost fields of §3.2's first two legs. A blank in any of them is read as zero: the unit
@@ -98,6 +98,12 @@ REFERENCE_SCHEMA: dict[str, _ReferenceSchema] = {
     "unit_input_output": (
         ("unit_id", "carrier_id", "coefficient", "role", "provenance", "confidence",
          "provenance_ref"),
+        (),
+    ),
+    # §3.5.3, read for V33 (plant is named one unit at a time) leg (b): one row per capture
+    # train per host converter.
+    "unit_abatement_host": (
+        ("unit_id", "host_unit_id", "provenance", "confidence"),
         (),
     ),
     "unit_eligibility": (
@@ -215,10 +221,11 @@ _BOOLEAN_COLUMNS: dict[str, tuple[str, ...]] = {
 
 @dataclass(frozen=True)
 class ReferenceTables:
-    """The eight reference tables the slice reads, unmodified (§3.1).
+    """The nine reference tables the slice reads, unmodified (§3.1).
 
     ``infrastructure_scenario`` is the eighth, added when C9 (infrastructure availability)
-    came partially back into scope for CO₂ transport.
+    came partially back into scope for CO₂ transport. ``unit_abatement_host`` is the ninth,
+    added for V33 (plant is named one unit at a time) leg (b).
     """
 
     carrier: pd.DataFrame
@@ -229,11 +236,12 @@ class ReferenceTables:
     activity_process_duty_profile: pd.DataFrame
     activity_process_register: pd.DataFrame
     infrastructure_scenario: pd.DataFrame
+    unit_abatement_host: pd.DataFrame
 
 
 @dataclass(frozen=True)
 class PremiseTables:
-    """The six synthetic premise-side tables (§3.4).
+    """The five synthetic premise-side tables (§3.4).
 
     ``process_duty`` is deliberately absent: spec §3.9 derives it at run time from
     ``activity_process_register``, ``activity_process_duty_profile`` and — for a mass duty
@@ -258,7 +266,7 @@ class UnitDrop:
 
     unit_id: str
     #: Which leg of the screen failed: ``capex``, ``cost_columns``, ``coefficients``,
-    #: ``fuel_input`` or ``import_price``.
+    #: ``fuel_input``, ``import_price`` or ``abatement_host``.
     leg: str
     #: Human-readable detail. For the price leg this names the carrier and the periods whose
     #: ``import_price`` is missing, which is what note 20 needs to record (§3.2).
@@ -319,25 +327,38 @@ def _coerce(frame: pd.DataFrame, name: str) -> pd.DataFrame:
 
 
 def load_reference_tables(root: Path = DEFAULT_REFERENCE_ROOT) -> ReferenceTables:
-    """Read the eight reference tables from ``root``.
+    """Read the nine reference tables from ``root``.
 
     Fails loud on a missing file, a missing column or an unknown column, and keeps ``period``
-    an integer through the CSV round-trip (§5.3, loader paths).
+    an integer through the CSV round-trip (§5.3, loader paths). A ``unit_abatement_host``
+    key that is not in ``unit`` raises :class:`ResolutionError`.
     """
     root = Path(root)
     frames = {
         name: _coerce(_read_table(root / f"{name}.csv", required, optional), name)
         for name, (required, optional) in REFERENCE_SCHEMA.items()
     }
+    _resolve_abatement_host_keys(frames["unit_abatement_host"], frames["unit"], root)
     return ReferenceTables(**frames)
+
+
+def _resolve_abatement_host_keys(hosts: pd.DataFrame, units: pd.DataFrame, root: Path) -> None:
+    """Both keys of every ``unit_abatement_host`` row are units (§3.5.3, both ``→ unit``)."""
+    known = set(units["unit_id"])
+    for column in ("unit_id", "host_unit_id"):
+        for unit_id in sorted(set(hosts[column].dropna()) - known):
+            raise ResolutionError(
+                f"{root}/unit_abatement_host.csv: {column} {unit_id!r} is not in unit.csv "
+                "(§3.5.3)"
+            )
 
 
 def load_premise_tables(
     premise_id: str, root: Path = DEFAULT_PREMISE_ROOT
 ) -> PremiseTables:
-    """Read one synthetic premise's six tables from ``root``.
+    """Read one synthetic premise's five tables from ``root``.
 
-    The four files hold every premise; this returns the slice of each keyed on
+    The five files hold every premise; this returns the slice of each keyed on
     ``premise_id``. A premise with no ``premise_record`` row is an error, not an empty
     result.
 
@@ -425,8 +446,78 @@ def resolve_premise_references(
                     f"(§3.10.2)"
                 )
 
+    _check_premise_record(record, premise_id)
+    _check_incumbents_eligible(reference, premise, premise_id, activity)
     _resolve_carrier_keys(reference, premise, premise_id)
     _resolve_cluster(reference, record, premise_id)
+
+
+#: The nations §3.1 allows, and the Great Britain bounding box a premise must fall inside.
+#: ``carb3/data/premises/verify_premise_keys.py`` keeps its own copy of both, because it is
+#: stdlib-only and must not import this package; ``test_load.py`` feeds both the same broken
+#: premise so that the copies stay in step.
+NATIONS: frozenset[str] = frozenset({"England", "Wales", "Scotland"})
+GB_LATITUDE: tuple[float, float] = (49.9, 60.9)
+GB_LONGITUDE: tuple[float, float] = (-8.7, 1.8)
+
+
+def _check_premise_record(record: pd.Series, premise_id: str) -> None:
+    """The three premise-record rules the verifier script also enforces (§3.1).
+
+    ``nation`` is in :data:`NATIONS`, the point lies inside the GB bounding box, and a stated
+    ``construction_year`` is not after ``data_year``: a plant built after the year its data
+    describes cannot be the plant that data describes.
+    """
+    nation = str(record["nation"])
+    if nation not in NATIONS:
+        raise ResolutionError(
+            f"{premise_id}: nation {nation!r} is not one of {sorted(NATIONS)} (§3.1)"
+        )
+    latitude, longitude = float(record["latitude"]), float(record["longitude"])
+    if not (
+        GB_LATITUDE[0] <= latitude <= GB_LATITUDE[1]
+        and GB_LONGITUDE[0] <= longitude <= GB_LONGITUDE[1]
+    ):
+        raise ResolutionError(
+            f"{premise_id}: latitude/longitude ({latitude}, {longitude}) is outside the GB "
+            f"bounding box, latitude {GB_LATITUDE} and longitude {GB_LONGITUDE} (§3.1)"
+        )
+    built = record.get("construction_year")
+    if not pd.isna(built) and int(built) > int(record["data_year"]):
+        raise ResolutionError(
+            f"{premise_id}: construction_year {int(built)} is after data_year "
+            f"{int(record['data_year'])} (§3.1)"
+        )
+
+
+def incumbent_is_eligible(
+    reference: ReferenceTables, unit_id: str, carb3_activity: str, process_id: str
+) -> bool:
+    """Whether ``unit_eligibility`` admits ``unit_id`` for the process at the activity.
+
+    An exact ``(unit, activity, process)`` row counts, and so does an activity-level row for
+    the unit, whose ``process_id`` is blank and reaches every process of the activity.
+    """
+    elig = reference.unit_eligibility
+    rows = elig[(elig["unit_id"] == unit_id) & (elig["carb3_activity"] == carb3_activity)]
+    blank = rows["process_id"].isna() | (rows["process_id"] == "")
+    return bool(((rows["process_id"] == process_id) | blank).any())
+
+
+def _check_incumbents_eligible(
+    reference: ReferenceTables, premise: PremiseTables, premise_id: str, activity: str
+) -> None:
+    """V33 (plant is named one unit at a time) leg (a): each ``premise_process_unit`` row
+    names a unit that ``unit_eligibility`` admits for that process at the premise's activity.
+    """
+    rows = premise.premise_process_unit
+    for process_id, unit_id in sorted(set(zip(rows["process_id"], rows["unit_id"], strict=True))):
+        if not incumbent_is_eligible(reference, str(unit_id), activity, str(process_id)):
+            raise ResolutionError(
+                f"{premise_id}: premise_process_unit names {unit_id!r} for {process_id!r}, "
+                f"which is not eligible for ({activity!r}, {process_id!r}) in "
+                "unit_eligibility.csv (V33, plant is named one unit at a time, leg a)"
+            )
 
 
 def _resolve_carrier_keys(
@@ -552,7 +643,11 @@ def screen_units(
     * at least one ``unit_input_output`` row;
     * a ``fuel_input`` row where its ``unit_class`` requires one;
     * every consumed carrier has an ``import_price`` for every period in ``periods``, or is
-      produced on site.
+      produced on site;
+    * an ``abatement`` unit has at least one ``unit_abatement_host`` row (§3.5.3): without a
+      host there is no CO₂ stream, no process to site the train on and no life to inherit.
+      This is V33 (plant is named one unit at a time) leg (b), refused here rather than
+      raised because a capture train is a unit like any other that the screen may drop.
 
     ``heat_exchanger_lt_steam`` is the worked example of why — zero capex, zero opex and no
     coefficient rows at all, eligible on three of the dairy's own duties.
@@ -580,6 +675,12 @@ def screen_units(
         roles_by_unit.setdefault(str(unit_id), set()).add(str(role))
         if str(role) in INPUT_ROLES:
             drawn_by_unit.setdefault(str(unit_id), set()).add(str(carrier_id))
+
+    hosted = (
+        set(reference.unit_abatement_host["unit_id"].astype(str))
+        if "unit_id" in reference.unit_abatement_host.columns
+        else set()
+    )
 
     admitted: list[str] = []
     dropped: list[UnitDrop] = []
@@ -619,6 +720,13 @@ def screen_units(
             drops.append(UnitDrop(
                 unit_id, "import_price",
                 f"consumes {carrier_id}, which has no import_price for {span}",
+            ))
+
+        if unit["unit_class"] == "abatement" and unit_id not in hosted:
+            drops.append(UnitDrop(
+                unit_id, "abatement_host",
+                "abatement unit has no unit_abatement_host row: no CO2 stream, no process "
+                "to site it on and no life to inherit (V33, plant is named one unit at a time, leg b)",
             ))
 
         if drops:

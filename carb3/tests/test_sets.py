@@ -437,6 +437,87 @@ def test_min_duty_reads_the_right_activitys_row(
     assert (service_g2, "heat_pump_lt_air") not in dairy.min_duty
 
 
+# ------------------------------------------- units the eligibility columns drop, reported
+
+
+def _dropped(model: sets.ModelSets, reason: str) -> list[sets.EligibilityDrop]:
+    return [d for d in model.eligibility_dropped if d.reason == reason]
+
+
+def test_a_zero_max_share_is_reported_not_silent(dairy: sets.ModelSets) -> None:
+    """``boiler_lt_coal`` is removed from U_q by its 0.00 ``max_share``; the run report must
+    be able to say so, because a unit that vanishes with no record reads as a data gap."""
+    rows = [d for d in _dropped(dairy, "max_share") if d.unit_id == "boiler_lt_coal"]
+    assert rows
+    assert {d.premise_id for d in rows} == {"fx-dairy"}
+    assert {d.process_id for d in rows} == {"boiler_steam_hot_water"}
+    assert all("max_share 0.00" in d.detail for d in rows)
+
+
+def test_a_unit_that_clears_its_floor_is_not_reported(dairy: sets.ModelSets) -> None:
+    assert not [d for d in dairy.eligibility_dropped if d.unit_id == "heat_pump_lt_air"]
+
+
+def test_a_min_duty_drop_is_reported_with_the_floor_and_the_duty(
+    reference, screen, premise_root: Path
+) -> None:
+    root = write_premise_fixture(
+        premise_root,
+        premise_process_detail=(
+            "premise_id,process_id,valid_from_year,known_activity,provenance,confidence\n"
+            "fx-dairy,boiler_steam_hot_water,2021,0.001,fixture,high\n"
+        ),
+    )
+    small = build(reference, screen, root)
+    rows = [d for d in _dropped(small, "min_duty") if d.unit_id == "heat_pump_lt_air"]
+    assert rows
+    assert {d.process_id for d in rows} == {"boiler_steam_hot_water"}
+    assert "0.01" in rows[0].detail
+
+
+def test_only_units_the_other_tests_would_admit_are_reported(
+    dairy: sets.ModelSets, reference
+) -> None:
+    """A unit C10 (the grade cascade) or the §3.2 screen removed is already accounted for
+    elsewhere; reporting it here as a ``min_duty`` or ``max_share`` drop would be false."""
+    reported = {d.unit_id for d in dairy.eligibility_dropped}
+    assert reported <= dairy.units
+    assert "heat_pump_lt_air" not in reported
+
+
+def test_a_supply_unit_dropped_by_min_duty_is_reported(reference, screen, tmp_path) -> None:
+    """``ccs_amine`` is a supply unit (no duty) and carries a 0.25 floor, read against the
+    kiln's ``known_activity``. Shrink the kiln below it and the train drops out of supply."""
+    base = {
+        d.unit_id for d in build(
+            reference, screen, write_premise_fixture(tmp_path / "a"), "fx-cement"
+        ).eligibility_dropped
+    }
+    assert "ccs_amine" not in base
+    small_kiln = write_premise_fixture(
+        tmp_path / "b",
+        premise_process_detail=(
+            "premise_id,process_id,valid_from_year,known_activity,provenance,confidence\n"
+            "fx-cement,kiln_pyroprocessing,2021,0.1,fixture,high\n"
+            "fx-cement,cement_grinding,2021,0.3,fixture,high\n"
+        ),
+    )
+    model = build(reference, screen, small_kiln, "fx-cement")
+    rows = [d for d in model.eligibility_dropped if d.unit_id == "ccs_amine"]
+    assert [(d.reason, d.process_id) for d in rows] == [("min_duty", "kiln_pyroprocessing")]
+    assert "ccs_amine" not in model.supply.get("co2_captured", frozenset())
+
+
+def test_the_run_report_prints_the_eligibility_drops(dairy: sets.ModelSets, capsys) -> None:
+    from carb3.__main__ import PremiseRun, _print_premise
+
+    _print_premise(PremiseRun(premise_id="fx-dairy", sets=dairy, blocked="stub"))
+    out = capsys.readouterr().out
+    assert "eligibility drop" in out
+    assert "boiler_lt_coal" in out
+    assert "max_share" in out
+
+
 # --------------------------------------------------------- unservable-duty diagnosis
 
 
@@ -473,7 +554,18 @@ def test_a_duty_gated_shut_by_earliest_year_is_diagnosed_per_period(
     """A unit unavailable until 2030 leaves the duty unservable in 2021 and 2025.
 
     Built by shrinking U_q to ``heat_pump_ht`` alone, which carries ``earliest_year`` 2030.
+    The fixture's incumbent is moved to ``heat_pump_ht`` as well, since the loader refuses an
+    incumbent that ``unit_eligibility`` does not admit (V33, plant is named one unit at a
+    time, leg a).
     """
+    premise_root = write_premise_fixture(
+        premise_root,
+        premise_process_unit=(
+            "premise_id,process_id,valid_from_year,cohort_id,unit_id,commissioned_year,"
+            "capacity_share,provenance,confidence\n"
+            "fx-dairy,boiler_steam_hot_water,2021,1,heat_pump_ht,2005,1.0,fixture,high\n"
+        ),
+    )
     elig = reference.unit_eligibility
     keep = ~(
         (elig["carb3_activity"] == "Food Processing Centre")

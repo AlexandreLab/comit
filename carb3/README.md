@@ -20,7 +20,11 @@ The run report prints what §5.2 and §5.3 ask for: the units the §3.2 admissio
 dropped and why, any unservable duty with its premise and period, any start-year shortfall
 in the incumbent plant (below), the solver status, the
 variable and constraint counts, the wall clock (the `G1` measurement), the objective
-decomposition, and the disposal and dispatch tables.
+decomposition, and the disposal and dispatch tables. It also lists each unit a process
+refused by `min_duty` or a 0.00 `max_share` (the unit stays admitted, so it is not in the
+screen's list). With `--out-dir` that list is written as `eligibility_dropped.parquet`
+(`premise_id`, `process_id`, `unit_id`, `reason`, `detail`), beside `screen_dropped.parquet`,
+which holds only the per-unit admission-screen findings.
 
 ```
 make carb3                                       # the tests; also part of `make check`

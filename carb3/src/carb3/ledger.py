@@ -46,7 +46,7 @@ from carb3.build import (
     export_unit_cost,
 )
 from carb3.load import AdmissionScreen, ReferenceTables
-from carb3.sets import ModelSets
+from carb3.sets import EligibilityDrop, ModelSets
 
 #: The objective's five live terms, in §5.4's order. ``Z^infra``, ``Z^net`` and
 #: ``Z^strand`` are out of the slice (§2.1) and carry no row rather than a row of zeros.
@@ -76,8 +76,9 @@ LEDGER_TABLES: tuple[str, ...] = (
 class Ledger:
     """The six output tables, long-form, one row per keyed observation."""
 
-    #: One row per ``(period, term)`` over capex, opex, fuel and carbon. The terms must sum
-    #: to the reported objective — that is one of the §5.3 test paths.
+    #: One row per ``(period, term)`` over :data:`COST_TERMS`: capex, opex, fuel, carbon and
+    #: export. The terms must sum to the reported objective – that is one of the §5.3 test
+    #: paths.
     cost_by_term: pd.DataFrame
     #: One row per ``(carrier_id, period)``: imported, produced, consumed, disposed.
     carrier_mix: pd.DataFrame
@@ -105,6 +106,10 @@ class RunReport:
     #: The objective the solver reported, £m. Written so a reader of the parquet alone — the
     #: site report — can check the cost terms against it without re-solving.
     objective: float | None = None
+    #: Units removed from a process by ``min_duty`` or a 0.00 ``max_share``. Written to its
+    #: own table because the unit stays admitted: ``screen_dropped`` is per unit, this is per
+    #: process.
+    eligibility_dropped: tuple[EligibilityDrop, ...] = ()
 
 
 def build_ledger(
@@ -191,11 +196,13 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
     """Write the ledger and the run report under ``out_dir``, returning the paths written.
 
     One directory per premise, so two premises written to the same root do not overwrite
-    each other. Eight files: the six ledger tables, ``run_report.parquet`` — one row, the
-    G1 (single-premise wall clock) measurement, the solver status and the objective — and
+    each other. Nine files: the six ledger tables, ``run_report.parquet`` – one row, the
+    G1 (single-premise wall clock) measurement, the solver status and the objective –
     ``screen_dropped.parquet``, the §3.2 screen's work list, which is the table note 20
-    records. The screen's list is written even when it is empty, because "nothing was
-    dropped" is a finding too and an absent file cannot say it.
+    records, and ``eligibility_dropped.parquet``, the units a process refused by ``min_duty``
+    or a 0.00 ``max_share`` (admitted units, so not in the screen's list). Both lists are
+    written even when empty, because "nothing was dropped" is a finding too and an absent
+    file cannot say it.
 
     Parquet, not CSV: §3.4's split is that hand-authored inputs stay diffable and outputs do
     not need to be.
@@ -235,6 +242,22 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
         columns=["unit_id", "leg", "detail"],
     ).to_parquet(dropped_path, index=False)
     written.append(dropped_path)
+
+    refused_path = directory / "eligibility_dropped.parquet"
+    pd.DataFrame(
+        [
+            {
+                "premise_id": drop.premise_id,
+                "process_id": drop.process_id,
+                "unit_id": drop.unit_id,
+                "reason": drop.reason,
+                "detail": drop.detail,
+            }
+            for drop in report.eligibility_dropped
+        ],
+        columns=["premise_id", "process_id", "unit_id", "reason", "detail"],
+    ).to_parquet(refused_path, index=False)
+    written.append(refused_path)
 
     return tuple(written)
 

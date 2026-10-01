@@ -16,6 +16,7 @@ import pytest
 
 from carb3 import build, ledger
 from carb3.load import AdmissionScreen, UnitDrop
+from carb3.sets import EligibilityDrop
 
 
 def test_ledger_carries_the_six_output_tables() -> None:
@@ -95,11 +96,42 @@ def test_write_parquet_writes_the_screen_list_even_when_it_is_empty(tmp_path: Pa
     assert names == {f"{table}.parquet" for table in ledger.LEDGER_TABLES} | {
         "run_report.parquet",
         "screen_dropped.parquet",
+        "eligibility_dropped.parquet",
     }
     assert all(path.parent.name == "fx-empty" for path in written)
     dropped = pd.read_parquet(tmp_path / "fx-empty" / "screen_dropped.parquet")
     assert list(dropped.columns) == ["unit_id", "leg", "detail"]
     assert dropped.empty
+    refused = pd.read_parquet(tmp_path / "fx-empty" / "eligibility_dropped.parquet")
+    assert list(refused.columns) == ["premise_id", "process_id", "unit_id", "reason", "detail"]
+    assert refused.empty
+
+
+def test_eligibility_drops_get_their_own_table_not_the_screens(tmp_path: Path) -> None:
+    """A ``min_duty`` or ``max_share`` drop is per process and the unit stays admitted, so
+    it must not be mixed into ``screen_dropped``, which is a per-unit admission list."""
+    empty = pd.DataFrame()
+    tables = ledger.Ledger(
+        cost_by_term=empty, carrier_mix=empty, dispatch=empty,
+        build=empty, disposal=empty, unit_flow=empty,
+    )
+    drop = EligibilityDrop(
+        "fx-dairy", "boiler_steam_hot_water", "boiler_lt_coal", "max_share",
+        "max_share 0.00 is a prohibition on heat_60_100",
+    )
+    report = ledger.RunReport(
+        premise_id="fx-dairy",
+        screen=AdmissionScreen(frozenset({"boiler_lt_coal"}), ()),
+        n_variables=1,
+        n_constraints=1,
+        wall_clock_seconds=0.5,
+        status="optimal",
+        eligibility_dropped=(drop,),
+    )
+    ledger.write_parquet(tables, report, tmp_path)
+    refused = pd.read_parquet(tmp_path / "fx-dairy" / "eligibility_dropped.parquet")
+    assert refused.to_dict("records") == [dataclasses.asdict(drop)]
+    assert pd.read_parquet(tmp_path / "fx-dairy" / "screen_dropped.parquet").empty
 
 
 def test_write_parquet_keeps_one_directory_per_premise(tmp_path: Path) -> None:

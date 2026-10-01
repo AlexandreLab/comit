@@ -312,6 +312,7 @@ def _reference(
         activity_process_duty_profile=pd.DataFrame(),
         activity_process_register=pd.DataFrame(),
         infrastructure_scenario=pd.DataFrame(),
+        unit_abatement_host=pd.DataFrame(),
     )
 
 
@@ -1032,6 +1033,7 @@ def test_a_declared_process_co2_row_is_vented_rather_than_making_the_premise_inf
         activity_process_duty_profile=pd.DataFrame(),
         activity_process_register=pd.DataFrame(),
         infrastructure_scenario=pd.DataFrame(),
+        unit_abatement_host=pd.DataFrame(),
     )
     duty = _Duty(
         premise_id="mvp-cement",

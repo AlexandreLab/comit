@@ -484,8 +484,8 @@ def test_the_objective_terms_sum_to_the_reported_objective(
     by_term = run.tables.cost_by_term.groupby("term")["discounted"].sum()
     assert set(by_term.index) == set(ledger.COST_TERMS)
     # Every live term is positive: a negative capex or fuel bill would sum correctly and
-    # still be nonsense. The biogenic credit, the only term that may be negative, is
-    # structurally zero in this slice and carries no row.
+    # still be nonsense. The biogenic credit has no row of its own: it nets off the carbon
+    # term, and at mvp-cement it is nonzero (``ccs_amine`` captures biogenic CO2).
     assert (by_term >= -TOLERANCE).all()
     assert by_term["fuel"] > 0.0
     assert by_term["carbon"] > 0.0
