@@ -19,7 +19,7 @@
 
 ## 1. Scope, inputs, conventions, and how to read this
 
-*Section last updated: 2026-09-24*
+*Section last updated: 2026-10-01*
 
 ### 1.1 What this document is
 
@@ -74,10 +74,10 @@ Label families in this document, and where each is defined:
 
 | Family | Meaning | Defined in |
 |---|---|---|
-| `C1`–`C12` | Constraints | §5.5 |
+| `C1`–`C13` | Constraints | §5.5 |
 | `A1`–`A9` | Algorithms | §4 |
 | `S0`–`S9` | Pipeline stages | §2.1 |
-| `V1`–`V34` | Validation tests | §10 |
+| `V1`–`V35` | Validation tests | §10 |
 | `G1`–`G4` | Scale gates | §9 |
 | `D1`–`D16` | Design decisions | §1.6 |
 | `PD1`–`PD2` | Programme decisions | the [overview](2026-08-28-carb3-site-energy-system-overview.md) |
@@ -1638,7 +1638,7 @@ Nine algorithms run the pipeline of §2.1. A1–A9 map onto the stages S1–S9 o
 | A3 | Allocate premise energy onto carriers | Split metered energy across carriers. It does **not** allocate energy across processes: the carrier balance decides that. **Reads the base year only; history rows are carried to reporting untouched** |
 | A4 | Back-solve implied capacity, carrier mix and vintage | Turn metered energy into installed unit capacity, the mix of carriers each unit burns (§4.1), and plant age under D11. **Back-solves from the base year only, reads only base-year-valid process rows, and carries a substituted carrier vintage into the mix evidence. Where a process has no duty (D16), the `premise_throughput` evidence row is what the utilisation and implied-output checks of §5.1 are run against** |
 | A5 | Apply the scenario | Attach prices, carbon price, infrastructure availability and the archetype coefficients ψ, β, χ, ε |
-| A6 | Build the per-premise problem | Declare variables over units and carrier flows, assemble C1–C12 and the objective of §5.4. **Derive the fuel-emission coefficients of §3.6 over $\mathcal{C}^{\text{burn}}_u$** — every consumed carrier that is `primary` and not `is_indirect`, summed across carriers and roles, so a unit's secondary fuels are charged and its electricity is not |
+| A6 | Build the per-premise problem | Declare variables over units and carrier flows, assemble C1–C13 and the objective of §5.4. **Derive the fuel-emission coefficients of §3.6 over $\mathcal{C}^{\text{burn}}_u$** — every consumed carrier that is `primary` and not `is_indirect`, summed across carriers and roles, so a unit's secondary fuels are charged and its electricity is not |
 | A7 | Solve and extract | Solve, extract the pathway, and handle infeasibility by the relaxation ladder of §4.2 |
 | A8 | Assemble output tables | Produce the per-premise pathway rows, each carrying its evidence tier, **the disposal quantities of §5.2 and the §7.7 allocated intensities beside the accounted figures they derive from** |
 | A9 | Aggregate to GB and compare | Roll up across premises; compare against ECUK and the GHGI |
@@ -1665,10 +1665,13 @@ all three properties.
 ### 4.2 A7 — the relaxation ladder
 
 An infeasible premise is relaxed in a fixed order, and every relaxation is reported. The
-order is **C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1**, where C4b is leg (b) of C4 (incumbent
+order is **C6 → C7 → C13 → C4b → C12 → C10 → C11 → C9 → C1**, where C4b is leg (b) of C4 (incumbent
 ageing), forced ageing (§5.5): capacity that has reached the end of its life is gone whether the
 model wants it or not.
 
+- **C13 (a cap is not routed through a consumer) relaxes with the data rules**, after C7
+  (known changes) and before any physics: a `max_share` is a judgement in
+  `unit_eligibility`, so a premise it makes infeasible is told which unit and duty to revisit.
 - **C12 (siting cap) relaxes first** of the three connection-and-physics constraints. It is
   the softest: an over-large PV array is an input-data problem about roof area, not a
   statement about the site's physics.
@@ -1777,6 +1780,10 @@ All continuous and non-negative. **The problem is a pure LP and must stay one.**
 | $x_{c,k,t}$ | Export of carrier $c$ at connection $k$. Declared where `carrier.may_export` (§3.4) is true **and** a `premise_connection` row carries $c$ | PJ/yr |
 | $w_{k,t}$ | Reinforcement purchased at connection $k$ | MW |
 | $d_{c,t}$ | **Disposal of carrier $c$** — heat rejected to atmosphere, CO₂ vented. Declared only where `carrier.may_dispose` (§3.4) | PJ/yr or Mt/yr |
+| $\zeta^{\text{in}}_{k,w,c,t}$ | Energy of capped unit $k$ (its **tracer**) entering unit $w$ through carrier $c$ (C13). Declared only for a capped unit $k$, and a unit $w$ and energy carrier $c$ that $k$'s energy can reach through the balance | PJ/yr |
+| $\zeta^{\text{duty}}_{k,w,q,t}$ | $k$'s energy leaving $w$ in its dispatch to duty $q$ (C13) | PJ/yr |
+| $\zeta^{\text{rel}}_{k,w,t}$ | $k$'s energy leaving $w$ in its $z^{\circ}$ release (C13) | PJ/yr |
+| $\upsilon_{k,c,t}$ | $k$'s energy leaving the site from carrier $c$, disposed of or exported (C13). Declared only where $c$ has $d_{c,t}$ or $x_{c,t}$ | PJ/yr |
 
 **An import exists wherever `may_import` does; only some imports are connection-indexed.** A
 *networked* carrier — electricity, natural gas, hydrogen, CO₂ transport — arrives through a
@@ -2176,6 +2183,57 @@ boiler house carries no `area_per_capacity` and is outside the sum; PV and solar
 carry theirs. Area is summed across connections here, unlike capacity in C11, because roof
 and land are one estate however many supplies serve it.
 
+**C13: a cap is not routed through a consumer.** `max_share` (§3.5) bounds a unit's own
+dispatch, $z_{u,q,t} \le s_{u,q} D_{q,t}$, and a 0.00 prohibition removes $u$ from $U_q$. Once
+units feed each other through the balance (primary output through $z^{\circ}$, reject heat, a
+co-product), a consumer can lift a capped unit's output into the very duty it is capped on, one
+unit away or several: a coal boiler barred from a process rejects `heat_lt60` that
+`heat_pump_lt_reject` lifts back into that process. So each capped unit $k$ gets a **tracer**:
+its energy, followed through every unit and energy carrier on the premise, and the cap bounds
+the energy of $q$ that came from $k$.
+
+A cap is read **per process**, as `unit_eligibility` states it, and covers the process's
+duties in the same carrier family (§3.4 `grade_family`) as $k$'s own output: a heat boiler's
+cap reaches the process's heat duties, not its motive power. A 0.00 prohibition is a cap of 0.
+
+For each capped $k$ and period $t$, with $I_w$ and $O_w$ the energy unit $w$ draws and makes per
+unit of activity (energy carriers only; a mass carrier carries no tracer), $o_{w,c}$ its net
+output of by-product $c$, and $\eta_w = \min(1, O_w/I_w)$:
+
+$$\text{src}_{k,c,t} \;=\; \sum_{w} \zeta^{\text{in}}_{k,w,c,t} + \upsilon_{k,c,t} \qquad \text{(each carrier } c\text{)}$$
+
+$$\text{src}_{k,c,t} = \text{out}_{k,c,t} \;+\; \sum_{w \neq k} \frac{\eta_w\, o_{w,c}}{O_w} \sum_{c'} \zeta^{\text{in}}_{k,w,c',t} \;+\; \sum_{w:\, c^\star_w = c} \zeta^{\text{rel}}_{k,w,t}$$
+
+$$\sum_{q \in Q_w} \zeta^{\text{duty}}_{k,w,q,t} + \zeta^{\text{rel}}_{k,w,t} \;=\; \frac{\eta_w}{O_w} \sum_{c'} \zeta^{\text{in}}_{k,w,c',t} \qquad (w \neq k,\ c^\star_w \text{ an energy carrier})$$
+
+$$z_{k,q,t} + \sum_{w} \zeta^{\text{duty}}_{k,w,q,t} \;\le\; s_{k,q}\, D_{q,t} \qquad \forall (k,q) \text{ capped},\ t$$
+
+where $\text{out}_{k,c,t}$ is $k$'s own output on $c$, **net of its own draw** as C8 sees it,
+times the variable C8 scales it by ($z^{\circ}_{k,t}$ for primary output, $z_{k,t}$ otherwise).
+Across tracers, the shares of a draw, a duty column, a release and what leaves the site never
+exceed the thing itself: $\sum_k \zeta^{\text{in}}_{k,w,c,t} \le |\iota_{w,c}|\, z_{w,t}$,
+$\sum_k \zeta^{\text{duty}}_{k,w,q,t} \le z_{w,q,t}$, $\sum_k \zeta^{\text{rel}}_{k,w,t} \le
+z^{\circ}_{w,t}$, $\sum_k \upsilon_{k,c,t} \le d_{c,t} + x_{c,t}$.
+
+**What the tracer guarantees.** A unit never creates $k$'s energy ($\eta_w \le 1$): a heat pump's
+ambient gain is not credited to $k$, so `heat_pump_ht` making a PJ from 0.524 PJ of $k$'s heat
+carries 0.524 PJ of it. Inside a unit, $k$'s energy leaves on every output **in the fixed
+proportion the unit makes them**, which is linear because the coefficients are per unit of
+activity: a turbine fed by a capped boiler sends that boiler's share into its reject heat too.
+There is no hop limit, so a chain or the heat loop in the reference data
+(`heat_exchanger_spc_steam` → `heat_lt60` → `heat_pump_lt_reject` → `heat_60_100` →
+`heat_pump_ht` → `heat_100_150`) is followed all the way round.
+
+**What the LP still chooses.** Which drawer of a pooled carrier, and which of one unit's duty
+columns or its release, carries $k$'s energy. Pooled heat, and a unit's single output stream,
+carry no source; the cap holds when some attribution respects it. An export, a disposal or an
+uncapped duty therefore absorbs a capped unit's energy rather than barring it. Strict
+proportional mixing at a pool would be bilinear and is not used.
+
+**Nothing is built where nothing is traced.** A premise with no capped unit, or none whose
+energy another unit draws, gets no tracer variable and no C13 row. A capped unit with no
+traced energy reaching its capped duty keeps only its bound on $z_{k,q,t}$. Checked by V35.
+
 **Non-degeneracy rule.** $p^{\text{exp}}_{c,t} < p^{\text{imp}}_{c,t}$ strictly, per carrier
 per period, asserted at load (V21). Equal prices make building and importing exactly
 cost-equivalent, and the solver is then free to report either — two identical runs would
@@ -2185,8 +2243,8 @@ stopped being once a store and a fired capture train could hold two rows on one 
 
 **What the slice builds.** C1 (duty satisfaction), C2 (activity limited by available capacity),
 C3 (capacity transfer), C4 (incumbent ageing, as an equality), C5 (no building in the start
-year) and C8 (carrier balance); C9 (infrastructure availability) as the CO₂ export gate; and C10
-(the grade cascade) as a filter. **C6 (unit stability), C7 (known changes), C11 (connection
+year) and C8 (carrier balance); C9 (infrastructure availability) as the CO₂ export gate; C10
+(the grade cascade) as a filter; and C13 (a cap is not routed through a consumer) in full. **C6 (unit stability), C7 (known changes), C11 (connection
 capacity) and C12 (siting cap) are not built.** The notes under each constraint above say where
 the slice departs from the form written here.
 
@@ -2494,6 +2552,7 @@ pass mark.
 | **V32** | load + premise | yes | **The site boundary is honoured (D16).** (a) connection-indexed $m_{c,k,t}$ and $x_{c,k,t}$ are declared only where `carrier.may_import` / `carrier.may_export` is true **and** a `premise_connection` row carries the carrier; site-level $m_{c,t}$ only where `may_import` is true and **no** connection carries it; nothing of either kind where the flag is false; (b) no `process_duty` row and no `activity_process_duty_profile` row names a `product` carrier whose `may_export` is false; (c) `may_import` and `may_export` are both false on every `emission` and every `intermediate` carrier. Failure names the carrier |
 | **V33** | load + premise | yes | **Plant is named one unit at a time.** (a) every `premise_process_unit` row (§3.10.2) names a unit that `unit_eligibility` admits for that process at the premise's activity, the rows of one parent name a unit twice only with different `commissioned_year` values, and `capacity_share` where given is present on every row of that parent and sums to 1 within 1e-6; (b) every `abatement` unit has at least one `unit_abatement_host` row (§3.5.3), each host is a `converter` on the same `process_id`, and no unit hosts itself; (c) the remaining life used for an abatement unit equals the **minimum** over its hosts. Failure names the unit |
 | **V34** | load | yes | **Duties are services at a grade (§3.3, §3.4).** (a) no `activity_process_duty_profile` or `process_duty` row names a `primary` or `emission` carrier, whatever its family — an `OTH` row on `electricity` fails here; (b) every row on a gradeable carrier carries a `grade_rank`, equal to that carrier's own, and no row on a non-gradeable carrier carries one; (c) each family's rows sit on the carrier §3.4's table names for it — `REF` on a cooling band, the six heat families on a heat band, `MOT` on `motive_power` — and no row carries `EN`, `NEUOTH` or `HRS`; (d) every gradeable carrier has a `grade_family`, and `grade_rank` is unique within it. Failure names the row |
+| **V35** | premise | yes | **A cap is not routed through a consumer (C13, §5.5).** On fixtures where a capped unit's output pays to launder: (a) with C13 off the unit exceeds its share, so the fixture bites; (b) with C13 on, its own dispatch plus its traced energy in the duty stays within $s\,D$; (c) a 0.00 prohibition blocks routing into its own process but not into another; (d) the reject-heat route is closed as well as the $z^{\circ}$ one; (e) a consumer's output carries the capped unit's energy at $\eta_w$, never its ambient gain; (f) the energy follows a consumer's by-products, not only its primary output; (g) an uncapped use (export, disposal, another duty) absorbs it rather than barring the unit; (h) a release with no duty is followed through to the barred duty; (i) output is read net, so a store is never a source; (j) a premise with nothing traced builds no C13 variable or row. Failure names the unit and the duty |
 
 **V20's five legs.**
 
@@ -2538,6 +2597,7 @@ write. Its scope is the whole built problem, not just A3 and A4: the archetype m
   carrier balance closure          ───▶ V18               premise
   grade cascade, both ways (C10)   ───▶ V19               load
   duties are services at a grade   ───▶ V34               load
+  a cap is not routed (C13)        ───▶ V35               premise
   archetype coefficients ψ/β/χ/ε   ───▶ V20 (a)           load
   hybrid unit bill of materials    ───▶ V20 (b)           load
   hybrid unit capex levelisation   ───▶ V20 (c)           load

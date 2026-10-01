@@ -236,6 +236,43 @@ def test_the_lift_heat_pump_runs_and_lowers_the_objective(
     assert run.result.objective < before.objective - TOLERANCE
 
 
+def test_c13_tracks_the_banned_coal_boilers_reject_heat_at_the_dairy(
+    reference: ReferenceTables, runs: dict[str, Run]
+) -> None:
+    """``boiler_lt_coal`` is barred (``max_share`` 0.00) from the boiler house at a Food
+    Processing Centre and still serves other duties, so its ``heat_lt60`` reject could reach
+    ``heat_pump_lt_reject`` and the boiler house. C13 (a cap is not routed through a
+    consumer) traces that boiler's energy."""
+    sets = runs["mvp-dairy"].sets
+    units = sorted({pair.unit_id for pair in build._dispatch_pairs(sets)})
+    terms = build._balance_terms(
+        reference, units, sets.periods, build._carrier_facts(reference), build._supplied(sets)
+    )
+    parts = build._balance_parts(terms, len(sets.periods))
+    tracking = build.c13_tracking(sets, reference, parts)
+    assert {unit for unit, _duty in tracking.capped} >= {"boiler_lt_coal"}
+    assert tracking.traced == ("boiler_lt_coal",)
+    assert "tr_in" in runs["mvp-dairy"].model.variables
+
+
+@pytest.mark.parametrize("premise_id", SOLVING_PREMISES)
+def test_c13_leaves_todays_objectives_where_they_were(
+    reference: ReferenceTables,
+    axis: build.PeriodAxis,
+    runs: dict[str, Run],
+    premise_id: str,
+    monkeypatch,
+) -> None:
+    """No premise uses a routed cap today (the coal boiler never pays), so C13 must not move
+    any objective. Compared against the same sets built with C13 switched off."""
+    monkeypatch.setattr(build, "_add_c13", lambda *a, **k: None)
+    premise = load_premise_tables(premise_id)
+    vintages = survival.vintage_capacity(premise, reference.unit)
+    surviving = survival.surviving_capacity(vintages, reference.unit, PERIOD_YEARS)
+    off = build.solve(build.build_model(runs[premise_id].sets, surviving, axis, reference))
+    assert runs[premise_id].result.objective == pytest.approx(off.objective, rel=TOLERANCE)
+
+
 def test_the_screen_drops_nothing_at_the_cement_works(
     reference: ReferenceTables, screen: AdmissionScreen
 ) -> None:
