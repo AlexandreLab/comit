@@ -17,7 +17,8 @@ uv run --directory carb3 python -m carb3 --help  # the flags, including --refere
 ```
 
 The run report prints what §5.2 and §5.3 ask for: the units the §3.2 admission screen
-dropped and why, any unservable duty with its premise and period, any start-year shortfall
+dropped and why, the units dropped at each premise because an input can be neither imported
+nor made there (below), any unservable duty with its premise and period, any start-year shortfall
 in the incumbent plant (below), the solver status, the
 variable and constraint counts, the wall clock (the `G1` measurement), the objective
 decomposition, and the disposal and dispatch tables. It also lists each unit a process
@@ -30,10 +31,27 @@ which holds only the per-unit admission-screen findings.
 make carb3                                       # the tests; also part of `make check`
 ```
 
-## Two checks before the solve
+## Before the solve: one screen and two checks
 
-A premise can fail before any LP is built, and both failures are reported as `NOT SOLVED`
-with the reason, never as a traceback (§5.2, infeasibility is an expected outcome).
+**The per-premise screen runs first.** `build.screen_premise` drops a unit when it consumes a
+carrier that can be neither imported (`carrier.may_import`) nor made by any other unit in
+this premise's model, and repeats until nothing changes, since a dropped producer can strand
+its consumers. It is per-premise because the §3.2 admission screen runs once for every
+premise and cannot know which other units are present: `chp_bfg_gas_turbine` reaches the
+dairy through the grade join in `unit_eligibility.csv`, burns `blast_furnace_gas`, and nothing
+at a dairy makes it. Such a unit was held at zero by C8 (carrier balance) anyway, so dropping
+it clears its zero rows from the ledger and leaves the optimum unchanged, unless it is an
+incumbent: then its pinned capacity and fixed opex leave the model too, the objective moves,
+and its drop reason says so. No incumbent is dropped at the three premises today. The drops are
+printed per premise and written to `screen_dropped.parquet` under the leg
+`unreachable_input`. A carrier some unit makes as its primary output counts as made, even
+though a duty's output is settled by C1 (duty satisfaction) and never enters C8: so
+`heat_pump_ht`, which draws `heat_60_100`, is kept, and still cannot run (C8 has no source
+for duty heat).
+
+A premise can then fail before any LP is built, and both failures are reported as
+`NOT SOLVED` with the reason, never as a traceback (§5.2, infeasibility is an expected
+outcome). A duty the screen empties surfaces in the first check.
 
 | Check | Function | Fails when | What to fix |
 |---|---|---|---|
@@ -78,7 +96,7 @@ year; one that passes can still be infeasible for another reason.
 | `load.py` | Reference + premise tables → typed records; the §3.2 admission screen |
 | `sets.py` | Minimal A2; Q, U, U_q via the three-table join; C10 widening; unservable-duty diagnosis; the start-year adequacy check |
 | `survival.py` | D11 survival function and the capacity behind a cohort, computed before the LP |
-| `build.py` | Variables, C1–C5, C8, C10 via eligibility, C9 for CO₂ export only, the objective, the solve |
+| `build.py` | The per-premise reachability screen; variables, C1–C5, C8, C10 via eligibility, C9 for CO₂ export only, the objective, the solve |
 | `ledger.py` | Cost by term, carrier mix, dispatch, build, disposal, unit flow → parquet |
 | `__main__.py` | The entry point. Not a sixth module: no model code, only the wiring and the report |
 | `report/` | The site report, parquet → `site_report.html`. Not model code: it reads only the ledger's parquet and imports nothing from the five modules |

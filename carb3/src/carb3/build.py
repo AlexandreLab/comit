@@ -102,7 +102,7 @@ import math
 import time
 import warnings
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import reduce
 
 import linopy
@@ -110,7 +110,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from carb3.load import ReferenceTables
+from carb3.load import ReferenceTables, UnitDrop
 from carb3.sets import ModelSets
 
 #: §3.6's three consuming roles. A6 sums over these, never over ``fuel_input`` alone: 84 rows
@@ -293,14 +293,7 @@ def build_model(
     model_units = sorted({pair.unit_id for pair in pairs})
     parameters = _unit_parameters(reference, model_units)
     carrier_facts = _carrier_facts(reference)
-    # The primary output of an internal-supply unit is the only one C8 reads directly: every
-    # other unit's output is settled by C1 instead, and adding it to the balance as well
-    # would ask the site to both meet the duty and dispose of it.
-    supplied = {
-        carrier_id: frozenset(units & sets.units)
-        for carrier_id, units in sorted(sets.supply.items())
-        if units & sets.units
-    }
+    supplied = _supplied(sets)
     coefficients = _balance_coefficients(
         reference, model_units, periods, carrier_facts, supplied
     )
@@ -731,6 +724,164 @@ def _dispatch_pairs(sets: ModelSets) -> tuple[_Pair, ...]:
     if not pairs:
         raise ValueError("no duty has an eligible unit; there is no problem to build")
     return tuple(pairs)
+
+
+def _supplied(sets: ModelSets) -> dict[str, frozenset[str]]:
+    """Carrier → the admitted units supplying it with no duty row, under D16 (the site
+    boundary is a property of the carrier).
+
+    The primary output of an internal-supply unit is the only one C8 (carrier balance) reads
+    directly: every other unit's output is settled by C1 (duty satisfaction) instead, and
+    adding it to the balance as well would ask the site to both meet the duty and dispose of
+    it. :func:`build_model`, :func:`screen_premise` and the ledger all read this one map.
+    """
+    return {
+        carrier_id: frozenset(units & sets.units)
+        for carrier_id, units in sorted(sets.supply.items())
+        if units & sets.units
+    }
+
+
+#: The leg a unit dropped by :func:`screen_premise` is reported under, beside the §3.2
+#: screen's five legs in ``screen_dropped.parquet``.
+UNREACHABLE_INPUT_LEG: str = "unreachable_input"
+
+
+def screen_premise(
+    sets: ModelSets,
+    reference: ReferenceTables,
+    incumbents: frozenset[str] | set[str] = frozenset(),
+) -> tuple[ModelSets, tuple[UnitDrop, ...]]:
+    """Drop the units whose input this premise can never source, before the LP is built.
+
+    The §3.2 admission screen runs once, before any premise is loaded, so it cannot ask
+    whether a non-importable carrier is made *here*: that depends on which other units the
+    premise's model holds. ``chp_bfg_gas_turbine`` is offered to the dairy by the grade join
+    in ``unit_eligibility.csv``, burns ``blast_furnace_gas``, and nothing at a dairy makes
+    it, so C8 (carrier balance) pins it to zero and it fills the ledger with zero rows.
+
+    A carrier is sourceable at the premise if it may be imported, if some model unit has a
+    positive C8 coefficient on it (summed over roles, so a unit is never its own source), or
+    if some model unit makes it as its ``primary_output``. The last clause is for duty
+    carriers: their output is settled by C1 (duty satisfaction) and never reaches C8, so
+    ``heat_pump_ht`` drawing ``heat_60_100`` would otherwise be dropped for a reason that is
+    false. It stays, held at zero by C8 as before; that gap is C8's, not the site's.
+
+    A unit with a negative coefficient on an unsourceable carrier is dropped, and the rule
+    repeats until nothing changes, since a dropped producer can strand its consumers. The
+    model units are read from the sets rather than from :func:`_dispatch_pairs`, which
+    raises on an emptied duty: that duty belongs to
+    :func:`carb3.sets.diagnose_unservable_duties`, which reports it.
+
+    ``incumbents`` names the premise's existing plant. Dropping one removes its capacity and
+    fixed opex from the model, so its reason says so and a start-year shortfall or a changed
+    objective that follows can be traced back to it.
+    """
+    periods = tuple(int(year) for year in sets.periods)
+    carrier_facts = _carrier_facts(reference)
+    io = reference.unit_input_output
+    primary_outputs = io[io["role"] == PRIMARY_OUTPUT_ROLE]
+    made_as_output: dict[str, set[str]] = {}
+    for unit_id, carrier_id in zip(
+        primary_outputs["unit_id"], primary_outputs["carrier_id"], strict=True
+    ):
+        made_as_output.setdefault(str(carrier_id), set()).add(str(unit_id))
+
+    drops: list[UnitDrop] = []
+    dropped: set[str] = set()
+    while True:
+        model_units = sorted(
+            {
+                unit_id
+                for duty in sets.duties
+                for unit_id in sets.eligible.get(duty.key, frozenset()) & sets.units
+            }
+            | {unit_id for units in sets.supply.values() for unit_id in units & sets.units}
+        )
+        present = set(model_units)
+        coefficients = _balance_coefficients(
+            reference, model_units, periods, carrier_facts, _supplied(sets)
+        )
+        unsourced = sorted(
+            carrier_id
+            for carrier_id, by_unit in coefficients.items()
+            if not carrier_facts[carrier_id].may_import
+            and not any(np.any(values > 0.0) for values in by_unit.values())
+            and not made_as_output.get(carrier_id, set()) & present
+        )
+        reasons: dict[str, list[str]] = {}
+        for carrier_id in unsourced:
+            for unit_id, values in sorted(coefficients[carrier_id].items()):
+                if np.any(values < 0.0):
+                    reasons.setdefault(unit_id, []).append(carrier_id)
+        if not reasons:
+            break
+        for unit_id in sorted(reasons):
+            drops.append(
+                UnitDrop(
+                    unit_id,
+                    UNREACHABLE_INPUT_LEG,
+                    _unreachable_detail(reference, unit_id, reasons[unit_id], dropped, incumbents),
+                )
+            )
+        dropped |= set(reasons)
+        sets = _without_units(sets, set(reasons))
+    return sets, tuple(drops)
+
+
+def _unreachable_detail(
+    reference: ReferenceTables,
+    unit_id: str,
+    carriers: list[str],
+    earlier: set[str],
+    incumbents: frozenset[str] | set[str],
+) -> str:
+    io = reference.unit_input_output
+    parts: list[str] = []
+    for carrier_id in carriers:
+        text = f"consumes {carrier_id}, which this premise can neither import nor produce"
+        # Every maker still present would have made the carrier sourceable, so any maker
+        # that was here at all is one an earlier round dropped.
+        producers = sorted(
+            {
+                str(maker)
+                for maker, made, value in zip(
+                    io["unit_id"], io["carrier_id"], io["coefficient"], strict=True
+                )
+                if str(made) == carrier_id and str(maker) in earlier and float(value) > 0.0
+            }
+        )
+        if len(producers) == 1:
+            text += f"; its only producer here, {producers[0]}, was dropped"
+        elif producers:
+            text += f"; its producers here, {', '.join(producers)}, were dropped"
+        parts.append(text)
+    detail = "; ".join(parts)
+    if unit_id in incumbents:
+        detail += " (incumbent: its capacity and fixed opex leave the model)"
+    return detail
+
+
+def _without_units(sets: ModelSets, drop: set[str]) -> ModelSets:
+    """``sets`` with ``drop`` removed from U, every U_q, every supply set and every bound."""
+    return replace(
+        sets,
+        units=sets.units - drop,
+        eligible={key: units - drop for key, units in sets.eligible.items()},
+        # An emptied U_q stays, so diagnose_unservable_duties can name the duty; an emptied
+        # supply set goes, since no constraint or report needs a carrier nobody supplies.
+        supply={
+            carrier_id: units - drop
+            for carrier_id, units in sets.supply.items()
+            if units - drop
+        },
+        earliest_year={k: v for k, v in sets.earliest_year.items() if k[1] not in drop},
+        max_share={k: v for k, v in sets.max_share.items() if k[1] not in drop},
+        min_duty={k: v for k, v in sets.min_duty.items() if k[1] not in drop},
+        supply_earliest_year={
+            k: v for k, v in sets.supply_earliest_year.items() if k[1] not in drop
+        },
+    )
 
 
 def _check_axis_rate(reference: ReferenceTables, axis: PeriodAxis) -> None:
