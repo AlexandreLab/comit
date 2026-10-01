@@ -699,6 +699,27 @@ def _dispatch_pairs(sets: ModelSets) -> tuple[_Pair, ...]:
     ``groupby`` would simply not emit a row for it, and the duty would go unmet with the
     solver reporting ``optimal`` — the silent wrong answer §5.2 sends to the diagnosis step.
     """
+    pairs, unservable = _candidate_pairs(sets)
+    if unservable:
+        raise ValueError(
+            "these duties have an empty eligible-unit set and cannot be built into the LP: "
+            f"{unservable}. §5.2 makes this an expected outcome — call "
+            "carb3.sets.diagnose_unservable_duties before building"
+        )
+    if not pairs:
+        raise ValueError("no duty has an eligible unit; there is no problem to build")
+    return pairs
+
+
+def _candidate_pairs(
+    sets: ModelSets,
+) -> tuple[tuple[_Pair, ...], tuple[tuple[str, str, str], ...]]:
+    """The dispatch columns, and the duties left with no eligible unit, without raising.
+
+    :func:`_dispatch_pairs` refuses the second; :func:`screen_premise` reads the first while
+    a duty it has emptied waits for :func:`carb3.sets.diagnose_unservable_duties`. One rule
+    for which units the LP holds, so the screen never judges a different set from the model.
+    """
     pairs: list[_Pair] = []
     unservable: list[tuple[str, str, str]] = []
     for duty in sets.duties:
@@ -710,20 +731,12 @@ def _dispatch_pairs(sets: ModelSets) -> tuple[_Pair, ...]:
             _Pair(duty_key=duty.key, label=_duty_label(duty.key), unit_id=unit_id)
             for unit_id in eligible
         )
-    if unservable:
-        raise ValueError(
-            "these duties have an empty eligible-unit set and cannot be built into the LP: "
-            f"{unservable}. §5.2 makes this an expected outcome — call "
-            "carb3.sets.diagnose_unservable_duties before building"
-        )
     for carrier_id, units in sorted(sets.supply.items()):
         pairs.extend(
             _Pair(duty_key=None, label=_supply_label(carrier_id), unit_id=unit_id)
             for unit_id in sorted(units & sets.units)
         )
-    if not pairs:
-        raise ValueError("no duty has an eligible unit; there is no problem to build")
-    return tuple(pairs)
+    return tuple(pairs), tuple(unservable)
 
 
 def _supplied(sets: ModelSets) -> dict[str, frozenset[str]]:
@@ -743,7 +756,7 @@ def _supplied(sets: ModelSets) -> dict[str, frozenset[str]]:
 
 
 #: The leg a unit dropped by :func:`screen_premise` is reported under, beside the §3.2
-#: screen's five legs in ``screen_dropped.parquet``.
+#: screen's six legs (:class:`carb3.load.UnitDrop`) in ``screen_dropped.parquet``.
 UNREACHABLE_INPUT_LEG: str = "unreachable_input"
 
 
@@ -760,22 +773,26 @@ def screen_premise(
     in ``unit_eligibility.csv``, burns ``blast_furnace_gas``, and nothing at a dairy makes
     it, so C8 (carrier balance) pins it to zero and it fills the ledger with zero rows.
 
-    A carrier is sourceable at the premise if it may be imported, if some model unit has a
-    positive C8 coefficient on it (summed over roles, so a unit is never its own source), or
-    if some model unit makes it as its ``primary_output``. The last clause is for duty
-    carriers: their output is settled by C1 (duty satisfaction) and never reaches C8, so
-    ``heat_pump_ht`` drawing ``heat_60_100`` would otherwise be dropped for a reason that is
-    false. It stays, held at zero by C8 as before; that gap is C8's, not the site's.
+    A carrier is sourceable for a consumer if it may be imported, or if some *other* model
+    unit has a positive C8 coefficient on it or makes it as its ``primary_output``. The last
+    clause is for duty carriers: their output is settled by C1 (duty satisfaction) and never
+    reaches C8, so ``heat_pump_ht`` drawing ``heat_60_100`` would otherwise be dropped for a
+    reason that is false. It stays, held at zero by C8 as before; that gap is C8's, not the
+    site's. A unit is never its own source: one drawing the carrier it makes is pinned at
+    zero by C8 exactly as one drawing a carrier nobody makes.
 
     A unit with a negative coefficient on an unsourceable carrier is dropped, and the rule
-    repeats until nothing changes, since a dropped producer can strand its consumers. The
-    model units are read from the sets rather than from :func:`_dispatch_pairs`, which
-    raises on an emptied duty: that duty belongs to
-    :func:`carb3.sets.diagnose_unservable_duties`, which reports it.
+    repeats until nothing changes, since a dropped producer can strand its consumers.
 
-    ``incumbents`` names the premise's existing plant. Dropping one removes its capacity and
-    fixed opex from the model, so its reason says so and a start-year shortfall or a changed
-    objective that follows can be traced back to it.
+    ``incumbents`` names the units with surviving capacity, and they are never dropped. The
+    site owns them and pays their fixed opex whether they run or not, so removing one would
+    lower the objective by a cost that is real. An incumbent with an unsourceable input stays
+    in the model, held at zero by C8, as every such unit was before this screen existed.
+
+    The screen reads only the *sign* of each C8 coefficient, so A6 (the fuel-CO₂ derivation)
+    runs here without its emission-factor and ``biogenic_fraction`` checks: a unit burning a
+    fuel with no ``ef_`` series must reach this screen to be dropped by it. A unit that
+    survives with such a fuel still fails loud in :func:`build_model`.
     """
     periods = tuple(int(year) for year in sets.periods)
     carrier_facts = _carrier_facts(reference)
@@ -787,32 +804,34 @@ def screen_premise(
     ):
         made_as_output.setdefault(str(carrier_id), set()).add(str(unit_id))
 
+    candidates, _ = _candidate_pairs(sets)
+    present = {pair.unit_id for pair in candidates}
+    # A unit's coefficients do not depend on which other units are present, so one build
+    # serves every round: each round only reads them over the units still standing.
+    coefficients = _balance_coefficients(
+        reference, sorted(present), periods, carrier_facts, _supplied(sets), screening=True
+    )
+    producers: dict[str, set[str]] = {
+        carrier_id: {unit_id for unit_id, values in by_unit.items() if np.any(values > 0.0)}
+        | made_as_output.get(carrier_id, set())
+        for carrier_id, by_unit in coefficients.items()
+    }
+
     drops: list[UnitDrop] = []
     dropped: set[str] = set()
     while True:
-        model_units = sorted(
-            {
-                unit_id
-                for duty in sets.duties
-                for unit_id in sets.eligible.get(duty.key, frozenset()) & sets.units
-            }
-            | {unit_id for units in sets.supply.values() for unit_id in units & sets.units}
-        )
-        present = set(model_units)
-        coefficients = _balance_coefficients(
-            reference, model_units, periods, carrier_facts, _supplied(sets)
-        )
-        unsourced = sorted(
-            carrier_id
-            for carrier_id, by_unit in coefficients.items()
-            if not carrier_facts[carrier_id].may_import
-            and not any(np.any(values > 0.0) for values in by_unit.values())
-            and not made_as_output.get(carrier_id, set()) & present
-        )
         reasons: dict[str, list[str]] = {}
-        for carrier_id in unsourced:
-            for unit_id, values in sorted(coefficients[carrier_id].items()):
-                if np.any(values < 0.0):
+        for carrier_id, by_unit in sorted(coefficients.items()):
+            if carrier_facts[carrier_id].may_import:
+                continue
+            makers = producers[carrier_id] & present
+            for unit_id, values in sorted(by_unit.items()):
+                if (
+                    unit_id in present
+                    and unit_id not in incumbents
+                    and np.any(values < 0.0)
+                    and not makers - {unit_id}
+                ):
                     reasons.setdefault(unit_id, []).append(carrier_id)
         if not reasons:
             break
@@ -821,45 +840,36 @@ def screen_premise(
                 UnitDrop(
                     unit_id,
                     UNREACHABLE_INPUT_LEG,
-                    _unreachable_detail(reference, unit_id, reasons[unit_id], dropped, incumbents),
+                    _unreachable_detail(unit_id, reasons[unit_id], producers, dropped),
                 )
             )
         dropped |= set(reasons)
-        sets = _without_units(sets, set(reasons))
+        present -= set(reasons)
+    if dropped:
+        sets = _without_units(sets, dropped)
     return sets, tuple(drops)
 
 
 def _unreachable_detail(
-    reference: ReferenceTables,
     unit_id: str,
     carriers: list[str],
+    producers: dict[str, set[str]],
     earlier: set[str],
-    incumbents: frozenset[str] | set[str],
 ) -> str:
-    io = reference.unit_input_output
     parts: list[str] = []
     for carrier_id in carriers:
         text = f"consumes {carrier_id}, which this premise can neither import nor produce"
-        # Every maker still present would have made the carrier sourceable, so any maker
-        # that was here at all is one an earlier round dropped.
-        producers = sorted(
-            {
-                str(maker)
-                for maker, made, value in zip(
-                    io["unit_id"], io["carrier_id"], io["coefficient"], strict=True
-                )
-                if str(made) == carrier_id and str(maker) in earlier and float(value) > 0.0
-            }
-        )
-        if len(producers) == 1:
-            text += f"; its only producer here, {producers[0]}, was dropped"
-        elif producers:
-            text += f"; its producers here, {', '.join(producers)}, were dropped"
+        # Every other maker still present would have made the carrier sourceable, so any
+        # other maker that was here at all is one an earlier round dropped.
+        gone = sorted(producers.get(carrier_id, set()) & earlier)
+        if unit_id in producers.get(carrier_id, set()):
+            text += "; only this unit makes it, and a unit cannot feed itself"
+        elif len(gone) == 1:
+            text += f"; its only producer here, {gone[0]}, was dropped"
+        elif gone:
+            text += f"; its producers here, {', '.join(gone)}, were dropped"
         parts.append(text)
-    detail = "; ".join(parts)
-    if unit_id in incumbents:
-        detail += " (incumbent: its capacity and fixed opex leave the model)"
-    return detail
+    return "; ".join(parts)
 
 
 def _without_units(sets: ModelSets, drop: set[str]) -> ModelSets:
@@ -1132,11 +1142,14 @@ def _balance_coefficients(
     periods: Sequence[int],
     carrier_facts: dict[str, _CarrierFacts],
     supplied: dict[str, frozenset[str]] | None = None,
+    *,
+    screening: bool = False,
 ) -> dict[str, dict[str, np.ndarray]]:
     """C8's coefficient set: carrier → unit → ι over the periods.
 
     The roles of :func:`_balance_terms` summed. The ledger's ``unit_flow`` table reads the
     terms before the sum, so the two can never disagree about which rows C8 saw.
+    ``screening`` is :func:`screen_premise`'s sign-only mode; see :func:`_apply_a6`.
     """
     return {
         carrier_id: {
@@ -1144,7 +1157,7 @@ def _balance_coefficients(
             for unit_id, by_role in by_unit.items()
         }
         for carrier_id, by_unit in _balance_terms(
-            reference, model_units, periods, carrier_facts, supplied
+            reference, model_units, periods, carrier_facts, supplied, screening=screening
         ).items()
     }
 
@@ -1155,6 +1168,8 @@ def _balance_terms(
     periods: Sequence[int],
     carrier_facts: dict[str, _CarrierFacts],
     supplied: dict[str, frozenset[str]] | None = None,
+    *,
+    screening: bool = False,
 ) -> dict[str, dict[str, dict[str, np.ndarray]]]:
     """C8's coefficient set by role: carrier → unit → role → ι over the periods.
 
@@ -1211,7 +1226,7 @@ def _balance_terms(
                 burn.setdefault(unit_id, {}).get(carrier_id, 0.0) + abs(value)
             )
 
-    _apply_a6(reference, burn, carrier_facts, periods, coefficients)
+    _apply_a6(reference, burn, carrier_facts, periods, coefficients, screening=screening)
 
     # Drop anything that is zero in every period: an all-zero row would add a term to C8 that
     # carries no flow, which is the dense-model habit #248 warns about. The test is on the
@@ -1236,6 +1251,8 @@ def _apply_a6(
     carrier_facts: dict[str, _CarrierFacts],
     periods: Sequence[int],
     coefficients: dict[str, dict[str, dict[str, np.ndarray]]],
+    *,
+    screening: bool = False,
 ) -> None:
     """A6 (§3.6, D15): derive the two fuel-CO₂ ``emission`` rows, per period.
 
@@ -1246,6 +1263,11 @@ def _apply_a6(
     same with b_c. Both positive, because emissions are produced. The split happens here,
     **before** anything is captured, which is what makes capture of a co-fired stream
     net-negative rather than merely zero.
+
+    With ``screening``, only the signs are wanted (:func:`screen_premise`), so a fuel with no
+    ``ef_`` series is given a factor of one and a fuel with no ``biogenic_fraction`` is
+    counted on both streams. Neither value can reach the LP: :func:`build_model` calls this
+    without ``screening``, and raises on the same gaps.
     """
     if not burn:
         return
@@ -1254,14 +1276,24 @@ def _apply_a6(
         for carrier_id in by_carrier:
             if carrier_id in factors:
                 continue
-            factors[carrier_id] = np.array(
-                _scenario_series(reference, f"ef_{carrier_id}", carrier_id, periods)
-            )
+            try:
+                factors[carrier_id] = np.array(
+                    _scenario_series(reference, f"ef_{carrier_id}", carrier_id, periods)
+                )
+            except ValueError:
+                if not screening:
+                    raise
+                factors[carrier_id] = np.ones(len(periods))
     for unit_id, by_carrier in burn.items():
         fossil = np.zeros(len(periods))
         biogenic = np.zeros(len(periods))
         for carrier_id, quantity in by_carrier.items():
             share = carrier_facts[carrier_id].biogenic_fraction
+            if share is None and screening:
+                emitted = quantity * factors[carrier_id]
+                fossil += emitted
+                biogenic += emitted
+                continue
             if share is None:
                 raise ValueError(
                     f"carrier {carrier_id!r} is burnt by {unit_id!r} and carries no "

@@ -85,15 +85,20 @@ def axis(reference: ReferenceTables) -> build.PeriodAxis:
     return build.period_axis(PERIOD_YEARS, rate)
 
 
-def _incumbents(premise) -> frozenset[str]:
-    return frozenset(str(unit_id) for unit_id in premise.premise_process_unit["unit_id"])
+def _incumbents(reference: ReferenceTables, premise) -> frozenset[str]:
+    """The units with capacity left, as ``run_premise`` hands them to the screen."""
+    vintages = survival.vintage_capacity(premise, reference.unit)
+    surviving = survival.surviving_capacity(vintages, reference.unit, PERIOD_YEARS)
+    return frozenset(
+        str(unit_id) for unit_id in surviving.loc[surviving["capacity"] > 0.0, "unit_id"]
+    )
 
 
 def _screened_sets(reference: ReferenceTables, premise, screen: AdmissionScreen) -> ModelSets:
     """``build_sets`` then the per-premise screen, in the order ``run_premise`` runs them, so
     every model built here holds the unit set the command line would."""
     sets = build_sets(reference, premise, screen, PERIOD_YEARS)
-    sets, _ = build.screen_premise(sets, reference, _incumbents(premise))
+    sets, _ = build.screen_premise(sets, reference, _incumbents(reference, premise))
     return sets
 
 
@@ -162,7 +167,7 @@ def test_the_screen_drops_the_steelworks_gas_chps_where_no_steelworks_is(
     to any heat duty they reach; neither gas can be imported, and nothing here makes it."""
     premise = load_premise_tables(premise_id)
     sets = build_sets(reference, premise, screen, PERIOD_YEARS)
-    screened, drops = build.screen_premise(sets, reference, _incumbents(premise))
+    screened, drops = build.screen_premise(sets, reference, _incumbents(reference, premise))
     by_unit = {drop.unit_id: drop for drop in drops}
     assert set(by_unit) == {"chp_bfg_gas_turbine", "chp_cog_gas_turbine"}
     assert "blast_furnace_gas" in by_unit["chp_bfg_gas_turbine"].detail
@@ -171,7 +176,7 @@ def test_the_screen_drops_the_steelworks_gas_chps_where_no_steelworks_is(
     # Kept: ``heat_lt60`` is made as boiler reject heat, and ``heat_60_100`` is a duty
     # carrier, which C8 never sees but the site certainly makes.
     assert {"heat_pump_lt_reject", "heat_pump_ht"} <= screened.units
-    assert not set(by_unit) & _incumbents(premise)
+    assert not set(by_unit) & _incumbents(reference, premise)
 
 
 def test_the_screen_drops_nothing_at_the_cement_works(
@@ -180,7 +185,7 @@ def test_the_screen_drops_nothing_at_the_cement_works(
     """Capture draws CO₂ that the kilns declare and A6 (the fuel-CO₂ derivation) derives."""
     premise = load_premise_tables("mvp-cement")
     sets = build_sets(reference, premise, screen, PERIOD_YEARS)
-    screened, drops = build.screen_premise(sets, reference, _incumbents(premise))
+    screened, drops = build.screen_premise(sets, reference, _incumbents(reference, premise))
     assert drops == ()
     assert screened == sets
 
