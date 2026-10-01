@@ -2192,9 +2192,11 @@ unit away or several: a coal boiler barred from a process rejects `heat_lt60` th
 its energy, followed through every unit and energy carrier on the premise, and the cap bounds
 the energy of $q$ that came from $k$.
 
-A cap is read **per process**, as `unit_eligibility` states it, and covers the process's
-duties in the same carrier family (§3.4 `grade_family`) as $k$'s own output: a heat boiler's
-cap reaches the process's heat duties, not its motive power. A 0.00 prohibition is a cap of 0.
+A cap is read **per process**, as `unit_eligibility` states it. A 0.00 prohibition removes $k$
+from the process altogether, so it covers **every** duty of the process, whatever its carrier:
+$k$'s energy reaches none of them. A non-zero share covers the process's duties in the carrier
+family (§3.4 `grade_family`) of $k$'s own output: a heat boiler's 0.3 is a share of the
+process's heat, not of its motive power.
 
 For each capped $k$ and period $t$, with $I_w$ and $O_w$ the energy unit $w$ draws and makes per
 unit of activity (energy carriers only; a mass carrier carries no tracer), $o_{w,c}$ its net
@@ -2232,7 +2234,10 @@ proportional mixing at a pool would be bilinear and is not used.
 
 **Nothing is built where nothing is traced.** A premise with no capped unit, or none whose
 energy another unit draws, gets no tracer variable and no C13 row. A capped unit with no
-traced energy reaching its capped duty keeps only its bound on $z_{k,q,t}$. Checked by V35.
+traced energy reaching its capped duty keeps only its bound on $z_{k,q,t}$, and a unit whose
+energy cannot reach a duty it is capped on gets no tracer. A carrier table without
+`denominator_kind` is refused rather than guessed. Checked by V35 (a cap is not routed through a
+consumer).
 
 **Non-degeneracy rule.** $p^{\text{exp}}_{c,t} < p^{\text{imp}}_{c,t}$ strictly, per carrier
 per period, asserted at load (V21). Equal prices make building and importing exactly

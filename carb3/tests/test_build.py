@@ -1710,9 +1710,14 @@ def _c13_reference(
             for c, v, role in rows
         ]
     )
+    carriers = pd.concat([reference.carrier, carrier], ignore_index=True)
+    # As carrier.csv states it: C13 traces energy, never the CO₂ nodes.
+    carriers["denominator_kind"] = [
+        "mass" if str(c).startswith("co2_") else "energy" for c in carriers["carrier_id"]
+    ]
     return dataclasses.replace(
         reference,
-        carrier=pd.concat([reference.carrier, carrier], ignore_index=True),
+        carrier=carriers,
         unit=pd.concat([reference.unit, unit], ignore_index=True),
         unit_input_output=pd.concat([reference.unit_input_output, io], ignore_index=True),
     )
@@ -2025,9 +2030,9 @@ def test_c13_reads_a_units_output_net_as_c8_does() -> None:
 
 def _with_heat_family(reference: ReferenceTables) -> ReferenceTables:
     carrier = reference.carrier.copy()
-    carrier["grade_family"] = [
-        "heat" if str(c).startswith("heat_") else "" for c in carrier["carrier_id"]
-    ]
+    heat = [str(c).startswith("heat_") for c in carrier["carrier_id"]]
+    carrier["is_gradeable"] = heat
+    carrier["grade_family"] = ["heat" if h else None for h in heat]
     return dataclasses.replace(reference, carrier=carrier)
 
 
@@ -2045,3 +2050,53 @@ def test_c13_reads_a_cap_per_process_for_zero_and_non_zero_alike() -> None:
     )
     capped = build.c13_tracking(sets, _with_heat_family(_c13_reference({})), {}).capped
     assert capped == {("boiler_lt_gas", DUTY_KEY): 0.3, ("boiler_lt_gas", high): 0.3}
+
+
+def test_a_prohibition_covers_every_duty_of_its_process_a_share_only_its_family() -> None:
+    """A 0.00 prohibition bars the unit from its process outright, motive power included; a
+    0.3 share is a share of the process's heat, so it does not reach motive power."""
+    motive = ("mvp-minimal", DUTY_KEY[1], "motive_power")
+    base = _sets()
+    duty = _Duty(motive[0], motive[1], motive[2], None, {year: 1.0 for year in PERIODS})
+    sets = dataclasses.replace(
+        base,
+        duties=(*base.duties, duty),
+        eligible={**base.eligible, motive: frozenset({"heat_pump_lt_air"})},
+    )
+    reference = _with_heat_family(_c13_reference({}))
+    barred = dataclasses.replace(
+        sets,
+        eligibility_dropped=(
+            EligibilityDrop(DUTY_KEY[0], DUTY_KEY[1], "boiler_lt_gas", "max_share", "0.00"),
+        ),
+        eligible={**sets.eligible, DUTY_KEY: frozenset({"heat_pump_lt_air"})},
+        units=sets.units,
+    )
+    barred_caps = build.c13_tracking(barred, reference, {}, build._candidate_pairs(sets)[0]).capped
+    assert {key for _, key in barred_caps} == {DUTY_KEY, motive}
+    shared = dataclasses.replace(sets, max_share={(DUTY_KEY, "boiler_lt_gas"): 0.3})
+    assert {key for _, key in build.c13_tracking(shared, reference, {}).capped} == {DUTY_KEY}
+
+
+def test_c13_refuses_a_carrier_table_without_denominator_kind() -> None:
+    """C13 traces energy, so it must know which carriers are mass; it never guesses."""
+    reference, sets = _routing_case()
+    reference = dataclasses.replace(
+        reference, carrier=reference.carrier.drop(columns=["denominator_kind"])
+    )
+    with pytest.raises(ValueError, match="denominator_kind"):
+        _c13_solved(reference, sets)
+
+
+def test_c13_traces_nothing_whose_energy_cannot_reach_a_capped_duty() -> None:
+    """The boiler is capped on A, but the relay drawing its heat serves only B, so the
+    boiler's energy can never reach A: no tracer, no C13 variable."""
+    reference = _c13_reference({"relay": RELAY})
+    sets = _c13_sets(
+        reference,
+        {Q_A: frozenset({"boiler_lt_gas", "heat_pump_lt_air"}), Q_B: frozenset({"relay"})},
+        max_share={(Q_A, "boiler_lt_gas"): 0.3},
+    )
+    model, result = _c13_solved(reference, sets)
+    assert result.termination_condition == "optimal"
+    assert not {"tr_in", "tr_rel", "tr_duty", "tr_leave"} & set(model.variables)
