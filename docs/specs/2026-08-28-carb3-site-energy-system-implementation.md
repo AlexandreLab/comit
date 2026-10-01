@@ -1807,8 +1807,9 @@ train's `co2_captured`) and for **duty units whose primary output another model 
 (`heat_pump_lt_air` releases `heat_60_100` that `heat_pump_ht` lifts). A unit with neither has
 no $z^{\circ}$ column, which is the same as $z^{\circ}_{u,t}=0$. Because a released unit can then
 run past its duty and export the rest, $x_{c,t}$ is bounded by the connection's
-`export_capacity` run flat out ($\text{MW}\times 0.031536$ PJ/yr) for an energy carrier, and left
-unbounded where that capacity is blank or the carrier is mass: a loose stand-in for C11
+`export_capacity` run flat out ($\text{MW}\times 0.031536$ PJ/yr) for an energy carrier, a blank
+capacity counting as 0 (no export), and left unbounded only for a mass carrier, which a MW figure
+cannot bound: a loose stand-in for C11
 (connection capacity) that keeps the LP bounded when an export price beats a unit's cost. The connection-indexed forms $m_{c,k,t}$ and $x_{c,k,t}$ above are the target.
 
 **Total activity is a defined expression, not a variable.**
