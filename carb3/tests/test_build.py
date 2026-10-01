@@ -19,7 +19,7 @@ import pytest
 
 from carb3 import build, survival
 from carb3.load import ReferenceTables
-from carb3.sets import Duty, ModelSets
+from carb3.sets import Duty, ExportWindow, ModelSets, released_supply
 
 # The real period vector (§6.4): a 4-year first gap and 5-year gaps thereafter.
 REFERENCE_YEARS: tuple[int, ...] = (2021, 2025, 2030, 2035, 2040, 2045, 2050)
@@ -1289,3 +1289,384 @@ def test_a_duty_the_screen_empties_is_reported_not_raised() -> None:
     assert [drop.unit_id for drop in drops] == ["coke_oven"]
     assert sets.eligible[DUTY_KEY] == frozenset()
     assert diagnose_unservable_duties(sets, AdmissionScreen(frozenset(), ()))
+
+
+# --------------------------------------------------------------------------------------
+# z° for duty units: a unit's output released to C8 for another unit to draw
+# --------------------------------------------------------------------------------------
+
+LIFT_DRAW = 0.5  # PJ of heat_60_100 per PJ of heat_100_150, the rest is electricity
+LIFT_ELECTRICITY = 0.5
+LIFT_KEY = ("mvp-minimal", "process_steam", "heat_100_150")
+
+
+def _lift_reference() -> ReferenceTables:
+    """The base fixture plus ``lift_pump``: it draws the 60-100 °C heat the boiler and the
+    low-grade heat pump make for their own duty and lifts it to 100-150 °C."""
+    reference = _reference()
+    carrier = pd.DataFrame(
+        [
+            {
+                "carrier_id": "heat_100_150",
+                "carrier_kind": "intermediate",
+                "is_indirect": "FALSE",
+                "biogenic_fraction": "",
+                "carbon_charge": "",
+                "may_dispose": "TRUE",
+                "may_import": "FALSE",
+            }
+        ]
+    )
+    unit = pd.DataFrame(
+        [
+            {
+                "unit_id": "lift_pump",
+                "unit_class": "converter",
+                "capex": 10.0,
+                "fixed_opex": 0.2,
+                "lifetime": 20,
+                "availability_factor": 0.98,
+                "capacity_to_activity_factor": 1.0,
+            }
+        ]
+    )
+    io = pd.DataFrame(
+        [
+            {"unit_id": "lift_pump", "carrier_id": "heat_100_150", "coefficient": 1.0,
+             "role": "primary_output"},
+            {"unit_id": "lift_pump", "carrier_id": "heat_60_100", "coefficient": -LIFT_DRAW,
+             "role": "aux_input"},
+            {"unit_id": "lift_pump", "carrier_id": "electricity",
+             "coefficient": -LIFT_ELECTRICITY, "role": "fuel_input"},
+        ]
+    )
+    return dataclasses.replace(
+        reference,
+        carrier=pd.concat([reference.carrier, carrier], ignore_index=True),
+        unit=pd.concat([reference.unit, unit], ignore_index=True),
+        unit_input_output=pd.concat([reference.unit_input_output, io], ignore_index=True),
+    )
+
+
+def _lift_sets(reference: ReferenceTables, *, low: float = 1.0, high: float = 1.0) -> ModelSets:
+    makers = frozenset({"boiler_lt_gas", "heat_pump_lt_air"})
+    low_duty = _Duty(DUTY_KEY[0], DUTY_KEY[1], DUTY_KEY[2], 2, {y: low for y in PERIODS})
+    high_duty = _Duty(LIFT_KEY[0], LIFT_KEY[1], LIFT_KEY[2], 3, {y: high for y in PERIODS})
+    sets = ModelSets(
+        periods=PERIODS,
+        duties=(low_duty, high_duty),
+        units=makers | {"lift_pump"},
+        eligible={low_duty.key: makers, high_duty.key: frozenset({"lift_pump"})},
+        earliest_year={},
+        max_share={},
+        min_duty={},
+    )
+    return dataclasses.replace(sets, released=released_supply(reference, sets))
+
+
+def _lift_surviving(reference: ReferenceTables, boiler: float = 3.0) -> pd.DataFrame:
+    return survival.surviving_capacity(
+        pd.DataFrame(
+            [
+                {"unit_id": "boiler_lt_gas", "commissioned_year": 2010, "capacity": boiler},
+                {"unit_id": "lift_pump", "commissioned_year": 2015, "capacity": 2.0},
+            ]
+        ),
+        reference.unit,
+        PERIODS,
+    )
+
+
+def _lift_solved(*, boiler: float = 3.0):
+    reference = _lift_reference()
+    sets = _lift_sets(reference)
+    model = build.build_model(sets, _lift_surviving(reference, boiler), _axis(), reference)
+    return reference, sets, model, build.solve(model)
+
+
+def _activity(model, unit_id: str) -> pd.Series:
+    """A unit's solved columns, duty and z°, summed per period."""
+    z = model.variables["z"].solution.to_pandas()
+    return z[z.index.str.startswith(f"{unit_id}@")].sum()
+
+
+def test_released_supply_names_the_makers_of_a_carrier_another_unit_draws() -> None:
+    reference = _lift_reference()
+    assert released_supply(reference, _lift_sets(reference)) == {
+        "heat_60_100": frozenset({"boiler_lt_gas", "heat_pump_lt_air"})
+    }
+    # Nothing draws heat_60_100 without the lift pump, so the base fixture has no z° column.
+    assert released_supply(_reference(), _sets()) == {}
+
+
+def test_released_supply_reads_the_model_units_not_the_admitted_set() -> None:
+    """A unit admitted to U but in no U_q (refused by ``min_duty``, say) is not in the LP,
+    so it cannot be a maker or a drawer."""
+    reference = _lift_reference()
+    sets = dataclasses.replace(
+        _lift_sets(reference),
+        eligible={DUTY_KEY: frozenset({"boiler_lt_gas", "heat_pump_lt_air"}),
+                  LIFT_KEY: frozenset()},
+    )
+    assert released_supply(reference, sets) == {}
+
+
+def test_a_duty_unit_releases_heat_another_unit_lifts() -> None:
+    """The lift pump meets the 100-150 °C duty on heat the low-grade units release through
+    z°, and C8 (carrier balance) closes at every node."""
+    _, _, model, result = _lift_solved()
+    assert result.termination_condition == "optimal"
+    z = model.variables["z"].solution.to_pandas()
+    released = z[z.index.str.endswith("@supply:heat_60_100")].sum()
+    for year in PERIODS:
+        assert z.loc[f"lift_pump@{LIFT_KEY[0]}|{LIFT_KEY[1]}|{LIFT_KEY[2]}", year] == (
+            pytest.approx(1.0)
+        )
+        assert released[year] == pytest.approx(LIFT_DRAW)
+    assert build.check_constraint_rows(model, result) == ()
+
+
+def test_released_output_is_not_also_counted_as_duty_output() -> None:
+    """The makers run for both duties, exactly once each: 1 PJ for their own duty plus the
+    0.5 PJ the lift pump draws. Scaling the primary output by total activity in C8 would let
+    the duty heat count again and the makers would run 1 PJ, not 1.5."""
+    _, _, model, _ = _lift_solved()
+    makers = _activity(model, "boiler_lt_gas") + _activity(model, "heat_pump_lt_air")
+    for year in PERIODS:
+        assert makers[year] == pytest.approx(1.0 + LIFT_DRAW)
+
+
+def test_c2_caps_a_units_duty_and_released_output_together() -> None:
+    """In 2021 nothing can be built (C5), so the boiler alone must make 1.5 PJ. At 1.2 PJ of
+    deliverable capacity that is infeasible, though either output alone would fit."""
+    deliverable = 1.2 / BOILER_AVAILABILITY
+    _, _, _, result = _lift_solved(boiler=deliverable)
+    assert result.termination_condition != "optimal"
+    _, _, _, result = _lift_solved(boiler=1.6 / BOILER_AVAILABILITY)
+    assert result.termination_condition == "optimal"
+
+
+def test_a_unit_that_is_d16_supply_and_released_gets_one_column() -> None:
+    sets = dataclasses.replace(
+        _sets(),
+        supply={"clinker": frozenset({"kiln"})},
+        released={"clinker": frozenset({"kiln"})},
+        units=frozenset({"boiler_lt_gas", "heat_pump_lt_air", "kiln"}),
+    )
+    coordinates = [pair.coordinate for pair in build._dispatch_pairs(sets)]
+    assert coordinates.count("kiln@supply:clinker") == 1
+
+
+def test_build_model_refuses_sets_whose_released_columns_are_stale() -> None:
+    """Narrowed or hand-built sets without their z° columns would hold the lift pump at zero
+    and still solve to optimal; the build says so instead."""
+    reference = _lift_reference()
+    stale = dataclasses.replace(_lift_sets(reference), released={})
+    with pytest.raises(ValueError, match="released_supply"):
+        build.build_model(stale, _lift_surviving(reference), _axis(), reference)
+
+
+def test_build_model_refuses_a_d16_supplier_that_also_serves_a_duty() -> None:
+    reference = _lift_reference()
+    sets = dataclasses.replace(
+        _lift_sets(reference), supply={"heat_60_100": frozenset({"boiler_lt_gas"})}
+    )
+    sets = dataclasses.replace(sets, released=released_supply(reference, sets))
+    with pytest.raises(ValueError, match="D16"):
+        build.build_model(sets, _lift_surviving(reference), _axis(), reference)
+
+
+# --------------------------------------------------------------------------------------
+# z° beyond heat: on-site electricity and hydrogen
+# --------------------------------------------------------------------------------------
+
+LIGHTING_KEY = ("mvp-minimal", "site_lighting", "electricity")
+H2_FEED_KEY = ("mvp-minimal", "hydrogen_feed", "hydrogen")
+ELECTROLYSER_DRAW = 1.4  # PJ electricity per PJ hydrogen
+H2_BOILER_DRAW = 1.1  # PJ hydrogen per PJ heat
+
+
+def _generation_reference(*, export_price: float | None = None) -> ReferenceTables:
+    """The base fixture plus a PV array, an electrolyser and a hydrogen boiler. Hydrogen is
+    not importable here, so the boiler can only burn what the electrolyser releases."""
+    reference = _reference()
+    carrier = pd.DataFrame(
+        [
+            {
+                "carrier_id": "hydrogen",
+                "carrier_kind": "intermediate",
+                "is_indirect": "FALSE",
+                "biogenic_fraction": "",
+                "carbon_charge": "",
+                "may_dispose": "FALSE",
+                "may_import": "FALSE",
+            }
+        ]
+    )
+    unit = pd.DataFrame(
+        [
+            {"unit_id": unit_id, "unit_class": "converter", "capex": capex, "fixed_opex": 0.01,
+             "lifetime": 25, "availability_factor": 1.0, "capacity_to_activity_factor": 1.0}
+            for unit_id, capex in (("pv", 0.5), ("electrolyser", 2.0), ("h2_boiler", 1.0))
+        ]
+    )
+    io = pd.DataFrame(
+        [
+            {"unit_id": "pv", "carrier_id": "electricity", "coefficient": 1.0,
+             "role": "primary_output"},
+            {"unit_id": "electrolyser", "carrier_id": "hydrogen", "coefficient": 1.0,
+             "role": "primary_output"},
+            {"unit_id": "electrolyser", "carrier_id": "electricity",
+             "coefficient": -ELECTROLYSER_DRAW, "role": "fuel_input"},
+            {"unit_id": "h2_boiler", "carrier_id": "heat_60_100", "coefficient": 1.0,
+             "role": "primary_output"},
+            {"unit_id": "h2_boiler", "carrier_id": "hydrogen",
+             "coefficient": -H2_BOILER_DRAW, "role": "fuel_input"},
+        ]
+    )
+    scenario = reference.scenario_parameters
+    if export_price is not None:
+        scenario = pd.concat(
+            [
+                scenario,
+                pd.DataFrame(
+                    [
+                        {"parameter_id": "export_price", "carrier_id": "electricity",
+                         "period": year, "value": export_price}
+                        for year in PERIODS
+                    ]
+                ),
+            ],
+            ignore_index=True,
+        )
+    return dataclasses.replace(
+        reference,
+        carrier=pd.concat([reference.carrier, carrier], ignore_index=True),
+        unit=pd.concat([reference.unit, unit], ignore_index=True),
+        unit_input_output=pd.concat([reference.unit_input_output, io], ignore_index=True),
+        scenario_parameters=scenario,
+    )
+
+
+def _generation_sets(
+    reference: ReferenceTables, duties: dict[tuple[str, str, str], frozenset[str]], **extra
+) -> ModelSets:
+    built = tuple(
+        _Duty(key[0], key[1], key[2], 2 if key[2] == "heat_60_100" else None,
+              {year: (1.0 if key == DUTY_KEY else 0.1) for year in PERIODS})
+        for key in duties
+    )
+    sets = ModelSets(
+        periods=PERIODS,
+        duties=built,
+        units=frozenset().union(*duties.values()),
+        eligible=dict(duties),
+        earliest_year={},
+        max_share={},
+        min_duty={},
+        **extra,
+    )
+    return dataclasses.replace(sets, released=released_supply(reference, sets))
+
+
+def _generation_solved(reference, sets, units: tuple[str, ...]):
+    surviving = survival.surviving_capacity(
+        pd.DataFrame(
+            [{"unit_id": u, "commissioned_year": 2015, "capacity": 3.0} for u in units]
+        ),
+        reference.unit,
+        PERIODS,
+    )
+    model = build.build_model(sets, surviving, _axis(), reference)
+    return model, build.solve(model)
+
+
+def test_pv_releases_electricity_that_displaces_imports() -> None:
+    """PV serves the lighting duty and, through z°, the heat pump's electricity: a duty unit
+    whose output another unit draws, on an importable carrier. Its free output beats the
+    import price, so the site imports less than the heat pump draws."""
+    reference = _generation_reference()
+    sets = _generation_sets(
+        reference,
+        {LIGHTING_KEY: frozenset({"pv"}), DUTY_KEY: frozenset({"heat_pump_lt_air"})},
+    )
+    assert sets.released == {"electricity": frozenset({"pv"})}
+    model, result = _generation_solved(reference, sets, ("pv", "heat_pump_lt_air"))
+    assert result.termination_condition == "optimal"
+    z = model.variables["z"].solution.to_pandas()
+    released = z.loc["pv@supply:electricity"]
+    assert (released > 0.0).all()
+    imported = model.variables["m"].solution.to_pandas().loc["electricity"]
+    for year in PERIODS:
+        assert imported[year] == pytest.approx(HEAT_PUMP_COEFFICIENT - released[year], abs=1e-9)
+    assert build.check_constraint_rows(model, result) == ()
+
+
+def test_pv_can_run_beyond_its_duty_to_export() -> None:
+    """With an export window and a price above its cost, PV runs past its lighting duty and
+    the surplus leaves the site: the spec's z° with x (export), now reachable for a duty
+    unit too. Deliberate, and pinned here so it never arrives by accident."""
+    reference = _generation_reference(export_price=100.0)
+    sets = _generation_sets(
+        reference,
+        {LIGHTING_KEY: frozenset({"pv"}), DUTY_KEY: frozenset({"heat_pump_lt_air"})},
+        export_windows=(ExportWindow("electricity", PERIODS, "", capacity=0.05),),
+    )
+    model, result = _generation_solved(reference, sets, ("pv", "heat_pump_lt_air"))
+    assert result.termination_condition == "optimal"
+    exported = model.variables["x"].solution.to_pandas().loc["electricity"]
+    assert (exported > 0.0).any()
+    # The connection's export capacity is what keeps a profitable export finite.
+    assert (exported <= 0.05 + 1e-9).all()
+    assert build.check_constraint_rows(model, result) == ()
+
+
+def test_without_an_export_capacity_a_profitable_release_is_unbounded() -> None:
+    """Why the cap exists: PV's output beats its cost at the export price, and with no
+    connection limit the LP would build PV without end. The solve reports it, never a
+    pathway."""
+    reference = _generation_reference(export_price=100.0)
+    sets = _generation_sets(
+        reference,
+        {LIGHTING_KEY: frozenset({"pv"}), DUTY_KEY: frozenset({"heat_pump_lt_air"})},
+        export_windows=(ExportWindow("electricity", PERIODS, ""),),
+    )
+    _, result = _generation_solved(reference, sets, ("pv", "heat_pump_lt_air"))
+    assert result.termination_condition != "optimal"
+    assert result.solution is None
+
+
+def test_export_capacity_reads_megawatts_as_a_year_of_flow() -> None:
+    from carb3.sets import PJ_PER_MW_YEAR, export_capacity
+
+    connection = pd.DataFrame(
+        [
+            {"carrier_id": "electricity", "export_capacity": 2.0},
+            {"carrier_id": "electricity", "export_capacity": 1.0},
+            {"carrier_id": "natural_gas", "export_capacity": 0.0},
+            {"carrier_id": "co2_captured", "export_capacity": None},
+        ]
+    )
+    assert export_capacity(connection, "electricity", "energy") == pytest.approx(
+        3.0 * PJ_PER_MW_YEAR
+    )
+    assert export_capacity(connection, "co2_captured", "mass") is None
+    blank = connection.assign(export_capacity=[2.0, None, 0.0, None])
+    assert export_capacity(blank, "electricity", "energy") is None
+
+
+def test_an_electrolyser_feeds_a_hydrogen_boiler_through_z_release() -> None:
+    """Hydrogen cannot be imported here, so the boiler's fuel is the electrolyser's z°
+    release: the electrolyser runs its 0.1 PJ duty plus 1.1 PJ for the boiler."""
+    reference = _generation_reference()
+    sets = _generation_sets(
+        reference,
+        {H2_FEED_KEY: frozenset({"electrolyser"}), DUTY_KEY: frozenset({"h2_boiler"})},
+    )
+    assert sets.released == {"hydrogen": frozenset({"electrolyser"})}
+    model, result = _generation_solved(reference, sets, ("electrolyser", "h2_boiler"))
+    assert result.termination_condition == "optimal"
+    electrolyser = _activity(model, "electrolyser")
+    for year in PERIODS:
+        assert electrolyser[year] == pytest.approx(0.1 + H2_BOILER_DRAW)
+    assert build.check_constraint_rows(model, result) == ()

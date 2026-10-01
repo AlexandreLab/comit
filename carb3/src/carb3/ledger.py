@@ -32,6 +32,7 @@ import xarray as xr
 
 from carb3.build import (
     CARBON_UNIT_CONVERSION,
+    PRIMARY_OUTPUT_ROLE,
     SUPPLY_PREFIX,
     PeriodAxis,
     SolveResult,
@@ -39,6 +40,7 @@ from carb3.build import (
     _balance_terms,
     _carrier_facts,
     _dispatch_pairs,
+    _release_coordinate,
     _scalar_parameter,
     _scenario_series,
     _supplied,
@@ -154,13 +156,6 @@ def build_ledger(
     carrier_facts = _carrier_facts(reference)
     supplied = _supplied(sets)
     terms = _balance_terms(reference, model_units, periods, carrier_facts, supplied)
-    coefficients = {
-        carrier_id: {
-            unit_id: sum(by_role.values(), np.zeros(len(periods)))
-            for unit_id, by_role in by_unit.items()
-        }
-        for carrier_id, by_unit in terms.items()
-    }
 
     solution = result.solution
     z = _series(solution, "z", "dispatch", periods)
@@ -172,12 +167,26 @@ def build_ledger(
     x = _series(solution, "x", "carrier", periods)
 
     activity = _activity_by_unit(pairs, z, model_units, periods)
+    # Each unit's net C8 flow per carrier, with every role scaled by the variable C8 scales it
+    # by: a primary output by the unit's z° column, everything else by total activity.
+    c8_flow = {
+        carrier_id: {
+            unit_id: sum(
+                (
+                    np.asarray(weights, dtype=float)
+                    * _role_activity(unit_id, carrier_id, role, activity, z, len(periods))
+                    for role, weights in by_role.items()
+                ),
+                np.zeros(len(periods)),
+            )
+            for unit_id, by_role in by_unit.items()
+        }
+        for carrier_id, by_unit in terms.items()
+    }
     dispatch = _dispatch_table(pairs, z, periods)
     build = _build_table(model_units, periods, n, a, e)
     disposal = _disposal_table(reference, carrier_facts, d, periods)
-    carrier_mix = _carrier_mix_table(
-        coefficients, carrier_facts, activity, m, d, x, dispatch, periods
-    )
+    carrier_mix = _carrier_mix_table(c8_flow, carrier_facts, m, d, x, dispatch, periods)
     unit_flow = _unit_flow_table(terms, carrier_facts, activity, pairs, z, periods)
     cost_by_term = _cost_table(
         reference, axis, periods, model_units, parameters, carrier_facts, a, e, m, d, x,
@@ -328,10 +337,12 @@ def _activity_by_unit(
 def _dispatch_table(pairs, z: dict[str, np.ndarray], periods: tuple[int, ...]) -> pd.DataFrame:
     """z_{u,q,t}, one row per ``(unit_id, duty, period)``.
 
-    A supply column carries ``kind`` ``supply`` and no process: it is a unit producing a
-    carrier that carries no duty row, settled by C8 (carrier balance) rather than by C1
-    (duty satisfaction). Two families sit here — the cement kilns making ``clinker``, an
-    internal product, and ``ccs_amine`` making ``co2_captured``, an exportable one.
+    A z° column carries ``kind`` ``supply`` and no process: output released to C8 (carrier
+    balance) rather than dispatched to a duty in C1 (duty satisfaction). Two sources sit
+    here. D16 supply is a unit making a carrier that carries no duty row: the cement kilns'
+    ``clinker`` and ``ccs_amine``'s ``co2_captured``. A released duty unit makes a carrier
+    another unit draws: ``heat_pump_lt_reject``'s ``heat_60_100``, lifted by ``heat_pump_ht``.
+    ``ModelSets.supply`` and ``ModelSets.released`` tell the two apart.
     """
     records = []
     for pair in pairs:
@@ -447,10 +458,24 @@ def _disposal_table(
     )
 
 
-def _carrier_mix_table(
-    coefficients: dict[str, dict[str, np.ndarray]],
-    carrier_facts,
+def _role_activity(
+    unit_id: str,
+    carrier_id: str,
+    role: str,
     activity: dict[str, np.ndarray],
+    z: dict[str, np.ndarray],
+    n_periods: int,
+) -> np.ndarray:
+    """The solved variable C8 scales a (unit, carrier, role) term by: the unit's z° column on
+    the carrier for a primary output, its total activity for every other role."""
+    if role == PRIMARY_OUTPUT_ROLE:
+        return _column(z, _release_coordinate(unit_id, carrier_id), n_periods)
+    return activity.get(unit_id, np.zeros(n_periods))
+
+
+def _carrier_mix_table(
+    c8_flow: dict[str, dict[str, np.ndarray]],
+    carrier_facts,
     m: dict[str, np.ndarray],
     d: dict[str, np.ndarray],
     x: dict[str, np.ndarray],
@@ -477,15 +502,12 @@ def _carrier_mix_table(
             [float(by_period.get(year, 0.0)) for year in periods]
         )
 
-    carriers = sorted(set(coefficients) | set(m) | set(d) | set(x) | set(dispatched))
+    carriers = sorted(set(c8_flow) | set(m) | set(d) | set(x) | set(dispatched))
     records = []
     for carrier_id in carriers:
         produced = np.zeros(len(periods))
         consumed = np.zeros(len(periods))
-        for unit_id, weights in coefficients.get(carrier_id, {}).items():
-            flow = np.asarray(weights, dtype=float) * activity.get(
-                unit_id, np.zeros(len(periods))
-            )
+        for flow in c8_flow.get(carrier_id, {}).values():
             produced += np.clip(flow, 0.0, None)
             consumed += -np.clip(flow, None, 0.0)
         imported = _column(m, carrier_id, len(periods))
@@ -550,8 +572,8 @@ def _unit_flow_table(
     for carrier_id, by_unit in terms.items():
         for unit_id, by_role in by_unit.items():
             for role, weights in by_role.items():
-                flow = np.asarray(weights, dtype=float) * activity.get(
-                    unit_id, np.zeros(n_periods)
+                flow = np.asarray(weights, dtype=float) * _role_activity(
+                    unit_id, carrier_id, role, activity, z, n_periods
                 )
                 key = (unit_id, carrier_id, role)
                 series[key] = series.get(key, np.zeros(n_periods)) + flow

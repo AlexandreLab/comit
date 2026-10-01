@@ -36,7 +36,9 @@ from carb3.sets import (
     build_sets,
     diagnose_start_year_shortfall,
     diagnose_unservable_duties,
+    released_supply,
 )
+from carb3.sets import model_units as sets_model_units
 
 #: The three premises that solve on the reference tables as they stand today.
 #: ``mvp-cement`` joined them when A2 learned to read ``premise_throughput`` for a D5 mass
@@ -173,10 +175,65 @@ def test_the_screen_drops_the_steelworks_gas_chps_where_no_steelworks_is(
     assert "blast_furnace_gas" in by_unit["chp_bfg_gas_turbine"].detail
     assert "coke_oven_gas" in by_unit["chp_cog_gas_turbine"].detail
     assert not set(by_unit) & screened.units
-    # Kept: ``heat_lt60`` is made as boiler reject heat, and ``heat_60_100`` is a duty
-    # carrier, which C8 never sees but the site certainly makes.
+    # Kept: ``heat_lt60`` is made as boiler reject heat, and ``heat_60_100`` is released to
+    # C8 through z° by the units that make it for their own duty.
     assert {"heat_pump_lt_reject", "heat_pump_ht"} <= screened.units
     assert not set(by_unit) & _incumbents(reference, premise)
+
+
+@pytest.mark.parametrize("premise_id", ["mvp-minimal", "mvp-dairy"])
+def test_the_low_grade_heat_makers_release_to_the_lift_heat_pump(
+    runs: dict[str, Run], premise_id: str
+) -> None:
+    """``heat_pump_ht`` draws ``heat_60_100``, which four units make for their own duty, so
+    each of them gets a z° column on it (the activity a unit releases to C8, the carrier
+    balance, rather than dispatches to a duty)."""
+    sets = runs[premise_id].sets
+    assert sets.released == {
+        "heat_60_100": frozenset(
+            {"boiler_spc_coal", "boiler_spc_gas", "heat_pump_lt_air", "heat_pump_lt_reject"}
+        )
+    }
+
+
+def test_the_cement_works_gains_no_released_column(runs: dict[str, Run]) -> None:
+    """Every drawn carrier at the cement works is D16 supply already (``clinker``,
+    ``co2_captured``) or importable, so z° for duty units changes nothing there."""
+    sets = runs["mvp-cement"].sets
+    assert set(sets.supply) == {"clinker", "co2_captured"}
+    # The kilns already release clinker as D16 supply, so they are not listed again.
+    assert sets.released == {}
+
+
+@pytest.mark.parametrize("premise_id", ["mvp-minimal", "mvp-dairy"])
+def test_the_lift_heat_pump_runs_and_lowers_the_objective(
+    reference: ReferenceTables,
+    axis: build.PeriodAxis,
+    runs: dict[str, Run],
+    premise_id: str,
+) -> None:
+    """With z° the lift pump serves the 100-150 °C boiler-house duty from 2030, its
+    ``earliest_year``. The comparison is against the same premise without the lift pump,
+    which is the model before z° (the pump was held at zero there), so it can only be
+    cheaper or equal; here it is strictly cheaper."""
+    run = runs[premise_id]
+    z = run.model.variables["z"].solution.to_pandas()
+    lift = z[z.index.str.startswith("heat_pump_ht@")].sum()
+    assert lift[2030] > 0.0
+
+    premise = load_premise_tables(premise_id)
+    without = dataclasses.replace(
+        run.sets,
+        units=run.sets.units - {"heat_pump_ht"},
+        eligible={key: units - {"heat_pump_ht"} for key, units in run.sets.eligible.items()},
+    )
+    without = dataclasses.replace(without, released=released_supply(reference, without))
+    assert without.released == {}
+    vintages = survival.vintage_capacity(premise, reference.unit)
+    surviving = survival.surviving_capacity(vintages, reference.unit, PERIOD_YEARS)
+    before = build.solve(build.build_model(without, surviving, axis, reference))
+    assert before.termination_condition == "optimal"
+    assert run.result.objective < before.objective - TOLERANCE
 
 
 def test_the_screen_drops_nothing_at_the_cement_works(
@@ -600,12 +657,16 @@ def test_the_problem_is_sparse_not_dense(runs: dict[str, Run], premise_id: str) 
     sets = run.sets
     periods = len(sets.periods)
 
+    # Duty columns, plus one z° column per unit and carrier: D16 supply and the duty units
+    # whose output another unit draws (``released``), counted once where they coincide.
     pairs = sum(
         len(sets.eligible[duty.key] & sets.units) for duty in sets.duties
-    ) + sum(len(units & sets.units) for units in sets.supply.values())
+    ) + sum(len(units) for units in build._z_release_columns(sets).values())
     assert run.model.variables["z"].size == pairs * periods
 
     model_units = {pair.unit_id for pair in build._dispatch_pairs(sets)}
+    # Two copies of "which units the LP holds" (sets.py cannot import build.py); one answer.
+    assert model_units == set(sets_model_units(sets))
     # n, a, e and at most one import and one disposal variable per carrier in the tables.
     ceiling = (pairs + 3 * len(model_units) + 2 * len(sets.units)) * periods
     assert pairs * periods <= run.result.n_variables <= ceiling
@@ -748,6 +809,8 @@ def test_carbon_off_inverts_the_boiler_versus_heat_pump_ranking(
             units=contenders,
             eligible={key: units & contenders for key, units in sets.eligible.items()},
         )
+        # Narrowing changes which units draw which carriers, so the z° columns follow.
+        sets = dataclasses.replace(sets, released=released_supply(source, sets))
         vintages = survival.vintage_capacity(premise, source.unit)
         surviving = survival.surviving_capacity(vintages, source.unit, PERIOD_YEARS)
         model = build.build_model(sets, surviving, axis, source)

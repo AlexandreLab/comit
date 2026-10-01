@@ -102,7 +102,7 @@ the §7.7 allocation layer rather than to the objective.
 | $m_{c,t}$ / $m_{c,k,t}$ import | **In** | Site-level for delivered fuels, connection-indexed for networked carriers, per D16 (the site boundary on the carrier) |
 | $d_{c,t}$ **disposal** | **In** | **Restored after review.** Without it C8 has no sink and the model cannot solve; see below |
 | $h_{c \to c',t}$ heat cascaded | Out | C10 (heat grade cascade) is enforced by eligibility instead — see §6.2 |
-| $z^{\circ}_{u,t}$ undispatched primary output | **In**, for carriers with no duty | `mvp-cement`'s kilns make `clinker` and `ccs_amine` makes `co2_captured`; neither carries a duty, so neither had an activity variable |
+| $z^{\circ}_{u,t}$ undispatched primary output | **In**, for carriers with no duty, and (from 2026-10-01) for duty units whose output another unit draws | `mvp-cement`'s kilns make `clinker` and `ccs_amine` makes `co2_captured`; neither carries a duty, so neither had an activity variable. `heat_pump_ht` draws `heat_60_100`, which only duty units make, so it had no source in C8 (carrier balance) until those units could release to it |
 | $r_{u,t}$ early retirement | Out | Retirement is by survival function only |
 | $x_{c,t}$ export | **In**, narrowly | Restored 2026-09-20. Without it no capture train can ever be built; see below. Site-level, for the same reason $m_{c,t}$ is |
 | $w_{k,t}$ reinforcement | Out | C11 out |

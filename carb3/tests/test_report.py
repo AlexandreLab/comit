@@ -248,15 +248,27 @@ def test_the_cost_terms_sum_to_the_reported_objective(
     assert abs(cost["residual"]) < 1e-6
 
 
-def test_the_dairy_boiler_retires_and_is_rebuilt_in_2045(documents: dict[str, dict]) -> None:
-    """Plan Task 4's check: ``build.parquet`` says 0.072 PJ/yr is rebuilt in 2045."""
+def test_the_dairy_boiler_house_moves_to_the_lift_heat_pump_in_2030(
+    documents: dict[str, dict],
+) -> None:
+    """``build.parquet`` says 0.0722 PJ/yr of ``heat_pump_ht`` is built in 2030, its
+    ``earliest_year``, and again in 2050 at the end of its 20-year life.
+
+    It lifts 60-100 °C heat that ``heat_pump_lt_reject`` releases through z° (the activity
+    a unit releases to the carrier balance rather than dispatches to a duty). Before z°
+    covered duty units the lift pump had no source and the boiler house stayed on gas,
+    rebuilding ``boiler_lt_gas`` (0.07209 PJ/yr) in 2045; that rebuild is now gone."""
     dairy = documents["mvp-dairy"]
-    boiler = dairy["units"]["boiler_lt_gas"]
-    index = dairy["periods"].index(2045)
-    assert boiler["new_capacity"][index] == pytest.approx(0.07209, abs=1e-5)
-    assert boiler["basis"] == "PJ/yr"
+    lift = dairy["units"]["heat_pump_ht"]
+    assert lift["basis"] == "PJ/yr"
+    for year in (2030, 2050):
+        index = dairy["periods"].index(year)
+        assert lift["new_capacity"][index] == pytest.approx(0.07220, abs=1e-5)
+    boiler = dairy["units"].get("boiler_lt_gas")
+    if boiler is not None:
+        assert boiler["new_capacity"][dairy["periods"].index(2045)] == pytest.approx(0.0, abs=1e-9)
     capacity = {g["unit"]: g for g in dairy["evolution"]["capacity"]}
-    assert "boiler_lt_gas" in {s["key"] for s in capacity["PJ/yr"]["series"]}
+    assert "heat_pump_ht" in {s["key"] for s in capacity["PJ/yr"]["series"]}
 
 
 def test_capacity_is_grouped_by_basis(documents: dict[str, dict]) -> None:

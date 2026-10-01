@@ -52,11 +52,12 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import pandas as pd
 
 from carb3.load import (
+    INPUT_ROLES,
     AdmissionScreen,
     PremiseTables,
     ReferenceTables,
@@ -117,6 +118,16 @@ class ExportWindow:
     periods: tuple[int, ...]
     #: The §3.7 network this carrier rides on, or ``""`` where C9 does not gate it.
     network: str
+    #: Most the connection can carry in a year, PJ/yr: ``premise_connection.export_capacity``
+    #: (MW) run flat out. ``None`` where any row is blank or the carrier is not measured in
+    #: energy (``co2_captured`` is mass). A loose first piece of C11 (connection capacity):
+    #: without it a unit releasing output through z° could export without limit whenever
+    #: the export price beats its cost, and the LP would be unbounded.
+    capacity: float | None = None
+
+
+#: PJ a 1 MW flow carries in a year: 1 MW × 8,760 h = 31.536 TJ.
+PJ_PER_MW_YEAR: float = 0.031536
 
 
 @dataclass(frozen=True)
@@ -196,6 +207,12 @@ class ModelSets:
     #: Units removed from a process by ``min_duty`` or a 0.00 ``max_share``. Reported beside
     #: the §3.2 screen's drops, since otherwise these vanish from U_q without a trace.
     eligibility_dropped: tuple[EligibilityDrop, ...] = ()
+    #: Carrier -> the model units that may release their primary output to C8 (carrier
+    #: balance) through z° because another model unit draws that carrier, although the
+    #: carrier carries a duty. ``heat_pump_lt_air`` serves the 60-100 °C duty and also feeds
+    #: ``heat_pump_ht``, which lifts that heat. Kept apart from ``supply``, which is D16 (the
+    #: site boundary is a property of the carrier) supply only. See :func:`released_supply`.
+    released: Mapping[str, frozenset[str]] = field(default_factory=dict)
 
 
 # ------------------------------------------------------------------- the minimal A2
@@ -766,9 +783,14 @@ def export_windows(
             ))
             continue
 
+        capacity = export_capacity(
+            premise.premise_connection,
+            carrier_id,
+            str(carrier.loc[carrier_id, "denominator_kind"]),
+        )
         network = EXPORT_NETWORK.get(carrier_id, "")
         if not network:
-            windows.append(ExportWindow(carrier_id, periods, ""))
+            windows.append(ExportWindow(carrier_id, periods, "", capacity))
             continue
         if not cluster or cluster == "none":
             refused.append(ExportRefusal(
@@ -778,8 +800,26 @@ def export_windows(
             ))
             continue
         available = _available_periods(reference, network, cluster, periods)
-        windows.append(ExportWindow(carrier_id, available, network))
+        windows.append(ExportWindow(carrier_id, available, network, capacity))
     return tuple(windows), tuple(refused)
+
+
+def export_capacity(
+    connection: pd.DataFrame, carrier_id: str, denominator_kind: str
+) -> float | None:
+    """The PJ/yr a premise's connections can export of an energy carrier, or ``None``.
+
+    The sum over the carrier's ``premise_connection`` rows of ``export_capacity`` (MW) times
+    :data:`PJ_PER_MW_YEAR`. ``None`` (no cap) where the carrier is not measured in energy, or
+    any of its rows leaves the capacity blank: a blank is unknown, not zero.
+    """
+    if denominator_kind != "energy":
+        return None
+    rows = connection[connection["carrier_id"].astype(str) == carrier_id]
+    values = pd.to_numeric(rows["export_capacity"], errors="coerce")
+    if rows.empty or values.isna().any():
+        return None
+    return float(values.sum()) * PJ_PER_MW_YEAR
 
 
 def _export_price_cover(
@@ -1048,7 +1088,7 @@ def build_sets(
         dutied_carriers=frozenset(duty.carrier_id for duty in duties),
     )
     windows, refused = export_windows(reference, premise, periods)
-    return ModelSets(
+    sets = ModelSets(
         periods=periods,
         duties=duties,
         units=screen.admitted,
@@ -1064,6 +1104,58 @@ def build_sets(
         export_refused=refused,
         eligibility_dropped=tuple(dict.fromkeys((*eligibility_dropped, *supply_dropped))),
     )
+    return replace(sets, released=released_supply(reference, sets))
+
+
+def model_units(sets: ModelSets) -> frozenset[str]:
+    """The units the LP holds: every unit in some U_q or supply set, intersected with U.
+
+    Never ``sets.units`` alone, which is the global admitted set and would include units a
+    process refused by ``min_duty`` or a 0.00 ``max_share``.
+    """
+    held = {unit_id for duty in sets.duties for unit_id in sets.eligible.get(duty.key, ())}
+    held |= {unit_id for units in sets.supply.values() for unit_id in units}
+    return frozenset(held & sets.units)
+
+
+def released_supply(reference: ReferenceTables, sets: ModelSets) -> dict[str, frozenset[str]]:
+    """Carrier -> the model units given a z° column on it: their primary output is that
+    carrier and some *other* model unit draws it.
+
+    The spec defines z° for any unit (implementation spec §5.2): activity whose primary
+    output is released into the carrier balance rather than dispatched to a duty. Without it
+    a unit drawing a carrier that other units make only as primary output has no source in
+    C8 (carrier balance) and is held at zero, as ``heat_pump_ht`` was on ``heat_60_100``. A
+    unit never feeds itself, and a carrier nobody else draws gets no column, so a premise
+    with no such chain builds exactly the model it did before.
+
+    A pure function of the model units, so :func:`carb3.build.screen_premise` recomputes it
+    after dropping units and :func:`carb3.build.build_model` can refuse sets that are stale.
+    """
+    present = model_units(sets)
+    io = reference.unit_input_output
+    makers: dict[str, set[str]] = {}
+    drawers: dict[str, set[str]] = {}
+    for unit_id, carrier_id, role in zip(io["unit_id"], io["carrier_id"], io["role"], strict=True):
+        unit_id, carrier_id, role = str(unit_id), str(carrier_id), str(role).strip()
+        if unit_id not in present:
+            continue
+        if role == "primary_output":
+            makers.setdefault(carrier_id, set()).add(unit_id)
+        elif role in INPUT_ROLES:
+            drawers.setdefault(carrier_id, set()).add(unit_id)
+    released: dict[str, frozenset[str]] = {}
+    for carrier_id in sorted(makers):
+        # A D16 supplier already has its z° column on this carrier through ``supply``.
+        d16 = sets.supply.get(carrier_id, frozenset())
+        feeding = frozenset(
+            unit_id
+            for unit_id in makers[carrier_id] - d16
+            if drawers.get(carrier_id, set()) - {unit_id}
+        )
+        if feeding:
+            released[carrier_id] = feeding
+    return released
 
 
 def diagnose_unservable_duties(
