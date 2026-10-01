@@ -1794,9 +1794,11 @@ export $x_{c,t}$ where `may_export` is true, a `premise_connection` row carries 
 ignores connections; export reads them to decide which carriers exist, and the connection index is
 collapsed, not ignored. C11 and $Z^{\text{net}}$ are not built, and `import_price` and
 `export_price` have no connection dimension, so the index would carry no information and the two
-forms are numerically identical there. $z^{\circ}_{u,t}$ exists for **supply units only**: units
-that serve no duty and make a carrier no duty asks for (a kiln's `clinker`, a capture train's
-`co2_captured`). The connection-indexed forms $m_{c,k,t}$ and $x_{c,k,t}$ above are the target.
+forms are numerically identical there. $z^{\circ}_{u,t}$ exists, per carrier, for **supply units**
+(units that serve no duty and make a carrier no duty asks for: a kiln's `clinker`, a capture
+train's `co2_captured`) and for **duty units whose primary output another model unit draws**
+(`heat_pump_lt_air` releases `heat_60_100` that `heat_pump_ht` lifts). A unit with neither has
+no $z^{\circ}$ column, which is the same as $z^{\circ}_{u,t}=0$. The connection-indexed forms $m_{c,k,t}$ and $x_{c,k,t}$ above are the target.
 
 **Total activity is a defined expression, not a variable.**
 $z_{u,t} \equiv \sum_{q \in Q_u} z_{u,q,t} + z^{\circ}_{u,t}$, and it is what C2, C6, C7 and §7

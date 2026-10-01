@@ -52,7 +52,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import pandas as pd
 
@@ -196,6 +196,12 @@ class ModelSets:
     #: Units removed from a process by ``min_duty`` or a 0.00 ``max_share``. Reported beside
     #: the §3.2 screen's drops, since otherwise these vanish from U_q without a trace.
     eligibility_dropped: tuple[EligibilityDrop, ...] = ()
+    #: Carrier -> the model units that may release their primary output to C8 (carrier
+    #: balance) through z° because another model unit draws that carrier, although the
+    #: carrier carries a duty. ``heat_pump_lt_air`` serves the 60-100 °C duty and also feeds
+    #: ``heat_pump_ht``, which lifts that heat. Kept apart from ``supply``, which is D16 (the
+    #: site boundary is a property of the carrier) supply only. See :func:`released_supply`.
+    released: Mapping[str, frozenset[str]] = field(default_factory=dict)
 
 
 # ------------------------------------------------------------------- the minimal A2
@@ -1048,7 +1054,7 @@ def build_sets(
         dutied_carriers=frozenset(duty.carrier_id for duty in duties),
     )
     windows, refused = export_windows(reference, premise, periods)
-    return ModelSets(
+    sets = ModelSets(
         periods=periods,
         duties=duties,
         units=screen.admitted,
@@ -1064,6 +1070,60 @@ def build_sets(
         export_refused=refused,
         eligibility_dropped=tuple(dict.fromkeys((*eligibility_dropped, *supply_dropped))),
     )
+    return replace(sets, released=released_supply(reference, sets))
+
+
+#: The roles that draw a carrier, as :data:`carb3.load.INPUT_ROLES` reads them.
+_DRAWING_ROLES: frozenset[str] = frozenset({"fuel_input", "aux_input", "emission_input"})
+
+
+def model_units(sets: ModelSets) -> frozenset[str]:
+    """The units the LP holds: every unit in some U_q or supply set, intersected with U.
+
+    Never ``sets.units`` alone, which is the global admitted set and would include units a
+    process refused by ``min_duty`` or a 0.00 ``max_share``.
+    """
+    held = {unit_id for duty in sets.duties for unit_id in sets.eligible.get(duty.key, ())}
+    held |= {unit_id for units in sets.supply.values() for unit_id in units}
+    return frozenset(held & sets.units)
+
+
+def released_supply(reference: ReferenceTables, sets: ModelSets) -> dict[str, frozenset[str]]:
+    """Carrier -> the model units given a z° column on it: their primary output is that
+    carrier and some *other* model unit draws it.
+
+    The spec defines z° for any unit (implementation spec §5.2): activity whose primary
+    output is released into the carrier balance rather than dispatched to a duty. Without it
+    a unit drawing a carrier that other units make only as primary output has no source in
+    C8 (carrier balance) and is held at zero, as ``heat_pump_ht`` was on ``heat_60_100``. A
+    unit never feeds itself, and a carrier nobody else draws gets no column, so a premise
+    with no such chain builds exactly the model it did before.
+
+    A pure function of the model units, so :func:`carb3.build.screen_premise` recomputes it
+    after dropping units and :func:`carb3.build.build_model` can refuse sets that are stale.
+    """
+    present = model_units(sets)
+    io = reference.unit_input_output
+    makers: dict[str, set[str]] = {}
+    drawers: dict[str, set[str]] = {}
+    for unit_id, carrier_id, role in zip(io["unit_id"], io["carrier_id"], io["role"], strict=True):
+        unit_id, carrier_id, role = str(unit_id), str(carrier_id), str(role).strip()
+        if unit_id not in present:
+            continue
+        if role == "primary_output":
+            makers.setdefault(carrier_id, set()).add(unit_id)
+        elif role in _DRAWING_ROLES:
+            drawers.setdefault(carrier_id, set()).add(unit_id)
+    released: dict[str, frozenset[str]] = {}
+    for carrier_id in sorted(makers):
+        feeding = frozenset(
+            unit_id
+            for unit_id in makers[carrier_id]
+            if drawers.get(carrier_id, set()) - {unit_id}
+        )
+        if feeding:
+            released[carrier_id] = feeding
+    return released
 
 
 def diagnose_unservable_duties(

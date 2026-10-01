@@ -419,6 +419,11 @@ def _print_premise(run: PremiseRun) -> None:
                 f"  supply, no duty row (§3.9): {carrier_id} <- "
                 f"{', '.join(sorted(units))}"
             )
+        for carrier_id, units in sorted(run.sets.released.items()):
+            print(
+                f"  released to the balance (z°): {carrier_id} <- "
+                f"{', '.join(sorted(units))}"
+            )
         for window in run.sets.export_windows:
             gate = (
                 f" gated by C9 on {window.network}" if window.network else " (C9 does not gate it)"

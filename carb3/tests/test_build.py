@@ -19,7 +19,7 @@ import pytest
 
 from carb3 import build, survival
 from carb3.load import ReferenceTables
-from carb3.sets import Duty, ModelSets
+from carb3.sets import Duty, ModelSets, released_supply
 
 # The real period vector (§6.4): a 4-year first gap and 5-year gaps thereafter.
 REFERENCE_YEARS: tuple[int, ...] = (2021, 2025, 2030, 2035, 2040, 2045, 2050)
@@ -1289,3 +1289,187 @@ def test_a_duty_the_screen_empties_is_reported_not_raised() -> None:
     assert [drop.unit_id for drop in drops] == ["coke_oven"]
     assert sets.eligible[DUTY_KEY] == frozenset()
     assert diagnose_unservable_duties(sets, AdmissionScreen(frozenset(), ()))
+
+
+# --------------------------------------------------------------------------------------
+# z° for duty units: a unit's output released to C8 for another unit to draw
+# --------------------------------------------------------------------------------------
+
+LIFT_DRAW = 0.5  # PJ of heat_60_100 per PJ of heat_100_150, the rest is electricity
+LIFT_ELECTRICITY = 0.5
+LIFT_KEY = ("mvp-minimal", "process_steam", "heat_100_150")
+
+
+def _lift_reference() -> ReferenceTables:
+    """The base fixture plus ``lift_pump``: it draws the 60-100 °C heat the boiler and the
+    low-grade heat pump make for their own duty and lifts it to 100-150 °C."""
+    reference = _reference()
+    carrier = pd.DataFrame(
+        [
+            {
+                "carrier_id": "heat_100_150",
+                "carrier_kind": "intermediate",
+                "is_indirect": "FALSE",
+                "biogenic_fraction": "",
+                "carbon_charge": "",
+                "may_dispose": "TRUE",
+                "may_import": "FALSE",
+            }
+        ]
+    )
+    unit = pd.DataFrame(
+        [
+            {
+                "unit_id": "lift_pump",
+                "unit_class": "converter",
+                "capex": 10.0,
+                "fixed_opex": 0.2,
+                "lifetime": 20,
+                "availability_factor": 0.98,
+                "capacity_to_activity_factor": 1.0,
+            }
+        ]
+    )
+    io = pd.DataFrame(
+        [
+            {"unit_id": "lift_pump", "carrier_id": "heat_100_150", "coefficient": 1.0,
+             "role": "primary_output"},
+            {"unit_id": "lift_pump", "carrier_id": "heat_60_100", "coefficient": -LIFT_DRAW,
+             "role": "aux_input"},
+            {"unit_id": "lift_pump", "carrier_id": "electricity",
+             "coefficient": -LIFT_ELECTRICITY, "role": "fuel_input"},
+        ]
+    )
+    return dataclasses.replace(
+        reference,
+        carrier=pd.concat([reference.carrier, carrier], ignore_index=True),
+        unit=pd.concat([reference.unit, unit], ignore_index=True),
+        unit_input_output=pd.concat([reference.unit_input_output, io], ignore_index=True),
+    )
+
+
+def _lift_sets(reference: ReferenceTables, *, low: float = 1.0, high: float = 1.0) -> ModelSets:
+    makers = frozenset({"boiler_lt_gas", "heat_pump_lt_air"})
+    low_duty = _Duty(DUTY_KEY[0], DUTY_KEY[1], DUTY_KEY[2], 2, {y: low for y in PERIODS})
+    high_duty = _Duty(LIFT_KEY[0], LIFT_KEY[1], LIFT_KEY[2], 3, {y: high for y in PERIODS})
+    sets = ModelSets(
+        periods=PERIODS,
+        duties=(low_duty, high_duty),
+        units=makers | {"lift_pump"},
+        eligible={low_duty.key: makers, high_duty.key: frozenset({"lift_pump"})},
+        earliest_year={},
+        max_share={},
+        min_duty={},
+    )
+    return dataclasses.replace(sets, released=released_supply(reference, sets))
+
+
+def _lift_surviving(reference: ReferenceTables, boiler: float = 3.0) -> pd.DataFrame:
+    return survival.surviving_capacity(
+        pd.DataFrame(
+            [
+                {"unit_id": "boiler_lt_gas", "commissioned_year": 2010, "capacity": boiler},
+                {"unit_id": "lift_pump", "commissioned_year": 2015, "capacity": 2.0},
+            ]
+        ),
+        reference.unit,
+        PERIODS,
+    )
+
+
+def _lift_solved(*, boiler: float = 3.0):
+    reference = _lift_reference()
+    sets = _lift_sets(reference)
+    model = build.build_model(sets, _lift_surviving(reference, boiler), _axis(), reference)
+    return reference, sets, model, build.solve(model)
+
+
+def _activity(model, unit_id: str) -> pd.Series:
+    """A unit's solved columns, duty and z°, summed per period."""
+    z = model.variables["z"].solution.to_pandas()
+    return z[z.index.str.startswith(f"{unit_id}@")].sum()
+
+
+def test_released_supply_names_the_makers_of_a_carrier_another_unit_draws() -> None:
+    reference = _lift_reference()
+    assert released_supply(reference, _lift_sets(reference)) == {
+        "heat_60_100": frozenset({"boiler_lt_gas", "heat_pump_lt_air"})
+    }
+    # Nothing draws heat_60_100 without the lift pump, so the base fixture has no z° column.
+    assert released_supply(_reference(), _sets()) == {}
+
+
+def test_released_supply_reads_the_model_units_not_the_admitted_set() -> None:
+    """A unit admitted to U but in no U_q (refused by ``min_duty``, say) is not in the LP,
+    so it cannot be a maker or a drawer."""
+    reference = _lift_reference()
+    sets = dataclasses.replace(
+        _lift_sets(reference),
+        eligible={DUTY_KEY: frozenset({"boiler_lt_gas", "heat_pump_lt_air"}),
+                  LIFT_KEY: frozenset()},
+    )
+    assert released_supply(reference, sets) == {}
+
+
+def test_a_duty_unit_releases_heat_another_unit_lifts() -> None:
+    """The lift pump meets the 100-150 °C duty on heat the low-grade units release through
+    z°, and C8 (carrier balance) closes at every node."""
+    _, _, model, result = _lift_solved()
+    assert result.termination_condition == "optimal"
+    z = model.variables["z"].solution.to_pandas()
+    released = z[z.index.str.endswith("@supply:heat_60_100")].sum()
+    for year in PERIODS:
+        assert z.loc[f"lift_pump@{LIFT_KEY[0]}|{LIFT_KEY[1]}|{LIFT_KEY[2]}", year] == (
+            pytest.approx(1.0)
+        )
+        assert released[year] == pytest.approx(LIFT_DRAW)
+    assert build.check_constraint_rows(model, result) == ()
+
+
+def test_released_output_is_not_also_counted_as_duty_output() -> None:
+    """The makers run for both duties, exactly once each: 1 PJ for their own duty plus the
+    0.5 PJ the lift pump draws. Scaling the primary output by total activity in C8 would let
+    the duty heat count again and the makers would run 1 PJ, not 1.5."""
+    _, _, model, _ = _lift_solved()
+    makers = _activity(model, "boiler_lt_gas") + _activity(model, "heat_pump_lt_air")
+    for year in PERIODS:
+        assert makers[year] == pytest.approx(1.0 + LIFT_DRAW)
+
+
+def test_c2_caps_a_units_duty_and_released_output_together() -> None:
+    """In 2021 nothing can be built (C5), so the boiler alone must make 1.5 PJ. At 1.2 PJ of
+    deliverable capacity that is infeasible, though either output alone would fit."""
+    deliverable = 1.2 / BOILER_AVAILABILITY
+    _, _, _, result = _lift_solved(boiler=deliverable)
+    assert result.termination_condition != "optimal"
+    _, _, _, result = _lift_solved(boiler=1.6 / BOILER_AVAILABILITY)
+    assert result.termination_condition == "optimal"
+
+
+def test_a_unit_that_is_d16_supply_and_released_gets_one_column() -> None:
+    sets = dataclasses.replace(
+        _sets(),
+        supply={"clinker": frozenset({"kiln"})},
+        released={"clinker": frozenset({"kiln"})},
+        units=frozenset({"boiler_lt_gas", "heat_pump_lt_air", "kiln"}),
+    )
+    coordinates = [pair.coordinate for pair in build._dispatch_pairs(sets)]
+    assert coordinates.count("kiln@supply:clinker") == 1
+
+
+def test_build_model_refuses_sets_whose_released_columns_are_stale() -> None:
+    """Narrowed or hand-built sets without their z° columns would hold the lift pump at zero
+    and still solve to optimal; the build says so instead."""
+    reference = _lift_reference()
+    stale = dataclasses.replace(_lift_sets(reference), released={})
+    with pytest.raises(ValueError, match="released_supply"):
+        build.build_model(stale, _lift_surviving(reference), _axis(), reference)
+
+
+def test_build_model_refuses_a_d16_supplier_that_also_serves_a_duty() -> None:
+    reference = _lift_reference()
+    sets = dataclasses.replace(
+        _lift_sets(reference), supply={"heat_60_100": frozenset({"boiler_lt_gas"})}
+    )
+    with pytest.raises(ValueError, match="D16"):
+        build.build_model(sets, _lift_surviving(reference), _axis(), reference)

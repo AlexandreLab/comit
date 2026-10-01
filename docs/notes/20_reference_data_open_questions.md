@@ -675,6 +675,10 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     `may_export` **true** and still no duty, because no premise states a throughput of
     captured CO₂. The function is now `carb3.sets.undutied_supply` and its test is "a
     `product` carrier that carries no duty at this premise", which covers both.
+    **Widened again 2026-10-01**: $z^{\circ}$ now also covers duty units whose primary
+    output another model unit draws (`carb3.sets.released_supply`, spec §5.2), so
+    `heat_pump_ht` can lift the 60-100 °C heat the low-grade units make for their own duty.
+    The specification now says which of the two it means: both.
 55. **The CO₂ export route has no price anywhere in the reference data, in three places at
     once.** Each was worked around rather than filled, and each is still owed:
 

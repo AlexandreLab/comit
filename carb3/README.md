@@ -44,10 +44,10 @@ it clears its zero rows from the ledger and leaves the optimum unchanged. **Incu
 with surviving capacity) are never dropped**: the site pays their fixed opex whether they run
 or not, so removing one would lower the objective by a real cost. An incumbent with an
 unsourceable input stays, held at zero by C8. The drops are printed per premise and written to
-`screen_dropped.parquet` under the leg `unreachable_input`. A carrier some unit makes as its
-primary output counts as made, even though a duty's output is settled by C1 (duty
-satisfaction) and never enters C8: so `heat_pump_ht`, which draws `heat_60_100`, is kept, and
-still cannot run (C8 has no source for duty heat). A unit is never its own source. The
+`screen_dropped.parquet` under the leg `unreachable_input`. A duty unit's output counts as made where
+another unit draws it, because z° (the activity a unit releases to the carrier balance rather
+than dispatches to a duty) puts it in C8: `heat_pump_ht` lifts the `heat_60_100` that the
+low-grade heat pumps and space-heating boilers release. A unit is never its own source. The
 screen reads only the signs of C8's coefficients, so a stranded unit burning a fuel with no
 emission factor is dropped rather than stopping the run; one that survives still fails loud
 when the model is built.

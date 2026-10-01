@@ -27,8 +27,15 @@ synthetic premises", and ``mvp-cement``'s kilns make ``clinker`` – a ``product
 pins those kilns through the ``clinker`` balance, which is right, but a unit serving no duty
 has no z_{u,q,t} to be pinned: without a variable the node has no producer, the grinder is
 forced to zero and the 1.13 Mt cement duty is infeasible. :func:`carb3.sets.undutied_supply` names those units and
-they take a column on the ``dispatch`` dimension that C1 does not select. Nothing else about
-z° is restored — an ordinary unit's output is still fully dispatched and settled by C1.
+they take a column on the ``dispatch`` dimension that C1 does not select.
+
+**A duty unit has a z° column too, where another model unit draws its output.**
+``heat_pump_ht`` lifts 60-100 °C heat that ``heat_pump_lt_air`` and the space-heating boilers
+make for their own duties; with z° limited to D16 nothing put that heat in C8 and the lift
+pump was held at zero. :func:`carb3.sets.released_supply` names those makers and they take a
+``supply:`` column beside their duty columns. C8 reads a primary output through that column
+only, never through total activity, so the same PJ cannot both meet a duty in C1 and feed
+another unit in C8 (§5.5).
 
 **d_{c,t} is not optional** (§2.2). 59 ``reject`` rows from 59 distinct units all run into
 ``heat_lt60``, which is grade 1 — the bottom, so there is nothing to cascade to — and exactly
@@ -111,16 +118,17 @@ import pandas as pd
 import xarray as xr
 
 from carb3.load import ReferenceTables, UnitDrop
-from carb3.sets import ModelSets
+from carb3.sets import ModelSets, released_supply
 
 #: §3.6's three consuming roles. A6 sums over these, never over ``fuel_input`` alone: 84 rows
 #: draw a ``primary`` carrier as ``aux_input`` and a secondary fuel is still a fuel.
 CONSUMING_ROLES: frozenset[str] = frozenset({"fuel_input", "aux_input", "emission_input"})
 
-#: The one role C8 reads through z° rather than through z (§5.5). An ordinary unit's primary
-#: output is fully dispatched and settled by C1, so these rows are excluded from the balance
-#: coefficients — except on a D16 carrier, where there is no C1 row and the output *is* the
-#: balance. See ``supplied`` in :func:`_balance_coefficients`.
+#: The one role C8 reads through z° rather than through z (§5.5). A unit's primary output is
+#: settled by C1 where it is dispatched to a duty, so these rows enter the balance only for a
+#: unit with a z° column on the carrier – a D16 supplier, or a duty unit whose output another
+#: unit draws – and then they multiply that column alone. See ``supplied`` in
+#: :func:`_balance_terms` and :func:`_balance_parts`.
 PRIMARY_OUTPUT_ROLE: str = "primary_output"
 
 #: The disposal gate of §5.2. ``intermediate`` and ``emission`` carriers may be disposed of;
@@ -288,15 +296,18 @@ def build_model(
         )
 
     _check_axis_rate(reference, axis)
+    _check_released(sets, reference)
 
     pairs = _dispatch_pairs(sets)
     model_units = sorted({pair.unit_id for pair in pairs})
     parameters = _unit_parameters(reference, model_units)
     carrier_facts = _carrier_facts(reference)
     supplied = _supplied(sets)
-    coefficients = _balance_coefficients(
-        reference, model_units, periods, carrier_facts, supplied
+    parts = _balance_parts(
+        _balance_terms(reference, model_units, periods, carrier_facts, supplied), len(periods)
     )
+    # Import, disposal and export read only which carriers have a C8 row.
+    coefficients = parts
 
     period_index = pd.Index(periods, name="period")
     dispatch_index = pd.Index([pair.coordinate for pair in pairs], name="dispatch")
@@ -391,9 +402,10 @@ def build_model(
     duty_of = xr.DataArray(
         [pair.label for pair in pairs], coords=[dispatch_index], name="duty"
     )
-    # z_{u,t} of §5.2, the total activity C2 and C8 read. z° adds no column beyond the
-    # supply columns already in the dispatch index, so this is the whole of it; groupby keeps
-    # the sum sparse, one term per eligible pair, never |U| x |Q|.
+    # z_{u,t} of §5.2, the total activity C2 reads and C8 scales a unit's draws, rejects and
+    # co-products by. z° adds no column beyond the supply columns already in the dispatch
+    # index, so this is the whole of it; groupby keeps the sum sparse, one term per eligible
+    # pair, never |U| x |Q|.
     total_activity = z.to_linexpr().groupby(unit_of).sum().sel(unit=model_units)
 
     # --- C1 duty satisfaction ------------------------------------------------------------
@@ -454,13 +466,26 @@ def build_model(
     model.add_constraints(n.sel(period=periods[0]) == 0, name="C5")
 
     # --- C8 carrier balance, with the disposal term ------------------------------------------
-    for carrier_id in sorted(coefficients):
-        contributors = sorted(coefficients[carrier_id])
-        weights = xr.DataArray(
-            np.array([coefficients[carrier_id][unit_id] for unit_id in contributors]),
-            coords=[pd.Index(contributors, name="unit"), period_index],
-        )
-        balance = (total_activity.sel(unit=contributors) * weights).sum("unit")
+    for carrier_id in sorted(parts):
+        by_activity, by_release = parts[carrier_id]
+        terms_c8 = []
+        if by_activity:
+            contributors = sorted(by_activity)
+            weights = xr.DataArray(
+                np.array([by_activity[unit_id] for unit_id in contributors]),
+                coords=[pd.Index(contributors, name="unit"), period_index],
+            )
+            terms_c8.append((total_activity.sel(unit=contributors) * weights).sum("unit"))
+        if by_release:
+            # A primary output enters through the unit's z° column alone: its duty columns
+            # are already settled by C1 (§5.5).
+            columns = [_release_coordinate(unit_id, carrier_id) for unit_id in sorted(by_release)]
+            weights = xr.DataArray(
+                np.array([by_release[unit_id] for unit_id in sorted(by_release)]),
+                coords=[pd.Index(columns, name="dispatch"), period_index],
+            )
+            terms_c8.append((z.sel(dispatch=columns) * weights).sum("dispatch"))
+        balance = reduce(lambda left, right: left + right, terms_c8)
         if m_import is not None and carrier_id in import_carriers:
             balance = balance + m_import.sel(carrier=carrier_id, drop=True)
         if x_export is not None and carrier_id in export_carriers:
@@ -731,28 +756,69 @@ def _candidate_pairs(
             _Pair(duty_key=duty.key, label=_duty_label(duty.key), unit_id=unit_id)
             for unit_id in eligible
         )
-    for carrier_id, units in sorted(sets.supply.items()):
+    for carrier_id, units in sorted(_z_release_columns(sets).items()):
         pairs.extend(
             _Pair(duty_key=None, label=_supply_label(carrier_id), unit_id=unit_id)
-            for unit_id in sorted(units & sets.units)
+            for unit_id in sorted(units)
         )
     return tuple(pairs), tuple(unservable)
 
 
-def _supplied(sets: ModelSets) -> dict[str, frozenset[str]]:
-    """Carrier → the admitted units supplying it with no duty row, under D16 (the site
-    boundary is a property of the carrier).
+def _z_release_columns(sets: ModelSets) -> dict[str, frozenset[str]]:
+    """Carrier -> the units with a z° column on it: D16 supply and released duty units.
 
-    The primary output of an internal-supply unit is the only one C8 (carrier balance) reads
-    directly: every other unit's output is settled by C1 (duty satisfaction) instead, and
-    adding it to the balance as well would ask the site to both meet the duty and dispose of
-    it. :func:`build_model`, :func:`screen_premise` and the ledger all read this one map.
+    One union, because a unit can be both – a kiln supplies ``clinker`` under D16 and a
+    grinder draws it – and two columns with one coordinate would fail in linopy.
     """
-    return {
-        carrier_id: frozenset(units & sets.units)
-        for carrier_id, units in sorted(sets.supply.items())
-        if units & sets.units
-    }
+    columns: dict[str, frozenset[str]] = {}
+    for carrier_id in sorted(set(sets.supply) | set(sets.released)):
+        units = (
+            sets.supply.get(carrier_id, frozenset()) | sets.released.get(carrier_id, frozenset())
+        ) & sets.units
+        if units:
+            columns[carrier_id] = frozenset(units)
+    return columns
+
+
+def _release_coordinate(unit_id: str, carrier_id: str) -> str:
+    return _Pair(duty_key=None, label=_supply_label(carrier_id), unit_id=unit_id).coordinate
+
+
+def _check_released(sets: ModelSets, reference: ReferenceTables) -> None:
+    """Refuse sets whose z° columns disagree with the units they hold.
+
+    ``released`` is derived from the model units, so sets built or narrowed by hand can carry
+    a stale one, and a stale one fails silently: a unit whose input comes only from another
+    unit's primary output is held at zero by C8 and the solve still reports optimal. A D16
+    supplier with a duty column is refused too, because C8 reads its primary output through
+    z° alone and would then miss whatever its duty columns made.
+    """
+    expected = released_supply(reference, sets)
+    if {k: frozenset(v) for k, v in sets.released.items() if v} != expected:
+        raise ValueError(
+            f"ModelSets.released is {dict(sets.released)} but the model units imply "
+            f"{expected}; set it with carb3.sets.released_supply after narrowing the sets"
+        )
+    dutied = {
+        unit_id for duty in sets.duties for unit_id in sets.eligible.get(duty.key, ())
+    } & sets.units
+    both = sorted({unit_id for units in sets.supply.values() for unit_id in units} & dutied)
+    if both:
+        raise ValueError(
+            f"{both} supply a D16 carrier and also serve a duty; C8 reads a D16 supplier's "
+            "output through z° alone, so its duty output would be lost"
+        )
+
+
+def _supplied(sets: ModelSets) -> dict[str, frozenset[str]]:
+    """Carrier → the units whose primary output C8 (carrier balance) reads, through z°.
+
+    A D16 (the site boundary is a property of the carrier) supplier, and a duty unit whose
+    output another unit draws (``released``). Every other primary output is settled by C1
+    (duty satisfaction) alone. :func:`build_model`, :func:`screen_premise` and the ledger all
+    read this one map.
+    """
+    return _z_release_columns(sets)
 
 
 #: The leg a unit dropped by :func:`screen_premise` is reported under, beside the §3.2
@@ -774,12 +840,11 @@ def screen_premise(
     it, so C8 (carrier balance) pins it to zero and it fills the ledger with zero rows.
 
     A carrier is sourceable for a consumer if it may be imported, or if some *other* model
-    unit has a positive C8 coefficient on it or makes it as its ``primary_output``. The last
-    clause is for duty carriers: their output is settled by C1 (duty satisfaction) and never
-    reaches C8, so ``heat_pump_ht`` drawing ``heat_60_100`` would otherwise be dropped for a
-    reason that is false. It stays, held at zero by C8 as before; that gap is C8's, not the
-    site's. A unit is never its own source: one drawing the carrier it makes is pinned at
-    zero by C8 exactly as one drawing a carrier nobody makes.
+    unit has a positive C8 coefficient on it. A duty unit's output counts, because z° puts it
+    in C8 wherever another unit draws it (``released``): ``heat_pump_ht`` drawing
+    ``heat_60_100`` is fed by the low-grade heat pumps and boilers. A unit is never its own
+    source: one drawing the carrier it makes is pinned at zero by C8 exactly as one drawing a
+    carrier nobody makes.
 
     A unit with a negative coefficient on an unsourceable carrier is dropped, and the rule
     repeats until nothing changes, since a dropped producer can strand its consumers.
@@ -796,13 +861,9 @@ def screen_premise(
     """
     periods = tuple(int(year) for year in sets.periods)
     carrier_facts = _carrier_facts(reference)
-    io = reference.unit_input_output
-    primary_outputs = io[io["role"] == PRIMARY_OUTPUT_ROLE]
-    made_as_output: dict[str, set[str]] = {}
-    for unit_id, carrier_id in zip(
-        primary_outputs["unit_id"], primary_outputs["carrier_id"], strict=True
-    ):
-        made_as_output.setdefault(str(carrier_id), set()).add(str(unit_id))
+    # z° puts a duty unit's output in C8 wherever another unit draws it, so C8's own signs
+    # say which carriers are made here; hand-built sets get their z° columns here too.
+    sets = replace(sets, released=released_supply(reference, sets))
 
     candidates, _ = _candidate_pairs(sets)
     present = {pair.unit_id for pair in candidates}
@@ -813,8 +874,14 @@ def screen_premise(
     )
     producers: dict[str, set[str]] = {
         carrier_id: {unit_id for unit_id, values in by_unit.items() if np.any(values > 0.0)}
-        | made_as_output.get(carrier_id, set())
         for carrier_id, by_unit in coefficients.items()
+    }
+    # Only for the reason text: a unit whose primary output is the carrier it lacks.
+    io = reference.unit_input_output
+    self_made = {
+        (str(unit_id), str(carrier_id))
+        for unit_id, carrier_id, role in zip(io["unit_id"], io["carrier_id"], io["role"], strict=True)
+        if str(role).strip() == PRIMARY_OUTPUT_ROLE
     }
 
     drops: list[UnitDrop] = []
@@ -840,13 +907,17 @@ def screen_premise(
                 UnitDrop(
                     unit_id,
                     UNREACHABLE_INPUT_LEG,
-                    _unreachable_detail(unit_id, reasons[unit_id], producers, dropped),
+                    _unreachable_detail(
+                        unit_id, reasons[unit_id], producers, dropped, self_made
+                    ),
                 )
             )
         dropped |= set(reasons)
         present -= set(reasons)
     if dropped:
         sets = _without_units(sets, dropped)
+        # A maker whose only drawer was dropped keeps no z° column.
+        sets = replace(sets, released=released_supply(reference, sets))
     return sets, tuple(drops)
 
 
@@ -855,6 +926,7 @@ def _unreachable_detail(
     carriers: list[str],
     producers: dict[str, set[str]],
     earlier: set[str],
+    self_made: set[tuple[str, str]],
 ) -> str:
     parts: list[str] = []
     for carrier_id in carriers:
@@ -862,7 +934,7 @@ def _unreachable_detail(
         # Every other maker still present would have made the carrier sourceable, so any
         # other maker that was here at all is one an earlier round dropped.
         gone = sorted(producers.get(carrier_id, set()) & earlier)
-        if unit_id in producers.get(carrier_id, set()):
+        if (unit_id, carrier_id) in self_made or unit_id in producers.get(carrier_id, set()):
             text += "; only this unit makes it, and a unit cannot feed itself"
         elif len(gone) == 1:
             text += f"; its only producer here, {gone[0]}, was dropped"
@@ -873,7 +945,10 @@ def _unreachable_detail(
 
 
 def _without_units(sets: ModelSets, drop: set[str]) -> ModelSets:
-    """``sets`` with ``drop`` removed from U, every U_q, every supply set and every bound."""
+    """``sets`` with ``drop`` removed from U, every U_q, every supply set and every bound.
+
+    ``released`` is not recomputed here; :func:`screen_premise` does it once the drops settle.
+    """
     return replace(
         sets,
         units=sets.units - drop,
@@ -1174,16 +1249,16 @@ def _balance_terms(
     """C8's coefficient set by role: carrier → unit → role → ι over the periods.
 
     Every role except ``primary_output`` enters, because C8 reads a primary output through
-    z° and z° exists in this slice only for the supply units below – an ordinary unit's whole
-    output is dispatched to duties and is settled by C1 instead. The inner sum is over
+    z°, and z° exists only for the units in ``supplied`` below – any other unit's output is
+    dispatched to duties and settled by C1 instead. The inner sum is over
     **roles**, per §5.5: a store holding a charge row and a discharge row on one carrier, or a fired capture train holding an
     ``emission_input`` and a derived ``emission`` row on ``co2_fuel_fossil``, sums both here.
 
-    **``supplied`` is the one exception, and it is the D16 case.** A carrier D16 left with no
-    duty row has no C1 row to settle its producers against, so for those (carrier, unit)
-    pairs the ``primary_output`` coefficient *is* the balance: the kiln's ``+1`` clinker
-    against the grinder's ``−0.752212`` draw. Including it for anything else would ask the
-    site to meet the duty and dispose of the same output twice over.
+    **``supplied`` is the one exception: the units with a z° column.** A carrier D16 left with
+    no duty row has no C1 row to settle its producers against, so the kiln's ``+1`` clinker
+    against the grinder's ``−0.752212`` draw is the balance. A duty unit whose output another
+    unit draws (``released``) enters the same way. :func:`_balance_parts` then scales that
+    row by the z° column alone; scaling it by total activity would count duty output twice.
 
     A6's two derived rows (§3.6, D15) are added on top, and they are period-dependent because
     the emission factor is a ``scenario_parameters`` series.
@@ -1229,20 +1304,50 @@ def _balance_terms(
     _apply_a6(reference, burn, carrier_facts, periods, coefficients, screening=screening)
 
     # Drop anything that is zero in every period: an all-zero row would add a term to C8 that
-    # carries no flow, which is the dense-model habit #248 warns about. The test is on the
-    # role sum, so two roles that cancel exactly drop together, as they did before the split.
-    return {
-        carrier_id: {
-            unit_id: by_role
-            for unit_id, by_role in by_unit.items()
-            if np.any(np.abs(sum(by_role.values(), np.zeros(n_periods))) > 0.0)
-        }
-        for carrier_id, by_unit in coefficients.items()
-        if any(
-            np.any(np.abs(sum(by_role.values(), np.zeros(n_periods))) > 0.0)
-            for by_role in by_unit.values()
+    # carries no flow, which is the dense-model habit #248 warns about. The test is per
+    # variable: roles scaled by total activity cancel together, as they always did, but a
+    # primary output is scaled by z° and cannot cancel a draw scaled by total activity.
+    def _live(by_role: dict[str, np.ndarray]) -> bool:
+        other = sum(
+            (v for role, v in by_role.items() if role != PRIMARY_OUTPUT_ROLE),
+            np.zeros(n_periods),
         )
+        output = by_role.get(PRIMARY_OUTPUT_ROLE, np.zeros(n_periods))
+        return bool(np.any(np.abs(other) > 0.0) or np.any(np.abs(output) > 0.0))
+
+    return {
+        carrier_id: {unit_id: by_role for unit_id, by_role in by_unit.items() if _live(by_role)}
+        for carrier_id, by_unit in coefficients.items()
+        if any(_live(by_role) for by_role in by_unit.values())
     }
+
+
+def _balance_parts(
+    terms: dict[str, dict[str, dict[str, np.ndarray]]], n_periods: int
+) -> dict[str, tuple[dict[str, np.ndarray], dict[str, np.ndarray]]]:
+    """C8's terms split by the variable they multiply: carrier → (by activity, by z°).
+
+    A primary output multiplies the unit's z° column on the carrier; every other role
+    multiplies its total activity. Each half drops a unit whose sum is zero in every period on
+    its own, so a +1 output cannot cancel a −1 draw that a different variable scales.
+    """
+    parts: dict[str, tuple[dict[str, np.ndarray], dict[str, np.ndarray]]] = {}
+    for carrier_id, by_unit in terms.items():
+        by_activity: dict[str, np.ndarray] = {}
+        by_release: dict[str, np.ndarray] = {}
+        for unit_id, by_role in by_unit.items():
+            other = sum(
+                (v for role, v in by_role.items() if role != PRIMARY_OUTPUT_ROLE),
+                np.zeros(n_periods),
+            )
+            if np.any(np.abs(other) > 0.0):
+                by_activity[unit_id] = other
+            output = by_role.get(PRIMARY_OUTPUT_ROLE)
+            if output is not None and np.any(np.abs(output) > 0.0):
+                by_release[unit_id] = output
+        if by_activity or by_release:
+            parts[carrier_id] = (by_activity, by_release)
+    return parts
 
 
 def _apply_a6(
