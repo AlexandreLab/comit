@@ -529,22 +529,24 @@ def _export_upper_bounds(
     periods: Sequence[int],
     period_index: pd.Index,
 ) -> xr.DataArray:
-    """C9 (infrastructure availability) as an upper bound of zero on x_{c,t} (§5.5).
+    """C9 (infrastructure availability) as an upper bound of zero on x_{c,t} (§5.5), and
+    the connection's export capacity as an upper bound in the periods it is open.
 
     §3.7's rows are the sourced statement of when a network reaches a cluster, and they are
     better evidence than the ``earliest_year`` column: four clusters take CO₂ from 2030 and
     five never do. Written as a bound rather than a constraint row because the window is a
-    parameter — the LP has no decision to make about whether a pipeline exists.
+    parameter — the LP has no decision to make about whether a pipeline exists. The capacity
+    (:attr:`carb3.sets.ExportWindow.capacity`) keeps a z° release from exporting without
+    limit; where it is ``None`` the open periods stay unbounded, as before.
     """
-    allowed = {
-        window.carrier_id: set(window.periods) for window in sets.export_windows
-    }
+    windows = {window.carrier_id: window for window in sets.export_windows}
     bounds = np.full((len(export_carriers), len(periods)), np.inf)
     for row, carrier_id in enumerate(export_carriers):
-        open_periods = allowed.get(carrier_id, set())
+        window = windows.get(carrier_id)
+        open_periods = set(window.periods) if window else set()
+        cap = window.capacity if window and window.capacity is not None else np.inf
         for column, year in enumerate(periods):
-            if year not in open_periods:
-                bounds[row, column] = 0.0
+            bounds[row, column] = cap if year in open_periods else 0.0
     return xr.DataArray(
         bounds, coords=[pd.Index(list(export_carriers), name="carrier"), period_index]
     )

@@ -118,6 +118,16 @@ class ExportWindow:
     periods: tuple[int, ...]
     #: The §3.7 network this carrier rides on, or ``""`` where C9 does not gate it.
     network: str
+    #: Most the connection can carry in a year, PJ/yr: ``premise_connection.export_capacity``
+    #: (MW) run flat out. ``None`` where any row is blank or the carrier is not measured in
+    #: energy (``co2_captured`` is mass). A loose first piece of C11 (connection capacity):
+    #: without it a unit releasing output through z° could export without limit whenever
+    #: the export price beats its cost, and the LP would be unbounded.
+    capacity: float | None = None
+
+
+#: PJ a 1 MW flow carries in a year: 1 MW × 8,760 h = 31.536 TJ.
+PJ_PER_MW_YEAR: float = 0.031536
 
 
 @dataclass(frozen=True)
@@ -773,9 +783,14 @@ def export_windows(
             ))
             continue
 
+        capacity = export_capacity(
+            premise.premise_connection,
+            carrier_id,
+            str(carrier.loc[carrier_id, "denominator_kind"]),
+        )
         network = EXPORT_NETWORK.get(carrier_id, "")
         if not network:
-            windows.append(ExportWindow(carrier_id, periods, ""))
+            windows.append(ExportWindow(carrier_id, periods, "", capacity))
             continue
         if not cluster or cluster == "none":
             refused.append(ExportRefusal(
@@ -785,8 +800,26 @@ def export_windows(
             ))
             continue
         available = _available_periods(reference, network, cluster, periods)
-        windows.append(ExportWindow(carrier_id, available, network))
+        windows.append(ExportWindow(carrier_id, available, network, capacity))
     return tuple(windows), tuple(refused)
+
+
+def export_capacity(
+    connection: pd.DataFrame, carrier_id: str, denominator_kind: str
+) -> float | None:
+    """The PJ/yr a premise's connections can export of an energy carrier, or ``None``.
+
+    The sum over the carrier's ``premise_connection`` rows of ``export_capacity`` (MW) times
+    :data:`PJ_PER_MW_YEAR`. ``None`` (no cap) where the carrier is not measured in energy, or
+    any of its rows leaves the capacity blank: a blank is unknown, not zero.
+    """
+    if denominator_kind != "energy":
+        return None
+    rows = connection[connection["carrier_id"].astype(str) == carrier_id]
+    values = pd.to_numeric(rows["export_capacity"], errors="coerce")
+    if rows.empty or values.isna().any():
+        return None
+    return float(values.sum()) * PJ_PER_MW_YEAR
 
 
 def _export_price_cover(
