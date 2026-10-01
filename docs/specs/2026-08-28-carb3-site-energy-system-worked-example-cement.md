@@ -140,17 +140,17 @@ C12 (siting cap) is unbounded and the LP builds infinite PV.
 
 From the site's environmental permit:
 
-| `process_id` | `valid_from_year` | `valid_to_year` | `connection_id` | `known_capacity` | `confidence` |
-|---|---|---|---|---|---|
-| `quarrying_crushing` | 1957 | — | `C-01` | — | medium |
-| `raw_grinding_blending` | 1957 | — | `C-01` | — | medium |
-| `raw_meal_homogenisation` | 1957 | — | `C-01` | — | medium |
-| `kiln_pyroprocessing` | **1957** | **2003** | `C-01` | 0.70 Mt/yr | medium |
-| `kiln_pyroprocessing` | **2004** | — | `C-01` | **0.95 Mt/yr** | **high** |
-| `clinker_cooling` | 2004 | — | `C-01` | — | medium |
-| `cement_grinding` | 1957 | — | `C-01` | — | medium |
-| `packing_dispatch` | 1957 | — | `C-01` | — | medium |
-| `site_services` | 1957 | — | `C-01` | — | medium |
+| `process_id` | `valid_from_year` | `valid_to_year` | `connection_id` | `known_capacity` | `known_activity` | `confidence` |
+|---|---|---|---|---|---|---|
+| `quarrying_crushing` | 1957 | — | `C-01` | — | — | medium |
+| `raw_grinding_blending` | 1957 | — | `C-01` | — | — | medium |
+| `raw_meal_homogenisation` | 1957 | — | `C-01` | — | — | medium |
+| `kiln_pyroprocessing` | **1957** | **2003** | `C-01` | 0.70 Mt/yr | — | medium |
+| `kiln_pyroprocessing` | **2004** | — | `C-01` | **0.95 Mt/yr** | **0.85 Mt/yr** | **high** |
+| `clinker_cooling` | 2004 | — | `C-01` | — | — | medium |
+| `cement_grinding` | 1957 | — | `C-01` | — | 1.13 Mt/yr | medium |
+| `packing_dispatch` | 1957 | — | `C-01` | — | — | medium |
+| `site_services` | 1957 | — | `C-01` | — | — | medium |
 
 Nine rows covering eight processes, so this is the site's **complete** process list as at any
 year in range (§3.10's completeness rule). Two things it shows:
@@ -820,6 +820,7 @@ implied clinker output        = 3.96000 / 4.60000                 = 0.86087 Mt/y
 declared throughput                                               = 0.85000 Mt/yr
 known_capacity (permit, the whole line — §1.5)                     = 0.95000 Mt/yr
 utilisation = output / (capacity × γ) = 0.850000 / (0.95000 × 1.0)  = 0.89474
+known_activity (§1.5) = capacity × γ × utilisation = 0.95000 × 1.0 × 0.89474 = 0.85000 Mt/yr
 ```
 
 Three checks, and all three pass:

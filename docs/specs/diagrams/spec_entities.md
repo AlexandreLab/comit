@@ -170,7 +170,7 @@ One row per table, in the order §3 defines them.
 |  | `premise_throughput` | §3.1.2 | physical output by carrier | `quantity`, `data_status`, `source` |
 | Connections | `premise_connection` | §3.1.3 | — | `import_capacity`, `export_capacity`, `connection_voltage`, `available_area` |
 | Processes | `activity_process_register` | §3.2 | activity → processes | `set_name`, `is_default`, `process_name`, `is_optional`, `provenance` |
-|  | `premise_process_detail` | §3.10 | known site processes and capacity | `valid_to_year`, `known_capacity`, `provenance`, `confidence` |
+|  | `premise_process_detail` | §3.10 | known site processes and capacity | `valid_to_year`, `known_capacity`, `known_activity`, `provenance`, `confidence` |
 |  | `process_load_shape` | §3.13 | how a process presents its demand | `shape_id`, `shape_class`, `duty_factor`, `peak_to_mean`, `runs_when_idle`, `seasonality`, `provenance`, `confidence` |
 |  | `premise_process_energy` | §3.10.1 | sub-metered energy per process | `quantity`, `data_status`, `provenance`, `confidence` |
 |  | `premise_process_unit` | §3.10.2 | which units a known process runs, and when each was installed | `commissioned_year`, `capacity_share`, `provenance`, `confidence` |
@@ -420,6 +420,7 @@ erDiagram
     integer valid_to_year "optional"
     string connection_id FK "optional"
     real known_capacity "optional"
+    real known_activity "optional"
     string provenance "required"
     enum confidence "required"
     }

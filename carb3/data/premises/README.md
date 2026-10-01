@@ -133,8 +133,9 @@ process list for that year**.
 | `valid_from_year` | yes | **PK** part. The full key `(premise_id, process_id, valid_from_year)` is what `premise_process_unit` points to | The year the process **started at the site**. It can't be later than the base year, because a planned future change isn't an observation. If the start year is unknown, write the base year and say so in `provenance`. With `process_id` it identifies the row, so child tables repeat it to point at their parent | `mvp-cement`'s kiln has two rows: `1957` for the old wet line and `2004` for the current dry line |
 | `valid_to_year` | no | | The year the process **stopped**. Blank means it's still running. Must be ≥ `valid_from_year`. Windows for one process must not overlap, and only the window covering the base year is read; closed windows are history | `2003` closes the wet kiln line, which the model ignores; blank on the 2004 dry line, so that is the row read |
 | `connection_id` | no | → `premise_connection` | Which electricity connection serves this process, which decides where electrified load lands. Blank means the default. **These premises put the gas connection `G-01` on gas-fired processes**, which the spec's wording (an electricity connection) does not cover | `C-01` (electricity) on every `mvp-cement` row; `G-01` (gas) on `mvp-dairy`'s boiler |
-| `known_capacity` | no | | **The process's annual size**: PJ/yr for an energy process, Mt/yr for a mass one. A2 (duties and candidate units) splits it into duties. Must be > 0, so a known zero has to be left blank with the reason in `provenance` | `0.950000` Mt/yr clinker on the 2004 kiln line; `0.131579` PJ/yr on `mvp-dairy`'s boiler; blank on `mvp-cement`'s `clinker_cooling` (a genuine zero) |
-| `provenance` | yes | | Where the row came from, including the unit `known_capacity` is in | `Mt/yr clinker line capacity; cement worked example section 1.5 permit figure` |
+| `known_capacity` | no | | **The installed nameplate capacity** of the process's plant, in the process's output unit (PJ/yr-equivalent for an energy process, Mt/yr for a mass one). A4 (back-solve) sizes the incumbent from it directly, and `known_activity / known_capacity` is the utilisation. Must be > 0 | `0.950000` Mt/yr clinker line capacity on the 2004 kiln line; `0.700000` on the closed wet line; blank on every other `mvp-*` row |
+| `known_activity` | no | | **The annual activity** in the process's output unit: PJ/yr for an energy process, Mt/yr for a mass one. A2 (duties and candidate units) splits it into duties by `duty_share`. With no `known_capacity`, the incumbent's capacity is `known_activity / (γα)`. Must be > 0, so a known zero has to be left blank with the reason in `provenance`. Must not exceed `known_capacity` when both are given | `0.850000` Mt/yr clinker on the 2004 kiln line; `0.131579` PJ/yr on `mvp-dairy`'s boiler; blank on `mvp-cement`'s `clinker_cooling` (a genuine zero) |
+| `provenance` | yes | | Where the row came from, including the unit `known_capacity` and `known_activity` are in | `Mt/yr clinker line capacity; cement worked example section 1.5 permit figure` |
 | `confidence` | yes | | high, medium or low. Carried through to the outputs | `high` on the 2004 kiln line; `medium` on the closed wet line |
 
 ### `premise_process_unit` (§3.10.2): which units each process runs, and when each was installed
@@ -161,17 +162,20 @@ age); a row with no `commissioned_year` falls back to `construction_year`, then 
 
 ## Where the duty magnitude lives
 
-**`premise_process_detail.known_capacity` is the premise's annual magnitude for that
+**`premise_process_detail.known_activity` is the premise's annual magnitude for that
 process**, in PJ/yr for an energy-denominated process and Mt/yr for a mass-denominated one
 (D5, hybrid denominators). A2 splits it across the process's
 `activity_process_duty_profile` rows by `duty_share`.
 
-This is the slice's reading of §3.10, and it is stated here because the four commissioned
-tables carry no other magnitude field. Each row's `provenance` names the unit it is in.
+`known_capacity` is a different quantity: the installed nameplate, stated only where a
+permit gives it (the cement kiln's 0.95 Mt/yr and the closed wet line's 0.70 Mt/yr). Where
+given it sizes the incumbent directly; otherwise the incumbent is `known_activity / (γα)`.
+The kiln's `known_activity` is 0.850000 Mt/yr, its nameplate 0.95 times the worked example's
+utilisation (§5.1: 0.85 declared throughput over 0.95 × γ 1.0 = 0.89474). Each row's `provenance` names the unit it is in.
 
 Two consequences worth knowing before reading a number:
 
-- **`known_capacity` cannot state a known zero** — §3.10 requires `> 0 if present`. Two
+- **`known_activity` cannot state a known zero**: §3.10 requires `> 0 if present`. Two
   `mvp-cement` processes, `clinker_cooling` and `site_services`, have a genuine duty of
   0.00000 PJ/yr (the reference `activity_process_energy_share.csv` carries no row for
   either), and they are written blank with the reason in `provenance`. This is §3.1.1's
@@ -205,7 +209,7 @@ covers both duties and the premise needs no second incumbent.
 0.01 PJ/yr on `boiler_steam_hot_water`. The grade-2 duty is **0.046180 PJ/yr**, 4.6× the
 floor, so the demonstration unit is not screened out.
 
-**Which figures are synthetic.** All of them. `known_capacity` is 0.100000 PJ/yr, chosen round
+**Which figures are synthetic.** All of them. `known_activity` is 0.100000 PJ/yr, chosen round
 so the reference split 0.46180 / 0.53820 lands exactly and the gas figure is
 0.100000 × 1.13636 = 0.113636 PJ/yr on the nose. Location, floorspace and construction year
 are plausible filler; the construction year 2009 matches the single cohort so the premise has
@@ -238,7 +242,7 @@ tested rather than merely present. `heat_pump_lt_air` contends on both grade-2 d
 **Which figures are taken from the worked example.** The premise record (§1.1), both
 connections (§1.4), the base-year energy rows (§1.2), the six processes and their
 `valid_from_year` values (§1.5), and the `boiler_steam_hot_water` and `direct_heating` units
-and cohorts (§1.6). Every `known_capacity` is the example's §3.2 duty figure for that process,
+and cohorts (§1.6). Every `known_activity` is the example's §3.2 duty figure for that process,
 except `site_services`: 0.033661 PJ/yr is set so the reference SPC share 0.549 reproduces the
 example's 0.018480 SPC duty exactly.
 
@@ -347,7 +351,7 @@ Stdlib only, because `pandas` is not installed in this repo. It checks, and curr
 - every `cluster_id` resolves against `infrastructure_scenario.csv`, and a premise
   without one is warned about, because C9 then permits it no CO₂ export at all;
 - the §3.10 rules: validity intervals disjoint, at least one row valid at the base year,
-  `valid_from_year ≤ data_year`, `known_capacity > 0` where present;
+  `valid_from_year ≤ data_year`, `known_capacity > 0` and `known_activity > 0` where present, and `known_activity ≤ known_capacity` where both are;
 - the §3.10.2 rules: `(window, cohort_id)` unique, a unit repeated in one window only with
   different `commissioned_year` values, `capacity_share` all-or-none and summing to 1 within
   1e-6 per window (V33, plant is named one unit at a time), each row's parent triple present,
@@ -371,7 +375,7 @@ by how much; [the package README](../../README.md#two-checks-before-the-solve) h
 detail and a worked failure.
 
 The usual cause is a `capacity_share` that does not match the duties each unit can serve.
-Shares always add up to the process's `known_capacity`, so the total is never short; what
+Shares always add up to the process's whole incumbent capacity, so the total is never short; what
 goes wrong is giving a unit less than the duty **only it** can serve. `mvp-dairy`'s
 `site_services` shows it: its heat pump must carry the whole space-heating duty (54.9% of the
 process) because a motor cannot make heat, so its share must be at least 0.549.
@@ -400,7 +404,7 @@ Recorded, not fixed. Nothing under `docs/notes/data/` was changed.
 4. **Lifetimes disagree between the worked examples and `unit.csv`.** The food and drink
    example's §1.6 end-of-life table gives `boiler_lt_gas` 20 years and `dryer_direct_gas` 20;
    `unit.csv` gives both 25. These tables follow `unit.csv`.
-5. **`known_capacity` cannot express a known zero** (§3.10), where §3.1.1 solved the same
+5. **`known_activity` cannot express a known zero** (§3.10), where §3.1.1 solved the same
    absence-versus-zero problem with `data_status = not_consumed`.
 6. **A minimal A2 that reads `activity_process_duty_profile.csv` without applying §3.9's D16
    suppression will get `mvp-cement` wrong in two ways at once.** *(Closed 2026-09-20: A2

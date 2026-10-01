@@ -597,7 +597,7 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     `clinker` is among them; every row is an energy or service carrier. `Cement Works`'s
     `cement_grinding` row is classified `MOT` on `motive_power` at `duty_share` 1.00000, so
     note 21 §3.3's minimal A2 — which reads `activity_process_register` and this table and
-    nothing else — derives a 1.130000 "PJ/yr" motive-power duty from a `known_capacity` that
+    nothing else — derives a 1.130000 "PJ/yr" motive-power duty from a `known_capacity` (now `known_activity`) that
     is 1.130000 **Mt/yr of cement**, and then finds no unit that can serve it:
     `grinder_mixer_elec` and `grinder_mixer_clinker_sub_elec` both clear the §3.2 admission
     screen and both have `cement` as their primary output. `mvp-cement` therefore does not

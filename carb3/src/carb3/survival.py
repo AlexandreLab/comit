@@ -144,25 +144,24 @@ def vintage_capacity(premise, unit: pd.DataFrame) -> pd.DataFrame:
     survival function, which is not reachable in this slice (see the module docstring).
 
     §3.10.2 carries a ``capacity_share`` and no capacity: the magnitude lives one table up, in
-    ``premise_process_detail.known_capacity``, which the premise README states is "the
-    premise's annual magnitude for that process". That is an **activity** in PJ/yr or Mt/yr,
-    not a nameplate, so C2's ``a γ α`` has to be inverted to get the capacity behind it::
+    ``premise_process_detail``. Where that row states ``known_capacity`` (a nameplate, from a
+    permit) it is in output units, so the capacity is ``known_capacity / γ_u`` (the
+    capacity-to-activity factor, not the availability). Otherwise ``known_activity`` is the process's
+    annual activity in PJ/yr or Mt/yr, not a nameplate, so C2's ``a γ α`` has to be inverted
+    to get the capacity behind it::
 
-        capacity = known_capacity / (γ_u α_u)
+        capacity = known_activity / (γ_u α_u)
 
-    and :func:`surviving_capacity` then scales it by the cohort's ``capacity_share``.
+    and :func:`surviving_capacity` then scales either by the cohort's ``capacity_share``.
 
-    **Reading ``known_capacity`` as a capacity instead would make ``mvp-minimal``
-    infeasible at the base year**, which is how the two readings are told apart: its single
-    incumbent covers a 0.100000 PJ/yr duty at ``availability_factor`` 0.9823, so taken as a
-    nameplate it delivers 0.098230 PJ/yr, C5 (no building in the start year) forbids topping
-    it up, and C1 (duty satisfaction) cannot close. Taken as an activity it delivers the
-    0.100000 the premise was written to need. The premise README's remark that the cement
-    kiln's 0.95 Mt/yr leaves 2% of headroom follows the other reading and is a shade
-    conservative; nothing in the model depends on which, because the kiln clears 0.85 Mt/yr
-    either way.
+    **Reading ``known_activity`` as a capacity instead would make ``mvp-minimal``
+    infeasible at the base year**: its single incumbent covers a 0.100000 PJ/yr duty at
+    ``availability_factor`` 0.9823, so taken as a nameplate it delivers 0.098230 PJ/yr, C5
+    (no building in the start year) forbids topping it up, and C1 (duty satisfaction) cannot
+    close. Taken as an activity it delivers the 0.100000 the premise was written to need.
 
-    A window valid at the base year with a blank ``known_capacity`` contributes no incumbent
+    A window valid at the base year with a blank ``known_capacity`` and a blank
+    ``known_activity`` contributes no incumbent
     capacity, which is the same silence :func:`carb3.sets.derive_duties` gives its duty. A
     row whose process has no ``premise_process_detail`` row at all is an unresolvable
     reference and raises. A window valid at the base year with more than one row and a blank
@@ -178,7 +177,10 @@ def vintage_capacity(premise, unit: pd.DataFrame) -> pd.DataFrame:
     started = detail["valid_from_year"] <= data_year
     not_ended = detail["valid_to_year"].isna() | (detail["valid_to_year"] >= data_year)
     valid = {
-        (str(row.process_id), int(row.valid_from_year)): row.known_capacity
+        (str(row.process_id), int(row.valid_from_year)): (
+            row.known_capacity,
+            row.known_activity,
+        )
         for row in detail[started & not_ended].itertuples(index=False)
     }
     known_processes = set(detail["process_id"].astype(str))
@@ -211,8 +213,8 @@ def vintage_capacity(premise, unit: pd.DataFrame) -> pd.DataFrame:
     indexed = unit.set_index("unit_id")
     rows = []
     for row in kept:
-        activity = valid[(str(row.process_id), int(row.valid_from_year))]
-        if pd.isna(activity):
+        stated_capacity, activity = valid[(str(row.process_id), int(row.valid_from_year))]
+        if pd.isna(stated_capacity) and pd.isna(activity):
             continue
         unit_id = str(row.unit_id)
         deliverable = float(indexed.loc[unit_id, "capacity_to_activity_factor"]) * float(
@@ -223,14 +225,22 @@ def vintage_capacity(premise, unit: pd.DataFrame) -> pd.DataFrame:
                 f"unit {unit_id!r} has a non-positive γα and cannot carry incumbent "
                 "capacity; the §3.2 admission screen should have dropped it"
             )
-        rows.append({**row._asdict(), "capacity": float(activity) / deliverable})
+        # A stated nameplate is in the process's output units (§3.10), so the build variable
+        # behind it is nameplate / γ; the activity path divides by γα, the availability too.
+        gamma = float(indexed.loc[unit_id, "capacity_to_activity_factor"])
+        capacity = (
+            float(stated_capacity) / gamma
+            if not pd.isna(stated_capacity)
+            else float(activity) / deliverable
+        )
+        rows.append({**row._asdict(), "capacity": capacity})
     return pd.DataFrame.from_records(rows, columns=[*children.columns, "capacity"])
 
 
 def _lifetimes(unit: pd.DataFrame) -> dict[str, int]:
     """``unit_id`` → ``lifetime`` in years, skipping units whose lifetime is blank.
 
-    13 of the reference table's 138 units carry a blank ``lifetime`` (§3.2). They are dropped
+    13 of the reference table's 145 units carry a blank ``lifetime`` (§3.2). They are dropped
     by the admission screen before they reach the LP; here a vintage row naming one raises,
     through the caller's unknown-unit check.
     """
@@ -264,7 +274,7 @@ def _share(value: object) -> float:
 def _as_years(value: object) -> int | None:
     """Coerce a lifetime cell to whole years, or ``None`` where it is blank.
 
-    ``pd.NA`` is a blank too. 13 of ``unit.csv``'s 138 rows carry no ``lifetime`` and the
+    ``pd.NA`` is a blank too. 13 of ``unit.csv``'s 145 rows carry no ``lifetime`` and the
     loader keeps the column ``Int64``, so the cell arrives as ``NAType`` rather than as
     ``float('nan')`` — which ``float()`` refuses outright, so a real reference table turned
     the intended "skip it" into a ``TypeError``.

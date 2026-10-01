@@ -14,7 +14,7 @@ among them — so a mass duty cannot come from it. §3.1.2 already says where it
 duty on that product under D5 — a cement works' 1.13 Mt/yr of cement is what C1 makes it
 produce." So A2 reads ``premise_throughput`` too, for product duties only, at the base year
 only (D12). Without it A2 read the cement works' ``MOT`` profile row against a
-``known_capacity`` that is 1.13 **Mt of cement** and produced a 1.13 **PJ** motive-power
+``known_activity`` that is 1.13 **Mt of cement** and produced a 1.13 **PJ** motive-power
 duty no unit could serve.
 
 **Export, and C9's gate, are assembled here too** (:func:`export_windows`). §5.2 declares
@@ -134,6 +134,28 @@ class ExportRefusal:
 
 
 @dataclass(frozen=True)
+class EligibilityDrop:
+    """A unit that reached a process through ``unit_eligibility`` and was refused by one of
+    its constraint columns, with the reason the run report prints.
+
+    Unlike :class:`~carb3.load.UnitDrop` this is not an admission-screen finding: the unit is
+    admitted to U and is refused only for this process. It is recorded only for a unit that
+    would otherwise have been eligible, so a unit already refused by C10 (the grade cascade)
+    or by the §3.2 screen is not reported here a second time.
+    """
+
+    premise_id: str
+    process_id: str
+    unit_id: str
+    #: ``min_duty`` (the duty is below the unit's floor), ``max_share`` (a 0.00 cap, which
+    #: is a prohibition and so removes the unit rather than bounding it) or
+    #: ``min_duty_unchecked`` (a supply unit's floor could not be read because
+    #: ``known_activity`` is blank; the unit is kept, so this is a note and not a drop).
+    reason: str
+    detail: str
+
+
+@dataclass(frozen=True)
 class ModelSets:
     """Q, U and U_q, plus the three eligibility columns the LP turns into bounds."""
 
@@ -154,10 +176,13 @@ class ModelSets:
     #: :func:`undutied_supply`: without this the cement kilns have no activity variable and
     #: the ``clinker`` node can never be met, and ``ccs_amine`` has none either.
     supply: Mapping[str, frozenset[str]] = field(default_factory=dict)
-    #: Processes valid at the base year that yielded no duty because ``known_capacity`` is
+    #: Processes valid at the base year that yielded no duty because ``known_activity`` is
     #: blank. Reported by the run report rather than silently absorbed — see
     #: :func:`derive_duties`.
-    no_magnitude: tuple[str, ...] = ()
+    no_activity: tuple[str, ...] = ()
+    #: The subset of ``no_activity`` whose ``known_capacity`` is stated: they size an
+    #: incumbent but derive no duty.
+    capacity_only: tuple[str, ...] = ()
     #: ``earliest_year`` for the supply units above. They sit in no U_q, so the duty-keyed
     #: mapping cannot hold them, and without this ``ccs_amine``'s 2035 gate would not be
     #: applied to the one unit it exists for.
@@ -168,6 +193,9 @@ class ModelSets:
     #: Carriers refused an export variable, with the reason. The run report prints these
     #: beside the §3.2 screen's dropped units.
     export_refused: tuple[ExportRefusal, ...] = ()
+    #: Units removed from a process by ``min_duty`` or a 0.00 ``max_share``. Reported beside
+    #: the §3.2 screen's drops, since otherwise these vanish from U_q without a trace.
+    eligibility_dropped: tuple[EligibilityDrop, ...] = ()
 
 
 # ------------------------------------------------------------------- the minimal A2
@@ -302,7 +330,7 @@ def derive_duties(
     Structure is read, magnitude is hand-written. For each §3.10 process valid at the base
     year, every ``activity_process_duty_profile`` row of that process becomes a duty on that
     row's ``carrier_id`` at that row's ``grade_rank``, and its quantity is the premise's
-    ``known_capacity`` for the process split by the row's ``duty_share`` — which is the
+    ``known_activity`` for the process split by the row's ``duty_share``, which is the
     arithmetic §3.3 defines for a share ("share of this process's energy that is this
     duty"). Nothing else about the magnitude is derived: it is flat across ``periods``,
     because this slice models no demand growth.
@@ -323,15 +351,15 @@ def derive_duties(
     that need reaches C8 through the unit's own input coefficients — and exactly one
     throughput duty instead. Only the base year is read (D12); the rest is history.
 
-    **A process with a blank ``known_capacity`` yields no duty, and is reported rather than
-    raised on.** §3.10 requires ``known_capacity > 0 if present``, so the column cannot state
+    **A process with a blank ``known_activity`` yields no duty, and is reported rather than
+    raised on.** §3.10 requires ``known_activity > 0 if present``, so the column cannot state
     a *known* zero, and two ``mvp-cement`` processes — ``clinker_cooling`` and
     ``site_services`` — have a genuine duty of 0.00000 PJ/yr and are written blank with the
     reason in ``provenance``. That is the premise README's finding 5 and §3.1.1's
     absence-is-not-zero trap in a table with no ``data_status`` column to resolve it. The
     minimal A2 has no A4 back-solve, so it cannot recover a magnitude it was not given; a
     duty it cannot size is one it must not invent. Silence is what would be wrong, so
-    :func:`processes_without_magnitude` names every one of them and the run report prints
+    :func:`processes_without_activity` names every one of them and the run report prints
     them beside the screen's dropped units.
 
     Fails loud rather than yielding a thinner Q: an unknown activity, a process with no
@@ -370,9 +398,9 @@ def derive_duties(
             # premise_throughput below; its profile row is a classification (§3.1.2, §3.9).
             continue
 
-        capacity = process["known_capacity"]
-        if pd.isna(capacity):
-            continue  # no magnitude, so no duty; :func:`processes_without_magnitude` reports it
+        activity_size = process["known_activity"]
+        if pd.isna(activity_size):
+            continue  # no magnitude, so no duty; :func:`processes_without_activity` reports it
 
         for _, row in rows.iterrows():
             carrier_id = str(row["carrier_id"])
@@ -395,7 +423,7 @@ def derive_duties(
                     )
                 grade_rank = int(row["grade_rank"])
 
-            quantity = float(capacity) * float(row["duty_share"])
+            quantity = float(activity_size) * float(row["duty_share"])
             duty = Duty(
                 premise_id=premise_id,
                 process_id=process_id,
@@ -498,8 +526,8 @@ def _throughput_duties(
     return tuple(derived)
 
 
-def processes_without_magnitude(premise: PremiseTables) -> tuple[str, ...]:
-    """Processes valid at the base year whose ``known_capacity`` is blank (§3.10).
+def processes_without_activity(premise: PremiseTables) -> tuple[str, ...]:
+    """Processes valid at the base year whose ``known_activity`` is blank (§3.10).
 
     :func:`derive_duties` derives no duty for these. They are named here so the run report
     can print them: a duty that quietly does not exist is the failure mode, not the blank.
@@ -508,8 +536,20 @@ def processes_without_magnitude(premise: PremiseTables) -> tuple[str, ...]:
     processes = _processes_at(premise, int(record["data_year"]))
     if processes.empty:
         return ()
-    blank = processes[processes["known_capacity"].isna()]
+    blank = processes[processes["known_activity"].isna()]
     return tuple(sorted({str(process_id) for process_id in blank["process_id"]}))
+
+
+def processes_with_capacity_only(premise: PremiseTables) -> tuple[str, ...]:
+    """The processes of :func:`processes_without_activity` that state a ``known_capacity``."""
+    record = premise.premise_record.iloc[0]
+    processes = _processes_at(premise, int(record["data_year"]))
+    if processes.empty:
+        return ()
+    capacity_only = processes[
+        processes["known_activity"].isna() & processes["known_capacity"].notna()
+    ]
+    return tuple(sorted({str(process_id) for process_id in capacity_only["process_id"]}))
 
 
 def undutied_supply(
@@ -518,6 +558,26 @@ def undutied_supply(
     admitted: frozenset[str],
     dutied_carriers: frozenset[str] = frozenset(),
 ) -> tuple[dict[str, frozenset[str]], dict[tuple[str, str], int]]:
+    """Carrier -> the units that may supply it although it carries **no duty** (§3.9).
+
+    The reasoning is in :func:`_undutied_supply`'s docstring; this returns its supply sets
+    and ``earliest_year`` and leaves out the ``min_duty`` drops, which :func:`build_sets`
+    collects through the private form.
+    """
+    supply, earliest, _dropped = _undutied_supply(
+        reference, premise, admitted, dutied_carriers
+    )
+    return supply, earliest
+
+
+def _undutied_supply(
+    reference: ReferenceTables,
+    premise: PremiseTables,
+    admitted: frozenset[str],
+    dutied_carriers: frozenset[str] = frozenset(),
+) -> tuple[
+    dict[str, frozenset[str]], dict[tuple[str, str], int], tuple[EligibilityDrop, ...]
+]:
     """Carrier -> the units that may supply it although it carries **no duty** (§3.9).
 
     **The D16 branch of :func:`derive_duties` needs a matching branch here, and the plan
@@ -552,7 +612,7 @@ def undutied_supply(
     record = premise.premise_record.iloc[0]
     processes = _processes_at(premise, int(record["data_year"]))
     if processes.empty:
-        return {}, {}
+        return {}, {}, ()
 
     carrier = reference.carrier.set_index("carrier_id")
     io = reference.unit_input_output
@@ -563,6 +623,8 @@ def undutied_supply(
 
     supply: dict[str, set[str]] = {}
     earliest: dict[tuple[str, str], int] = {}
+    refused: list[EligibilityDrop] = []
+    premise_id = str(record["premise_id"])
     for _, process in processes.iterrows():
         process_id = str(process["process_id"])
         if _duty_profile_for(reference, activity, set_id, process_id).empty:
@@ -584,10 +646,10 @@ def undutied_supply(
             if not pd.isna(row["min_duty"])
         }
         # min_duty is a floor on a duty magnitude, and this process has no duty. The
-        # premise's own known_capacity for it is the nearest thing the data holds — it is
+        # premise's own known_activity for it is the nearest thing the data holds, so it is
         # what a duty would have been sized at — so the floor is applied against that where
-        # it exists, rather than dropped. ccs_amine's 0.25 clears the kiln's 0.95 Mt/yr.
-        magnitude = process["known_capacity"]
+        # it exists, rather than dropped. ccs_amine's 0.25 clears the kiln's 0.85 Mt/yr.
+        magnitude = process["known_activity"]
         candidates = {str(unit_id) for unit_id in rows["unit_id"]} | runs
         for unit_id in sorted(candidates & admitted):
             made = {
@@ -599,11 +661,24 @@ def undutied_supply(
             }
             if not made:
                 continue
+            if unit_id in floor and pd.isna(magnitude):
+                # Not a drop: the unit still supplies. The floor just cannot be read.
+                refused.append(EligibilityDrop(
+                    premise_id, process_id, unit_id, "min_duty_unchecked",
+                    f"known_activity is blank, so min_duty {floor[unit_id]:g} was not checked; "
+                    f"the unit is kept as a supplier of {', '.join(sorted(made))}",
+                ))
             if (
                 unit_id in floor
                 and not pd.isna(magnitude)
                 and float(magnitude) < floor[unit_id]
             ):
+                refused.append(EligibilityDrop(
+                    premise_id, process_id, unit_id, "min_duty",
+                    f"known_activity {float(magnitude):g} is below min_duty "
+                    f"{floor[unit_id]:g}; the unit supplies {', '.join(sorted(made))} "
+                    "with no duty",
+                ))
                 continue
             for carrier_id in sorted(made):
                 supply.setdefault(carrier_id, set()).add(unit_id)
@@ -614,6 +689,7 @@ def undutied_supply(
     return (
         {carrier_id: frozenset(units) for carrier_id, units in sorted(supply.items())},
         earliest,
+        tuple(refused),
     )
 
 
@@ -839,6 +915,19 @@ def eligible_units(
     *,
     carb3_activity: str,
 ) -> frozenset[str]:
+    """U_q for one duty; see :func:`_eligible_with_drops`, which also reports what it removed."""
+    return _eligible_with_drops(
+        reference, duty, admitted, carb3_activity=carb3_activity
+    )[0]
+
+
+def _eligible_with_drops(
+    reference: ReferenceTables,
+    duty: Duty,
+    admitted: frozenset[str],
+    *,
+    carb3_activity: str,
+) -> tuple[frozenset[str], tuple[EligibilityDrop, ...]]:
     """U_q for one duty: the three-table join, widened for C10 (the grade cascade).
 
     Joins ``unit_eligibility`` to ``activity_process_duty_profile`` for the duty and to
@@ -858,10 +947,13 @@ def eligible_units(
     Leaving it in U_q would make the prohibition depend on C1 (duty satisfaction) being
     written correctly downstream, which is the kind of single point of failure this screen
     exists to remove.
+
+    Returns U_q and, beside it, an :class:`EligibilityDrop` for each unit that passed the
+    screen and the C10 test and was then removed by ``max_share`` or ``min_duty``.
     """
     rows = _eligibility_rows(reference, carb3_activity, duty.process_id)
     if rows.empty:
-        return frozenset()
+        return frozenset(), ()
 
     units = reference.unit.set_index("unit_id")
     io = reference.unit_input_output
@@ -873,6 +965,7 @@ def eligible_units(
     families = _grade_families(reference)
     ceiling = max(duty.quantity.values()) if duty.quantity else 0.0
     eligible: set[str] = set()
+    refused: list[EligibilityDrop] = []
     for _, row in rows.iterrows():
         unit_id = str(row["unit_id"])
         if unit_id not in admitted or unit_id not in units.index:
@@ -883,12 +976,21 @@ def eligible_units(
             continue
         max_share = row["max_share"]
         if not pd.isna(max_share) and float(max_share) <= 0.0:
+            refused.append(EligibilityDrop(
+                duty.premise_id, duty.process_id, unit_id, "max_share",
+                f"max_share {float(max_share):.2f} is a prohibition on {duty.carrier_id}",
+            ))
             continue
         floor = row["min_duty"]
         if not pd.isna(floor) and ceiling < float(floor):
+            refused.append(EligibilityDrop(
+                duty.premise_id, duty.process_id, unit_id, "min_duty",
+                f"duty on {duty.carrier_id} peaks at {ceiling:g}, below min_duty "
+                f"{float(floor):g}",
+            ))
             continue
         eligible.add(unit_id)
-    return frozenset(eligible)
+    return frozenset(eligible), tuple(refused)
 
 
 def build_sets(
@@ -900,8 +1002,8 @@ def build_sets(
     """Assemble Q, U, U_q and the three eligibility columns for one premise.
 
     Two fields beyond Q, U and U_q: ``supply`` carries the D16-suppressed producers
-    :func:`undutied_supply` finds, and ``no_magnitude`` the processes
-    :func:`processes_without_magnitude` could not size.
+    :func:`undutied_supply` finds, and ``no_activity`` the processes
+    :func:`processes_without_activity` could not size.
 
     ``min_duty`` is applied against the duty's largest quantity over the horizon: "below this
     the unit is not offered at all" (§3.5.1) is a statement about the duty, and U_q is not
@@ -919,10 +1021,13 @@ def build_sets(
     max_share: dict[tuple[DutyKey, str], float] = {}
     min_duty: dict[tuple[DutyKey, str], float] = {}
 
+    eligibility_dropped: list[EligibilityDrop] = []
+
     for duty in duties:
-        units = eligible_units(
+        units, refused = _eligible_with_drops(
             reference, duty, screen.admitted, carb3_activity=activity
         )
+        eligibility_dropped.extend(refused)
         eligible[duty.key] = units
         rows = _eligibility_rows(reference, activity, duty.process_id)
         for _, row in rows.iterrows():
@@ -936,7 +1041,7 @@ def build_sets(
             if not pd.isna(row["min_duty"]):
                 min_duty[(duty.key, unit_id)] = float(row["min_duty"])
 
-    supply, supply_earliest_year = undutied_supply(
+    supply, supply_earliest_year, supply_dropped = _undutied_supply(
         reference,
         premise,
         screen.admitted,
@@ -952,10 +1057,12 @@ def build_sets(
         max_share=max_share,
         min_duty=min_duty,
         supply=supply,
-        no_magnitude=processes_without_magnitude(premise),
+        no_activity=processes_without_activity(premise),
+        capacity_only=processes_with_capacity_only(premise),
         supply_earliest_year=supply_earliest_year,
         export_windows=windows,
         export_refused=refused,
+        eligibility_dropped=tuple(dict.fromkeys((*eligibility_dropped, *supply_dropped))),
     )
 
 
@@ -1199,5 +1306,6 @@ def explain_start_year_shortfall(shortfall: StartYearShortfall) -> str:
         f"{duties} need {shortfall.demand:.6f} together, and the incumbents able to serve "
         f"them ({units}) can deliver {shortfall.deliverable:.6f}, short by "
         f"{shortfall.shortfall:.6f}. Check premise_process_unit's capacity_share against "
-        f"the duties each unit can serve, and premise_process_detail's known_capacity"
+        f"the duties each unit can serve, and premise_process_detail's known_activity "
+        f"and known_capacity"
     )

@@ -1159,7 +1159,8 @@ normal case and means "use the register".
 | `valid_from_year` | integer | year | yes | PK part | The year this process started at the premise. ≤ `premise_record.data_year`. A future year is rejected with reason `process_change_in_future`: a *planned* change is not an observation |
 | `valid_to_year` | integer | year | no | — | The year it stopped. Absent ⇒ still running. ≥ `valid_from_year` if present |
 | `connection_id` | string | — | no | → `premise_connection` | **Optional.** Which electricity connection serves this process (§3.1.3). Absent ⇒ the default. This is what decides where electrified load lands |
-| `known_capacity` | real | capacity units | no | — | > 0 if present. Units follow the process's denominator (D5): PJ/yr-equivalent for energy, Mt/yr for mass |
+| `known_capacity` | real | capacity units | no | — | > 0 if present. The **installed nameplate capacity** of the process's plant, for example a permit's rated clinker line. Units follow the process's denominator (D5): PJ/yr-equivalent for energy, Mt/yr for mass |
+| `known_activity` | real | activity units | no | — | > 0 if present, and ≤ `known_capacity` where both are given. The **annual activity** of the process in its output unit, for example the clinker a kiln made in the base year. Same units as `known_capacity` (D5). Blank means unknown; a known zero is also left blank, with the reason in `provenance` |
 | `provenance` | string | — | yes | — | Citation: permit number, audit reference, disclosure |
 | `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
 
@@ -1191,8 +1192,15 @@ those units are the premise's existing plant for that process **for an interval 
 base year**, and A4 does not choose between candidates. A parent row with no child rows means
 the plant is unknown, and A4 resolves it from the candidate set as usual — exactly what a blank
 `unit_id` meant before the child table existed. A closed interval's children describe plant the
-site no longer has. Where `known_capacity` is given, it is used directly and A4 back-solves
-*utilisation* instead of capacity (§A4).
+site no longer has. Two fields state the process's size, and they are different quantities:
+`known_activity` sizes the **duty** (§3.3, the annual magnitude A2 splits by `duty_share`),
+and `known_capacity`, where given, sizes the **incumbent capacity** directly. Where both are
+given, utilisation is `known_activity / known_capacity` and A4 uses it as its back-solve and
+runs its checks against it (§A4). Where only `known_activity` is given, the incumbent's
+capacity is `known_activity / (γα)`, the capacity that just delivers that activity at the
+unit's capacity-to-activity factor γ and availability α. Where only `known_capacity` is given,
+the incumbent is sized from it and the process yields no duty from this row. Where neither is
+given, the process yields no duty and no incumbent capacity, and the run reports it by name.
 
 **`known_capacity` is the line total, not a per-unit figure.** A permit states a kiln line's
 capacity once, and D13 (one primary carrier per unit) then splits that line into several units.
@@ -1326,7 +1334,7 @@ the best estimate, never shares that do not close, which would silently shrink t
 capacity. V33 (plant is named one unit at a time) checks the sum.
 
 **Rule (shares, not capacities).** The absolute capacity of the process is the parent's
-`known_capacity`, or A4's back-solve where that is blank. Stating each cohort as a share keeps
+`known_capacity`, or `known_activity / (γα)` where that is blank (§3.10). Stating each cohort as a share keeps
 the two independent, so a site can supply its plant list and ages without supplying
 capacities, and vice versa.
 

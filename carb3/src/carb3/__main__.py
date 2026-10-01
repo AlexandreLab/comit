@@ -197,6 +197,7 @@ def run_premise(
             wall_clock_seconds=result.wall_clock_seconds,
             status=result.termination_condition,
             objective=result.objective,
+            eligibility_dropped=sets.eligibility_dropped,
         )
         written = ledger.write_parquet(tables, report, out_dir)
         if site_report:
@@ -382,10 +383,19 @@ def _print_premise(run: PremiseRun) -> None:
             print(f"  export x_c,t: {window.carrier_id} available {span}{gate}")
         for refusal in run.sets.export_refused:
             print(f"  export refused: {refusal.carrier_id} — {refusal.reason}")
-        if run.sets.no_magnitude:
+        for drop in run.sets.eligibility_dropped:
             print(
-                "  no duty derived — known_capacity is blank (§3.10 cannot state a known "
-                f"zero): {', '.join(run.sets.no_magnitude)}"
+                f"  eligibility drop ({drop.reason}): {drop.unit_id} at {drop.process_id}, "
+                f"{drop.detail}"
+            )
+        if run.sets.no_activity:
+            labelled = [
+                f"{name} (capacity only)" if name in run.sets.capacity_only else name
+                for name in run.sets.no_activity
+            ]
+            print(
+                "  no duty derived: no known_activity (§3.10 cannot state a known zero): "
+                f"{', '.join(labelled)}"
             )
 
     if run.blocked:
