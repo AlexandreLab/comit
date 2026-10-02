@@ -194,7 +194,11 @@ at the archived baseline's §6, lines 2126–2127.
 - **Check a PR's state before sending more work to it.** On 2026-09-26, follow-up commits
   were aimed at PR #64 after it had already been merged. Run
   `gh pr view <n> --repo AlexandreLab/comit --json state` first; a merged PR's branch takes no
-  new work, so open a new branch off `fork/main`.
+  new work, so open a new branch off `fork/main`. **Make the push depend on the answer, not
+  just print it:** on 2026-10-02 a chain ran `gh pr view 88 ... -q .state && git commit && git
+  push`, the view printed `MERGED`, exited 0, and the push went to #88's dead branch anyway.
+  Write `[ "$(gh pr view <n> --repo AlexandreLab/comit --json state -q .state)" = OPEN ] && git push`.
+  This is a hook candidate: a pre-push check that refuses a branch whose PR is merged.
 
 ## Data caveats worth knowing before quoting a number
 

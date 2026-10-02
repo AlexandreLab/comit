@@ -1241,7 +1241,11 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     and the substitution could be undone. **Undone 2026-10-02:** `boiler_spc_gas`, commissioned
     2011, is the incumbent again. It serves the space heat in 2021 and a new `heat_pump_spc_air`
     takes it from 2025; the `mvp-dairy` objective rises from £143.77m to £144.39m, since the
-    heat pump had been free base-year capacity.
+    heat pump had been free base-year capacity. **Which incumbent serves the 2021 space heat is
+    not determined.** After items 74 and 75 the same run gives the 0.018480 PJ to
+    `chp_gas_turbine` instead, with the objective unchanged to four decimals (£142.7571m), so the
+    two allocations cost the same and the solver's choice between them is arbitrary. Read only the 2025 change, a new `heat_pump_spc_air` (0.017073 PJ) with
+    `economiser_flue_condensing` (0.001407 PJ) beside it, as a result.
 
 74. **All reject heat is one carrier, so recovering it costs the same whatever made it.** All 65
     `reject` rows land on `heat_lt60` at 0.12027 × fuel input (capped at the unit's losses, item
