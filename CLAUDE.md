@@ -300,10 +300,16 @@ These are mechanical predicates, so they belong in hooks rather than in this fil
 | Interface docs and diagrams not stale | `make docs-check` | included in `make check`, pre-push |
 | CaRB3 data consistency | `make data-check` | included in `make check`, pre-push |
 | R tests | `devtools::test()` | not gated |
+| No commit on a feature branch in the main checkout; use `.worktrees/<branch>` | `tools/worktree_guard.sh` | **wired to pre-commit via `.githooks/pre-commit`** |
 
 `make check` runs on every pre-push after `make hooks` is run in a clone. The hook is
 configured via `.githooks/pre-push`, which calls `tools/quality_gate.sh`, and can be bypassed
 for docs-only emergencies with `ALLOW_UNCHECKED_PUSH=1 git push`.
+
+The pre-commit guard exists because several sessions share the main checkout: on 2026-10-02
+one switched it to its branch and another session's commit landed there. It lets the main
+checkout commit only on `main`; linked worktrees are not checked. Bypass with
+`ALLOW_MAIN_CHECKOUT_COMMIT=1` only when no other session uses the checkout.
 
 ## Skill routing
 

@@ -1,0 +1,3 @@
+#!/bin/bash
+set -euo pipefail
+exec tools/worktree_guard.sh

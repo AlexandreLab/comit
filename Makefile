@@ -29,7 +29,7 @@ help: ## Show available targets
 
 check: docs-check data-check carb3 ## Run every consistency check
 
-hooks: ## Install pre-push hook to run `make check` before push
+hooks: ## Install the git hooks: pre-commit worktree guard, pre-push `make check`
 	git config core.hooksPath .githooks
 
 docs-check: ## Verify the generated interface docs and diagrams match their specs
