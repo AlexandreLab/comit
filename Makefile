@@ -41,6 +41,7 @@ docs-list: ## Show the configured specs and which outputs are switched on
 
 data-check: ## Validate the CaRB3 data tables (blocking checks only)
 	@$(PYTHON) $(EXAMPLES)/validate_carb3_data.py --quiet
+	@$(PYTHON) docs/notes/data/build/check_eligibility.py
 
 data-report: ## Full CaRB3 data report, including advisory counts
 	@$(PYTHON) $(EXAMPLES)/validate_carb3_data.py

@@ -11,7 +11,7 @@ Blocking checks, from brief_eligibility.md:
   4  every (carb3_activity, process_id) in unit_eligibility.csv resolves to
      activity_process_register.csv (blank process_id allowed for supply units)
   5  every carrier_id in displaces_carrier_ids resolves to carrier.csv
-  6  every [REF_ID] used resolves to references.csv or references_eligibility.csv
+  6  every [REF_ID] used resolves to references.csv
   7  the aligned library keeps every original column, row and value unchanged
   8  enums are spelled as the spec spells them; booleans are TRUE/FALSE
   9  unit_eligibility is unique on (unit_id, carb3_activity, process_id)
@@ -22,6 +22,9 @@ import csv
 import os
 import re
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from build_eligibility import build_aligned  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.dirname(HERE)
@@ -43,21 +46,21 @@ def d(name):
     return read(os.path.join(DATA, name))
 
 
-def s(name):
-    return read(os.path.join(HERE, name))
-
-
-library = d("decarbonisation_options_library.csv")
+ADDED = ["displaces_carrier_ids", "route_change", "exclusivity_group"]
+library_file = d("decarbonisation_options_library.csv")
+# The committed library already carries the three added columns (the aligned file replaced
+# it), so strip them to recover the original columns the aligned build starts from.
+library = [{k: v for k, v in r.items() if k not in ADDED} for r in library_file]
 units = d("unit.csv")
 carriers = d("carrier.csv")
 register = d("activity_process_register.csv")
 join = d("decarbonisation_option_unit.csv")
 elig = d("unit_eligibility.csv")
-aligned = s("decarbonisation_options_library_aligned.csv")
-refs = d("references.csv") + s("references_eligibility.csv")
+refs = d("references.csv")
 
 unit_ids = {u["unit_id"] for u in units}
 carrier_ids = {c["carrier_id"] for c in carriers}
+aligned = build_aligned(library, join, carrier_ids)[0]
 ref_ids = {r["ref_id"] for r in refs}
 reg_keys = {(r["carb3_activity"], r["process_id"]) for r in register}
 activities = {r["carb3_activity"] for r in register}
@@ -135,6 +138,10 @@ if new_cols[len(orig_cols):] != ["displaces_carrier_ids", "route_change",
                                  "exclusivity_group"]:
     fail.append("aligned library's added columns are wrong: %s"
                 % new_cols[len(orig_cols):])
+for a, c in zip(aligned, library_file):
+    if a != c:
+        fail.append("committed options library differs from the in-memory aligned build at %s"
+                    % a["option_id"])
 route_change_join = {r["option_id"] for r in join if r["relationship"] == "route_change"}
 groups = {}
 for a, o in zip(aligned, library):

@@ -944,6 +944,52 @@ def read(name):
         return list(csv.DictReader(fh))
 
 
+def build_aligned(library, join_rows, carrier_ids):
+    """The options library with its three added columns, computed in memory.
+
+    Returns (aligned rows, fieldnames, displaces tokens with no carrier). Shared with
+    check_eligibility.py so the check needs no intermediate file on disk."""
+    opt_group = {}
+    for slug, members in EXCLUSIVITY.items():
+        for m in members:
+            if m in opt_group:
+                raise SystemExit("%s is in two exclusivity groups" % m)
+            opt_group[m] = slug
+
+    route_change_options = {r["option_id"] for r in join_rows
+                            if r["relationship"] == "route_change"}
+
+    fieldnames = list(library[0].keys()) + [
+        "displaces_carrier_ids", "route_change", "exclusivity_group"]
+    unmapped_tokens = defaultdict(set)
+    aligned = []
+    for opt in library:
+        oid = opt["option_id"]
+        ids = []
+        for tok in (t.strip() for t in opt["displaces"].split(";")):
+            if not tok:
+                continue
+            if tok not in DISPLACES_TOKEN_MAP:
+                raise SystemExit("unmapped displaces token %r" % tok)
+            mapped = DISPLACES_TOKEN_MAP[tok]
+            if tok == "oil" and oid in OIL_MEANS_DIESEL:
+                mapped = "light_fuel_oil"
+            if not mapped:
+                unmapped_tokens[tok].add(oid)
+                continue
+            for cid in mapped.split(";"):
+                if cid not in carrier_ids:
+                    raise SystemExit("token %r maps to unknown carrier %r" % (tok, cid))
+                if cid not in ids:
+                    ids.append(cid)
+        row = dict(opt)
+        row["displaces_carrier_ids"] = ";".join(ids)
+        row["route_change"] = "TRUE" if oid in route_change_options else "FALSE"
+        row["exclusivity_group"] = opt_group.get(oid, "")
+        aligned.append(row)
+    return aligned, fieldnames, unmapped_tokens
+
+
 def main():
     library = read("decarbonisation_options_library.csv")
     units = read("unit.csv")
@@ -985,44 +1031,7 @@ def main():
         w.writerows(join_rows)
 
     # -- deliverable 2: the aligned library --------------------------------
-    opt_group = {}
-    for slug, members in EXCLUSIVITY.items():
-        for m in members:
-            if m in opt_group:
-                raise SystemExit("%s is in two exclusivity groups" % m)
-            opt_group[m] = slug
-
-    route_change_options = {r["option_id"] for r in join_rows
-                            if r["relationship"] == "route_change"}
-
-    fieldnames = list(library[0].keys()) + [
-        "displaces_carrier_ids", "route_change", "exclusivity_group"]
-    unmapped_tokens = defaultdict(set)
-    aligned = []
-    for opt in library:
-        oid = opt["option_id"]
-        ids = []
-        for tok in (t.strip() for t in opt["displaces"].split(";")):
-            if not tok:
-                continue
-            if tok not in DISPLACES_TOKEN_MAP:
-                raise SystemExit("unmapped displaces token %r" % tok)
-            mapped = DISPLACES_TOKEN_MAP[tok]
-            if tok == "oil" and oid in OIL_MEANS_DIESEL:
-                mapped = "light_fuel_oil"
-            if not mapped:
-                unmapped_tokens[tok].add(oid)
-                continue
-            for cid in mapped.split(";"):
-                if cid not in carrier_ids:
-                    raise SystemExit("token %r maps to unknown carrier %r" % (tok, cid))
-                if cid not in ids:
-                    ids.append(cid)
-        row = dict(opt)
-        row["displaces_carrier_ids"] = ";".join(ids)
-        row["route_change"] = "TRUE" if oid in route_change_options else "FALSE"
-        row["exclusivity_group"] = opt_group.get(oid, "")
-        aligned.append(row)
+    aligned, fieldnames, unmapped_tokens = build_aligned(library, join_rows, carrier_ids)
     with open(os.path.join(HERE, "decarbonisation_options_library_aligned.csv"), "w",
               newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fieldnames)
