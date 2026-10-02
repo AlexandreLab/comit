@@ -37,10 +37,11 @@ pump was held at zero. :func:`carb3.sets.released_supply` names those makers and
 only, never through total activity, so the same PJ cannot both meet a duty in C1 and feed
 another unit in C8 (§5.5).
 
-**d_{c,t} is not optional** (§2.2). 59 ``reject`` rows from 59 distinct units all run into
-``heat_lt60``, which is grade 1 — the bottom, so there is nothing to cascade to — and exactly
-one unit consumes it. Without a disposal variable C8 forces every fuel-fired low-temperature
-boiler to zero. It is gated on ``carrier_kind``, and the gate is the whole safety argument:
+**d_{c,t} is not optional** (§2.2). 65 ``reject`` rows from 65 distinct units run into
+carriers that nothing need consume: 34 into ``heat_lt60``, which is grade 1, the bottom of the
+cascade, and 31 into the five reject source classes of §3.4, each drawn by at most one recovery
+unit and two by none (note 23). Without a disposal variable C8 forces every fuel-fired
+low-temperature boiler to zero. It is gated on ``carrier_kind``, and the gate is the whole safety argument:
 ``intermediate`` and ``emission`` carriers may be disposed of, ``primary`` and ``product``
 may not, or the model could import gas and dump it.
 

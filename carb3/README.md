@@ -132,13 +132,13 @@ are in `src/carb3/report/vendor/`.
 
 ## State of the three premises
 
-All three solve to optimality (checked 2026-09-25, `make carb3-run`).
+All three solve to optimality (checked 2026-10-02, `make carb3-run`).
 
 | Premise | Objective | Outcome |
 |---|---|---|
-| `mvp-minimal` | £42.8055m | The grade-2 and grade-3 heat duties switch to heat pumps at 2025, the first period C5 (no building in the start year) allows |
-| `mvp-dairy` | £144.1177m | The grade-2 and grade-4 drying duties switch at 2025; refrigeration is met by an electric chiller |
-| `mvp-cement` | £4,557.0832m | The kiln moves from coal to gas and the grinder substitutes clinker at 2025; an amine capture train is built at 2035 and its CO₂ is exported |
+| `mvp-minimal` | £39.5707m | The grade-2 and grade-3 heat duties switch to heat pumps at 2025, the first period C5 (no building in the start year) allows |
+| `mvp-dairy` | £142.7571m | The grade-2 and grade-4 drying duties switch at 2025; refrigeration is met by an electric chiller, and from 2025 a heat pump on its condenser heat (`heat_pump_chiller_condenser`) serves the boiler-house hot water ([note 23](../docs/notes/23_reject_heat_recovery_plan.md) section 10) |
+| `mvp-cement` | £4,554.9330m | The kiln moves from coal to gas and the grinder substitutes clinker at 2025; an amine capture train is built at 2035 and its CO₂ is exported |
 
 Carbon is 77% of the cement works' objective. The works stopped being infeasible on
 2026-09-20, after two fixes. The first is that A2 (premise to duties) now reads a product duty

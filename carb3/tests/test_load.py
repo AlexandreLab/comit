@@ -480,16 +480,20 @@ def test_measured_counts_match_the_plan(
     electricity row into electric service, fans and cooling, and moved site space heating to
     ``heat_lt60``: four cooling units and ``generic_process_elec`` at 52 processes each, and
     three grade-1 space-heat units at 32: 3,608.
+    The seventh (2026-10-02, note 23) added the three reject-heat recovery units
+    ``economiser_flue_condensing``, ``recovery_engine_exhaust`` and
+    ``heat_pump_chiller_condenser``, all fully costed: 148 units, 67 admitted, and the join
+    offers them at 33, 67 and 65 (activity, process) pairs: 3,773 rows. The unit and price legs are unchanged.
     """
     dropped = {d.unit_id for d in screen.dropped}
     unit_leg = {d.unit_id for d in screen.dropped if d.leg != "import_price"}
-    assert len(reference.unit) == 145
+    assert len(reference.unit) == 148
     assert len(unit_leg) == 40
     assert len(dropped) == 81
-    assert len(screen.admitted) == 64
+    assert len(screen.admitted) == 67
 
     elig = reference.unit_eligibility
-    assert len(elig) == 3608
+    assert len(elig) == 3773
     assert int(elig["unit_id"].isin(unit_leg).sum()) == 50
     assert int(elig["unit_id"].isin(dropped).sum()) == 1392
 

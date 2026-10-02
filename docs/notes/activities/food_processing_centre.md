@@ -121,6 +121,8 @@ These points come from the `mvp-dairy` run (premise `mvp-dairy`, 2021 base year)
 
 **e. `boiler_spc_gas` is separate.** Its 0.0185 PJ is space heating under `site_services`, not the steam header.
 
+**f. Reject heat is recovered by its source.** Each unit's reject heat lands on a carrier for its source class (spec §3.4, note 23 section 10). From 2025 the run builds `heat_pump_chiller_condenser`, which lifts the chillers' condenser heat to 60 to 100 °C for the boiler-house hot water, and, for the one period the CHP and the gas boiler still run, `recovery_engine_exhaust` and `economiser_flue_condensing` on their exhaust. The spray dryer's exhaust has no recovery unit yet, so the run disposes of it (0.0140 PJ in 2021), although section 6 lists exhaust-to-inlet-air recovery as practice [ATKINS_ATE2011].
+
 ## 9. Gaps and open questions
 
 - **Number of UK food processing sites.** No source read gives it.

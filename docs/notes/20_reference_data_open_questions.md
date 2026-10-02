@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, item 71 the same day, when Alexandre decided it on PR #81, and items 72 and 73 the same day again – **twenty-seven of the seventy-three, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, item 71 the same day, when Alexandre decided it on PR #81, items 72 and 73 the same day again, and item 74 the same day, when Alexandre decided note 23 and its phase 1 was built – **twenty-eight of the seventy-five, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -1261,3 +1261,35 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     carriers or grade bands, when to do phase 2, whether the screen counts incumbent sources
     only, whether `heat_pump_lt_reject` keeps its food and drink rows, and whether an economiser
     is a separate unit or a boiler variant.
+
+    **Decided 2026-10-02 by Alexandre: decisions 1 to 4 of note 23, each as recommended.**
+    (1) Source-class reject carriers, not grade bands. (2) Phase 2, the 34 process-exhaust rows,
+    later. (3) The minimum-size screen counts the premise's incumbent sources only. (4)
+    `heat_pump_lt_reject`'s refrigeration option rows are remapped to
+    `heat_pump_chiller_condenser`. (5) A separate unit, and a condensing economiser: a standard
+    feedwater economiser is taken as already inside the boilers' efficiency ([DOE_WHR2008]),
+    so the clean-flue reject row carries the condensing increment only. Units with a cost gap
+    are left out (no solid-fuel economiser, desuperheater or dryer exhaust unit), and the chiller
+    reject is not split.
+
+    **Settled and built 2026-10-02 (note 23 section 10).** The 31 phase 1 rows moved to five
+    source-class carriers at sourced fractions; `economiser_flue_condensing`,
+    `recovery_engine_exhaust` and `heat_pump_chiller_condenser` were added, A2 (expanding the premise to duties and candidate units) screens them on
+    `min_viable_scale` against the premise's incumbent reject, and V36 (reject heat by source
+    class) is blocking in `validate_carb3_data.py`. At `mvp-dairy` the condenser heat pump
+    replaces `heat_pump_lt_reject`, the objective falls from £144.39m to £142.76m, and reject
+    heat disposed of in 2021 falls from 0.1208 to 0.1133 PJ, 0.0874 of it still the chillers'.
+    `mvp-minimal` rises from £39.55m to £39.57m; `mvp-cement` does not move.
+
+75. **The 34 process-exhaust reject rows treat 0.12027 as a recoverable fraction, and it is
+    not one.** Every `reject` row on a kiln, furnace, glass or steel plant, cracker, reformer,
+    gasifier, the refinery heater or a reheat furnace is 0.12027 × fuel input on `heat_lt60`,
+    and so is the cement worked example's kiln reject. [DECC_SURPLUSHEAT2014] section 5 (p.24,
+    not section 4.1 as those rows cite) gives (48 - 13)/291 as the heat *rejected* in non-solid
+    form, as a share of UK industrial energy; what it calls technically, economically and
+    commercially recoverable is 11, 7 and 5 TWh/yr of those 35, about 31%, 20% and 14% of them.
+    Read as recoverable, 0.12027 overstates what a heat pump on `heat_lt60` can lift from these
+    plants, by a factor of three or more. *Found by note 23's Task 2 research, 2026-10-02.*
+
+    **Open, for phase 2 of note 23.** The rows and the cement worked example are unchanged; the
+    phase 1 rows touched on 2026-10-02 carry the corrected citation and per-class fractions.

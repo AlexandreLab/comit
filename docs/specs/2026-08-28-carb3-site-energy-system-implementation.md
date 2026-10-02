@@ -19,7 +19,7 @@
 
 ## 1. Scope, inputs, conventions, and how to read this
 
-*Section last updated: 2026-10-01*
+*Section last updated: 2026-10-02*
 
 ### 1.1 What this document is
 
@@ -77,7 +77,7 @@ Label families in this document, and where each is defined:
 | `C1`–`C13` | Constraints | §5.5 |
 | `A1`–`A9` | Algorithms | §4 |
 | `S0`–`S9` | Pipeline stages | §2.1 |
-| `V1`–`V35` | Validation tests | §10 |
+| `V1`–`V36` | Validation tests | §10 |
 | `G1`–`G4` | Scale gates | §9 |
 | `D1`–`D16` | Design decisions | §1.6 |
 | `PD1`–`PD2` | Programme decisions | the [overview](2026-08-28-carb3-site-energy-system-overview.md) |
@@ -750,7 +750,7 @@ four bands separate them. There are two families, and each is a set of `carrier`
 
 | `grade_family` | `carrier_id` | `grade_rank` | `grade_label` | What sits there |
 |---|---|---|---|---|
-| heat | `heat_lt60` | 1 | `<60C` | Low-grade reject heat, washing water |
+| heat | `heat_lt60` | 1 | `<60C` | Washing water, space heat, the reject heat of high-temperature process plant |
 | heat | `heat_60_100` | 2 | `60-100C` | Space heat, hot water, pasteurising |
 | heat | `heat_100_150` | 3 | `100-150C` | Low-pressure steam, process heating |
 | heat | `heat_150_400` | 4 | `150-400C` | Medium- and high-pressure steam, dryers, fired heaters |
@@ -844,6 +844,35 @@ above is the one that build used; both are in
 minimum that keeps an ambient-temperature supply off a sub-zero duty and gives a chiller a
 coefficient per band rather than one for all.
 
+**Rule (reject heat is carried by its source class, not by its band).** A `reject` row (§3.6)
+says what made the heat, because that decides how hard it is to recover: a gas boiler's clean
+flue is hot and an off-the-shelf economiser takes it, while a spray dryer's exhaust is humid,
+carries powder and is barely warm. Each **reject source class** is a carrier of its own:
+`intermediate`, not gradeable, `energy`, `may_dispose` true, `may_import` and `may_export` false,
+with `vector` and `comit_commodity` blank as on the service carriers. A class is drawn, as an
+`aux_input`, only by the recovery unit built for it (§3.5), so no unit can treat one source's
+heat as another's; what no recovery unit takes is disposed of through $d_{c,t}$ (§5.2).
+
+| `carrier_id` | Rejected by | The stream | What the row carries, per unit of fuel | Recovered by; the hottest band a passive recovery unit may deliver |
+|---|---|---|---|---|
+| `reject_flue_clean` | the gas, LPG, biomethane and hydrogen boilers | Clean flue gas, about 180 °C | The condensing increment over a standard economiser, which the boiler's efficiency already includes: 0.05 | `economiser_flue_condensing`; band 1 (`heat_lt60`), since the increment is released only below the flue gas water dew point, about 57 °C |
+| `reject_flue_solid_liquid` | the coal, biomass and oil boilers; the coal and biomass steam-turbine CHPs | Flue gas carrying ash or sulphur, cooled no further than its acid dew point, 110 to 160 °C | The sensible economiser share: 0.04 | none, for want of a cost for a fouling-resistant economiser; band 3 |
+| `reject_engine_exhaust` | the gas-turbine, combined-cycle and fuel-cell CHPs; the mechanical-drive gas engine | Exhaust at 149 to 169 °C left after the CHP's own heat recovery; an engine's whole exhaust and jacket water | 0.07 for a gas turbine, 0.30 for the engine; open for the combined cycles and the fuel cell | `recovery_engine_exhaust`; band 2 |
+| `reject_dryer_exhaust` | the six dryers with a `reject` row | Humid exhaust air at 65 to 75 °C carrying product dust | 0.20, capped at the unit's losses | none, for want of a directly stated capex; band 1 |
+| `reject_chiller_condenser` | the three electric chillers | Condenser heat at roughly 30 to 45 °C, an estimate no source yet confirms | The whole condenser heat, per unit of cooling | `heat_pump_chiller_condenser`, which lifts it with a work input; band 1 for a passive unit |
+
+**The practical limit of recovery sits in one place only.** For a class a heat exchanger draws,
+it is in the `reject` row, and the exchanger draws the class at 1.0; for the condenser class,
+which is unusable without a lift, it is in the heat pump's coefficients. Putting a recoverable
+fraction in both would cut the same heat twice.
+
+**The reject rows of high-temperature process plant land on `heat_lt60`**: kilns, furnaces,
+glass and steel plant, crackers, reformers, gasifiers, the refinery heater and reheat furnaces,
+whose exhaust is too varied for one recovery unit. `heat_pump_lt_reject` draws that band. Their
+coefficient, 0.12027 of fuel, is rejected heat as a share of UK industrial energy, not a
+recoverable fraction ([notes/20](../notes/20_reference_data_open_questions.md) item 75).
+V36 (reject heat by source class) checks every `reject` row lands on a class or on `heat_lt60`.
+
 ### 3.5 `unit`
 
 What converts between carriers. A unit's fuel is part of its identity (D13): it is named on the
@@ -857,7 +886,7 @@ unit by `fuel_carrier_id` and enters the balance through the unit's `fuel_input`
 | `spine` | enum{service, chemistry} | — | yes | — | Service units are family-keyed, chemistry node-keyed |
 | `duty_family` | string | — | no | — | Required if `spine` = service |
 | `process_id` | string | — | no | → `activity_process_register` | Required if `spine` = chemistry |
-| `fuel_carrier_id` | string | — | no | → `carrier` | **D13.** The one carrier the unit burns or draws as its fuel, which is what makes `boiler_lt_gas` and `boiler_lt_hydrogen` two units. Set on 131 of the 145 units in `unit.csv` and blank where a unit has no single fuel. Where the unit holds a `fuel_input` row (§3.6) the two name the same carrier. **A unit that names a fuel and holds no `fuel_input` row burns it free, and the admission screen drops it** (§5.7) |
+| `fuel_carrier_id` | string | — | no | → `carrier` | **D13.** The one carrier the unit burns or draws as its fuel, which is what makes `boiler_lt_gas` and `boiler_lt_hydrogen` two units. Set on 132 of the 148 units in `unit.csv` and blank where a unit has no single fuel. Where the unit holds a `fuel_input` row (§3.6) the two name the same carrier. **A unit that names a fuel and holds no `fuel_input` row burns it free, and the admission screen drops it** (§5.7) |
 | `grade_out` | integer | — | no | → `carrier` | The furthest band it can deliver, in the `grade_family` of its primary output: the **highest** heat rank, or the **lowest** (coldest) cooling rank (§3.4). Required where the primary output is gradeable |
 | `grade_in_max` | integer | — | no | → `carrier` | Max heat grade rank it can consume as a source. Heat only |
 | `capex` | real | £m per capacity unit | yes | — | ≥ 0. **Levelised over components if hybrid** |
@@ -867,7 +896,7 @@ unit by `fuel_carrier_id` and enters the balance through the unit's `fuel_input`
 | `capacity_to_activity_factor` | real | — | yes | — | > 0 |
 | `area_per_capacity` | real | m² per capacity unit | no | — | ≥ 0. **Set only on area-bound units** — PV, solar thermal, anything sited against roof or land. Unset means the unit takes no area and is outside C12: a CHP is compact plant and leaves it unset |
 | `emissions_released` | real | fraction | yes | — | ∈ [0, 1]. Fraction **not** captured |
-| `min_viable_scale` | real | capacity units | no | — | Screening threshold, applied in A2 — **never a binary** |
+| `min_viable_scale` | real | capacity units; on a recovery unit, PJ/yr of the reject class it draws | no | — | Screening threshold, applied in A2, **never a binary**. Required on a recovery unit (V36, reject heat by source class), where A2 applies it as below; not yet applied to any other unit |
 | `load_shape_override` | string | — | no | → `process_load_shape` | **By exception only.** The shape belongs to the process (§3.13); a unit overrides it only where the device genuinely changes the draw |
 | `is_hybrid` | boolean | — | yes | — | If true, `unit_bill_of_materials` rows must exist |
 | `draws_ambient` | boolean | — | yes | — | True where the unit takes energy from ambient air, ground or water — outside the carrier set by §3.4. Exempts the unit from V2's energy-closure leg (§3.6) |
@@ -905,6 +934,24 @@ capture train serves all three. The hosts are therefore named in a table of thei
 age) the train inherits the **earliest** remaining life among its hosts and strands nothing
 while any host still stands.
 
+**Recovering reject heat is a unit too.** A **recovery unit** draws one reject source class
+(§3.4) as an `aux_input` and is dispatched to a duty like any other unit. A heat exchanger has a
+blank `fuel_carrier_id` and a `grade_out` no hotter than its class allows; a heat pump on a class
+takes electricity as its fuel and may deliver hotter. Its capex is per PJ/yr of primary output,
+which for a heat exchanger is the heat it recovers. Three exist: `economiser_flue_condensing`
+(clean flue gas to `heat_lt60`), `recovery_engine_exhaust` (residual exhaust to `heat_60_100`)
+and `heat_pump_chiller_condenser` (condenser heat lifted to `heat_60_100`).
+
+**`min_viable_scale` is a recovery unit's minimum size, and A2 screens on it.** It is stated in
+PJ/yr of the class the unit draws. A2 (expanding the premise to duties and candidate units) offers the unit at a premise only if the premise's
+**incumbent** plant rejects at least that much of the class at the base year: each incumbent's
+base-year activity is its process's `known_activity` (§3.10) times its cohort's `capacity_share`
+(§3.10.2), and its reject is that activity times its `reject` coefficient. Sources the optimiser
+might build later are not counted, so the screen can refuse recovery that they would have fed but
+never offers a unit with too little to draw. A refused unit leaves every $U_q$ it reached and is
+reported as an eligibility refusal beside `min_duty`'s, not through the admission screen (§5.7).
+Like `min_duty`, it is decided outside the LP, so the problem stays linear.
+
 #### 3.5.1 `unit_eligibility`
 
 Which units may serve which duty, for which activity, and above what scale. **This is where
@@ -914,7 +961,7 @@ sector specificity lives.**
 |---|---|---|---|---|---|
 | `unit_id` | string | — | yes | PK part → `unit` | — |
 | `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
-| `process_id` | string | — | no | PK part | → `activity_process_register`. **Blank ⇒ activity-level supply**: the row reaches every process of `carb3_activity`, and the carrier and grade test of C10 (the grade cascade), not the key, decides which duties the unit may serve. 142 of the 3,302 rows in `unit_eligibility.csv` are blank. Where a unit has both an exact-process row and an activity-level row, the exact row wins |
+| `process_id` | string | — | no | PK part | → `activity_process_register`. **Blank ⇒ activity-level supply**: the row reaches every process of `carb3_activity`, and the carrier and grade test of C10 (the grade cascade), not the key, decides which duties the unit may serve. 142 of the 3,773 rows in `unit_eligibility.csv` are blank. Where a unit has both an exact-process row and an activity-level row, the exact row wins |
 | `min_duty` | real | PJ/yr or Mt/yr | no | — | Below this the unit is not offered at all |
 | `max_share` | real | fraction | no | — | ∈ [0, 1]. Cap on this unit's share of the duty, $z_{u,q,t} \le \texttt{max\_share} \times D_{q,t}$. **0 is a hard prohibition**: the unit is removed from $U_q$, not bounded. Four rows carry one, one of them 0 |
 | `earliest_year` | integer | year | no | — | Availability |
@@ -1028,7 +1075,7 @@ consumed negative, produced positive.
 | `emission_input` | − | An emission carrier the unit consumes — a capture train taking its host's CO₂, a top-gas-recycling furnace taking back its own |
 | `primary_output` | + | The carrier the unit exists to make. **Exactly one per unit** |
 | `coproduct` | + | Another produced carrier that is not reject heat: `chp_gas_turbine`'s electricity |
-| `reject` | + | Recovered heat leaving the unit |
+| `reject` | + | Recoverable heat leaving the unit, on the carrier of its source class (§3.4) |
 | `emission` | + | An emission carrier the unit produces. Process CO₂ declared, fuel CO₂ derived (D15) |
 
 **Sign convention, restated because §7 depends on it.** Consumed carriers are negative,
@@ -1140,8 +1187,10 @@ cooling output counted as heat drawn *in* from the cooled stream. Flue and casin
 are no carrier, so an 88 %-efficient boiler closes short, and that is not a defect; a
 `reject` row is therefore at most the unit's own losses.
 
-**`role = reject` is what makes waste heat work.** A kiln's reject heat is a *positive*
-coefficient on a low-grade heat carrier. Without these rows every unit rejects zero, the
+**`role = reject` is what makes waste heat work.** A reject row is a *positive* coefficient
+on the carrier of its source class (§3.4), or on `heat_lt60` for high-temperature process plant: a
+gas boiler's on `reject_flue_clean`, a kiln's on `heat_lt60`. The class, not the temperature
+alone, decides how hard the heat is to recover, and V36 (reject heat by source class) asserts it. Without these rows every unit rejects zero, the
 cascade has nothing to cascade, and the 28 `efficiency_heat_recovery` options in the library
 stay unmodellable. A reject carrier is `intermediate`, so it carries no emissions — its fuel
 was charged to the rejecting unit.
@@ -2290,8 +2339,8 @@ and land are one estate however many supplies serve it.
 dispatch, $z_{u,q,t} \le s_{u,q} D_{q,t}$, and a 0.00 prohibition removes $u$ from $U_q$. Once
 units feed each other through the balance (primary output through $z^{\circ}$, reject heat, a
 co-product), a consumer can lift a capped unit's output into the very duty it is capped on, one
-unit away or several: a coal boiler barred from a process rejects `heat_lt60` that
-`heat_pump_lt_reject` lifts back into that process. So each capped unit $k$ gets a **tracer**:
+unit away or several: a gas boiler barred from a process rejects `reject_flue_clean` that
+`economiser_flue_condensing` turns back into heat for that process. So each capped unit $k$ gets a **tracer**:
 its energy, followed through every unit and energy carrier on the premise, and the cap bounds
 the energy of $q$ that came from $k$.
 
@@ -2402,6 +2451,15 @@ premise carrying the reason. Check 4 (the row check) runs after a solve and repo
 | 2 | **Unservable duties** | `sets.diagnose_unservable_duties` | Before the LP is built, names every duty with an empty $U_q$ in a period, by premise and period, together with the units the screen removed |
 | 3 | **Start-year shortfall** | `sets.diagnose_start_year_shortfall` | C1 is an equality, C2 caps each unit at its deliverable capacity, and C5 forbids building in the start year, so the incumbents alone must cover every duty in the first period. This is a transportation problem (incumbents supply, duties demand, an edge wherever the unit is in $U_q$, a `max_share` capping its edge), answered exactly by a **maximum flow**, and the **minimum cut** names the smallest group of duties whose demand exceeds what the incumbents able to serve them can deliver. It is a necessary condition only: units that supply an internal product with no duty (D16) also draw on C2 and are not in the flow |
 | 4 | **Row check** | `build.check_constraint_rows` | After the solve, multiplies the built matrix by the returned solution and verifies every row independently of the solver, so a carrier node that does not balance is caught even when the solver reports `optimal`. Violations are reported with the row, not raised |
+
+**A2's eligibility refusals come before these checks and are not check 1.** A2 (expanding the premise to duties and candidate units) removes a unit
+from a process for three reasons that are statements about the premise, not about the unit's
+cost: the duty peaks below the unit's `min_duty` (§3.5.1); its `max_share` there is 0.00; or it is
+a recovery unit whose source class the premise's incumbents reject less of, at the base year,
+than its `min_viable_scale` (§3.5). Each refusal is reported naming the premise, the process, the
+unit and the reason. They are kept apart from check 1 because a unit the admission screen drops
+could never have run, so dropping it moves no objective, while a refused recovery unit might have
+paid.
 
 §10.5 (failure modes and their handling) lists the failures these guard.
 
@@ -2655,7 +2713,8 @@ pass mark.
 | **V32** | load + premise | yes | **The site boundary is honoured (D16).** (a) connection-indexed $m_{c,k,t}$ and $x_{c,k,t}$ are declared only where `carrier.may_import` / `carrier.may_export` is true **and** a `premise_connection` row carries the carrier; site-level $m_{c,t}$ only where `may_import` is true and **no** connection carries it; nothing of either kind where the flag is false; (b) no `process_duty` row and no `activity_process_duty_profile` row names a `product` carrier whose `may_export` is false; (c) `may_import` and `may_export` are both false on every `emission` and every `intermediate` carrier. Failure names the carrier |
 | **V33** | load + premise | yes | **Plant is named one unit at a time.** (a) every `premise_process_unit` row (§3.10.2) names a unit that `unit_eligibility` admits for that process at the premise's activity, the rows of one parent name a unit twice only with different `commissioned_year` values, and `capacity_share` where given is present on every row of that parent and sums to 1 within 1e-6; (b) every `abatement` unit has at least one `unit_abatement_host` row (§3.5.3), each host is a `converter` on the same `process_id`, and no unit hosts itself; (c) the remaining life used for an abatement unit equals the **minimum** over its hosts. Failure names the unit |
 | **V34** | load | yes | **Duties are services at a grade (§3.3, §3.4).** (a) no `activity_process_duty_profile` or `process_duty` row names a `primary` or `emission` carrier, whatever its family — an `OTH` row on `electricity` fails here; (b) every row on a gradeable carrier carries a `grade_rank`, equal to that carrier's own, and no row on a non-gradeable carrier carries one; (c) each family's rows sit on the carrier §3.4's table names for it — `REF` on a cooling band, the six heat families on a heat band, `MOT` on `motive_power` — and no row carries `EN`, `NEUOTH` or `HRS`; (d) every gradeable carrier has a `grade_family`, and `grade_rank` is unique within it. Failure names the row |
-| **V35** | premise | yes | **A cap is not routed through a consumer (C13, §5.5).** On fixtures where a capped unit's output pays to launder: (a) with C13 off the unit exceeds its share, so the fixture bites; (b) with C13 on, its own dispatch plus its traced energy in the duty stays within $s\,D$; (c) a 0.00 prohibition blocks routing into its own process but not into another; (d) the reject-heat route is closed as well as the $z^{\circ}$ one; (e) a consumer's output carries the capped unit's energy at $\eta_w$, never its ambient gain; (f) the energy follows a consumer's by-products, not only its primary output; (g) an uncapped use (export, disposal, another duty) absorbs it rather than barring the unit; (h) a release with no duty is followed through to the barred duty; (i) output is read net, so a store is never a source; (j) a premise with nothing traced builds no C13 variable or row. Failure names the unit and the duty |
+| **V35** | premise | yes | **A cap is not routed through a consumer (C13, §5.5).** On fixtures where a capped unit's output pays to launder: (a) with C13 off the unit exceeds its share, so the fixture bites; (b) with C13 on, its own dispatch plus its traced energy in the duty stays within $s\,D$; (c) a 0.00 prohibition blocks routing into its own process but not into another; (d) the route through a capped unit's reject heat, into a unit drawing its reject carrier, is closed as well as the $z^{\circ}$ one; (e) a consumer's output carries the capped unit's energy at $\eta_w$, never its ambient gain; (f) the energy follows a consumer's by-products, not only its primary output; (g) an uncapped use (export, disposal, another duty) absorbs it rather than barring the unit; (h) a release with no duty is followed through to the barred duty; (i) output is read net, so a store is never a source; (j) a premise with nothing traced builds no C13 variable or row. Failure names the unit and the duty |
+| **V36** | load | yes | **Reject heat by source class (§3.4, §3.5).** (a) every `reject` row lands on a reject source class or on `heat_lt60`, and each class carrier is `intermediate`, not gradeable, `energy`, `may_dispose` true and `may_import` and `may_export` false; (b) every class is made by at least one `reject` row and drawn by at least one recovery unit, except the classes §3.4's table leaves without one, which nothing may draw; (c) a recovery unit draws exactly one class, and unless it takes a work input its `grade_out` is no hotter than the band §3.4 allows for that class; (d) a recovery unit carries a positive `min_viable_scale` stated in PJ/yr of the class it draws. Failure names the unit or the class |
 
 **V20's five legs.**
 
@@ -2701,6 +2760,8 @@ write. Its scope is the whole built problem, not just A3 and A4: the archetype m
   grade cascade, both ways (C10)   ───▶ V19               load
   duties are services at a grade   ───▶ V34               load
   a cap is not routed (C13)        ───▶ V35               premise
+  reject heat by source class      ───▶ V36 (a)-(c)       load
+  recovery unit minimum size       ───▶ V36 (d)           load
   archetype coefficients ψ/β/χ/ε   ───▶ V20 (a)           load
   hybrid unit bill of materials    ───▶ V20 (b)           load
   hybrid unit capex levelisation   ───▶ V20 (c)           load

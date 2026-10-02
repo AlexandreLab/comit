@@ -159,9 +159,11 @@ class EligibilityDrop:
     process_id: str
     unit_id: str
     #: ``min_duty`` (the duty is below the unit's floor), ``max_share`` (a 0.00 cap, which
-    #: is a prohibition and so removes the unit rather than bounding it) or
-    #: ``min_duty_unchecked`` (a supply unit's floor could not be read because
-    #: ``known_activity`` is blank; the unit is kept, so this is a note and not a drop).
+    #: is a prohibition and so removes the unit rather than bounding it),
+    #: ``min_viable_scale`` (a recovery unit whose source class the premise's incumbents
+    #: reject too little of, §3.5) or ``min_duty_unchecked`` (a supply unit's floor could not
+    #: be read because ``known_activity`` is blank; the unit is kept, so this is a note and
+    #: not a drop).
     reason: str
     detail: str
 
@@ -204,8 +206,9 @@ class ModelSets:
     #: Carriers refused an export variable, with the reason. The run report prints these
     #: beside the §3.2 screen's dropped units.
     export_refused: tuple[ExportRefusal, ...] = ()
-    #: Units removed from a process by ``min_duty`` or a 0.00 ``max_share``. Reported beside
-    #: the §3.2 screen's drops, since otherwise these vanish from U_q without a trace.
+    #: Units removed from a process by ``min_duty``, a 0.00 ``max_share`` or a recovery
+    #: unit's ``min_viable_scale``. Reported beside the §3.2 screen's drops, since otherwise
+    #: these vanish from U_q without a trace.
     eligibility_dropped: tuple[EligibilityDrop, ...] = ()
     #: Carrier -> the model units that may release their primary output to C8 (carrier
     #: balance) through z° because another model unit draws that carrier, although the
@@ -1066,6 +1069,106 @@ def _eligible_with_drops(
     return frozenset(eligible), tuple(refused)
 
 
+# ------------------------------------------------- the recovery unit size screen (§3.5)
+
+
+def reject_classes(reference: ReferenceTables) -> frozenset[str]:
+    """§3.4's reject source classes: every carrier a ``reject`` row lands on that is not
+    gradeable. ``heat_lt60``, which the process-exhaust rows still land on, is a heat band and
+    so is not one; a class carrier says what made the heat, a band only how hot it is."""
+    io = reference.unit_input_output
+    rejected = {
+        str(carrier_id)
+        for carrier_id, role in zip(io["carrier_id"], io["role"], strict=True)
+        if str(role).strip() == "reject"
+    }
+    gradeable = {
+        str(carrier_id)
+        for carrier_id, flag in zip(
+            reference.carrier["carrier_id"], reference.carrier["is_gradeable"], strict=True
+        )
+        if bool(flag) is True
+    }
+    return frozenset(rejected - gradeable)
+
+
+def recovery_units(reference: ReferenceTables) -> dict[str, frozenset[str]]:
+    """Recovery unit -> the reject classes it draws (§3.5): a unit with an input row on a
+    reject class carrier. ``heat_pump_lt_reject`` draws the ``heat_lt60`` band and is not one."""
+    classes = reject_classes(reference)
+    io = reference.unit_input_output
+    drawn: dict[str, set[str]] = {}
+    for unit_id, carrier_id, role in zip(io["unit_id"], io["carrier_id"], io["role"], strict=True):
+        if str(role).strip() in INPUT_ROLES and str(carrier_id) in classes:
+            drawn.setdefault(str(unit_id), set()).add(str(carrier_id))
+    return {unit_id: frozenset(carriers) for unit_id, carriers in sorted(drawn.items())}
+
+
+def incumbent_reject(reference: ReferenceTables, premise: PremiseTables) -> dict[str, float]:
+    """Reject class -> the PJ/yr the premise's incumbent plant rejects onto it at the base year.
+
+    An incumbent's base-year activity is its process's ``known_activity`` times its cohort's
+    ``capacity_share`` (§3.10, §3.10.2; a blank share reads as 1, as :mod:`carb3.survival`
+    reads it), and its reject is that activity times its ``reject`` coefficient. Only named
+    plant counts: a process with no §3.10.2 children, or with a blank ``known_activity``,
+    contributes nothing, so the figure can only understate the source (note 23 decision 3).
+    """
+    record = premise.premise_record.iloc[0]
+    processes = _processes_at(premise, int(record["data_year"]))
+    classes = reject_classes(reference)
+    io = reference.unit_input_output
+    rejects: dict[str, dict[str, float]] = {}
+    for unit_id, carrier_id, role, coefficient in zip(
+        io["unit_id"], io["carrier_id"], io["role"], io["coefficient"], strict=True
+    ):
+        if str(role).strip() == "reject" and str(carrier_id) in classes:
+            rejects.setdefault(str(unit_id), {})[str(carrier_id)] = float(coefficient)
+    children = premise.premise_process_unit
+    totals: dict[str, float] = {}
+    for _, process in processes.iterrows():
+        activity = process["known_activity"]
+        if pd.isna(activity):
+            continue
+        named = children[
+            (children["process_id"] == process["process_id"])
+            & (children["valid_from_year"] == process["valid_from_year"])
+        ]
+        for _, cohort in named.iterrows():
+            share = cohort.get("capacity_share")
+            share = 1.0 if share is None or pd.isna(share) else float(share)
+            for carrier_id, coefficient in rejects.get(str(cohort["unit_id"]), {}).items():
+                totals[carrier_id] = (
+                    totals.get(carrier_id, 0.0) + float(activity) * share * coefficient
+                )
+    return totals
+
+
+def recovery_refusals(
+    reference: ReferenceTables, premise: PremiseTables
+) -> dict[str, str]:
+    """Recovery unit -> why A2 does not offer it at this premise: its ``min_viable_scale``
+    (§3.5, PJ/yr of the class it draws) exceeds what the premise's incumbents reject onto that
+    class at the base year. A recovery unit with a blank ``min_viable_scale`` is not screened.
+
+    Like ``min_duty``, it is a decision made outside the LP, so the problem stays linear. It counts incumbents only (note 23 decision 3), so it can refuse a
+    unit that sources built later would have fed, never offer one with too little to draw.
+    """
+    scale = reference.unit.set_index("unit_id")["min_viable_scale"]
+    available = incumbent_reject(reference, premise)
+    refused: dict[str, str] = {}
+    for unit_id, carriers in recovery_units(reference).items():
+        if unit_id not in scale.index or pd.isna(scale.loc[unit_id]):
+            continue
+        floor = float(scale.loc[unit_id])
+        source = sum(available.get(carrier_id, 0.0) for carrier_id in carriers)
+        if source < floor:
+            refused[unit_id] = (
+                f"incumbents reject {source:g} PJ/yr of {', '.join(sorted(carriers))} at the "
+                f"base year, below min_viable_scale {floor:g}"
+            )
+    return refused
+
+
 def build_sets(
     reference: ReferenceTables,
     premise: PremiseTables,
@@ -1080,7 +1183,10 @@ def build_sets(
 
     ``min_duty`` is applied against the duty's largest quantity over the horizon: "below this
     the unit is not offered at all" (§3.5.1) is a statement about the duty, and U_q is not
-    period-indexed. ``earliest_year`` and ``max_share`` are carried out to the LP instead,
+    period-indexed. A recovery unit's ``min_viable_scale`` is applied against the premise
+    instead, by :func:`recovery_refusals`, and a refused unit leaves every U_q it reached with
+    an ``eligibility_dropped`` row per process, never through the admission screen: it might
+    have paid, so it was not held at zero. ``earliest_year`` and ``max_share`` are carried out to the LP instead,
     where the period index exists; only the 0.00 ``max_share`` is resolved here, because a
     zero cap is a prohibition rather than a bound.
     """
@@ -1095,12 +1201,19 @@ def build_sets(
     min_duty: dict[tuple[DutyKey, str], float] = {}
 
     eligibility_dropped: list[EligibilityDrop] = []
+    too_small = recovery_refusals(reference, premise)
 
     for duty in duties:
         units, refused = _eligible_with_drops(
             reference, duty, screen.admitted, carb3_activity=activity
         )
         eligibility_dropped.extend(refused)
+        for unit_id in sorted(units & too_small.keys()):
+            eligibility_dropped.append(EligibilityDrop(
+                duty.premise_id, duty.process_id, unit_id, "min_viable_scale",
+                too_small[unit_id],
+            ))
+        units = units - too_small.keys()
         eligible[duty.key] = units
         rows = _eligibility_rows(reference, activity, duty.process_id)
         for _, row in rows.iterrows():

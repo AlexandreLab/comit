@@ -254,8 +254,9 @@ def test_the_dairy_boiler_house_moves_to_the_lift_heat_pump_in_2030(
     """``build.parquet`` says 0.0722 PJ/yr of ``heat_pump_ht`` is built in 2030, its
     ``earliest_year``, and again in 2050 at the end of its 20-year life.
 
-    It lifts 60-100 °C heat that ``heat_pump_lt_reject`` releases through z° (the activity
-    a unit releases to the carrier balance rather than dispatches to a duty). Before z°
+    It lifts 60-100 °C heat that ``heat_pump_chiller_condenser`` releases through z° (the
+    activity a unit releases to the carrier balance rather than dispatches to a duty), made
+    from the chillers' condenser heat (note 23); ``heat_pump_lt_reject`` did so before. Before z°
     covered duty units the lift pump had no source and the boiler house stayed on gas,
     rebuilding ``boiler_lt_gas`` (0.07209 PJ/yr) in 2045; that rebuild is now gone."""
     dairy = documents["mvp-dairy"]

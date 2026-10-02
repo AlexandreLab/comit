@@ -478,6 +478,13 @@ Five things this table carries that a fuel-variant technology list could not:
   grade. Without these rows every unit rejects zero and the cascade has nothing to cascade. A
   reject carrier is `intermediate`, so it carries no emissions — its fuel was charged to the
   dryer.
+- **This example's dryer reject sits on `heat_lt60`, where the reference data puts a dryer's on
+  `reject_dryer_exhaust`.** The implementation specification carries reject heat by its source
+  class (§3.4), and no recovery unit draws a dryer's exhaust yet, so in the `carb3` run of this
+  dairy that heat is disposed of and the heat recovered is the chillers' condenser heat, lifted by
+  `heat_pump_chiller_condenser` ([notes/23](../notes/23_reject_heat_recovery_plan.md) section 10).
+  The example keeps the `heat_lt60` route, under its own coefficients, as the smallest whole case
+  of the reject mechanism: one source, one drawer, and a disposal that closes the node.
 - **Emission rows are derived, not authored (D15).** Every `co2_fuel_fossil` row above is
   A6's work: the fuel coefficient times the scenario's factor times one minus the biogenic
   fraction, and every `co2_fuel_biogenic` row the same with the fraction itself. Authoring
@@ -1383,8 +1390,9 @@ clean-sheet decision on every heat duty at once. At the 2040 prices:
 `dryer_direct_hydrogen`: 5.2 × 0.070361 × 1.17647 = 0.430443 + 0.247059 +
 1.17650 × 16.50 = 19.412250 → **£20.08975m/PJ**.
 
-**The reject-heat leg, in full.** This is data migration B5's coefficient doing the only thing
-it exists to do:
+**The reject-heat leg, in full**, on this example's own `heat_lt60` route (§1.11 says where the
+reference data differs). This is data migration B5's coefficient doing the only thing it exists
+to do:
 
 ```
 dryer reject produced      0.079050 x 0.12000                    = 0.009486 PJ/yr  at heat_lt60

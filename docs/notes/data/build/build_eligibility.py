@@ -28,6 +28,19 @@ DATA = os.path.dirname(HERE)
 # carry ("petcoke", "refinery_fuel_gas") maps to nothing at all rather than to
 # its nearest neighbour. Blanks are recorded as gaps in DONE_eligibility.md.
 # ---------------------------------------------------------------------------
+# Note 23 decision 4 (2026-10-02): at a refrigeration process the waste heat is the chillers'
+# condenser heat, which sits on its own source-class carrier, so an option offering a reject-heat
+# heat pump there resolves to `heat_pump_chiller_condenser`, and `heat_pump_lt_reject` (which
+# draws `heat_lt60`) is not offered there. Elsewhere it is the other way round. A refrigeration
+# process is one whose duty profile rows at that activity are all `REF`; see REFRIGERATION_ONLY.
+CONDENSER_NOTE = ("At a refrigeration process the waste heat is the chillers' condenser heat, "
+                  "lifted by the condenser heat pump (note 23 decision 4).")
+REFRIGERATION_ONLY = {
+    # unit -> True: offered only at refrigeration processes; False: never offered there
+    "heat_pump_chiller_condenser": True,
+    "heat_pump_lt_reject": False,
+}
+
 DISPLACES_TOKEN_MAP = {
     # --- gas -----------------------------------------------------------
     "gas": "natural_gas",
@@ -301,10 +314,12 @@ JOIN = OrderedDict([
          "GAP-UNIT: no heat pump unit above 200C; heat_pump_ht is the highest and it is an STM unit below that.")]),
     ("heat_pump_below_100", [
         ("heat_pump_lt_air", "is_unit", "Ambient-source low-temperature heat pump."),
-        ("heat_pump_lt_reject", "is_unit", "The same duty served from recovered reject heat.")]),
+        ("heat_pump_lt_reject", "is_unit", "The same duty served from recovered reject heat."),
+        ("heat_pump_chiller_condenser", "is_unit", CONDENSER_NOTE)]),
     ("heat_recovery_heat_pump", [
         ("heat_pump_lt_reject", "is_unit",
-         "Upgrading 20-70C waste heat to 60-150C is exactly the reject-heat heat pump unit.")]),
+         "Upgrading 20-70C waste heat to 60-150C is exactly the reject-heat heat pump unit."),
+        ("heat_pump_chiller_condenser", "is_unit", CONDENSER_NOTE)]),
     ("hisarna_smelting_reduction", [
         ("hisarna_coal", "route_change",
          "Direct smelting of ore fines, eliminating coke_ovens and sinter_plant as well as replacing blast_furnace_ironmaking.")]),
@@ -914,6 +929,10 @@ def main():
     carriers = read("carrier.csv")
     register = read("activity_process_register.csv")
     mappings = read("process_decarbonisation_options.csv")
+    duty_families = defaultdict(set)
+    for d in read("activity_process_duty_profile.csv"):
+        duty_families[(d["carb3_activity"], d["process_id"])].add(d["duty_family"])
+    refrigeration = {key for key, fams in duty_families.items() if fams == {"REF"}}
 
     unit_by_id = {u["unit_id"]: u for u in units}
     carrier_ids = {c["carrier_id"] for c in carriers}
@@ -1047,6 +1066,9 @@ def main():
                 "process_decarbonisation_options.csv; the option resolves to this unit "
                 "in decarbonisation_option_unit.csv." % (oid, act, proc))
         for unit_id in is_unit_map.get(oid, []):
+            if (unit_id in REFRIGERATION_ONLY
+                    and REFRIGERATION_ONLY[unit_id] != ((act, proc) in refrigeration)):
+                continue  # note 23 decision 4: each reject class through its own unit
             u = unit_by_id[unit_id]
             if u["spine"] == "chemistry" and u["process_id"] != proc:
                 # A chemistry unit only serves its own node (D5).  The seven
