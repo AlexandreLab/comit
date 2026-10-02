@@ -1080,6 +1080,10 @@ def unservable_duties(duty: list[dict], elig: list[dict], unit: list[dict],
         kind = carriers.get(cid, {}).get("carrier_kind")
         family_units = [u for u in admitted if u in prim
                         and (prim[u] == cid or (dfam and fam_rank(prim[u])[0] == dfam))]
+        if row["duty_family"] == "DRY":
+            # Spec section 3.5.1: a drying duty takes DRY units only, as carb3 enforces at
+            # load; a hot-water unit an options row offers here does not serve it.
+            family_units = [u for u in family_units if units[u]["duty_family"] == "DRY"]
 
         def serves(u: str) -> bool:
             if dfam is None or drank is None:

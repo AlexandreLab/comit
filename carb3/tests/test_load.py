@@ -474,6 +474,8 @@ def test_measured_counts_match_the_plan(
     price leg drops one more (81): the sugar kiln burns coke, which has no import price.
     The fourth (2026-10-02, note 20 item 69) rated ``dryer_heat_pump`` grade 2, so the join
     no longer offers it at the nine grade-4 and three grade-3 drying duties: 3,302 rows.
+    The fifth (2026-10-02, note 20 item 71) split the dairy spray dryer's air heating at the
+    band edges, so the join offers ``dryer_heat_pump`` and ``dryer_steam`` there: 3,304.
     """
     dropped = {d.unit_id for d in screen.dropped}
     unit_leg = {d.unit_id for d in screen.dropped if d.leg != "import_price"}
@@ -483,7 +485,7 @@ def test_measured_counts_match_the_plan(
     assert len(screen.admitted) == 64
 
     elig = reference.unit_eligibility
-    assert len(elig) == 3302
+    assert len(elig) == 3304
     assert int(elig["unit_id"].isin(unit_leg).sum()) == 50
     assert int(elig["unit_id"].isin(dropped).sum()) == 1392
 

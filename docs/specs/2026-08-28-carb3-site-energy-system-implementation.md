@@ -493,7 +493,7 @@ carry a single duty family at 1.00 is therefore *unexamined*, not *confirmed sim
 expands into a premise's `process_duty` (§3.9) wherever no site intelligence overrides it.
 This is the demand side of the carrier model. Populated by
 [`../notes/data/activity_process_duty_profile.csv`](../notes/data/activity_process_duty_profile.csv) –
-427 rows covering all 375 of the register's keys, with provenance per row. Readiness is tracked in
+430 rows covering all 375 of the register's keys, with provenance per row. Readiness is tracked in
 [notes/16](../notes/16_input_data_readiness.md).
 
 | Field | Type | Unit | Req | Key | Validation |
@@ -771,6 +771,67 @@ rule from the supply side: the band of the hottest heat, or the coldest cooling,
 deliver. Placing a duty by its mean temperature instead would let a unit that cannot reach the
 process's hardest point serve it.
 
+**Rule (a stream heated once through is split at the band edges).** The placement rule is right
+for heat a process needs *at* a temperature. It overstates a duty that heats a stream once
+through, from an intake temperature to a delivery temperature, because such a duty needs heat
+across the whole rise and only its top end at the delivery temperature. The air of a convective
+dryer is the case: a milk powder spray dryer draws outside air and heats it to about 200 °C, and
+heat recovered from its own exhaust, directly or through a heat pump, can cover the low part of
+that rise. [Liang et al. (2022)](https://orbit.dtu.dk/en/publications/full-electrification-opportunities-of-spray-dryers-in-milk-powder/)
+report that those methods "are not state-of-the-art for heating the air above ~80 °C". Placing
+the whole duty in `heat_150_400` hides that retrofit, which is the realistic one: heat pump
+preheat, then a higher-grade top-up. Such a duty is therefore written as one row per band the
+rise crosses, a **band segment**. Segment $b$ is the part of the rise lying in band $b$, whose
+edges are $[\text{low}_b, \text{high}_b)$ (an open band edge counts as unbounded), and it takes
+
+$$\texttt{duty\_share}_b \;=\; \frac{\min(\text{delivery}, \text{high}_b) - \max(\text{intake}, \text{low}_b)}{\text{delivery} - \text{intake}}$$
+
+of the duty, where intake and delivery are the stream's two temperatures. The stream's heat
+capacity is taken as constant over the rise, as the published spray-drying model of
+[Moejes et al. (2016)](https://edepot.wur.nl/404406) takes dry air's (Table A3, 1 kJ/kg °C).
+The rows share a `duty_family`, differ in `carrier_id` and `grade_rank`, and need no schema
+change, since `grade_rank` is part of §3.3's key. The temperatures are named in words rather than
+as symbols because §5.1's $T$ is the set of periods.
+
+**A segment takes the band it lies within, by construction, not by the placement rule.** Bands
+are half-open, so a segment ending at exactly 100 °C would sit in band 3 if it were placed by its
+hottest temperature. The segment from 60 °C up to 100 °C lies within band 2, and that is where it
+goes. **No approach temperature is allowed for**: a real air heater delivers air some kelvin
+below its own supply temperature, while a grade-2 heat pump is here credited with heating air all
+the way to the 100 °C edge. With the ~80 °C limit above, the heat pump's segment is overstated
+on both counts ([notes/20](../notes/20_reference_data_open_questions.md) item 71).
+
+Three conditions, all of which must hold:
+
+1. **The stream is heated once through.** It enters at the intake temperature and is not
+   recirculated: a closed-loop dryer's heater lifts return air, whose temperature is not the
+   intake.
+2. **Both temperatures are sourced, and each is a single figure.** The delivery temperature is
+   the one the placement rule would have read. For outside air the intake is 10.3 °C, the
+   1991–2020 annual mean over 17 stations selected as representative of fuel consumption in Great Britain
+   ([BEIS 2022, Table 1](https://assets.publishing.service.gov.uk/media/624462cf8fa8f5277b365af6/Long-term_mean_temperatures_1991-2020.pdf)).
+   The annual mean is the right intake for an annual duty because the heat is linear in it.
+3. **The duty is sensible heating of that stream alone.** Latent heat, a reaction, or a second
+   operation bundled into the same process keeps the row whole.
+
+**A band segment is one stream's physics, not a second technology.** §3.3 forbids splitting a duty
+because two technologies serve it; here the shares are fixed by temperatures alone and say
+nothing about who serves each segment. Only a `DRY` unit serves a segment (§3.5.1), and among
+the dryers C10 (the grade cascade) decides: an incumbent dryer whose `grade_out` reaches the
+delivery temperature still serves every segment, so the base year is unchanged, and a heat-pump
+dryer at grade 2 reaches the segments below 100 °C only. **Any allocation the LP picks can be
+built as heaters in series.** A unit is eligible only for segments at or below its grade, so the
+energy that units at or below grade $g$ deliver never exceeds the segments at or below $g$, and
+ordering the heaters by grade along the air path realises the allocation.
+
+One row meets all three conditions today, `Food Processing Centre`/`direct_heating`, and is
+written this way. `Creamery`/`evaporation_drying` does not: its process bundles the falling-film
+evaporator, whose heat is latent heat in steam, so condition 3 fails, and its delivery
+temperature is a 180–200 °C range, so condition 2 does too. It needs a source that separates the
+evaporator from the dryer. The other rank-3 and rank-4 `DRY` rows fail as well: their provenance
+reads no temperature, gives a delivery temperature only, or describes recirculated air
+([notes/20](../notes/20_reference_data_open_questions.md) item 71).
+
 **The cascade runs opposite ways in the two families, and never between them.** Heat at a
 higher rank may serve a heat duty at a lower rank — a 150–400 °C steam boiler serves a 120 °C
 duty. Cooling at a **lower** rank may serve a cooling duty at a higher rank — a −25 °C brine
@@ -875,6 +936,17 @@ carrier — `motive_power`, `electric_service` — is matched on the carrier, wh
 family: `motor_elec` serves an `OTH` row whose service is shaft work. Within those families
 C10 still decides which unit serves which duty, and V19 (no unit eligible beyond its
 `grade_out`) asserts it.
+
+**A `DRY` duty takes `DRY` units only, and the LP builder applies it again at load.** The
+rebuilt family rows already respect it, but `unit_eligibility` is keyed by process, so an
+evidence row the options join wrote offers its unit to every duty at that process, and C10
+cannot refuse one whose grade reaches the duty: `resistance_heater_lt`, a hot-water unit, took
+`mvp-dairy`'s spray dryer that way, and once §3.4's band segments put part of a drying duty below
+150 °C, `heat_pump_ht` and a biomethane boiler reached it too. The rule holds for **every** `DRY`
+duty, not only a band-segmented one, because the medium argument does not depend on the split;
+the split only exposed it. Every `DRY` row of the reference build keeps at least six `DRY` units
+after it, so none becomes unservable. `HTH` and `REF` need no such check today: no `HTH` duty sits
+below rank 5, where only furnaces and kilns reach, and C10 never crosses from heat to cooling.
 
 **`min_duty` replaces the MILP binary.** COMIT introduces a binary per hydrogen technology
 per site when a minimum plant size is set (`R/fct_constraints_hydrogen.R:650`,
@@ -1691,7 +1763,7 @@ model wants it or not.
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-10-01*
+*Section last updated: 2026-10-02*
 
 **This section is authoritative.** Everything else serves it.
 
@@ -1809,7 +1881,11 @@ collapsed, not ignored. C11 and $Z^{\text{net}}$ are not built, and `import_pric
 forms are numerically identical there. $z^{\circ}_{u,t}$ exists, per carrier, for **supply units**
 (units that serve no duty and make a carrier no duty asks for: a kiln's `clinker`, a capture
 train's `co2_captured`) and for **duty units whose primary output another model unit draws**
-(`heat_pump_lt_air` releases `heat_60_100` that `heat_pump_ht` lifts). A unit with neither has
+(`heat_pump_lt_air` releases `heat_60_100` that `heat_pump_ht` lifts). **A `DRY` unit is never
+released**: its heat is air in contact with the product, and a carrier is a band with no medium,
+so without the bar a gas dryer's hot air would feed `dryer_steam`'s steam coil and a heat-pump
+dryer's would feed `heat_pump_ht`'s water circuit, routes §3.4's band segments made reachable. It
+is the medium argument the eligibility join keeps the duty family for (§3.5.1). A unit with neither has
 no $z^{\circ}$ column, which is the same as $z^{\circ}_{u,t}=0$. Because a released unit can then
 run past its duty and export the rest, $x_{c,t}$ is bounded by the connection's
 `export_capacity` run flat out ($\text{MW}\times 0.031536$ PJ/yr) for an energy carrier, a blank
