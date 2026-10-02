@@ -186,6 +186,11 @@ at the archived baseline's §6, lines 2126–2127.
   example. A lane that owns one section cannot apply that; give one agent the whole file.
   Before touching a rounded figure that other figures are computed from, `grep -rn` the
   values derived from it across `docs/` and count them.
+- **Review an implementation plan before opening its PR.** Note 23 went out on 2026-10-02
+  unreviewed; a fresh-context review against the spec, data and code then found three P0s,
+  among them a threshold column that the eligibility rebuild would have wiped. Run
+  `/plan-eng-review` (or a fresh-context reviewer) on any plan that names data columns,
+  constraints or code paths, and fold the findings in before `gh pr create`.
 - **Check a PR's state before sending more work to it.** On 2026-09-26, follow-up commits
   were aimed at PR #64 after it had already been merged. Run
   `gh pr view <n> --repo AlexandreLab/comit --json state` first; a merged PR's branch takes no
