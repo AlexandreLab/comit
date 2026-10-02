@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, and item 58 on 2026-10-01 – **twenty-two of the sixty-eight, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, and item 69 on 2026-10-02 – **twenty-three of the sixty-nine, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -1014,3 +1014,22 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     prevent CCS from ever being built unless new-build kilns are deemed hosts. Also defers
     Z^strand (the stranding charge on a trapped train) because reporting stranded capacity is
     meaningless without a lifecycle model. *Note 21 §9, deferred item 2; spec §3.5.3, §5.2.*
+
+69. **`dryer_heat_pump` makes two-thirds of its output from nothing, at a band no heat pump
+    reaches.** COMIT's `ICHDRYELCHP01` row gave it `heat_150_400` at a COP of 3 with no
+    `aux_input` and `draws_ambient` FALSE, so 0.667 PJ of every PJ came from no carrier. That
+    is item 64's defect in another unit, and nothing caught it, because V2's energy-closure
+    leg (§3.6) is not implemented. The join offered it at twelve grade-3 and grade-4 drying
+    duties, and in `mvp-dairy` it beat the 2019 gas spray dryer (200 °C inlet) in 2025,
+    stranding it twenty years early. *Found verifying the dairy run, 2026-10-02.*
+    **Settled 2026-10-02: `grade_out` 2 on `heat_60_100`, `draws_ambient` TRUE, COP 3 kept.**
+    A heat-pump dryer recovers the latent heat of its own humid exhaust and returns drying air
+    below 100 °C: [DEBOER2020] makes that TRL 9, [annex58_t1_2023] has high-temperature heat
+    pumps commercial only to about 120 °C, and [BOORTMALT_HP] is the UK case at 60–90 °C kiln
+    air. The exhaust heat is outside the carrier set, hence `draws_ambient` rather than an
+    `aux_input` on the site's `heat_lt60` pool. The rebuilt join keeps it at the five grade-2
+    drying duties (cement tile works, pottery, tannery and both maltings) and drops the other
+    twelve: `unit_eligibility.csv` goes from 3,314 to 3,302 rows. The dairy's dryer now stays
+    on gas to the end of its life in 2044 and moves to `resistance_heater_lt` in 2045; the
+    objective rises from £134.1m to £154.0m. A heat-pump preheat with an electric top-up, the
+    realistic retrofit for a spray dryer, needs a split duty that no unit can express yet.

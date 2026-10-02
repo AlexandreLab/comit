@@ -472,6 +472,8 @@ def test_measured_counts_match_the_plan(
     61 admitted, 3,268 rows. The third (2026-09-26) added the two mobile-plant units, the
     aluminium potline and the beet-sugar lime kiln: 145 units, 64 admitted, 3,314 rows. The
     price leg drops one more (81): the sugar kiln burns coke, which has no import price.
+    The fourth (2026-10-02, note 20 item 69) rated ``dryer_heat_pump`` grade 2, so the join
+    no longer offers it at the nine grade-4 and three grade-3 drying duties: 3,302 rows.
     """
     dropped = {d.unit_id for d in screen.dropped}
     unit_leg = {d.unit_id for d in screen.dropped if d.leg != "import_price"}
@@ -481,7 +483,7 @@ def test_measured_counts_match_the_plan(
     assert len(screen.admitted) == 64
 
     elig = reference.unit_eligibility
-    assert len(elig) == 3314
+    assert len(elig) == 3302
     assert int(elig["unit_id"].isin(unit_leg).sum()) == 50
     assert int(elig["unit_id"].isin(dropped).sum()) == 1392
 
