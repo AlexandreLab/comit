@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [[ "${ALLOW_UNCHECKED_PUSH:-}" == "1" ]]; then
-  echo "⚠️  Skipping quality gate (ALLOW_UNCHECKED_PUSH=1) — use only for docs-only emergencies"
+  echo "⚠️  Skipping quality gate (ALLOW_UNCHECKED_PUSH=1): use only for docs-only emergencies"
   exit 0
 fi
 
