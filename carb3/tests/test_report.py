@@ -220,12 +220,12 @@ def test_the_cement_kiln_switch_and_the_capture_train_are_visible(
 
 def test_a_heat_pump_draws_ambient_heat(documents: dict[str, dict]) -> None:
     energy = _layer(documents["mvp-dairy"], "energy")
-    ambient = {t: v for s, t, v in _links(energy, 2021) if s == sankey_data.AMBIENT}
-    # From 2025 the dairy's grade-2 duties go to ``heat_pump_lt_reject`` on the chillers'
-    # reject heat, and no heat pump reaches its grade-4 dryer (note 20 item 69), so the
-    # ambient-source heat pump is seen running on its base-year stock.
-    assert ambient.get("unit:heat_pump_lt_air", 0.0) > 0.0
-    assert ambient.get("unit:chiller_electric", 0.0) > 0.0
+    # From 2025 the dairy's space heating, on heat_lt60 since note 20 item 73, goes to a new
+    # ``heat_pump_spc_air``; in the base year it is the incumbent gas boiler.
+    ambient = {t: v for s, t, v in _links(energy, 2025) if s == sankey_data.AMBIENT}
+    assert ambient.get("unit:heat_pump_spc_air", 0.0) > 0.0
+    base_year = {t: v for s, t, v in _links(energy, 2021) if s == sankey_data.AMBIENT}
+    assert base_year.get("unit:chiller_electric", 0.0) > 0.0
 
 
 def test_the_imports_series_is_the_carrier_mix(out_dir: Path, documents: dict[str, dict]) -> None:

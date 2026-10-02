@@ -1238,4 +1238,7 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     while the incumbent `heat_pump_lt_air` stands idle. That incumbent's provenance in
     `premise_process_unit.csv` says it replaced `boiler_spc_gas` because the boiler was
     `grade_out` 1; the boiler has been grade 2 since item 24, so that reason was already stale
-    and the substitution could be undone.
+    and the substitution could be undone. **Undone 2026-10-02:** `boiler_spc_gas`, commissioned
+    2011, is the incumbent again. It serves the space heat in 2021 and a new `heat_pump_spc_air`
+    takes it from 2025; the `mvp-dairy` objective rises from £143.77m to £144.39m, since the
+    heat pump had been free base-year capacity.

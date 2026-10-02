@@ -228,16 +228,17 @@ process CO₂, no co-firing, no second cohort.
 | `carb3_activity` | `Food Processing Centre` |
 | Cut from | [Food and drink worked example](../../../docs/specs/2026-08-28-carb3-site-energy-system-worked-example-food-drink.md), premise `P-004417` |
 | Processes | Six: the activity's whole default set |
-| Duties | Eight rows across five carriers: `heat_60_100` grade 2 (LTH 0.060763 and SPC 0.018480), `heat_100_150` grade 3 (STM 0.070816), `heat_150_400` grade 4 (DRY 0.079050), `cooling_0_15` grade 2 (REF 0.064598), `motive_power` (MOT 0.062553 over three processes) |
-| Incumbents | Eight rows over six processes: `chp_gas_turbine` + `boiler_lt_gas`, `dryer_direct_gas`, `chiller_electric`, `motor_elec` ×3, `heat_pump_lt_air` |
+| Duties | Thirteen rows across seven carriers: `heat_lt60` grade 1 (SPC 0.018480, DRY 0.020711), `heat_60_100` grade 2 (LTH 0.060763, DRY 0.016668), `heat_100_150` grade 3 (STM 0.070816, DRY 0.020836), `heat_150_400` grade 4 (DRY 0.020836), `cooling_0_15` grade 2 (REF 0.064598 and 0.000934), `motive_power` (MOT 0.048566 over three processes), `electric_service` (OTH 0.013054). The dryer is four band segments (note 20 item 71) and `site_services` four duties (note 20 items 72 and 73) |
+| Incumbents | Ten rows over six processes: `chp_gas_turbine` + `boiler_lt_gas`, `dryer_direct_gas`, `chiller_electric` ×2, `motor_elec` ×3, `boiler_spc_gas`, `generic_process_elec` |
 | Base-year energy | `natural_gas` 0.300000, `electricity` 0.060000 PJ/yr; three explicit `not_consumed` zeros |
 
 **What it exists to exercise.** The low- and mid-grade heat route with a genuine heat-pump
 option, and the `max_share` 0.00 prohibition. `unit_eligibility.csv` carries exactly one
 `max_share` 0.00 row — `boiler_lt_coal` at `Food Processing Centre` on
 `boiler_steam_hot_water` — and this premise runs that process, so the prohibition is actually
-tested rather than merely present. `heat_pump_lt_air` contends on both grade-2 duties, at
-0.060763 and 0.018480 PJ/yr, each clearing its 0.01 floor.
+tested rather than merely present. `heat_pump_lt_air` contends on the boiler house's grade-2
+duty, 0.060763 PJ/yr, clearing its 0.01 floor, and on the grade-1 space heating, 0.018480
+PJ/yr, beside the grade-1 `heat_pump_spc_air`.
 
 **Which figures are taken from the worked example.** The premise record (§1.1), both
 connections (§1.4), the base-year energy rows (§1.2), the six processes and their
@@ -248,18 +249,20 @@ example's 0.018480 SPC duty exactly.
 
 **Which figures are synthetic.** The incumbents for the four processes the example leaves
 unnamed — `refrigeration`, `machinery_motors`, `compressed_air` and `site_services` — which
-are the `activity_default_unit` choices for each, with one substitution described below. Their
+are the `activity_default_unit` choices for each, with no substitution (below). Their
 cohort years are a 2016 drives refit, chosen so `motor_elec` (`lifetime` 20) is alive at the
 2021 start year. `chiller_electric` has `lifetime` 10 and is commissioned 2016, so it dies in
 **2026** and must be replaced inside the horizon.
 
-**One substitution, forced by the reference data.** The `activity_default_unit` SPC unit for
-this activity is `boiler_spc_gas`, which has `grade_out` 1 and therefore cannot serve the
-grade-2 SPC duty the profile states. `heat_pump_lt_air` stands in as the incumbent. See
-[Findings](#findings-for-the-reference-data) — this is a whole-table defect, not a quirk of
-this premise. **Since 2026-09-25 the reason is gone** — the five fuel-fired
-`SPC` boilers are at `grade_out` 2 (finding 1) — but the premise keeps its heat-pump
-incumbent, since it is synthetic and changing it would move the solve.
+**No substitution any more.** Until 2026-10-02 `heat_pump_lt_air` stood in for the
+`activity_default_unit` SPC unit, `boiler_spc_gas`, which then had `grade_out` 1 and could not
+serve a grade-2 SPC duty (see [Findings](#findings-for-the-reference-data)). The five
+fuel-fired `SPC` boilers have been at `grade_out` 2 since 2026-09-25 (finding 1), and the duty
+itself is grade 1 since note 20 item 73, so the default is the incumbent again, commissioned
+2011 with the process. It burns gas, as the worked example's `site_services` does (§3.2,
+0.021000 PJ/yr gas). Restoring it raised the `mvp-dairy` objective from £143.77m to
+£144.39m: the heat pump had been free base-year capacity, and the model now builds a
+`heat_pump_spc_air` in 2025 to replace the boiler's gas.
 
 **What it does not exercise.** No mass denominator, no process CO₂, no `earliest_year` gate
 that can fire (`boiler_lt_hydrogen` at 2035 and `chp_hydrogen_ccgt` at 2035 are both dropped
