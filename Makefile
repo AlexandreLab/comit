@@ -21,13 +21,16 @@ CARB3    := $(REPO)/carb3
 
 .DEFAULT_GOAL := help
 
-.PHONY: help check docs-check docs-list data-check data-report data-worklist docs-build carb3 carb3-run carb3-report
+.PHONY: help check hooks docs-check docs-list data-check data-report data-worklist docs-build carb3 carb3-run carb3-report
 
 help: ## Show available targets
 	@grep -hE '^[a-z0-9-]+:.*?## ' $(MAKEFILE_LIST) \
 	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[1m%-14s\033[0m %s\n", $$1, $$2}'
 
 check: docs-check data-check carb3 ## Run every consistency check
+
+hooks: ## Install pre-push hook to run `make check` before push
+	git config core.hooksPath .githooks
 
 docs-check: ## Verify the generated interface docs and diagrams match their specs
 	@$(PYTHON) $(EXAMPLES)/build_interface_docs.py --all --check

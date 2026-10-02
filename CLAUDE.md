@@ -290,23 +290,20 @@ at the archived baseline's §6, lines 2126–2127.
 Pull requests go to the **`fork` remote** (`AlexandreLab/comit`), not to `origin`
 (`Central-Energy-and-Emissions-Modelling/comit`). Base branch is `main`.
 
-## Hook candidates — deterministic, currently unwired
+## Hook candidates — deterministic, now wired
 
-These are mechanical predicates, so they belong in hooks rather than in this file. None is
-wired today: there is no `.github/`, no `.githooks/`, and no `core.hooksPath`.
+These are mechanical predicates, so they belong in hooks rather than in this file.
 
 | Check | Command | Status |
 |---|---|---|
-| Everything below, in one command | `make check` | exists, **never run automatically** |
-| Interface docs and diagrams not stale | `make docs-check` | exists (T2), **never run automatically** |
-| CaRB3 data consistency | `make data-check` | exists (T1), **never run automatically** |
+| Everything below, in one command | `make check` | **wired to pre-push via `.githooks/pre-push`** |
+| Interface docs and diagrams not stale | `make docs-check` | included in `make check`, pre-push |
+| CaRB3 data consistency | `make data-check` | included in `make check`, pre-push |
 | R tests | `devtools::test()` | not gated |
 
-Every check now exists and every one runs clean from any directory. **None of them is
-wired to anything.** `build_interface_docs.py`'s own docstring says it exists "so a hook or
-CI step can refuse a spec change that left the published copies behind"; that intent is
-still unrealised, and it is now the only thing missing. `make check` is the single command
-a `PreToolUse`/pre-push hook would need to call.
+`make check` runs on every pre-push after `make hooks` is run in a clone. The hook is
+configured via `.githooks/pre-push`, which calls `tools/quality_gate.sh`, and can be bypassed
+for docs-only emergencies with `ALLOW_UNCHECKED_PUSH=1 git push`.
 
 ## Skill routing
 
