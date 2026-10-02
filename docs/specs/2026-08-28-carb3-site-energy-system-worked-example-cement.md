@@ -431,19 +431,19 @@ nothing hosts off them at the base year.
 | `kiln_dry_coal` | `clinker` | **+1.00000** | `primary_output` | declared |
 | `kiln_dry_coal` | `coal` | −4.60000 | `fuel_input` | declared |
 | `kiln_dry_coal` | `electricity` | −0.10871 | `aux_input` | declared |
-| `kiln_dry_coal` | `heat_lt60` | **+0.55326** | `reject` | declared — [DECC_SURPLUSHEAT2014], (48 − 13)/291 = 0.12027 of fuel in |
+| `kiln_dry_coal` | `heat_lt60` | **+0.17388** | `reject` | declared — [DECC_SURPLUSHEAT2014], technical share 11/291 = 0.037801 of fuel in |
 | `kiln_dry_coal` | `co2_process` | **+525.00000** | `emission` | **declared** — stoichiometry, kt per Mt of clinker |
 | `kiln_dry_coal` | `co2_fuel_fossil` | **+435.16000** | `emission` | **derived** — 4.60000 × 94.6 × (1 − 0) |
 | `kiln_dry_gas` | `clinker` | +1.00000 | `primary_output` | declared |
 | `kiln_dry_gas` | `natural_gas` | −4.60000 | `fuel_input` | declared |
 | `kiln_dry_gas` | `electricity` | −0.10871 | `aux_input` | declared |
-| `kiln_dry_gas` | `heat_lt60` | **+0.55326** | `reject` | declared — [DECC_SURPLUSHEAT2014], (48 − 13)/291 = 0.12027 of fuel in |
+| `kiln_dry_gas` | `heat_lt60` | **+0.17388** | `reject` | declared — [DECC_SURPLUSHEAT2014], technical share 11/291 = 0.037801 of fuel in |
 | `kiln_dry_gas` | `co2_process` | +525.00000 | `emission` | declared |
 | `kiln_dry_gas` | `co2_fuel_fossil` | **+258.06000** | `emission` | **derived** — 4.60000 × 56.1 |
 | `kiln_dry_wdf` | `clinker` | +1.00000 | `primary_output` | declared |
 | `kiln_dry_wdf` | `waste_derived_fuel` | −4.60000 | `fuel_input` | declared |
 | `kiln_dry_wdf` | `electricity` | −0.10871 | `aux_input` | declared |
-| `kiln_dry_wdf` | `heat_lt60` | **+0.55326** | `reject` | declared — [DECC_SURPLUSHEAT2014], (48 − 13)/291 = 0.12027 of fuel in |
+| `kiln_dry_wdf` | `heat_lt60` | **+0.17388** | `reject` | declared — [DECC_SURPLUSHEAT2014], technical share 11/291 = 0.037801 of fuel in |
 | `kiln_dry_wdf` | `co2_process` | +525.00000 | `emission` | declared |
 | `kiln_dry_wdf` | `co2_fuel_fossil` | **+206.98712** | `emission` | **derived** — 4.60000 × 92.0 × 0.4891 |
 | `kiln_dry_wdf` | `co2_fuel_biogenic` | **+216.21288** | `emission` | **derived** — 4.60000 × 92.0 × 0.5109 |
@@ -488,11 +488,15 @@ The modelling choice underneath is worth keeping either way: the reboiler has it
 and is **not** self-capturing. A train recirculating its flue gas would carry a different
 coefficient, and the difference is 76.78 kt a year here (§8.4).
 
-**Each kiln rejects 0.55326 PJ of low-grade heat per Mt of clinker**, and nothing at this
-works draws it. The coefficient is one whole-of-industry fraction — [DECC_SURPLUSHEAT2014]
-gives 48 TWh/yr rejected as concentrated sources, 13 TWh/yr of it in unrecoverable hot solids,
-against ca. 291 TWh/yr of industrial heat use, so (48 − 13)/291 = 0.12027 of fuel in, and
-0.12027 × 4.60000 = 0.55326. It is banded on `heat_lt60` because the study's low source band
+**Each kiln rejects 0.17388 PJ of low-grade heat per Mt of clinker**, and nothing at this
+works draws it. The coefficient is one whole-of-industry fraction. [DECC_SURPLUSHEAT2014]
+(section 5, p.24, Figure 5) puts the technical potential for recovering UK industrial waste
+heat at 11 TWh/yr, against ca. 291 TWh/yr of industrial energy use, so 11/291 = 0.037801 of
+fuel in, and 0.037801 × 4.60000 = 0.17388. It is the technical share, not the economic one,
+because the LP prices recovery through each recovery unit's capex, and an economic screen would
+count that cost twice. It replaces (48 − 13)/291 = 0.12027, which is the heat rejected in
+non-solid form as a share of industrial energy, not a recoverable fraction
+([notes/20](../notes/20_reference_data_open_questions.md) item 75). It is banded on `heat_lt60` because the study's low source band
 is ambient–250 °C and its sinks concentrate below 150 °C. **Confidence is low and the row says
 so**: one national fraction applied to every fuel-fired unit, with no per-duty-family figure
 published.
@@ -505,7 +509,7 @@ raw meal, and charging that correctly needs the per-unit reject coefficients of 
 group B5 (`MF-12`, a Should, at milestone M6). Until those exist the kiln's whole fuel is
 charged to the kiln and the raw mill is a motor duty only. §13 records that part.
 
-At 2025 the three kilns reject **0.470271 PJ** between them, and in the absence of any sink it
+At 2025 the three kilns reject **0.147798 PJ** between them, and in the absence of any sink it
 is disposed — `heat_lt60` carries `may_dispose`, and §5.2's $d_{c,t}$ is what a carrier with
 nowhere to go is for. It is not a loss the model can avoid this year; it becomes avoidable the
 moment a unit that draws rank-1 heat is eligible here.
@@ -1160,7 +1164,7 @@ asserts to 1e-6 and `V30` extends to the emission carriers.
 | `waste_derived_fuel` | `kiln_dry_wdf` −1.530429 | — | +1.530429 | — | **0** |
 | `fuel_oil` | — | — | 0 | — | **0** |
 | `electricity` | kilns −0.092404, grinder −0.159600, motor −0.168000 | — | +0.420004 | — | **0** |
-| `heat_lt60` | — | kilns **+0.470271** (coal 0.249386, gas 0.036814, wdf 0.184071) | — | **−0.470271** | **0** |
+| `heat_lt60` | — | kilns **+0.147798** (coal 0.078378, gas 0.011570, wdf 0.057850) | — | **−0.147798** | **0** |
 | `motive_power` | — | motor +0.168000, all dispatched ⇒ $z^{\circ}=0$ | — | — | **0** |
 | `clinker` | grinder −0.850000 (1.130000 × 0.752212) | kilns **+0.850000, all of it released to the balance** ⇒ $z^{\circ}_{u,0}$ = the §5.2 split | — | — | **0** |
 | `cement` | — | grinder +1.130000, dispatched | — | — | **0** |
@@ -1174,8 +1178,8 @@ Kiln electricity: 0.850000 × 0.10871 = **0.092404**. Grinder: 1.130000 × 0.141
 **+0.001%**.
 
 Kiln reject heat is per unit of *each kiln's* output, not the site's: 0.450758 Mt of clinker
-on coal, 0.066540 on gas and 0.332702 on waste fuel, each × 0.55326. Nothing here consumes
-rank-1 heat, so the whole 0.470271 PJ is disposed — **an energy disposal, and the first in
+on coal, 0.066540 on gas and 0.332702 on waste fuel, each × 0.17388. Nothing here consumes
+rank-1 heat, so the whole 0.147798 PJ is disposed — **an energy disposal, and the first in
 either worked example**. It carries no carbon: `heat_lt60` is `intermediate`, so its fuel was
 charged to the kiln that burnt it, and §7 sees nothing here.
 
@@ -1695,7 +1699,7 @@ The structural limits, restated so nobody tries to close them here:
   trivially satisfied. The candidate kilns differ by *fuel* rather than by device, so nothing
   competes at a grade either, and the mechanism is demonstrable only on the food and drink
   premise.
-- **No low-grade duty, so no waste-heat sink.** The kilns now *reject* 0.470271 PJ a year on
+- **No low-grade duty, so no waste-heat sink.** The kilns now *reject* 0.147798 PJ a year on
   `heat_lt60` (§1.11), from one whole-of-industry fraction, and nothing here draws rank-1 heat,
   so all of it is disposed. Representing the recovery this works actually runs — the exhaust
   drying raw meal — still needs the per-unit reject coefficients of data migration B5
@@ -1771,10 +1775,10 @@ worked examples charge direct and report indirect so that they remain comparable
   `Cement Works` default process set.
 - **[DECC_SURPLUSHEAT2014]** *The potential for recovering and using surplus heat from
   industry*, Element Energy, Ecofys and Imperial College London for DECC, March 2014,
-  section 4.1 — the 48 TWh/yr rejected, 13 TWh/yr of it unrecoverable hot solids, against
-  ca. 291 TWh/yr of industrial heat use, behind the kilns' `reject` coefficient in §1.11. It
-  is also the source for all 59 `reject` rows in
-  [`unit_input_output.csv`](../notes/data/unit_input_output.csv).
+  section 5, p.24 and Figure 5: the technical potential of 11 TWh/yr of industrial waste heat
+  that can be recovered, against ca. 291 TWh/yr of industrial energy use, behind the kilns'
+  `reject` coefficient in §1.11. The same share, 11/291, is the source for 41 of the 62
+  `reject` rows in [`unit_input_output.csv`](../notes/data/unit_input_output.csv).
 - The [archived worked example](archive/2026-08-19-carb3-site-decarbonisation-worked-example.md),
   which walks the same premise against the COMIT-parity baseline. Its premise identifier and
   its headline quantities are kept here on purpose, so the two can be read side by side.

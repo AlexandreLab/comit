@@ -36,6 +36,8 @@ from carb3.sets import (
     build_sets,
     diagnose_start_year_shortfall,
     diagnose_unservable_duties,
+    incumbent_reject,
+    recovery_units,
     released_supply,
 )
 from carb3.sets import model_units as sets_model_units
@@ -47,10 +49,15 @@ from carb3.sets import model_units as sets_model_units
 SOLVING_PREMISES: tuple[str, ...] = ("mvp-minimal", "mvp-dairy", "mvp-cement")
 
 #: Every heat-pump unit note 21 §4.2's contest can be won by. The dairy's grade-2 duties
-#: are won by the two low-grade pumps; no heat pump reaches its grade-4 drying duty.
+#: are won by the low-grade pumps; no heat pump reaches its grade-4 drying duty.
 HEAT_PUMPS: frozenset[str] = frozenset(
-    {"heat_pump_lt_air", "heat_pump_lt_reject", "heat_pump_ht", "dryer_heat_pump"}
+    {"heat_pump_lt_air", "heat_pump_lt_reject", "heat_pump_chiller_condenser", "heat_pump_ht",
+     "dryer_heat_pump"}
 )
+
+#: The passive recovery units of note 23: heat exchangers on a reject source class, which
+#: burn nothing. A heat pump on a class is in HEAT_PUMPS.
+HEAT_RECOVERY: frozenset[str] = frozenset({"economiser_flue_condensing", "recovery_engine_exhaust"})
 
 TOLERANCE = 1e-6
 
@@ -181,13 +188,21 @@ def test_the_screen_drops_the_steelworks_gas_chps_where_no_steelworks_is(
     if premise_id == "mvp-dairy":
         expected |= {"dryer_steam"}
         assert "heat_150_400" in by_unit["dryer_steam"].detail
+    else:
+        # Nothing at the minimal premise makes ``heat_lt60`` any more: its gas boiler's reject
+        # is on ``reject_flue_clean`` (note 23), and no unit there releases that band.
+        expected |= {"heat_pump_lt_reject"}
+        assert "heat_lt60" in by_unit["heat_pump_lt_reject"].detail
     assert set(by_unit) == expected
     assert "blast_furnace_gas" in by_unit["chp_bfg_gas_turbine"].detail
     assert "coke_oven_gas" in by_unit["chp_cog_gas_turbine"].detail
     assert not set(by_unit) & screened.units
-    # Kept: ``heat_lt60`` is made as boiler reject heat, and ``heat_60_100`` is released to
-    # C8 through z° by the units that make it for their own duty.
-    assert {"heat_pump_lt_reject", "heat_pump_ht"} <= screened.units
+    # Kept: ``heat_60_100`` is released to C8 through z° by the units that make it for their
+    # own duty. At the dairy ``heat_lt60`` is still released by the space-heat units and the
+    # condensing economiser, so the reject heat pump stays.
+    assert "heat_pump_ht" in screened.units
+    if premise_id == "mvp-dairy":
+        assert "heat_pump_lt_reject" in screened.units
     assert not set(by_unit) & _incumbents(reference, premise)
 
 
@@ -195,24 +210,30 @@ def test_the_screen_drops_the_steelworks_gas_chps_where_no_steelworks_is(
 def test_the_low_grade_heat_makers_release_to_the_lift_heat_pump(
     runs: dict[str, Run], premise_id: str
 ) -> None:
-    """``heat_pump_ht`` draws ``heat_60_100``, which four units make for their own duty, so
+    """``heat_pump_ht`` draws ``heat_60_100``, which several units make for their own duty, so
     each of them gets a z° column on it (the activity a unit releases to C8, the carrier
     balance, rather than dispatches to a duty)."""
     sets = runs[premise_id].sets
-    assert sets.released["heat_60_100"] == frozenset(
-        {"boiler_spc_coal", "boiler_spc_gas", "heat_pump_lt_air", "heat_pump_lt_reject"}
-    )
     if premise_id == "mvp-minimal":
-        assert set(sets.released) == {"heat_60_100"}
+        # No heat_lt60 is made there since note 23, so the reject heat pump is screened out.
+        assert sets.released == {
+            "heat_60_100": frozenset({"boiler_spc_coal", "boiler_spc_gas", "heat_pump_lt_air"})
+        }
         return
-    # At the dairy, site space heating on heat_lt60 (note 20 item 73) offers
-    # ``heat_exchanger_spc_steam``, which draws 100-150 °C steam, so the units that make
-    # that band release it too; and the space-heat units' heat_lt60 is drawn by
+    # At the dairy the two recovery units that make 60-100 °C water release it as well.
+    assert sets.released["heat_60_100"] == frozenset(
+        {"boiler_spc_coal", "boiler_spc_gas", "heat_pump_lt_air", "heat_pump_lt_reject",
+         "heat_pump_chiller_condenser", "recovery_engine_exhaust"}
+    )
+    # Site space heating on heat_lt60 (note 20 item 73) offers ``heat_exchanger_spc_steam``,
+    # which draws 100-150 °C steam, so the units that make that band release it too; and the
+    # heat_lt60 made by the space-heat units and the condensing economiser is drawn by
     # ``heat_pump_lt_reject``.
     assert set(sets.released) == {"heat_60_100", "heat_100_150", "heat_lt60"}
     assert {"boiler_lt_gas", "chp_gas_turbine"} <= sets.released["heat_100_150"]
     assert sets.released["heat_lt60"] == frozenset(
-        {"heat_exchanger_spc_steam", "heat_pump_spc_air", "resistance_heater_spc"}
+        {"economiser_flue_condensing", "heat_exchanger_spc_steam", "heat_pump_spc_air",
+         "resistance_heater_spc"}
     )
 
 
@@ -283,9 +304,13 @@ def test_c13_tracks_the_banned_coal_boilers_reject_heat_at_the_dairy(
     reference: ReferenceTables, runs: dict[str, Run]
 ) -> None:
     """``boiler_lt_coal`` is barred (``max_share`` 0.00) from the boiler house at a Food
-    Processing Centre and still serves other duties, so its ``heat_lt60`` reject could reach
-    ``heat_pump_lt_reject`` and the boiler house. C13 (a cap is not routed through a
-    consumer) traces that boiler's energy."""
+    Processing Centre and still serves other duties. Its reject heat cannot reach the boiler
+    house: a coal flue carries no ``reject`` row at all (note 23 section 10, the acid dew point
+    bars recovery beyond the economiser already in its efficiency), so that route is closed by
+    the data. Its 100-150 °C heat released through z° still is drawn,
+    by ``heat_exchanger_spc_steam`` and ``heat_pump_ht``, and ``heat_pump_ht`` serves the
+    boiler house; so C13 (a cap is not routed through a consumer) traces that boiler's
+    energy."""
     sets = runs["mvp-dairy"].sets
     units = sorted({pair.unit_id for pair in build._dispatch_pairs(sets)})
     terms = build._balance_terms(
@@ -296,6 +321,49 @@ def test_c13_tracks_the_banned_coal_boilers_reject_heat_at_the_dairy(
     assert {unit for unit, _duty in tracking.capped} >= {"boiler_lt_coal"}
     assert tracking.traced == ("boiler_lt_coal",)
     assert "tr_in" in runs["mvp-dairy"].model.variables
+    # The reject route does not exist: the coal boiler puts nothing on any reject carrier.
+    assert not [carrier for carrier, (by_activity, _by_release) in parts.items()
+                if carrier.startswith("reject_") and "boiler_lt_coal" in by_activity]
+    assert "boiler_lt_coal" in sets.released["heat_100_150"]
+
+
+def test_a_recovery_unit_is_offered_only_above_its_min_viable_scale(
+    reference: ReferenceTables, screen: AdmissionScreen, runs: dict[str, Run]
+) -> None:
+    """§3.5: A2 offers a recovery unit only where the premise's incumbents reject at least its
+    ``min_viable_scale`` of the class it draws, at the base year (note 23 decision 3). The
+    dairy's chillers reject about 0.087 PJ/yr of condenser heat, above the condenser heat
+    pump's 0.01178; the minimal premise has no chiller and no CHP. A refusal is an
+    eligibility drop, never an admission-screen drop: the unit might have paid."""
+    dairy = runs["mvp-dairy"].sets
+    offered = {unit for units in dairy.eligible.values() for unit in units}
+    assert set(recovery_units(reference)) <= offered
+    assert "min_viable_scale" not in {drop.reason for drop in dairy.eligibility_dropped}
+    source = incumbent_reject(reference, load_premise_tables("mvp-dairy"))
+    assert source["reject_chiller_condenser"] == pytest.approx(
+        (0.064598 + 0.033661 * 0.027733) * 1.3333, rel=1e-6
+    )
+
+    minimal = runs["mvp-minimal"].sets
+    refused = {
+        drop.unit_id for drop in minimal.eligibility_dropped if drop.reason == "min_viable_scale"
+    }
+    assert refused == {"heat_pump_chiller_condenser", "recovery_engine_exhaust"}
+    assert not refused & {unit for units in minimal.eligible.values() for unit in units}
+
+    # Raise the floor above what the dairy's chillers reject, and the pump is refused there.
+    unit = reference.unit.copy()
+    unit.loc[unit["unit_id"] == "heat_pump_chiller_condenser", "min_viable_scale"] = 0.1
+    raised = build_sets(
+        dataclasses.replace(reference, unit=unit), load_premise_tables("mvp-dairy"), screen,
+        PERIOD_YEARS,
+    )
+    drops = [d for d in raised.eligibility_dropped if d.reason == "min_viable_scale"]
+    assert {d.unit_id for d in drops} == {"heat_pump_chiller_condenser"}
+    assert "below min_viable_scale 0.1" in drops[0].detail
+    assert "heat_pump_chiller_condenser" not in {
+        unit for units in raised.eligible.values() for unit in units
+    }
 
 
 @pytest.mark.parametrize("premise_id", SOLVING_PREMISES)
@@ -319,12 +387,21 @@ def test_c13_leaves_todays_objectives_where_they_were(
 def test_the_screen_drops_nothing_at_the_cement_works(
     reference: ReferenceTables, screen: AdmissionScreen
 ) -> None:
-    """Capture draws CO₂ that the kilns declare and A6 (the fuel-CO₂ derivation) derives."""
+    """Capture draws CO₂ that the kilns declare and A6 (the fuel-CO₂ derivation) derives.
+
+    Note 23 moved the works' incumbent ``chiller_electric`` reject onto
+    ``reject_chiller_condenser``, but no recovery unit is offered at a cement works, the
+    chiller sits in ``site_services``, whose ``known_activity`` is blank, and the kilns' rows
+    stay on ``heat_lt60`` (phase 2), so neither the screen nor A2 drops anything new."""
     premise = load_premise_tables("mvp-cement")
     sets = build_sets(reference, premise, screen, PERIOD_YEARS)
     screened, drops = build.screen_premise(sets, reference, _incumbents(reference, premise))
     assert drops == ()
     assert screened == sets
+    assert not {drop.reason for drop in sets.eligibility_dropped} & {"min_viable_scale"}
+    assert not set(recovery_units(reference)) & sets.units & {
+        unit for units in sets.eligible.values() for unit in units
+    }
 
 
 # --------------------------------------------------------------------------------------
@@ -811,13 +888,16 @@ def test_the_low_grade_heat_duty_switches_to_a_heat_pump_at_the_first_buildable_
     assert incumbent_pumps < start["activity"].sum(), "the incumbents are not all heat pumps"
     assert start["activity"].sum() > 0.0
 
+    # At the dairy the 2025 duty is shared with ``recovery_engine_exhaust``, which recovers
+    # the CHP's residual exhaust for the one period the CHP still runs (note 23): recovered
+    # heat burns nothing, so it does not break the switch away from fuel.
     switched = grade_two[grade_two["period"] == 2025]
     served = switched["activity"].sum()
-    by_pumps = switched[switched["unit_id"].isin(HEAT_PUMPS)]["activity"].sum()
+    by_pumps = switched[switched["unit_id"].isin(HEAT_PUMPS | HEAT_RECOVERY)]["activity"].sum()
     assert served > 0.0
     assert by_pumps == pytest.approx(served, abs=TOLERANCE), (
-        f"{premise_id}: heat pumps take {by_pumps:.6f} of {served:.6f} PJ/yr at 2025; "
-        "§4.2 says they take all of it"
+        f"{premise_id}: heat pumps and recovery take {by_pumps:.6f} of {served:.6f} PJ/yr at "
+        "2025; §4.2 says they take all of it"
     )
 
     gas = switched[switched["unit_id"] == "boiler_lt_gas"]["activity"].sum()
@@ -996,10 +1076,13 @@ def test_disposal_is_reported_and_is_what_carbon_is_charged_on(
 ) -> None:
     """Plan §2.2 and spec §5.4: carbon is charged on venting, never on fuel consumed.
 
-    Both premises fire a gas boiler in 2021, so ``co2_fuel_fossil`` — the row A6 derives at
-    build time rather than reads — must be vented and charged, and ``heat_lt60``, the
-    boiler's reject, must be dumped: 59 ``reject`` rows run into a grade-1 carrier with one
-    consumer, and without the disposal variable C8 would force the boiler to zero.
+    Every premise fires fuel in 2021, so ``co2_fuel_fossil``, the row A6 derives at build
+    time rather than reads, must be vented and charged, and the reject heat no unit recovers
+    must be dumped: 62 ``reject`` rows run into ``heat_lt60`` or a reject source class (§3.4,
+    note 23), two of whose classes nothing draws, and without the disposal variable C8 would
+    force the rejecting units to zero. The minimal premise's boiler rejects onto
+    ``reject_flue_clean``, the dairy's chiller onto ``reject_chiller_condenser`` and the
+    cement kilns onto ``heat_lt60``.
     """
     disposal = runs[premise_id].tables.disposal
     assert not disposal.empty
@@ -1009,10 +1092,15 @@ def test_disposal_is_reported_and_is_what_carbon_is_charged_on(
     assert set(fossil["carbon_charge"]) == {"charged"}
     assert float(fossil[fossil["period"] == 2021]["carbon_cost"].iloc[0]) > 0.0
 
-    reject = disposal[disposal["carrier_id"] == "heat_lt60"]
+    carrier = {
+        "mvp-minimal": "reject_flue_clean",
+        "mvp-dairy": "reject_chiller_condenser",
+        "mvp-cement": "heat_lt60",
+    }[premise_id]
+    reject = disposal[disposal["carrier_id"] == carrier]
     assert float(reject[reject["period"] == 2021]["quantity"].iloc[0]) > 0.0
-    # heat_lt60 carries no carbon_charge, and a blank must read as a blank rather than as
-    # the string "nan": it is printed beside the quantity in the run report.
+    # A reject carrier carries no carbon_charge, and a blank must read as a blank rather
+    # than as the string "nan": it is printed beside the quantity in the run report.
     assert set(reject["carbon_charge"]) == {""}
     assert reject["carbon_cost"].abs().max() < TOLERANCE
 

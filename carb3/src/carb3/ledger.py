@@ -341,7 +341,7 @@ def _dispatch_table(pairs, z: dict[str, np.ndarray], periods: tuple[int, ...]) -
     balance) rather than dispatched to a duty in C1 (duty satisfaction). Two sources sit
     here. D16 supply is a unit making a carrier that carries no duty row: the cement kilns'
     ``clinker`` and ``ccs_amine``'s ``co2_captured``. A released duty unit makes a carrier
-    another unit draws: ``heat_pump_lt_reject``'s ``heat_60_100``, lifted by ``heat_pump_ht``.
+    another unit draws: ``heat_pump_chiller_condenser``'s ``heat_60_100``, lifted by ``heat_pump_ht``.
     ``ModelSets.supply`` and ``ModelSets.released`` tell the two apart.
     """
     records = []

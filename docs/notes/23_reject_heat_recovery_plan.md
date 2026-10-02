@@ -1,8 +1,12 @@
 # Reject heat by source, and what it costs to recover: the plan
 
-*Written 2026-10-02 and revised the same day after an engineering review (section 9). A plan,
-not the work: nothing in `docs/notes/data/`, `docs/specs/` or `carb3/` changes here. Answers
-[note 20](20_reference_data_open_questions.md) item 74.*
+*Written 2026-10-02 and revised the same day after an engineering review (section 9). Answers
+[note 20](20_reference_data_open_questions.md) item 74. **Phase 1 was built the same day, under
+the owner's decisions of section 6; section 10 says what was built, what was left out and why,
+and where it departs from the plan below.** Sections 1 to 9 are kept as the plan was written,
+with corrections marked. Section 10.6 records four fixes made later the same day, after review:
+the process-exhaust and gap rows moved to [DECC_SURPLUSHEAT2014]'s technical share, the coal and
+oil flue rows were removed, and the eligibility build was made reproducible.*
 
 ## In plain terms
 
@@ -46,7 +50,10 @@ Measured on `fork/main` at `0e77577`.
   unit, as §3.6 of the live spec allows.
 - **0.12027 is already a recoverable fraction**, not the whole loss. Any further haircut a
   recovery unit applies (an output below 1 per unit drawn) is a second cut on top of it, and
-  Task 2 must say which one carries the practical limit.
+  Task 2 must say which one carries the practical limit. *Corrected by Task 2: it is not a
+  recoverable fraction. (48 - 13)/291 is the rejected non-solid heat as a share of UK industrial
+  energy, and the report's recoverable shares are 11, 7 and 5 TWh/yr of those 35 (section 5,
+  p.24, which the data cited as section 4.1). Note 20 item 75.*
 - **`heat_pump_lt_reject` is the unit built to draw reject heat:** 0.6875 PJ of `heat_lt60` and
   0.3125 PJ of electricity per PJ of `heat_60_100` out, at a capex of 10.1966 £m per PJ/yr. It
   has 110 rows in `unit_eligibility.csv`. It also draws `heat_lt60` that is not reject heat at
@@ -163,6 +170,10 @@ This screen ignores sources the optimiser might build later, so it can only unde
 recovery, never over-offer it. That is the conservative direction, and it is Decision 3.
 
 ## 6. Decisions for Alexandre
+
+*Decided 2026-10-02: 1 to 4 as recommended; 5 as a separate unit, a **condensing** economiser,
+with a standard economiser taken as already inside the boilers' efficiency. Section 10 has the
+detail.*
 
 1. **Source-class carriers or grade bands.** The plan puts each class on its own carrier. The
    alternative, putting each reject row on the heat band of its temperature, is smaller, but it
@@ -311,3 +322,182 @@ seven gaps and seven corrections. All are resolved above.
 | P2 | V36 must widen the label range in three places | Task 4 |
 | P2 | `engine_mot_gas` and `chp_hydrogen_fuelcell` do not fit the exhaust description | Section 2 |
 | P2 | Emissions and reporting need no change: the ledger does not allocate, and the Sankey groups by carrier kind | No change needed |
+
+## 10. Phase 1 as built, 2026-10-02
+
+### 10.1 The owner's decisions
+
+1. **Source-class reject carriers**, not grade bands.
+2. **Phase 2 later.** The 34 process-exhaust rows (kilns, furnaces, glass, steel, crackers,
+   reformers, gasifiers, the refinery heater, reheat) stay on `heat_lt60` at 0.12027 × fuel and
+   keep `heat_pump_lt_reject`.
+3. **The minimum-size screen counts the premise's incumbent sources only**, at base-year
+   activity.
+4. **`heat_pump_lt_reject`'s refrigeration option rows are remapped to
+   `heat_pump_chiller_condenser`**, so each class is reached only through its own unit. A
+   refrigeration process is one whose duty profile rows at that activity are all `REF`: 16
+   rows. `heat_pump_lt_reject` keeps its other 94 rows.
+5. **The economiser is a separate unit, and a condensing one.** A standard feedwater economiser
+   is taken as already inside the incumbent boilers' efficiency ([DOE_WHR2008] assumes 75% of
+   US boiler capacity has one), so the unit is `economiser_flue_condensing` and the clean-flue
+   reject row carries the condensing increment only.
+6. **Units with a cost gap are left out**: no `economiser_flue_solid_liquid`, no
+   `desuperheater_chiller`, no `recovery_dryer_exhaust`. Their classes still get carriers, so
+   that heat is disposed of rather than reached by `heat_pump_lt_reject`.
+7. **The chiller reject is not split.** With no desuperheater built, one carrier,
+   `reject_chiller_condenser`, carries the whole condenser heat, as the coefficient did before.
+
+### 10.2 The reject rows: 31 moved (28 after section 10.6)
+
+Counted by script: 4 rows on `reject_flue_clean`, 5 on `reject_flue_solid_liquid`, 13 on
+`reject_engine_exhaust`, 6 on `reject_dryer_exhaust` and 3 on `reject_chiller_condenser`; 34
+stay on `heat_lt60`. Every row stays within its unit's losses (note 20 item 70), and every row
+touched now cites [DECC_SURPLUSHEAT2014] section 5, p.24, where it cited section 4.1.
+
+| Class | Fraction of fuel used | Source | Units at a gap, kept at their old coefficient |
+|---|---|---|---|
+| `reject_flue_clean` | 0.05, the condensing increment | [DOE_STEAM26A] "up to 10%" for the whole condensing economiser, less [BREF_ENE2009]'s 4 to 4.5 points for the feedwater step already in the efficiency; under [ACEEE_SCHIFFHAUER2009]'s 6 to 8 points | `boiler_lt_hydrogen` (0.11111): no hydrogen flue source |
+| `reject_flue_solid_liquid` | 0.04 | [BREF_ENE2009] 4%; floors from [DOE_STEAM3_2012] and the BREF acid dew points | none |
+| `reject_engine_exhaust` | 0.07 for the gas turbines (incl. the steelworks-gas and thermal-store CHPs); 0.30 for `engine_mot_gas` | [EPA_CHP_CT] Table 3-2; [EPA_CHP_RICE] Table 2-3 | the five combined cycles (0.37895, 0.27663) and the fuel cell (0.30069) |
+| `reject_dryer_exhaust` | 0.20, capped at the losses | [ATKINS_ATE2011] | none; only `dryer_direct_gas` moves (0.12 to 0.17650), the other five stay at their cap |
+| `reject_chiller_condenser` | the whole condenser heat | first-law balance | none; coefficients unchanged |
+
+**Why the clean-flue fraction is the increment only.** [DOE_STEAM26A]'s "up to 10%" is the gain
+of a feedwater and condensing economiser together. Decision 5 puts the feedwater step inside the
+boiler's 0.88 already, so recoverable heat beyond it is only the latent step, released below the
+water dew point (about 57 °C): 10 less 4 to 4.5 points leaves about 5.5, taken as 0.05. That is
+also why the economiser delivers `heat_lt60`, not `heat_60_100` as section 4 proposed.
+
+**A tension left standing** (*resolved in section 10.6: the coal and oil rows are removed, and
+the biomass rows are kept as a marked gap*). The solid and liquid flue fraction, 0.04, is the sensible
+economiser's own share, which decision 5's reading would also count as already inside those
+boilers' efficiency. No unit draws that class, so it moves only the reported disposal; it is
+kept because it is the sourced figure, and a later decision may set it to the increment over an
+economiser instead (for acid flue gas, close to nothing).
+
+### 10.3 The three units built
+
+| Unit | Draws | Gives | capex £m per PJ/yr | fixed opex | life | `min_viable_scale`, PJ/yr of the class |
+|---|---|---|---|---|---|---|
+| `economiser_flue_condensing` | `reject_flue_clean` at 1.0 | `heat_lt60`, grade 1 | 14.4867: [DECC_SURPLUSHEAT2014_APP]'s 4.8289 for a conventional exchanger, × 3 for condensing ([DOE_WHR2008]) | 0.32193 (proxy) | 20 | 0.00169 (100 bhp boiler, [DOE_STEAM3_2012]) |
+| `recovery_engine_exhaust` | `reject_engine_exhaust` at 1.0 | `heat_60_100`, grade 2 | 12.9808 ([EPA_CHP_RICE] Table 2-4, heat recovery set) | 0.86539 (proxy, 6.67% of capex) | 15 (proxy, engine plant) | 0.00194 (smallest EPA system) |
+| `heat_pump_chiller_condenser` | `reject_chiller_condenser` 0.7468, electricity 0.2532 (COP 3.95) | `heat_60_100`, grade 2 | 21.3479 ([DEA_IPH_2026]) | 0.64053 (fixed plus variable O&M) | 25 | 0.01178 (DEA's 0.5 MW floor) |
+
+Conversions are in each row's provenance in `unit.csv`. All three are fully costed, so
+CLAUDE.md's count of uncostable units does not grow. The join (`rebuild_eligibility_join.py`)
+offers them at 33, 67 and 65 (activity, process) pairs, and `unit_eligibility.csv` goes from 3,608 to 3,773 rows.
+
+**The screen is in A2** (expanding the premise to duties and candidate units; `carb3/src/carb3/sets.py`, `recovery_refusals`): a recovery unit is
+offered at a premise only if its incumbents reject at least its `min_viable_scale` of the class
+at the base year, and a refusal is an `eligibility_dropped` row with reason
+`min_viable_scale`. `mvp-minimal` refuses `heat_pump_chiller_condenser` and
+`recovery_engine_exhaust` (it has neither a chiller nor a CHP); `mvp-dairy` refuses nothing, its
+chillers rejecting 0.0874 PJ/yr against the heat pump's 0.01178.
+
+**V36** (reject heat by source class) is a new blocking check in `validate_carb3_data.py`, and
+the spec's §3.4, §3.5, §3.6, §5.5, §5.7 and §10 say all of the above.
+
+### 10.4 What the three premises do now
+
+| Premise | Objective before | After | Why |
+|---|---|---|---|
+| `mvp-minimal` | £39.5505m | £39.5707m | Its boiler's reject now lands on `reject_flue_clean`, and the economiser's `heat_lt60` reaches none of its grade-2 and grade-3 duties, so `heat_pump_lt_reject` has nothing to draw and `heat_pump_lt_air` takes the 2025 duty it shared |
+| `mvp-dairy` | £144.3926m | £142.7571m | `heat_pump_chiller_condenser` (COP 3.95) replaces `heat_pump_lt_reject` (COP 3.2) on the boiler-house hot water from 2025 and feeds `heat_pump_ht` from 2030; fuel falls £3.28m, capex and opex rise £1.64m; carbon does not move |
+| `mvp-cement` | £4,554.9330m | £4,554.9330m | Unchanged. Its kiln rows are phase 2, and its incumbent chiller, whose reject did move, sits in `site_services`, whose `known_activity` is blank, so it never runs |
+
+**What the dairy builds.** `heat_pump_chiller_condenser` 0.05465 PJ/yr in 2025 and 0.04512 in
+2030 (the 2025 tranche rebuilt in 2050); `recovery_engine_exhaust` 0.00770 and
+`economiser_flue_condensing` 0.00143 in 2025, each used for that one period only, since the CHP
+and the gas boiler stop at 2030. `heat_pump_lt_reject` is no longer built.
+
+**Its disposal of reject heat**, PJ/yr:
+
+| | 2021 | 2025 | 2030 to 2050 |
+|---|---|---|---|
+| Before: `heat_lt60` | 0.12083 | 0.06628 | 0.02510 |
+| After: `reject_chiller_condenser` | 0.08737 | 0.04734 | 0.01429 |
+| After: `reject_dryer_exhaust` | 0.01395 | 0.00735 | 0.00735 |
+| After: `reject_engine_exhaust` | 0.00716 | 0 | 0 |
+| After: `reject_flue_clean` | 0.00486 | 0 | 0 |
+| After: total | 0.11334 | 0.05469 | 0.02164 |
+
+The 2021 total falls because the boiler's and the CHP's rows fell to their sourced fractions
+while the dryer's rose to its cap; from 2025 the recovery units take the CHP's and the boiler's
+reject in full and a larger share of the condenser heat.
+
+**`carb3/README.md` was stale before this change**: it quoted £144.1177m for the dairy (and
+£42.8055m and £4,557.0832m for the other two), where the run before this change gave
+£144.3926m, the figure note 20 item 73 records. It now quotes the run after.
+
+### 10.5 Left as it was
+
+- **The food and drink worked example keeps its dryer reject on `heat_lt60`** feeding
+  `heat_pump_lt_reject` (its §1.11 and §8.4), under its own coefficient table. Rewriting it onto
+  `reject_dryer_exhaust` would remove its reject-heat leg entirely, since no unit draws that class
+  yet; a note in the example says where it and the reference data part. Note 19 mirrors the
+  example and is unchanged.
+- **The cement worked example** quotes 0.12027 for its kilns, which are phase 2; unchanged.
+  *Superseded by section 10.6: it now quotes 0.037801.*
+- **The 34 process-exhaust rows** still carry 0.12027 as if it were recoverable (note 20 item 75).
+  *Superseded by section 10.6.*
+
+### 10.6 Fixes after review, 2026-10-02
+
+Four open issues, fixed the same day. Every count below was measured by script against the
+tables after the change.
+
+**1. The technical recoverable share replaces 0.12027 (owner's decision).** 0.12027 is
+(48 - 13)/291, the heat UK industry rejects in non-solid form as a share of its energy
+([DECC_SURPLUSHEAT2014] section 5, p.24), not a recoverable fraction. Decided by Alexandre: the
+rows that carried it now carry the report's technical potential, "a technical potential of 11
+TWh/yr ... can be technically recovered" (section 5, p.24, Figure 5), as 11/291 = 0.037801 of
+fuel energy in. Technical, not economic (7 TWh/yr) or commercial (5 TWh/yr), because the LP
+already prices recovery through each recovery unit's capex, so an economic screen would count
+that cost twice. Each row is min(0.037801 × fuel input, the unit's losses); no row reaches its
+losses, so none is capped. **41 rows changed**: the 34 process-exhaust rows on `heat_lt60`, and
+7 phase 1 rows that had kept 0.12027 as a gap, namely the five combined-cycle CHPs (0.37895 to
+0.11910; `chp_hydrogen_ccgt` 0.27663 to 0.08694), `chp_hydrogen_fuelcell` (0.30069 to 0.09450)
+and `boiler_lt_hydrogen` (0.11111, its losses, to 0.04200). Each now cites section 5, p.24.
+The cement kilns' row goes from 0.55326 to 0.17388 per Mt of clinker, and the worked example's
+kiln reject from 0.470271 to 0.147798 PJ (coal 0.078378, gas 0.011570, waste fuel 0.057850).
+
+**2. No reject row on coal or oil flue gas (owner's decision).** Decision 5 puts a standard
+economiser inside the boilers' efficiency, so 0.04, [BREF_ENE2009]'s standard-economiser gain,
+counted it twice. Beyond it nothing is recoverable from coal or oil flue gas, because the acid
+dew point bars condensing: [DOE_STEAM3_2012] (the DOE steam tip sheet) puts the floor at 300 F
+(149 °C) for coal and low-sulphur oil and 350 F (177 °C) for high-sulphur oil, and
+[BREF_ENE2009] section 3.2.5 gives acid dew points of about 160 °C for heavy and 130 °C for light
+fuel oil. **The reject rows of `boiler_lt_coal`, `boiler_lt_oil` and `chp_coal_st` are
+removed**, with the reason in each unit's `unit.csv` provenance, as `mobile_plant_diesel` records
+why it has none. `boiler_lt_biomass` and `chp_biomass_st` keep 0.04 on
+`reject_flue_solid_liquid`, marked as a gap: the increment beyond a standard economiser is
+unsourced, and biomass flue-gas condensation exists but no source for it was verified. The class
+keeps two members, so V36 (reject heat by source class) and spec §3.4 still hold; §3.4's table
+now names them. `reject` rows: 65 to 62, of which 28 on source classes (`reject_flue_solid_liquid`
+5 to 2) and 34 on `heat_lt60`.
+
+**3. `build_eligibility.py` reproduces `unit_eligibility.csv` again.** Run before this fix, it
+wrote 3,350 rows, and `rebuild_eligibility_join.py` after it gave 4,329, against 3,773
+committed: 603 rows added and 47 removed, all `proxy` rows of the three process-keyed service
+units (`engine_mot_gas`, `mobile_plant_diesel`, `mobile_plant_battery`), and two chemistry rows
+whose citations (`lime_kiln_sugar_coke`, `potline_prebake_elec`) were reset. The cause: the
+rebuild reads a keyed unit's reach back from the file it rewrites, and that reach was set by
+hand (note 20 items 30 and 65), while `build_eligibility.py`, unchanged in that respect since it
+was written, still rewrote the whole file with its old step (c), offering every family unit at
+every process of its family. The rebuild alone was idempotent, which is why nothing caught it.
+`build_eligibility.py` now rewrites only the rows it owns (worked-example, options-join and
+chemistry-node rows, by `provenance_ref`) and keeps every other row; its old family step is
+gone. The pair now reproduces the committed file with an empty diff, on the tables before and
+after fixes 1 and 2. The canonical sequence is in both scripts' docstrings and in
+`data/README_spec_tables.md`.
+
+**4. Stale counts in CLAUDE.md** were re-measured and updated.
+
+**What the premises do.** No objective moves: `mvp-minimal` £39.5707m, `mvp-dairy` £142.7571m,
+`mvp-cement` £4,554.9330m, since reject heat that nothing draws is disposed of at no cost and
+none of the changed rows feeds a recovery unit that runs. `mvp-cement` disposes of 0.14780 PJ of
+`heat_lt60` in 2021 and 0.12992 from 2025, where it disposed of 0.47027 and 0.41340.
+`mvp-dairy`'s disposal is unchanged; its 2021 dispatch moves within a tie at the same objective
+(`boiler_spc_gas` now serves 0.01848 PJ of boiler-house hot water and `chp_gas_turbine` the
+same amount of space heat, with the gas boiler and the CHP trading as much steam), because the problem has 14 fewer variables and the solver lands on
+another optimal vertex.

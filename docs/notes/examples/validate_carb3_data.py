@@ -905,8 +905,12 @@ def check_unsourced_draws(elig: list[dict], io: list[dict], car: list[dict],
     pump's source, not recovering reject heat, so it is not counted as a source here. The
     count under the cascade is given in the note for comparison.
 
-    The case note 22 §3 names is `heat_pump_lt_reject` at the `REF` processes: it is meant
-    to lift a chiller's condenser heat, and no chiller carries a `reject` row (Task 4)."""
+    The case note 22 §3 named was `heat_pump_lt_reject` at the `REF` processes, meant to lift
+    a chiller's condenser heat. Since note 23 (2026-10-02) the chillers reject onto
+    `reject_chiller_condenser` and the options at refrigeration processes resolve to
+    `heat_pump_chiller_condenser` instead, so the count below is what is left: the activities
+    where `heat_pump_lt_reject` is still offered by evidence rows although every unit there
+    that rejected heat now rejects onto a source class, and only C8's cascade feeds it."""
     r = Result("intermediate draws with no eligible producer (advisory)", blocking=False)
     carriers = {c["carrier_id"]: c for c in car}
     draws: dict[str, set[str]] = defaultdict(set)
@@ -959,7 +963,7 @@ def check_unsourced_draws(elig: list[dict], io: list[dict], car: list[dict],
     r.note = (f"{len(gaps)} (unit, activity, process) draws with no exact producer, "
               f"{under_cascade} with none even through C8's heat cascade; "
               f"{len(by_pair)} (unit, carrier) pairs; heat_pump_lt_reject at "
-              f"{reject_at_ref} REF processes")
+              f"{reject_at_ref} processes with a REF duty")
     for (u, cid), n in sorted(by_pair.items(), key=lambda kv: (-kv[1], kv[0])):
         r.detail(f"  {u} draws {cid}: {n} places")
     return r
@@ -1595,6 +1599,114 @@ def check_energy_closure(unit: list[dict], io: list[dict], car: list[dict]) -> R
     return r
 
 
+# ------------------------------------------------ V36: reject heat by source class (note 23)
+#
+# Spec section 3.4's reject source classes. Per class: the hottest heat band a passive recovery
+# unit on it may deliver (its `grade_out`), and whether the class is deliberately left with no
+# recovery unit, so that its heat is disposed of rather than reached by `heat_pump_lt_reject`.
+# A class added to carrier.csv must be added here, or V36 fails naming it.
+REJECT_CLASSES: dict[str, tuple[int, bool]] = {
+    # condensing increment, released below the flue gas water dew point (about 57 C)
+    "reject_flue_clean": (1, False),
+    # biomass flue only (coal and oil carry no reject row: their acid dew point bars condensing
+    # beyond the economiser in their efficiency); no recovery unit, no cost found
+    "reject_flue_solid_liquid": (3, True),
+    # residual turbine exhaust at 149 to 169 C, engine jacket water at 88 to 110 C
+    "reject_engine_exhaust": (2, False),
+    # humid exhaust air at 65 to 75 C; no recovery unit, no capex stated directly
+    "reject_dryer_exhaust": (1, True),
+    # condenser heat at roughly 30 to 45 C, usable only through a lift
+    "reject_chiller_condenser": (1, False),
+}
+
+
+def check_reject_classes(car: list[dict], unit: list[dict], io: list[dict]) -> Result:
+    """BLOCKING. V36 (reject heat is carried by source class, spec section 3.4, note 23).
+
+    (a) Every `reject` row lands on `heat_lt60` or on a reject class carrier, and each class
+        carrier is intermediate, not gradeable, energy, may be disposed of and never crosses
+        the site boundary.
+    (b) Every class is made by at least one `reject` row and drawn by at least one unit,
+        except the classes REJECT_CLASSES leaves without one, which nothing may draw.
+    (c) A recovery unit (one drawing a class) draws exactly one class, and unless it takes a
+        work input (a `fuel_input` row: a heat pump) its `grade_out` is no hotter than the
+        class allows.
+    (d) A recovery unit carries a positive `min_viable_scale`, and its provenance states it
+        in PJ/yr of the class it draws, the basis A2's screen compares it on (section 3.5).
+    """
+    r = Result("V36 reject heat by source class (§3.4)")
+    carriers = {c["carrier_id"]: c for c in car}
+    units = {u["unit_id"]: u for u in unit}
+    classes = set(REJECT_CLASSES)
+
+    for cid in sorted(classes):
+        c = carriers.get(cid)
+        if c is None:
+            r.fail(f"{cid}: in REJECT_CLASSES but not in carrier.csv")
+            continue
+        want = {"carrier_kind": "intermediate", "is_gradeable": "FALSE",
+                "denominator_kind": "energy", "may_dispose": "TRUE",
+                "may_import": "FALSE", "may_export": "FALSE"}
+        for field, value in want.items():
+            if c[field] != value:
+                r.fail(f"{cid}: {field} is {c[field]!r}, a reject class needs {value!r}")
+
+    made: dict[str, set[str]] = defaultdict(set)
+    drawn: dict[str, set[str]] = defaultdict(set)
+    fuelled: set[str] = set()
+    for row in io:
+        uid, cid, role = row["unit_id"], row["carrier_id"], row["role"]
+        if role == "fuel_input":
+            fuelled.add(uid)
+        if role == "reject":
+            made[cid].add(uid)
+            if cid != "heat_lt60" and cid not in classes:
+                r.fail(f"{uid}: reject row on {cid}, which is neither heat_lt60 nor a reject "
+                       f"class; add the class to REJECT_CLASSES and spec section 3.4, or move "
+                       f"the row")
+        elif role in INPUT_ROLES and cid in classes:
+            drawn[cid].add(uid)
+
+    for cid, (_band, undrawn) in sorted(REJECT_CLASSES.items()):
+        if not made.get(cid):
+            r.fail(f"{cid}: no reject row lands on it")
+        if undrawn and drawn.get(cid):
+            r.fail(f"{cid}: listed as left without a recovery unit, but "
+                   f"{', '.join(sorted(drawn[cid]))} draws it; update REJECT_CLASSES and "
+                   f"spec section 3.4")
+        if not undrawn and not drawn.get(cid):
+            r.fail(f"{cid}: no unit draws it; add its recovery unit or list the class as "
+                   f"left without one")
+
+    recovery: dict[str, set[str]] = defaultdict(set)
+    for cid, uids in drawn.items():
+        for uid in uids:
+            recovery[uid].add(cid)
+    for uid, cids in sorted(recovery.items()):
+        u = units.get(uid)
+        if u is None:
+            continue  # an unknown unit is check_units' finding
+        if len(cids) != 1:
+            r.fail(f"{uid}: draws {len(cids)} reject classes ({', '.join(sorted(cids))}); "
+                   f"a recovery unit draws one")
+            continue
+        cid = next(iter(cids))
+        band = REJECT_CLASSES[cid][0]
+        grade = _f(u["grade_out"])
+        if uid not in fuelled and (grade is None or grade > band):
+            r.fail(f"{uid}: grade_out {u['grade_out'] or 'blank'} is hotter than {cid} "
+                   f"allows (heat rank {band}) and it takes no work input")
+        scale = _f(u["min_viable_scale"])
+        if scale is None or scale <= 0:
+            r.fail(f"{uid}: a recovery unit needs a positive min_viable_scale (section 3.5)")
+        elif f"min_viable_scale in PJ/yr of {cid}" not in u["provenance_ref"]:
+            r.fail(f"{uid}: provenance does not state min_viable_scale 'in PJ/yr of {cid}'")
+    r.note = (f"{sum(len(v) for k, v in made.items() if k in classes)} reject rows on "
+              f"{len(classes)} classes, {len(made.get('heat_lt60', ()))} on heat_lt60; "
+              f"{len(recovery)} recovery units")
+    return r
+
+
 def check_eligibility_and_join(elig: list[dict], join: list[dict], unit: list[dict],
                                reg: list[dict], lib: list[dict]) -> Result:
     r = Result("eligibility and option→unit join: keys resolve")
@@ -1950,6 +2062,7 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
         check_v19_grade_out(elig, duty, unit, tables["unit_input_output.csv"], car),
         check_emission_coefficient_basis(tables["unit_input_output.csv"], car),
         check_energy_closure(unit, tables["unit_input_output.csv"], car),
+        check_reject_classes(car, unit, tables["unit_input_output.csv"]),
         check_lineage(tables["comit_technology_lineage.csv"], unit, car),
         check_load_shape(tables["process_load_shape.csv"], reg),
         check_scenario(tables["scenario_parameters.csv"],

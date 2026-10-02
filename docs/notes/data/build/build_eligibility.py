@@ -3,6 +3,33 @@
 
 Stdlib only (pandas is not installed in this repo).
 
+The canonical sequence
+----------------------
+`unit_eligibility.csv` is written by two scripts, in this order, and the pair reproduces the
+committed file exactly:
+
+    python3 docs/notes/data/build/build_eligibility.py
+    python3 docs/notes/data/build/rebuild_eligibility_join.py
+    make data-check && make data-worklist
+
+This script owns three kinds of `unit_eligibility.csv` row and rewrites only those: (a) the
+worked-example rows (`provenance_ref` `[CARB3_WE_CEMENT]` or `[CARB3_WE_FOODDRINK]`), (b) the
+options-join rows (`[CARB3_OPT_LIB]`) and the chemistry-node rows (`[CARB3_UNIT_LIST]`).
+Every other row already in the file is kept verbatim: the family rows, which
+`rebuild_eligibility_join.py` owns since note 22 Task 10 and rewrites next, and the rows
+decided by hand, such as the reach of the process-keyed service units (`engine_mot_gas` at the
+three gas-only `OTH` motive rows, note 20 item 65; the two mobile-plant units at the 22
+diesel mobile-plant rows, note 20 item 30) and the cited rows of `lime_kiln_sugar_coke` and
+`potline_prebake_elec`. A hand row wins over a chemistry-node row on the same key; a
+worked-example or options-join row wins over everything.
+
+Until 2026-10-02 this script also wrote step (c), every service unit of a duty family at every
+register process of that family, with no grade filter, and rewrote the whole file. That step
+was superseded by `rebuild_eligibility_join.py` and is gone: re-running the old script wiped the
+keyed units' hand-set reach, which the rebuild reads back from the file, so the pair no longer
+reproduced the committed table (3,350 rows from this script, 4,329 after the rebuild, against
+3,773).
+
 Outputs
 -------
 docs/notes/data/decarbonisation_option_unit.csv                     (C2)
@@ -28,6 +55,19 @@ DATA = os.path.dirname(HERE)
 # carry ("petcoke", "refinery_fuel_gas") maps to nothing at all rather than to
 # its nearest neighbour. Blanks are recorded as gaps in DONE_eligibility.md.
 # ---------------------------------------------------------------------------
+# Note 23 decision 4 (2026-10-02): at a refrigeration process the waste heat is the chillers'
+# condenser heat, which sits on its own source-class carrier, so an option offering a reject-heat
+# heat pump there resolves to `heat_pump_chiller_condenser`, and `heat_pump_lt_reject` (which
+# draws `heat_lt60`) is not offered there. Elsewhere it is the other way round. A refrigeration
+# process is one whose duty profile rows at that activity are all `REF`; see REFRIGERATION_ONLY.
+CONDENSER_NOTE = ("At a refrigeration process the waste heat is the chillers' condenser heat, "
+                  "lifted by the condenser heat pump (note 23 decision 4).")
+REFRIGERATION_ONLY = {
+    # unit -> True: offered only at refrigeration processes; False: never offered there
+    "heat_pump_chiller_condenser": True,
+    "heat_pump_lt_reject": False,
+}
+
 DISPLACES_TOKEN_MAP = {
     # --- gas -----------------------------------------------------------
     "gas": "natural_gas",
@@ -301,10 +341,12 @@ JOIN = OrderedDict([
          "GAP-UNIT: no heat pump unit above 200C; heat_pump_ht is the highest and it is an STM unit below that.")]),
     ("heat_pump_below_100", [
         ("heat_pump_lt_air", "is_unit", "Ambient-source low-temperature heat pump."),
-        ("heat_pump_lt_reject", "is_unit", "The same duty served from recovered reject heat.")]),
+        ("heat_pump_lt_reject", "is_unit", "The same duty served from recovered reject heat."),
+        ("heat_pump_chiller_condenser", "is_unit", CONDENSER_NOTE)]),
     ("heat_recovery_heat_pump", [
         ("heat_pump_lt_reject", "is_unit",
-         "Upgrading 20-70C waste heat to 60-150C is exactly the reject-heat heat pump unit.")]),
+         "Upgrading 20-70C waste heat to 60-150C is exactly the reject-heat heat pump unit."),
+        ("heat_pump_chiller_condenser", "is_unit", CONDENSER_NOTE)]),
     ("hisarna_smelting_reduction", [
         ("hisarna_coal", "route_change",
          "Direct smelting of ore fines, eliminating coke_ovens and sinter_plant as well as replacing blast_furnace_ironmaking.")]),
@@ -819,12 +861,6 @@ PROCESS_FAMILIES = {
     "workshop_equipment": ["MOT"],
 }
 
-# The six process_ids the worked examples fix outright; these are not proxies.
-WORKED_EXAMPLE_FAMILIES = {
-    "site_services", "boiler_steam_hot_water", "direct_heating",
-    "refrigeration", "machinery_motors", "compressed_air",
-}
-
 # ---------------------------------------------------------------------------
 # Worked-example unit_eligibility rows, reproduced verbatim (3.5.1).
 # (unit_id, carb3_activity, process_id, min_duty, max_share, earliest_year)
@@ -914,6 +950,10 @@ def main():
     carriers = read("carrier.csv")
     register = read("activity_process_register.csv")
     mappings = read("process_decarbonisation_options.csv")
+    duty_families = defaultdict(set)
+    for d in read("activity_process_duty_profile.csv"):
+        duty_families[(d["carb3_activity"], d["process_id"])].add(d["duty_family"])
+    refrigeration = {key for key, fams in duty_families.items() if fams == {"REF"}}
 
     unit_by_id = {u["unit_id"]: u for u in units}
     carrier_ids = {c["carrier_id"] for c in carriers}
@@ -990,10 +1030,6 @@ def main():
         w.writerows(aligned)
 
     # -- deliverable 3: unit_eligibility.csv -------------------------------
-    units_by_family = defaultdict(list)
-    for u in units:
-        if u["spine"] == "service" and u["duty_family"]:
-            units_by_family[u["duty_family"]].append(u["unit_id"])
     units_by_node = defaultdict(list)
     for u in units:
         if u["spine"] == "chemistry" and u["process_id"]:
@@ -1047,6 +1083,9 @@ def main():
                 "process_decarbonisation_options.csv; the option resolves to this unit "
                 "in decarbonisation_option_unit.csv." % (oid, act, proc))
         for unit_id in is_unit_map.get(oid, []):
+            if (unit_id in REFRIGERATION_ONLY
+                    and REFRIGERATION_ONLY[unit_id] != ((act, proc) in refrigeration)):
+                continue  # note 23 decision 4: each reject class through its own unit
             u = unit_by_id[unit_id]
             if u["spine"] == "chemistry" and u["process_id"] != proc:
                 # A chemistry unit only serves its own node (D5).  The seven
@@ -1070,7 +1109,22 @@ def main():
                    "examples' tables have it." % oid):
                 n_b += 1
 
-    # (c) every register process the unit's duty family can serve
+    # Rows this script does not own are kept verbatim (see the module docstring). They go in
+    # after (a) and (b), so those win, and before the chemistry-node rows, so a hand row wins
+    # over a generated one on the same key.
+    owned_refs = {"[CARB3_WE_CEMENT]", "[CARB3_WE_FOODDRINK]", "[CARB3_OPT_LIB]",
+                  "[CARB3_UNIT_LIST]"}
+    n_kept = 0
+    for r in read("unit_eligibility.csv"):
+        if r["provenance_ref"] in owned_refs:
+            continue
+        key = (r["unit_id"], r["carb3_activity"], r["process_id"])
+        if key not in rows:
+            rows[key] = dict(r)
+            n_kept += 1
+
+    # (c) the chemistry nodes: each chemistry-spine unit at every register row of its own
+    # process. The service-family half of the old step (c) is rebuild_eligibility_join.py's.
     n_c = 0
     unknown_processes = set()
     chemistry_gaps = defaultdict(set)
@@ -1096,18 +1150,6 @@ def main():
                            "(D5: chemistry is node-keyed)." % proc):
                         n_c += 1
                 continue
-            for unit_id in units_by_family.get(fam, []):
-                src = ("the worked examples" if proc in WORKED_EXAMPLE_FAMILIES
-                       else "the register's process_name and equipment_examples")
-                if put(unit_id, act, proc, "", "", "", "proxy", "CARB3_REGISTER",
-                       "Service unit of duty family %s, offered for every register process "
-                       "of that family. Family derived from %s: T17 (give every process a "
-                       "duty family and a heat grade) has not landed and neither "
-                       "build/activity_process_duty_profile_duty_a.csv nor _duty_b.csv "
-                       "exists, so this is a proxy. unit.grade_out is blank until the units "
-                       "lane's phase 2, so no grade filter has been applied."
-                       % (fam, src)):
-                    n_c += 1
 
     if unknown_processes:
         raise SystemExit("register processes with no duty family: %s"
@@ -1126,8 +1168,9 @@ def main():
           % (len(join_rows), len(JOIN)))
     print("decarbonisation_options_library_aligned  %4d rows" % len(aligned))
     print("unit_eligibility.csv                     %4d rows "
-          "(worked example %d, options join %d, family %d)"
-          % (len(rows), n_a, n_b, n_c))
+          "(worked example %d, options join %d, kept from the file %d, chemistry nodes %d); "
+          "now run rebuild_eligibility_join.py"
+          % (len(rows), n_a, n_b, n_kept, n_c))
     print("displaces tokens with no carrier: %s"
           % ", ".join("%s (%d options)" % (t, len(v))
                       for t, v in sorted(unmapped_tokens.items())))
