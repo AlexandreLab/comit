@@ -6,7 +6,7 @@ consolidated on 2026-09-26. Each entry stands on its own. The plan that produced
 questions live in [note 20](docs/notes/20_reference_data_open_questions.md) (reference-data
 open questions), whose item numbers are quoted below. The coverage check — `make data-report`,
 "duty coverage", and the work list `make data-worklist` writes to
-`docs/notes/data/build/unservable_duties.csv` — counts **2 of 427 duty rows unservable**.
+`docs/notes/data/build/unservable_duties.csv` — counts **2 of 433 duty rows unservable**.
 
 ## Decisions for Alexandre
 
@@ -59,13 +59,23 @@ open questions), whose item numbers are quoted below. The coverage check — `ma
 - [ ] **40 units cannot be fully costed (note 20 item 49).** 15 have a blank `capex`, 13 a
   blank `lifetime`, 15 a blank `fixed_opex`, 13 each a blank `availability_factor` and
   `capacity_to_activity_factor`, 25 have no `unit_input_output` rows, and 3 declare a fuel
-  they never consume. They reach 50 of `unit_eligibility.csv`'s 3,302 rows, all
+  they never consume. They reach 50 of `unit_eligibility.csv`'s 3,306 rows, all
   worked-example or options rows; the rebuilt family rows admit none of them.
 - [ ] **11 of the 15 importable carriers lack a price in every period (note 20 item 48).**
   Only `natural_gas`, `light_fuel_oil`, `coal` and `electricity` are priced in all seven
   periods; `heavy_fuel_oil` has 2021 only. Units burning an unpriced fuel reach 1,392 of the
-  3,302 eligibility rows. The new `lime_kiln_sugar_coke` burns `coke`, which has no price, so
+  3,306 eligibility rows. The new `lime_kiln_sugar_coke` burns `coke`, which has no price, so
   `carb3`'s admission screen drops it.
+
+- [ ] **The spray-dryer heat pump is credited to 100 °C; exhaust heat pumping reaches about
+  80 °C today** (Liang et al. 2022, note 20 item 71). Up to 10.5 % of the drying duty is
+  over-credited; only a band edge at 80 °C would remove it.
+- [ ] **`dryer_heat_pump`'s heat source is uncapped.** It is flagged `draws_ambient`, so nothing
+  bounds it by the heat the dryer's exhaust actually holds.
+- [ ] **The creamery's evaporator is split as air heating.** `Creamery`/`evaporation_drying`
+  bundles the evaporator with the spray dryer and no source separates them (note 20 item 71).
+- [ ] **`resistance_heater_lt` is `grade_out` 4 but declares its output on `heat_100_150`.**
+  It tops up the dairy's 150–200 °C segment from 2045; confirm the rating or the carrier.
 
 ## Units not added for want of a source
 
@@ -83,12 +93,6 @@ open questions), whose item numbers are quoted below. The coverage check — `ma
   assumptions, and `hydrogen` has no import price (item 48), so the unit would be screened out
   anyway.
 - [ ] **A coke-oven battery** — see the decision above.
-- [ ] **A heat-pump preheat for a spray dryer, with an electric top-up.** The realistic
-  retrofit for a 180–200 °C dryer inlet (`Creamery`, `Food Processing Centre` `direct_heating`)
-  raises the air to about 100 °C by heat pump and tops it up electrically. One unit cannot
-  express that: it needs the drying duty split across two bands. Until then `dryer_heat_pump`
-  is grade 2 only (note 20 item 69) and the dairy's dryer goes from gas to
-  `resistance_heater_lt` in 2045.
 
 ## Proxy and fallback values to firm up
 
@@ -138,4 +142,7 @@ note 22 §8 and note 20. On 2026-09-26 the diesel and battery mobile-plant units
 potline and the beet-sugar lime kiln took the unservable count from 24 to 2. On 2026-10-02
 `dryer_heat_pump` was rated grade 2 with an exhaust-heat source (note 20 item 69), which
 took `unit_eligibility.csv` from 3,314 to 3,302 rows. The same day twelve reject rows were capped at their unit's
-losses (item 70) and V2's energy-closure leg became a blocking data check.
+losses (item 70) and V2's energy-closure leg became a blocking data check. Note 20 item 71
+then split the two spray dryers' air heating into band segments, so a heat-pump dryer preheats
+the dairy's air to 100 °C from 2025 and gas, later electric resistance, tops it up: 433 duty
+rows, 3,306 eligibility rows.
