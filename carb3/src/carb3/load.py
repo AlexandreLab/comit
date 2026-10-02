@@ -52,6 +52,10 @@ COST_FIELDS: tuple[str, ...] = (
 #: of these and its declared ``unit.fuel_carrier_id`` (§3.6).
 INPUT_ROLES: frozenset[str] = frozenset({"fuel_input", "aux_input", "emission_input"})
 
+#: V2's energy-closure leg (§3.6): a unit may put out at most this much more energy than it
+#: takes in. ``validate_carb3_data.py`` carries the same figure; the two must agree.
+ENERGY_CLOSURE_TOLERANCE: float = 1e-6
+
 
 class SchemaError(ValueError):
     """A table is missing, missing a required column, or carries an unknown one.
@@ -344,7 +348,55 @@ def load_reference_tables(root: Path = DEFAULT_REFERENCE_ROOT) -> ReferenceTable
         for name, (required, optional) in REFERENCE_SCHEMA.items()
     }
     _resolve_abatement_host_keys(frames["unit_abatement_host"], frames["unit"], root)
+    _check_energy_closure(frames["unit"], frames["unit_input_output"], frames["carrier"], root)
     return ReferenceTables(**frames)
+
+
+def _check_energy_closure(
+    units: pd.DataFrame, io: pd.DataFrame, carriers: pd.DataFrame, root: Path
+) -> None:
+    """V2's energy-closure leg (§3.6): no unit makes energy. Error code ``unit_makes_energy``.
+
+    Only ``energy``-denominated carriers count; a mass product and an emission row sit outside
+    the sum. A positive coefficient on a cooling carrier is heat drawn *in* from the cooled
+    stream, which is what lets a chiller's reject close. A unit with ``draws_ambient`` takes
+    energy from outside the carrier set and is exempt. The test is the inequality
+    ``energy out <= energy in + 1e-6``: flue and casing losses are no carrier, so a lossy
+    boiler closes short and that is not a defect.
+
+    This duplicates ``check_energy_closure`` in ``docs/notes/examples/validate_carb3_data.py``,
+    which cannot be imported from here. **The two must agree**; change one, change the other.
+    Every offender is named in one error, so a fix is one pass rather than one unit per run.
+    """
+    denominator = dict(zip(carriers["carrier_id"], carriers["denominator_kind"], strict=True))
+    cooling = set(carriers.loc[carriers["grade_family"] == "cooling", "carrier_id"])
+    ambient = set(units.loc[units["draws_ambient"].astype(bool), "unit_id"])
+
+    energy_in: dict[str, float] = {}
+    energy_out: dict[str, float] = {}
+    for unit_id, carrier_id, coefficient in zip(
+        io["unit_id"], io["carrier_id"], io["coefficient"], strict=True
+    ):
+        if pd.isna(coefficient) or denominator.get(carrier_id) != "energy":
+            continue
+        if coefficient < 0 or carrier_id in cooling:
+            energy_in[unit_id] = energy_in.get(unit_id, 0.0) + abs(coefficient)
+        else:
+            energy_out[unit_id] = energy_out.get(unit_id, 0.0) + coefficient
+
+    offenders = [
+        f"{unit_id} puts out {energy_out.get(unit_id, 0.0):.5f} of energy for "
+        f"{energy_in.get(unit_id, 0.0):.5f} in"
+        for unit_id in sorted((set(energy_in) | set(energy_out)) - ambient)
+        if energy_out.get(unit_id, 0.0) - energy_in.get(unit_id, 0.0) > ENERGY_CLOSURE_TOLERANCE
+    ]
+    if offenders:
+        raise ResolutionError(
+            f"unit_makes_energy: {root}/unit_input_output.csv: " + "; ".join(offenders)
+            + ". Lower the output (a reject row is at most the unit's losses), add the input "
+            "it draws, or flag draws_ambient in unit.csv only if the energy really comes from "
+            "outside the carrier set (§3.6; V2 energy-closure leg)"
+        )
 
 
 def _resolve_abatement_host_keys(hosts: pd.DataFrame, units: pd.DataFrame, root: Path) -> None:

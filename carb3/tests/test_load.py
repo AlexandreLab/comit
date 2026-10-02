@@ -785,3 +785,83 @@ def test_an_activity_level_eligibility_row_admits_an_incumbent(
     assert not load.incumbent_is_eligible(
         reference, "no_such_unit", str(blank["carb3_activity"]), "any_process"
     )
+
+
+# ------------------------------------------------- V2 energy closure at load (§3.6)
+
+
+def _edit_csv(path: Path, edit) -> None:  # noqa: ANN001 - a row -> None mutator
+    with path.open(newline="") as handle:
+        reader = csv.DictReader(handle)
+        fields = reader.fieldnames
+        rows = list(reader)
+    for row in rows:
+        edit(row)
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _make_boiler_a_maker_of_energy(root: Path) -> None:
+    """Halve ``boiler_lt_gas``'s gas input: 1.13636 in becomes 0.5, against 1.13636 out."""
+
+    def edit(row: dict[str, str]) -> None:
+        if row["unit_id"] == "boiler_lt_gas" and row["carrier_id"] == "natural_gas":
+            row["coefficient"] = "-0.5"
+
+    _edit_csv(root / "unit_input_output.csv", edit)
+
+
+def _flag_draws_ambient(root: Path, unit_id: str) -> None:
+    def edit(row: dict[str, str]) -> None:
+        if row["unit_id"] == unit_id:
+            row["draws_ambient"] = "TRUE"
+
+    _edit_csv(root / "unit.csv", edit)
+
+
+def test_a_unit_that_makes_energy_is_refused(tmp_path: Path) -> None:
+    root = _reference_copy(tmp_path)
+    _make_boiler_a_maker_of_energy(root)
+    with pytest.raises(load.ResolutionError, match="unit_makes_energy.*boiler_lt_gas"):
+        load.load_reference_tables(root)
+
+
+def test_the_same_unit_flagged_draws_ambient_loads(tmp_path: Path) -> None:
+    root = _reference_copy(tmp_path)
+    _make_boiler_a_maker_of_energy(root)
+    _flag_draws_ambient(root, "boiler_lt_gas")
+    assert "boiler_lt_gas" in set(load.load_reference_tables(root).unit["unit_id"])
+
+
+def test_a_chiller_closes_because_cooling_counts_as_heat_drawn_in(
+    reference: load.ReferenceTables,
+) -> None:
+    """``chiller_electric`` makes 1 of cooling and 1.3333 of reject from 0.3333 of electricity."""
+    io = reference.unit_input_output
+    chiller = io[io["unit_id"] == "chiller_electric"]
+    assert set(chiller["role"]) >= {"primary_output", "reject"}
+    assert "chiller_electric" in set(reference.unit["unit_id"])
+
+
+def test_a_lossy_boiler_loads(reference: load.ReferenceTables) -> None:
+    """``boiler_lt_gas`` takes 1.13636 in and puts out at most that; losses are no carrier."""
+    assert "boiler_lt_gas" in set(reference.unit["unit_id"])
+
+
+def test_a_reject_row_above_the_unit_losses_is_refused(tmp_path: Path) -> None:
+    """Note 20 item 70: raising a boiler's reject past its losses makes energy."""
+    root = _reference_copy(tmp_path)
+
+    def edit(row: dict[str, str]) -> None:
+        if (row["unit_id"], row["role"]) == ("boiler_lt_gas", "reject"):
+            row["coefficient"] = "0.5"
+
+    _edit_csv(root / "unit_input_output.csv", edit)
+    with pytest.raises(load.ResolutionError, match="unit_makes_energy.*boiler_lt_gas"):
+        load.load_reference_tables(root)
+
+
+def test_the_real_reference_tables_pass_the_energy_closure() -> None:
+    assert load.load_reference_tables(load.DEFAULT_REFERENCE_ROOT) is not None

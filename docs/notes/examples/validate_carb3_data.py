@@ -1553,6 +1553,9 @@ def check_energy_closure(unit: list[dict], io: list[dict], car: list[dict]) -> R
     carrier, so a 88 %-efficient boiler closes short, and that is not a defect. Making energy
     is: `dryer_steam` (note 20 item 64), `dryer_heat_pump` (item 69) and twelve reject rows
     sized above their unit's losses (item 70) all did, and nothing caught them.
+
+    `carb3/src/carb3/load.py` enforces the same rule at load (`_check_energy_closure`, error
+    code `unit_makes_energy`). It cannot import this module, so **the two must agree**.
     """
     r = Result("V2 energy closure: no unit makes energy (§3.6)")
     denom = {c["carrier_id"]: c["denominator_kind"] for c in car}
