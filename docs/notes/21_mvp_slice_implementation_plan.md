@@ -394,7 +394,7 @@ The two units that contend for a low-grade heat duty, from `unit.csv` and
 |---|---|---|
 | Output carrier | `heat_100_150` (grade 3) | `heat_60_100` (grade 2) |
 | Coefficient | 1.13636 PJ gas per PJ heat (η = 0.88) | 0.3571 PJ electricity per PJ heat (COP 2.80) |
-| `reject` row | 0.13668 into `heat_lt60` | none |
+| `reject` row | 0.13636 into `heat_lt60` (0.13668 until note 20 item 70 capped it at the losses) | none |
 | `capex` | 5.6421 | 15.2949 |
 | `fixed_opex` | 0.11284 | 0.3059 |
 | `lifetime` | 25 | 20 |

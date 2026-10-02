@@ -460,7 +460,7 @@ what lets a new unit be added without editing a mapping table.
 | `dryer_direct_gas` | `co2_fuel_fossil` | **+66.00165** | `emission` | **derived** — 1.17650 × 56.1 |
 | `dryer_electric` | `heat_150_400` | +1.00000 | `primary_output` | declared |
 | `dryer_electric` | `electricity` | −1.05260 | `fuel_input` | declared *(η 0.95)* |
-| `dryer_electric` | `heat_lt60` | **+0.08000** | `reject` | declared |
+| `dryer_electric` | `heat_lt60` | **+0.05260** | `reject` | declared, capped at the unit's 0.05260 of losses at η 0.95 |
 | `chiller_electric` | `cooling_0_15` | **+1.00000** | `primary_output` | declared |
 | `chiller_electric` | `electricity` | −0.33330 | `fuel_input` | declared *(COP 3.00)* |
 | `motor_elec` | `motive_power` | **+1.00000** | `primary_output` | declared |

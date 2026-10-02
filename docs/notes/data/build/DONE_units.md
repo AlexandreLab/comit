@@ -410,6 +410,12 @@ and each row's coefficient is 0.12027 × |its fuel coefficient|, per unit of out
 `boiler_lt_gas` that is 0.12027 × 1.13636 = **+0.13668**; for `kiln_dry_coal`,
 0.12027 × 4.60000 = **+0.55326** per Mt of clinker.
 
+**Capped at the unit's losses (note 20 item 70, 2026-10-02).** The fraction can exceed what
+an efficient unit loses at all: a 92 %-efficient LPG boiler loses 0.08696 per PJ of output,
+not 0.13073. Twelve rows did, so each unit made energy, and V2's closure leg (§3.6) now
+refuses that. Every reject row is min(0.12027 × fuel, energy in − other energy outputs); for
+`boiler_lt_gas` that is 0.13636, not 0.13668.
+
 **Why 48 − 13 and not 11.** The study also reports an 11 TWh/yr *technical* potential, 7 TWh/yr
 economic and 5 TWh/yr commercial. Those three already net off the temperature matching, the
 distance and the payback — which are exactly what C10 (the heat cascade), C8 (carrier balance)

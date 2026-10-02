@@ -137,4 +137,5 @@ The duty-family and cooling work of note 22 is complete: Tasks 1–10 and note 2
 note 22 §8 and note 20. On 2026-09-26 the diesel and battery mobile-plant units, the aluminium
 potline and the beet-sugar lime kiln took the unservable count from 24 to 2. On 2026-10-02
 `dryer_heat_pump` was rated grade 2 with an exhaust-heat source (note 20 item 69), which
-took `unit_eligibility.csv` from 3,314 to 3,302 rows.
+took `unit_eligibility.csv` from 3,314 to 3,302 rows. The same day twelve reject rows were capped at their unit's
+losses (item 70) and V2's energy-closure leg became a blocking data check.
