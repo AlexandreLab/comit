@@ -6,7 +6,7 @@ consolidated on 2026-09-26. Each entry stands on its own. The plan that produced
 questions live in [note 20](docs/notes/20_reference_data_open_questions.md) (reference-data
 open questions), whose item numbers are quoted below. The coverage check — `make data-report`,
 "duty coverage", and the work list `make data-worklist` writes to
-`docs/notes/data/build/unservable_duties.csv` — counts **2 of 430 duty rows unservable**.
+`docs/notes/data/build/unservable_duties.csv` — counts **2 of 538 duty rows unservable**.
 
 ## Decisions for Alexandre
 
@@ -59,12 +59,12 @@ open questions), whose item numbers are quoted below. The coverage check — `ma
 - [ ] **40 units cannot be fully costed (note 20 item 49).** 15 have a blank `capex`, 13 a
   blank `lifetime`, 15 a blank `fixed_opex`, 13 each a blank `availability_factor` and
   `capacity_to_activity_factor`, 25 have no `unit_input_output` rows, and 3 declare a fuel
-  they never consume. They reach 50 of `unit_eligibility.csv`'s 3,304 rows, all
+  they never consume. They reach 50 of `unit_eligibility.csv`'s 3,608 rows, all
   worked-example or options rows; the rebuilt family rows admit none of them.
 - [ ] **11 of the 15 importable carriers lack a price in every period (note 20 item 48).**
   Only `natural_gas`, `light_fuel_oil`, `coal` and `electricity` are priced in all seven
   periods; `heavy_fuel_oil` has 2021 only. Units burning an unpriced fuel reach 1,392 of the
-  3,304 eligibility rows. The new `lime_kiln_sugar_coke` burns `coke`, which has no price, so
+  3,608 eligibility rows. The new `lime_kiln_sugar_coke` burns `coke`, which has no price, so
   `carb3`'s admission screen drops it.
 
 - [ ] **The spray-dryer heat pump is credited to 100 °C, overstated on two counts** (note 20
@@ -150,4 +150,7 @@ took `unit_eligibility.csv` from 3,314 to 3,302 rows. The same day twelve reject
 losses (item 70) and V2's energy-closure leg became a blocking data check. Note 20 item 71
 then split the dairy spray dryer's air heating into band segments, so a heat-pump dryer preheats
 its air to 100 °C from 2025 and gas tops it up, and made a drying duty take dryers only: 430
-duty rows, 3,304 eligibility rows.
+duty rows, 3,304 eligibility rows. Items 72 and 73 then split every `site_services`
+electricity row three ways on BEES (electric service, fans, chilled-water cooling) and moved
+site space heating to `heat_lt60`: 538 duty rows, 3,608 eligibility rows (PR #82). The dairy's
+space-heating incumbent went back from `heat_pump_lt_air` to `boiler_spc_gas` the same day.
