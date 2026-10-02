@@ -1242,3 +1242,19 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     2011, is the incumbent again. It serves the space heat in 2021 and a new `heat_pump_spc_air`
     takes it from 2025; the `mvp-dairy` objective rises from £143.77m to £144.39m, since the
     heat pump had been free base-year capacity.
+
+74. **All reject heat is one carrier, so recovering it costs the same whatever made it.** All 65
+    `reject` rows land on `heat_lt60` at 0.12027 × fuel input (capped at the unit's losses, item
+    70), and `heat_pump_lt_reject` is the only unit that draws them. A gas boiler's clean flue, a
+    CHP's exhaust, a chiller's condenser and a spray dryer's humid, powder-laden exhaust are
+    therefore equally easy to recover, at the same temperature and the same cost, which no
+    engineer would accept. *Found reading the `mvp-dairy` disposal, 2026-10-02*: 0.1208 PJ of
+    `heat_lt60` disposed in 2021, 0.0874 of it from the chiller.
+
+    **Open.** [Note 23](23_reject_heat_recovery_plan.md) proposes six source-class reject
+    carriers, a recovery unit per class with its own cost and output band, a recoverable fraction
+    per class, and a `min_source` screen in A2 (expanding the premise to duties and candidate
+    units) that keeps the problem linear. Phase 1 covers the 31 rows on boilers, CHP and engines,
+    dryers and chillers; the 34 process-exhaust rows wait for phase 2. Three decisions are for
+    Alexandre: source-class carriers or grade bands, when to do phase 2, and whether the screen
+    counts incumbent sources only.
