@@ -134,6 +134,9 @@ python3 docs/notes/data/build/rebuild_eligibility_join.py   # the family rows, f
 make data-check && make data-worklist
 ```
 
+`build/check_eligibility.py` runs on its own on a clean checkout: it recomputes the aligned options
+library in memory with `build_aligned()` from `build_eligibility.py` and writes nothing.
+
 `build_eligibility.py` rewrites only the rows it owns, by `provenance_ref`, and keeps every
 other row verbatim, including the hand-decided reach of the process-keyed service units that
 the rebuild reads back from the file. `rebuild_eligibility_join.py` owns the family rows since

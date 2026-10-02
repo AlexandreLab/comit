@@ -436,6 +436,15 @@ reject in full and a larger share of the condenser heat.
   `reject_dryer_exhaust` would remove its reject-heat leg entirely, since no unit draws that class
   yet; a note in the example says where it and the reference data part. Note 19 mirrors the
   example and is unchanged.
+  *Deferred to its own change (owner's decision, 2026-10-02).* Applying the data properly does
+  more than drop that leg: `heat_pump_chiller_condenser` (£8.30m/PJ by the example's own
+  comparison) displaces `heat_pump_lt_air` (£10.63m/PJ), so the hydrogen CHP never expands and the
+  2050 electricity export, one of the exit conditions of milestone M4 (the MVP exit gate), goes.
+  The same check found two defects that predate this note: the example's 2030 "nothing changes"
+  is false (the air-source heat pump at £12.06m/PJ beats the standing boiler's avoidable
+  £16.82m/PJ), and two fuel coefficients differ from the data (`boiler_lt_biomass` −1.28205
+  against −1.1236, `dryer_direct_hydrogen` −1.17650 against −1.08696). The follow-up re-solves
+  2025 to 2050 on the data, drops the export, and updates note 19 and M4's exit conditions.
 - **The cement worked example** quotes 0.12027 for its kilns, which are phase 2; unchanged.
   *Superseded by section 10.6: it now quotes 0.037801.*
 - **The 34 process-exhaust rows** still carry 0.12027 as if it were recoverable (note 20 item 75).
