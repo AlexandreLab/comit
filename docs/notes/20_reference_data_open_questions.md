@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, and item 71 the same day, when Alexandre decided it on PR #81 – **twenty-five of the seventy-one, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, item 71 the same day, when Alexandre decided it on PR #81, and items 72 and 73 the same day again – **twenty-seven of the seventy-three, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -1118,3 +1118,124 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     69), so nothing caps it at what the exhaust holds; [MOEJES_IDS2016] puts the exhaust at
     60–90 °C. (c) With the electric top-up only about 4 % dearer than gas at 2045, the dairy's
     last 2.48 kt/yr is sensitive to the carbon and electricity price series.
+
+72. **A site's lighting and office load is carried as shaft work.** Every `site_services` row
+    puts its electricity on `motive_power` (`MOT`): 54 rows at 55 activity and set pairs, 44 of
+    them `fallback`, all copying [CARB3_WE_FOOD] §3.2's "its electricity is motive power, which
+    is the ordinary shape for a process that is really a bundle of site overheads". The
+    register's own description of the bundle is lighting, HVAC and offices
+    (`Creamery`: "Site services (lighting, HVAC, offices)"), and only the ventilation fans in it
+    are shaft work. Lighting and office equipment are what `electric_service` was added for on
+    2026-09-24 (item 60, note 22 §2), and office comfort cooling is a cooling duty. The energy
+    barely moves (`motor_elec` takes 1 unit of electricity per unit of motive power,
+    `generic_process_elec` 1.0101 per unit of electric service), but the options do: under
+    `motive_power` no unit can offer a lighting retrofit or a reversible heat pump on the
+    office cooling. *Found reading the `mvp-dairy` results, 2026-10-02.*
+
+    **Proposed:** split each `site_services` electricity row into up to three duties, with
+    `duty_share` from a source for the split:
+
+    | Load | Duty family, carrier | Unit |
+    |---|---|---|
+    | Lighting, office equipment, IT | `OTH`, `electric_service` | `generic_process_elec` |
+    | Ventilation and air-handling fans | `MOT`, `motive_power` | `motor_elec` |
+    | Comfort cooling | `REF`, `cooling_0_15` (chilled water, §3.4) | `chiller_electric` |
+
+    No schema change: rows in `activity_process_duty_profile.csv`, the matching
+    `unit_eligibility.csv` rows, and a re-run of the three premises.
+
+    **Sources for the split, found 2026-10-02.** [BEES2016] Appendix B, Table B.3 (p. 122),
+    gives the industrial sector's building-services electricity in England and Wales,
+    2014–15, in GWh/yr: lighting 7,730, fans 780, cooling and humidification 610, ICT
+    equipment 270, small power 530. On those five rows, 9,920 GWh/yr, the split is:
+
+    | Load | GWh/yr | Share |
+    |---|---|---|
+    | Lighting, ICT, small power → `electric_service` | 8,530 | 0.860 |
+    | Fans → `motive_power` | 780 | 0.079 |
+    | Cooling and humidification → `cooling_0_15` | 610 | 0.061 |
+
+    The shares are derived here, not stated in the source. BEES puts the dominance of lighting
+    down to long hours: "in industrial premises, the high consumption was linked primarily to
+    long operational hours (double or 24 hour shift patterns were common)". The same table's
+    other industrial electricity rows (heating 570, hot water 140, catering 180, cooled storage
+    20, other 480) are left out: heating is item 73's duty, and the rest are not in the
+    register's description of the bundle.
+
+    **The US data disagrees on lighting.** [MECS2022_T52] gives net electricity in trillion
+    Btu, facility HVAC against facility lighting: all manufacturing 273 and 166, food (NAICS
+    311) 23 and 16, dairy (3115) 4 and 3, with other facility support 54, 6 and 1. There
+    HVAC is the larger, where in BEES lighting is ten times fans and cooling together. Two
+    things weaken the comparison: MECS's HVAC is one line that does not separate fans from
+    cooling or from electric heating (its footnote g says only that it "excludes steam and hot
+    water"), and the dairy figures are rounded to whole TBtu. The difference may be climate
+    (US comfort cooling), and that would argue for BEES as the UK source. [LBNL_DAIRY] §4.2
+    (pp. 23–24) gives lighting and HVAC together as about 18% of a dairy's electricity, which
+    agrees with MECS 2022's dairy rows (9 of 45 TBtu nonprocess, 20%) and splits neither.
+
+    **Open.** (a) Whether to take the BEES split, as the only UK source and the only one that
+    separates fans from cooling. (b) Whether all 54 rows take that one split, or the 10 already
+    on `published_sec` or `engineering` keep their reading. (c) Whether the 0.45/0.55
+    electricity-to-gas split of the 44 `fallback` rows, itself an analogue of the worked
+    example, should be revisited from the same table: BEES's industrial gas for heating is
+    13,100 GWh/yr against the 9,920 above.
+
+    **Decided 2026-10-02 by Alexandre: (a) take the BEES split, (b) on all 54 rows, (c) take
+    the ratio from BEES where it is the analogue.** Each `site_services` `MOT` row is now three
+    rows sharing its electricity 0.859879 `OTH` on `electric_service`, 0.078629 `MOT` on
+    `motive_power` and 0.061492 `REF` on `cooling_0_15` at rank 2. Where the row's
+    electricity share was the 0.45/0.55 analogue (18 activities) it becomes BEES's own ratio on
+    delivered energy, as the analogue was: heating of all fuels, 14,620 GWh/yr (electricity
+    570, gas 13,100, oil 490, district heat 60, other 400), against the 9,920, so 0.595762 heat
+    and 0.404238 electricity. The 36 other rows keep the electricity share they read, and only
+    split it: 21 that are electricity alone, `Food Processing Centre` at 0.451 from its worked
+    example, and 14 whose ratio came from their own activity's energy profile. Each split row
+    keeps its tier and carries the old provenance after the new.
+
+    **Effect.** The duty profile goes from 430 to 538 rows, after item 73's band move as well.
+    `activity_default_unit.csv` gains `generic_process_elec` and `chiller_electric` beside every
+    `site_services` `motor_elec`, 456 to 564 rows. The eligibility join offers
+    `generic_process_elec` and the four chillers at 52 `site_services` processes, and item 73's
+    band offers three grade-1 space-heat units at 32: `unit_eligibility.csv` goes from 3,304 to
+    3,608 rows. Duty coverage is unchanged at 2 unservable rows. `mvp-dairy` and `mvp-cement`
+    split their `site_services` `motor_elec` cohort in `premise_process_unit.csv` on the same
+    shares. At `mvp-dairy` the objective falls from £144.63m to £143.77m and electricity
+    imports by 0.00049 PJ/yr in 2021 and 0.00165 PJ/yr from 2025, because the chiller gives
+    more cooling per unit of electricity than the motor gave shaft work. Gas and fossil CO₂ do
+    not move. `mvp-minimal` and `mvp-cement` do not move: the cement works' `site_services`
+    duty is zero.
+
+73. **Site space heating sits at 60–100 °C on the worked example's word alone.** All 34
+    `site_services` `SPC` rows are `heat_60_100` at grade 2, taken from [CARB3_WE_FOOD] §3.2.
+    The band decides what can serve the duty: at grade 2 a heat pump works against a 60–100 °C
+    delivery, at `heat_lt60` (grade 1) it reaches a far better COP. Factory space heating is
+    commonly gas warm-air heaters, radiant tubes or low-temperature hot water, and which of
+    these a site has sets the delivery temperature. *Found reading the `mvp-dairy` results,
+    2026-10-02.*
+
+    **Sources, found 2026-10-02.** [DESNZ_LCHC_NONDOM2022] Table 1 (pp. 12–13) groups BEES
+    buildings into heating archetypes. Of factory floor area it puts 44 million m² under
+    archetype 12, "Direct gas warm air heating", and 34 million m² under archetype 11,
+    "Direct gas radiant heating". Neither heats water: the gas is burnt into the air, or
+    radiates from a tube. The table gives no total factory floor area, so these are not
+    shares, but they say the typical factory is not heated by a hot-water loop at all. Its
+    duty is then neither "hot water at 60–100 °C" nor served by `boiler_lt_gas` in practice,
+    and a heat pump replacing it delivers warm air, typically below 60 °C. For the minority on
+    wet systems, the only flow temperature found is a trade-press account of CIBSE AM14
+    (82/71 °C on older radiator systems), not the manual itself; it is not cited.
+
+    **Open.** (a) Move the 34 `SPC` rows to `heat_lt60`, on the argument that warm-air and
+    radiant heating deliver comfort heat to the space, not water at 60–100 °C; the case
+    against is the wet-system minority. (b) Whether a direct-fired heater needs its own unit:
+    `boiler_lt_gas`'s efficiency and cost stand in for it today. (c) A sourced flow
+    temperature for wet systems, from CIBSE Guide B1 or AM14 (both paywalled).
+
+    **Decided 2026-10-02 by Alexandre: (a), all 34 `SPC` rows move to `heat_lt60` at rank 1.**
+    (b) and (c) stay open. The grade-2 space-heat boilers still serve the duty, since C10 (the
+    grade cascade) lets a hotter unit serve a colder band, and the join now also offers
+    `heat_pump_spc_air`, `resistance_heater_spc` and `heat_exchanger_spc_steam` at rank 1. At
+    `mvp-dairy` the space heat is the CHP's heat in 2021 and a new `heat_pump_spc_air` from 2025,
+    while the incumbent `heat_pump_lt_air` stands idle. That incumbent's provenance in
+    `premise_process_unit.csv` says it replaced `boiler_spc_gas` because the boiler was
+    `grade_out` 1; the boiler has been grade 2 since item 24, so that reason was already stale
+    and the substitution could be undone.

@@ -199,11 +199,21 @@ def test_the_low_grade_heat_makers_release_to_the_lift_heat_pump(
     each of them gets a z° column on it (the activity a unit releases to C8, the carrier
     balance, rather than dispatches to a duty)."""
     sets = runs[premise_id].sets
-    assert sets.released == {
-        "heat_60_100": frozenset(
-            {"boiler_spc_coal", "boiler_spc_gas", "heat_pump_lt_air", "heat_pump_lt_reject"}
-        )
-    }
+    assert sets.released["heat_60_100"] == frozenset(
+        {"boiler_spc_coal", "boiler_spc_gas", "heat_pump_lt_air", "heat_pump_lt_reject"}
+    )
+    if premise_id == "mvp-minimal":
+        assert set(sets.released) == {"heat_60_100"}
+        return
+    # At the dairy, site space heating on heat_lt60 (note 20 item 73) offers
+    # ``heat_exchanger_spc_steam``, which draws 100-150 °C steam, so the units that make
+    # that band release it too; and the space-heat units' heat_lt60 is drawn by
+    # ``heat_pump_lt_reject``.
+    assert set(sets.released) == {"heat_60_100", "heat_100_150", "heat_lt60"}
+    assert {"boiler_lt_gas", "chp_gas_turbine"} <= sets.released["heat_100_150"]
+    assert sets.released["heat_lt60"] == frozenset(
+        {"heat_exchanger_spc_steam", "heat_pump_spc_air", "resistance_heater_spc"}
+    )
 
 
 def test_a_dryers_hot_air_is_never_released(runs: dict[str, Run]) -> None:
@@ -259,7 +269,9 @@ def test_the_lift_heat_pump_runs_and_lowers_the_objective(
         eligible={key: units - {"heat_pump_ht"} for key, units in run.sets.eligible.items()},
     )
     without = dataclasses.replace(without, released=released_supply(reference, without))
-    assert without.released == {}
+    # Without the lift pump nothing draws heat_60_100, so nothing releases it. The dairy
+    # still releases heat_100_150 and heat_lt60 to its other drawers (note 20 item 73).
+    assert "heat_60_100" not in without.released
     vintages = survival.vintage_capacity(premise, reference.unit)
     surviving = survival.surviving_capacity(vintages, reference.unit, PERIOD_YEARS)
     before = build.solve(build.build_model(without, surviving, axis, reference))
@@ -358,7 +370,7 @@ def test_mvp_cement_states_its_mass_duty_from_premise_throughput(
 ) -> None:
     """**The cement works' duty is a mass, and the duty profile cannot state it.**
 
-    ``activity_process_duty_profile.csv`` holds no mass carrier anywhere: its 430 rows name
+    ``activity_process_duty_profile.csv`` holds no mass carrier anywhere: its 538 rows name
     11 distinct ``carrier_id`` values and neither ``cement`` nor ``clinker`` is among them.
     ``Cement Works``'s ``cement_grinding`` row is classified ``MOT`` on ``motive_power`` at
     ``duty_share`` 1.00000, so an A2 that read only the register and the profile turned
