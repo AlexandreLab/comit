@@ -370,6 +370,20 @@ def _check_energy_closure(
     """
     denominator = dict(zip(carriers["carrier_id"], carriers["denominator_kind"], strict=True))
     cooling = set(carriers.loc[carriers["grade_family"] == "cooling", "carrier_id"])
+    # A blank or unreadable flag would otherwise reach astype(bool) as NA and fail naming
+    # nothing, and an unknown carrier would be skipped as non-energy and hide its flow.
+    unreadable = sorted(units.loc[units["draws_ambient"].isna(), "unit_id"])
+    if unreadable:
+        raise ResolutionError(
+            f"unit_draws_ambient_unreadable: {root}/unit.csv: draws_ambient must be TRUE or "
+            f"FALSE for {', '.join(unreadable)}"
+        )
+    unknown = sorted(set(io["carrier_id"]) - set(denominator))
+    if unknown:
+        raise ResolutionError(
+            f"unit_input_output_unknown_carrier: {root}/unit_input_output.csv: "
+            f"{', '.join(map(str, unknown))} not in carrier.csv"
+        )
     ambient = set(units.loc[units["draws_ambient"].astype(bool), "unit_id"])
 
     energy_in: dict[str, float] = {}
