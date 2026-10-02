@@ -178,7 +178,9 @@ The `commissioned_year` column above is the vintage evidence. **Two cohorts insi
 premise-process**: the CHP and the boiler serve the same duty family from the same boiler
 house and were commissioned five years apart, which is why §3.10.2 is keyed per cohort rather
 than per process. Each is aged on its own year rather than on an average of the two; that both
-reach end of life in 2035 below is the lifetimes, not the dates.
+reach end of life in 2035 below is the lifetimes, not the dates. The 2016 boiler joins the
+2011 interval as cohort 2 and opens no new interval, because replacing or adding plant is not
+a fact on the §3.10 row (§3.10, "what opens a new version").
 
 **Refurbishment is not recommissioning** (§3.10.2). The 2019 entry in `last_refurbishment_year`
 (§1.1) is a packing-hall extension, not a recommissioning of any of these three units, and it
@@ -1717,7 +1719,7 @@ Tests are the specification's, at §10.3. Scope is `load`, `premise` or `release
 | **V23** | load + premise | §5.2 — one tier resolves, `activity_default`, tiers were tried in order, and it appears on every output row |
 | **V24** | load + premise | §1.2, §1.7 — one row per key at the base year; no duplicate `(key, year)`; the optional entities **report** rather than reject, and §1.7 exercises that branch |
 | **V25** | premise | §1.2, §10.2 — the 2022 and 2023 rows move nothing by more than 1e-9, including §7.6's reported reconciliation |
-| **V26** | premise | §1.5 — six disjoint intervals, all valid at 2024, and `A2`, `A4` and §3.10.2's cohort read touch no row outside them |
+| **V26** | premise | §1.5 — six disjoint intervals, all valid at 2024, and `A2`, `A4` and §3.10.2's cohort read touch no row outside them, and no §3.10.2 cohort under a closed interval has a `commissioned_year` after that interval's `valid_to_year` (no interval here is closed, so the clause is vacuous) |
 | **V27** | load | §1.11 — each of the five boilers, three dryers and three heat pumps carries exactly one `fuel_input` row; the heat pumps' source-heat inputs are auxiliary `intermediate` carriers and are not counted |
 | **V28** | load + premise | §3.2 — the published `Food Processing Centre` shares sum to 1.00 per vector, all six register processes carry rows, and no renormalisation is needed |
 | **V29** | premise | §8.1, §8.1.1 — disposal exists only on `heat_lt60` and the two CO₂ carriers; the CHP's §7.7 allocation sums to its 4.18815 kt accounted figure exactly; the two layers are never added |

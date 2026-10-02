@@ -161,7 +161,9 @@ year in range (§3.10's completeness rule). Two things it shows:
   (`D10`, tiered site intelligence), and that is what tier 1 is for. It is also why
   `fuel_oil` is an explicit zero in §1.2.
 - **`kiln_pyroprocessing` carries two disjoint validity intervals**, a wet line to 2003 and
-  the dry preheater/precalciner line from 2004. `A2` and `A4` read only the interval valid at
+  the dry preheater/precalciner line from 2004. The second interval opens because the rebuilt
+  line's rated capacity changed, from 0.70 to 0.95 Mt/yr, which is a fact on the §3.10 row
+  (§3.10, "what opens a new version"), and not because its plant was replaced. `A2` and `A4` read only the interval valid at
   the base year (§3.10, `V26`), so the site is not back-solved as a blend of a wet and a dry
   kiln that never coexisted — failure mode 10 of §10.5. The closed interval also explains the
   step in `premise_energy`'s history that would otherwise look like a data error.
@@ -1569,7 +1571,7 @@ Tests are the specification's, at §10.3. Scope is `load`, `premise` or `release
 | **V23** | load + premise | §5.2 — one tier resolves, `carrier_bounded`, and it appears on every output row |
 | **V24** | load + premise | §1.2 — one row per key at the base year or a recorded substitution; no duplicate `(key, year)` |
 | **V25** | premise | §1.2 — the 2022 and 2023 rows move nothing by more than 1e-9 |
-| **V26** | premise | §1.5 — `kiln_pyroprocessing`'s two intervals are disjoint, one is valid at 2024, and `A2`, `A4` and §3.10.2's cohort read touch no row outside it |
+| **V26** | premise | §1.5 — `kiln_pyroprocessing`'s two intervals are disjoint, one is valid at 2024, and `A2`, `A4` and §3.10.2's cohort read touch no row outside it, and no §3.10.2 cohort under a closed interval has a `commissioned_year` after that interval's `valid_to_year` (the closed wet-kiln interval's cohort carries no year, so it passes) |
 | **V27** | load | §1.11 — each kiln unit carries exactly one `fuel_input` row; `ccs_amine`'s auxiliary electricity is `primary` and is `aux_input`, so it is not counted against it |
 | **V28** | load + premise | §3.2 — the published `Cement Works` shares sum to 1.00 per vector, and the oil vector renormalises over the processes this premise runs |
 | **V29** | premise | §8.1 — disposal exists only on the `may_dispose` carriers — the three CO₂ carriers and `heat_lt60`, which takes the kilns' unused reject heat — and every non-zero quantity is an output row |
