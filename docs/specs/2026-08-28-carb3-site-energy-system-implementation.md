@@ -1062,6 +1062,11 @@ roughly two-thirds of its output from ambient air, which does not flow between u
 balances, so it is outside §3.4 by construction. Such a unit's coefficients therefore do
 **not** sum to zero, and V2's round-trip must skip the energy-closure leg for any unit flagged
 `draws_ambient`. Without the exemption every air-source heat pump fails at load.
+For every other unit the leg is an inequality, not an equality: the energy a unit puts out
+is at most the energy it takes in, counting only `energy`-denominated carriers, with a
+cooling output counted as heat drawn *in* from the cooled stream. Flue and casing losses
+are no carrier, so an 88 %-efficient boiler closes short, and that is not a defect; a
+`reject` row is therefore at most the unit's own losses.
 
 **`role = reject` is what makes waste heat work.** A kiln's reject heat is a *positive*
 coefficient on a low-grade heat carrier. Without these rows every unit rejects zero, the

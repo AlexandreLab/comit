@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, and item 69 on 2026-10-02 – **twenty-three of the sixty-nine, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, and items 69 and 70 on 2026-10-02 – **twenty-four of the seventy, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -1033,3 +1033,17 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     on gas to the end of its life in 2044 and moves to `resistance_heater_lt` in 2045; the
     objective rises from £134.1m to £154.0m. A heat-pump preheat with an electric top-up, the
     realistic retrofit for a spray dryer, needs a split duty that no unit can express yet.
+
+70. **Twelve reject rows were larger than their unit's losses, so the unit made energy.** The
+    reject-heat rule (`build/DONE_units.md` §7.2) sized every row at 0.12027 of fuel in, the
+    [DECC_SURPLUSHEAT2014] recoverable fraction. On an efficient unit that is more than it
+    loses at all: a 92 %-efficient LPG boiler loses 0.08696 per PJ of output and was given
+    0.13073. Ten fuel boilers and dryers (LPG, oil, biomethane, hydrogen, coal and biomass)
+    made 1–4 % of their output from nothing, `boiler_lt_gas` 0.03 %, and the worked example's
+    `dryer_electric` declared 0.08000 against 0.05260 of losses. A reject-heat pump downstream
+    could recover that phantom heat. *Found verifying the dairy run, 2026-10-02.* **Settled
+    2026-10-02: each reject row is capped at its unit's losses**, min(0.12027 × fuel, energy in
+    − other energy outputs), and V2's energy-closure leg (§3.6) is now the blocking check
+    `check_energy_closure` in `validate_carb3_data.py`, which would have caught items 64 and
+    69 too. §3.6 now says the leg is an inequality: losses are no carrier, so a unit may close
+    short but never over.

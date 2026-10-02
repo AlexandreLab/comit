@@ -1539,6 +1539,55 @@ def check_emission_coefficient_basis(io: list[dict], car: list[dict]) -> Result:
     return r
 
 
+ENERGY_CLOSURE_TOLERANCE = 1e-6
+
+
+def check_energy_closure(unit: list[dict], io: list[dict], car: list[dict]) -> Result:
+    """BLOCKING. V2's energy-closure leg (§3.6): no unit puts out more energy than it takes in.
+
+    Only `energy`-denominated carriers count; a mass product and an emission row are outside
+    the sum. A cooling output is heat drawn *in* from the cooled stream, so it sits on the
+    input side, which is what makes a chiller's reject close. A unit flagged `draws_ambient`
+    takes energy from outside the carrier set and is exempt, as §3.6 says. The test is an
+    inequality, not the equality §3.6's wording suggests: flue and casing losses are not a
+    carrier, so a 88 %-efficient boiler closes short, and that is not a defect. Making energy
+    is: `dryer_steam` (note 20 item 64), `dryer_heat_pump` (item 69) and twelve reject rows
+    sized above their unit's losses (item 70) all did, and nothing caught them.
+    """
+    r = Result("V2 energy closure: no unit makes energy (§3.6)")
+    denom = {c["carrier_id"]: c["denominator_kind"] for c in car}
+    cooling = {c["carrier_id"] for c in car if c["grade_family"] == "cooling"}
+    ambient = {u["unit_id"] for u in unit if u["draws_ambient"] == "TRUE"}
+
+    e_in: dict[str, float] = {}
+    e_out: dict[str, float] = {}
+    for row in io:
+        cid, uid = row["carrier_id"], row["unit_id"]
+        c = _f(row["coefficient"])
+        if c is None or denom.get(cid) != "energy":
+            continue
+        if c < 0 or cid in cooling:
+            e_in[uid] = e_in.get(uid, 0.0) + abs(c)
+        else:
+            e_out[uid] = e_out.get(uid, 0.0) + c
+
+    checked = 0
+    for uid in sorted(set(e_in) | set(e_out)):
+        if uid in ambient:
+            continue
+        checked += 1
+        gain = e_out.get(uid, 0.0) - e_in.get(uid, 0.0)
+        if gain > ENERGY_CLOSURE_TOLERANCE:
+            r.fail(f"{uid}: puts out {e_out.get(uid, 0.0):.5f} of energy for "
+                   f"{e_in.get(uid, 0.0):.5f} in, making {gain:.5f} per unit of output. "
+                   f"Lower the output (a reject row is at most the unit's losses), add the "
+                   f"input it draws, or flag draws_ambient if it takes heat from outside "
+                   f"the carrier set")
+    r.note = (f"{checked} units closed to {ENERGY_CLOSURE_TOLERANCE:g}; "
+              f"{len(ambient)} draws_ambient units exempt")
+    return r
+
+
 def check_eligibility_and_join(elig: list[dict], join: list[dict], unit: list[dict],
                                reg: list[dict], lib: list[dict]) -> Result:
     r = Result("eligibility and option→unit join: keys resolve")
@@ -1893,6 +1942,7 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
                                    unit, reg, lib),
         check_v19_grade_out(elig, duty, unit, tables["unit_input_output.csv"], car),
         check_emission_coefficient_basis(tables["unit_input_output.csv"], car),
+        check_energy_closure(unit, tables["unit_input_output.csv"], car),
         check_lineage(tables["comit_technology_lineage.csv"], unit, car),
         check_load_shape(tables["process_load_shape.csv"], reg),
         check_scenario(tables["scenario_parameters.csv"],
