@@ -239,23 +239,23 @@ flowchart TB
 
   subgraph REF["Reference data this premise reaches"]
     direction TB
-    RC["<b>carrier</b> §3.4 — 14 rows, <b>5 gradeable</b><br/>heat_lt60 r1 · heat_60_100 r2<br/>heat_100_150 r3 · heat_150_400 r4<br/>cooling_0_15 r2, cooling family<br/>motive_power intermediate<br/>co2_fuel_fossil charged · co2_fuel_biogenic zero_rated<br/><b>no co2_process at all</b>"]
-    RU["<b>unit</b> §3.5 — 19 rows, fuel in the identity (D13)<br/>boiler_lt_gas 4.5 £m/(PJ/yr), grade_out 4<br/>boiler_lt_biomass <b>7.9</b>, α 0.82 — the D13 payoff<br/>heat_pump_lt_air 16.0, <b>grade_out 2</b><br/>heat_pump_ht 26.0, grade_out 3, grade_in_max 2<br/>chp_gas_turbine 38.0, L 25 · dryer_direct_gas 5.0, grade_out 4<br/>pv_rooftop 0.62 £m/MW, α 0.11, 6,500 m²/MW"]
-    RK["<b>unit_carrier_coefficient</b> §3.6<br/>boiler_lt_gas: heat_100_150 +1.00000, gas −1.13636,<br/>co2_fuel_fossil +63.74980 <i>derived</i><br/>chp_gas_turbine: heat +1.00000, gas −2.22220,<br/><b>electricity +0.77780 co-product</b><br/>dryer_direct_gas: <b>heat_lt60 +0.12000 role=reject</b><br/>heat_pump_lt_reject: heat_lt60 −0.68750, COP 3.20"]
-    RE["<b>unit_eligibility</b> §3.5.1<br/>boiler_lt_coal <b>max_share 0.00</b> — screened at this site<br/>chp_biomass_st min_duty 0.25 &gt; 0.07559 ⇒ <b>screened out</b><br/>hydrogen units earliest_year 2035<br/>heat_pump_ht earliest_year 2030"]
+    RC["<b>carrier</b> §3.4 — 19 rows, <b>5 gradeable</b><br/>heat_lt60 r1 · heat_60_100 r2<br/>heat_100_150 r3 · heat_150_400 r4<br/>cooling_0_15 r2, cooling family<br/>motive_power intermediate<br/><b>5 reject carriers, one per source class</b>: flue clean, flue solid/liquid,<br/>engine exhaust, dryer exhaust, chiller condenser<br/>co2_fuel_fossil charged · co2_fuel_biogenic zero_rated<br/><b>no co2_process at all</b>"]
+    RU["<b>unit</b> §3.5 — 22 rows, fuel in the identity (D13)<br/>boiler_lt_gas 4.5 £m/(PJ/yr), grade_out 4<br/>boiler_lt_biomass <b>7.9</b>, α 0.82 — the D13 payoff<br/>heat_pump_lt_air 16.0, <b>grade_out 2</b><br/>heat_pump_ht 26.0, grade_out 3, grade_in_max 2<br/>chp_gas_turbine 38.0, L 25 · dryer_direct_gas 5.0, grade_out 4<br/>pv_rooftop 0.62 £m/MW, α 0.11, 6,500 m²/MW<br/>3 recovery units at unit.csv costs:<br/>heat_pump_chiller_condenser 21.3479, COP 3.95<br/>recovery_engine_exhaust 12.9808 · economiser 14.4867"]
+    RK["<b>unit_carrier_coefficient</b> §3.6<br/>boiler_lt_gas: heat_100_150 +1.00000, gas −1.13636,<br/>co2_fuel_fossil +63.74980 <i>derived</i><br/>chp_gas_turbine: heat +1.00000, gas −2.22220,<br/><b>electricity +0.77780 co-product</b><br/>dryer_direct_gas: <b>reject_dryer_exhaust +0.17650 role=reject</b><br/>chiller_electric: <b>reject_chiller_condenser +1.33330</b><br/>heat_pump_chiller_condenser: condenser −0.74680, COP 3.95<br/>boiler_lt_biomass: biomass −1.12360, η 0.89"]
+    RE["<b>unit_eligibility</b> §3.5.1<br/>boiler_lt_coal <b>max_share 0.00</b> — screened at this site<br/>chp_biomass_st min_duty 0.25 &gt; 0.07559 ⇒ <b>screened out</b><br/>hydrogen units earliest_year 2035<br/>heat_pump_ht earliest_year 2030<br/>recovery units pass min_viable_scale: all 3 offered"]
     RA["<b>activity_default_unit</b> §3.16 — <b>the entity this example turns on</b><br/>boiler_steam_hot_water STM: chp_gas_turbine <b>0.60</b><br/>evidence_tier sector_statistic, DUKES Table 7 / CHPQA<br/>boiler_lt_gas 0.40, derived, residual<br/>LTH and SPC: boiler_lt_gas 1.00"]
     RS["<b>activity_process_energy_share</b> §3.3.1<br/>gas → boiler 0.62, direct_heating 0.31, site_services 0.07<br/>elec → motors 0.45, refrigeration 0.25,<br/>site_services 0.20, compressed_air 0.10"]
   end
 
   subgraph SCEN["Scenario central, cluster mersey"]
     direction TB
-    SI["<b>infrastructure_scenario</b> §3.7<br/><b>hydrogen false → true at 2035</b>, £0.90m/PJ<br/>co2_transport <b>false throughout</b><br/>grid_headroom true throughout"]
+    SI["<b>infrastructure_scenario</b> §3.7<br/><b>hydrogen false → true at 2035</b>, no tariff<br/>co2_transport <b>false throughout</b><br/>grid_headroom true throughout"]
     SP["<b>scenario_parameters</b> §3.8, £m per PJ<br/>gas 7.10→8.80 · elec 32.00→23.50<br/>hydrogen <b>19.50→11.00</b> from 2035<br/>biomass 15.00→19.00 · export elec 19.00→13.50<br/>carbon £90→£275/t · elec factor 18.0→3.0 kt/PJ<br/>hydrogen factor <b>0.0</b> — a scenario assumption<br/>biomass factor <b>97.22 gross</b>, biogenic_fraction 1"]
   end
 
-  DUTY["<b>process_duty</b> §3.9 — 6 duties, 4 graded heat, 1 graded cooling<br/>LTH heat_60_100 r2 <b>0.075587 PJ/yr</b><br/>STM heat_100_150 r3 <b>0.055992 PJ/yr</b><br/>DRY heat_150_400 r4 <b>0.079050 PJ/yr</b><br/>SPC heat_60_100 r2 <b>0.018480 PJ/yr</b><br/>REF cooling_0_15 r2 <b>0.064598</b> · MOT motive_power <b>0.064598</b>"]
+  DUTY["<b>process_duty</b> §3.9 — 9 duties, 7 graded heat, 1 graded cooling<br/>LTH heat_60_100 r2 <b>0.075587 PJ/yr</b><br/>STM heat_100_150 r3 <b>0.055992 PJ/yr</b><br/>DRY 4 band segments r1 to r4 <b>0.079050 PJ/yr</b> in all<br/>SPC heat_60_100 r2 <b>0.018480 PJ/yr</b><br/>REF cooling_0_15 r2 <b>0.064598</b> · MOT motive_power <b>0.064598</b>"]
   CAP["<b>A4 back-solved capacity</b><br/>boiler_lt_gas 0.137018 PJ/yr, serving <b>three duties</b><br/>chp_gas_turbine 0.039524 · dryer 0.100000 known<br/>chiller 0.071776 · motor 0.067998<br/><b>consumption 0.086130 = import 0.060000 + CHP 0.026130</b><br/>mix_evidence_tier = <b>activity_default</b>, the weakest tier"]
-  LP["<b>A6 the LP</b><br/>6 periods, 6 duties, 14 carriers, 2 connections<br/>chp_biomass_st screened out, hydrogen units held back to 2035<br/>C10 cascade: <b>36 h-variables</b>, 6 grade pairs × 6 periods<br/>C11 export leg binds at 2050 · C12 binds on PV"]
+  LP["<b>A6 the LP</b><br/>6 periods, 9 duties, 19 carriers, 2 connections<br/>chp_biomass_st screened out, hydrogen units held back to 2035<br/>C10 cascade: <b>36 h-variables</b>, 6 grade pairs × 6 periods<br/>C11 never binds · C12 binds on PV"]
 
   PREM --> DUTY
   REF --> DUTY
@@ -280,11 +280,11 @@ flowchart LR
   DLTH["duty LTH, 80 °C, r2<br/><b>0.075587 PJ</b>"]
   DSPC["duty SPC, r2<br/><b>0.018480 PJ</b>"]
   DSTM["duty STM, 120 °C, r3<br/><b>0.055992 PJ</b>"]
-  DDRY["duty DRY, 200 °C, r4<br/><b>0.079050 PJ</b>"]
+  DDRY["duty DRY, 4 band segments to 200 °C, r1 to r4<br/><b>0.079050 PJ</b>"]
   DREF["duty REF, chilled water, r2<br/><b>0.064598 PJ cooling_0_15</b>"]
   DMOT["duty MOT<br/><b>0.064598 PJ motive_power</b>"]
 
-  DV["dispose heat_lt60<br/><b>0.009486 PJ vented</b><br/>nothing consumes reject heat in 2025"]
+  DV["dispose reject heat, by source class<br/>condenser 0.086129 · dryer exhaust 0.013952<br/>flue 0.006618 · CHP exhaust 0.005226<br/><b>0.111925 PJ</b>, no recovery unit until 2030"]
   DF["dispose co2_fuel_fossil<br/><b>16.83005 kt</b> · charged<br/>boiler 7.42461 + CHP 4.18814 + dryer 5.21730"]
   DB["dispose co2_fuel_biogenic<br/><b>0 kt</b> — declared, no biomass unit built<br/>solid_biomass factor is <b>97.22 gross</b>, not zero"]
 
@@ -303,7 +303,10 @@ flowchart LR
   CL --> DREF
   MO --> DMOT
 
-  DR -->|"reject +0.009486"| DV
+  DR -->|"reject +0.013952"| DV
+  CL -->|"reject +0.086129"| DV
+  BO -->|"reject +0.006618"| DV
+  CH -->|"reject +0.005226"| DV
   BO --> DF
   CH --> DF
   DR --> DF
@@ -331,12 +334,12 @@ layer and **never added to it**.
 
 ```mermaid
 flowchart LR
-  T25["<b>2025</b><br/>boiler 0.13702 · CHP 0.03952 · dryer 0.10000<br/>PV 0 · reject heat <b>vented 0.00949</b><br/><b>16.83 kt charged</b>"]
-  T30["<b>2030</b><br/>PV built to the C12 cap<br/><b>1.84615 MW</b> = 12,000 ÷ 6,500<br/>output 0.006404 PJ/yr = 7.28% of site electricity<br/>net +£0.103174m/yr<br/><b>16.83 kt</b>"]
-  T35["<b>2035</b><br/>hydrogen arrives · incumbents still cheapest<br/>the 120 °C contest: CHP <b>19.98</b> &lt; boiler 20.42<br/>&lt; heat_pump_ht 20.90 &lt; biomass 21.87 £m/PJ<br/><b>16.83 kt</b>"]
-  T40["<b>2040</b><br/>boiler house and dryer dead ⇒ clean sheet<br/>LTH+SPC → heat pumps 9.73 / 10.63 £m/PJ<br/>STM → chp_hydrogen_ccgt 18.73 · DRY → hydrogen dryer 20.09<br/>reject heat <b>fully used, d = 0</b><br/><b>0 kt charged</b>, 0.36 kt indirect"]
-  T45["<b>2045</b><br/>unchanged<br/><b>0 kt charged</b>, 0.24 kt indirect"]
-  T50["<b>2050</b><br/>hydrogen at £11.00 ⇒ CHP undercuts the heat pumps<br/>export bound <b>0.051840 PJ</b> binds<br/><b>CHP is shed, PV runs flat out</b><br/>reject heat vented again, 0.00350<br/><b>0 kt charged</b>, 0 kt indirect"]
+  T25["<b>2025</b><br/>boiler 0.13702 · CHP 0.03952 · dryer 0.10000<br/>PV 0 · reject heat <b>disposed of 0.11193</b><br/><b>16.83 kt charged</b>"]
+  T30["<b>2030</b><br/>PV built to the C12 cap, <b>1.84615 MW</b><br/>hot water → condenser heat pump 9.32 £m/PJ<br/>and CHP exhaust recovery 2.14 £m/PJ<br/>boiler keeps its 120 °C slice only<br/>reject heat recovered 0.07157<br/><b>10.83 kt charged</b>"]
+  T35["<b>2035</b><br/>hydrogen arrives · incumbents keep the 120 °C duty<br/>heat_pump_ht 19.63 and biomass 19.83 £m/PJ<br/>beat them for one period, fail the life test<br/>boiler's idle part retired early<br/><b>10.83 kt</b>"]
+  T40["<b>2040</b><br/>boiler house and dryer dead<br/>STM → chp_hydrogen_ccgt 18.73 · DRY → hydrogen dryer 18.61<br/>hot water stays on recovered heat<br/><b>0 kt charged</b>, 0.29 kt indirect"]
+  T45["<b>2045</b><br/>exhaust recovery rebuilt at end of life<br/><b>0 kt charged</b>, 0.20 kt indirect"]
+  T50["<b>2050</b><br/>hydrogen at £11.00, CHP still dearer<br/>than the standing condenser heat pump<br/><b>no surplus, export 0</b><br/><b>0 kt charged</b>, 0.15 kt indirect"]
 
   T25 --> T30 --> T35 --> T40 --> T45 --> T50
 ```
@@ -365,8 +368,8 @@ pair. This is that table.
 | `co2_process` | **446.25 kt/yr**, untouchable by fuel switching | **absent** — no mass denominator |
 | Infrastructure §3.7 | CO₂ transport at 2035, **hydrogen never** | **hydrogen at 2035**, CO₂ transport never |
 | Onsite generation | PV only, 1.86% of electricity | PV **and** an existing CHP, 30% of load |
-| `export_capacity` | **0 MW** — $Z^{\text{exp}}$ present and identically zero | **2 MW** — binds at 2050 and sheds CHP |
-| C11 connection | **breached** at 2035, −1.00 MW | **slack** on the chosen pathway, −4.50 MW on the all-electric counterfactual |
+| `export_capacity` | **0 MW** — $Z^{\text{exp}}$ present and identically zero | **2 MW**, never reached: the site imports in every period |
+| C11 connection | **breached** at 2035, −1.00 MW | **slack** on the chosen pathway, −3.85 MW on the all-electric counterfactual |
 | `D11` stranding weight | the three kiln units carry **£119.5m** at $t_0$ — dominates | boiler house **under £1.1m** — prices delay in fractions |
 | Direct emissions, 2025 → 2050 | **728.44 → 84.88 kt** | **16.83 → 0 kt** |
 | Base-year annual cost | **£97.97782m** | **£5.69739m** |

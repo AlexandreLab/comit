@@ -280,8 +280,11 @@ one attributable.
   - The premise's existing CHP, asserted by the default installed-unit table, appears in the
     baseline with its electricity co-product — and the meter, which nets it, is **not** read
     as site consumption.
-  - The CHP produces heat **and** electricity into the carrier balance, and surplus
-    electricity exports below the import price.
+  - The CHP produces heat **and** electricity into the carrier balance. The electricity export
+    is declared, priced below the import price (V21, the price wedge) and **zero in every
+    period**: the site never has a surplus, and at 2050 the hydrogen CHP grows only until the
+    site stops importing, because beyond that its electricity would sell at the export price
+    and its heat would cost more than an air-source heat pump's.
   - PV is bounded by the premise's available area and the CHP is not.
   - Every emission carrier balances, and what is not captured appears as a **disposal**
     quantity rather than an assumption (D15).
@@ -289,7 +292,9 @@ one attributable.
     tiers.
 - **Verification:** the premise entry point on the T16 fixture; the fixture's expected
   tables against the solver's; the release-scope target. The reject-heat leg of T16 is
-  **not** asserted here; it belongs to MF-12 in M6.
+  **not** asserted here; it belongs to MF-12 in M6. Without it the fixture runs the pathway the
+  worked example's §11 gives: the air-source heat pump takes the hot water from 2030, and the
+  2050 CHP growth above is where the export condition is exercised.
 
 > **Why the collapse line reads as it does.** It asserted *"eight fuel-variant rows collapse to
 > three units"* until D13 made fuel part of a unit's identity. Within one sector there is now

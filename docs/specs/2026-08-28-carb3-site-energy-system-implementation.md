@@ -2853,7 +2853,7 @@ Widening a range is a manual step in the same commit as the label.
 
 ## 13. Worked examples
 
-*Section last updated: 2026-10-01*
+*Section last updated: 2026-10-02*
 
 Two examples, both written, each a document of its own because each is long enough to be one
 and because both are published as test fixtures. They share a thirteen-section structure so
@@ -2862,7 +2862,7 @@ that the same step can be read side by side in either.
 | Example | What it exercises |
 |---|---|
 | [A cement works](2026-08-28-carb3-site-energy-system-worked-example-cement.md) | **The parity case.** One chemistry node at the top grade, a mass denominator (D5), two products, tier-1 vintage with a 2004 cohort, the stranding charge, a CCS train as an abatement unit inheriting its host's remaining life, a footprint-proxy area against C12, C11 breached by the capture train's auxiliary load, §7.6 reconciling to 1.96%, and §10.2's carrier-equivalent configuration, which is what V1b compares |
-| [A food and drink site](2026-08-28-carb3-site-energy-system-worked-example-food-drink.md) | **The mechanism case.** `IFDLTH`, `IFDSTM`, `IFDDRY`, `IFDREF` and `IFDMOT`: the cross-sector collapse — 84 low-temperature-heat rows across eleven sectors to eight units, of which this dairy reaches seven — a 120 °C duty with boiler, CHP, heat pump and electric resistance competing under C10, a heat pump refused at the 200 °C drying duty, a reject-heat leg from the dryer feeding a heat pump, an existing CHP made visible by §3.16 and producing heat **and** electricity into the carrier balance, PV bounded by C12 while the CHP is not, and surplus electricity exported below the import price |
+| [A food and drink site](2026-08-28-carb3-site-energy-system-worked-example-food-drink.md) | **The mechanism case.** `IFDLTH`, `IFDSTM`, `IFDDRY`, `IFDREF` and `IFDMOT`: the cross-sector collapse — 84 low-temperature-heat rows across eleven sectors to eight units, of which this dairy reaches seven — a 120 °C duty with boiler, CHP, heat pump and electric resistance competing under C10, a heat pump refused at the 200 °C drying duty, reject heat on its source-class carriers with the chillers' condenser heat and the CHP's exhaust recovered, an existing CHP made visible by §3.16 and producing heat **and** electricity into the carrier balance, PV bounded by C12 while the CHP is not, and an electricity export priced below the import price that stays at zero because the site never has a surplus |
 
 **Cement alone is not sufficient**, and the reason is structural rather than a matter of
 taste: cement carries exactly two process codes, `ICMCLK` and `ICM`. There is no `LTH`, no
