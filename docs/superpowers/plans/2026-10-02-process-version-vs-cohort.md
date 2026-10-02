@@ -1,6 +1,6 @@
 # When plant replacement opens a new process version
 
-*Plan written 2026-10-02. Not built.*
+*Plan written 2026-10-02. Built 2026-10-02: Tasks 1–3 in c2ca017 and b3fe7c9, Task 4 in c7e9f4c.*
 
 ## Goal
 
@@ -65,7 +65,7 @@ Consequences to state in §3.10.2:
 
 ## Tasks
 
-- [ ] **Task 1: Spec rule in §3.10 and §3.10.2**
+- [x] **Task 1: Spec rule in §3.10 and §3.10.2**
   - **Files:** implementation spec §3.10 and §3.10.2, `*Section last updated*` at line ~202.
   - **Test first:** none. This is prose. The check is Task 4's grep and `make docs-check`.
   - **Change:** Add the rule above. In §3.10's `valid_from_year` field row, change "The year this
@@ -85,7 +85,7 @@ Consequences to state in §3.10.2:
   - **Settled (eng review D1):** the triggers are the row's facts only, `connection_id` and
     `known_capacity`. A production route change at the same capacity opens no version.
 
-- [ ] **Task 2: V26 widened**
+- [x] **Task 2: V26 widened**
   - **Files:** implementation spec §10.3 V26 row (~2628); §10's `*Section last updated*` (~2547).
   - **Change:** Append to V26: "and no §3.10.2 cohort under a closed interval has a
     `commissioned_year` after that interval's `valid_to_year`". This widens an existing test,
@@ -96,7 +96,7 @@ Consequences to state in §3.10.2:
   - **Verify:** `grep -n "V26" docs/specs/2026-08-28-carb3-site-energy-system-*.md` and read each hit.
   - **Depends on:** Task 1. Same agent as Tasks 1 and 3 (one file, one owner).
 
-- [ ] **Task 3: Worked examples and premise README**
+- [x] **Task 3: Worked examples and premise README**
   - **Files:** cement example §1.5 (~163), food and drink example §1.6 (~177),
     `carb3/data/premises/README.md` lines 133, 153 and 156.
   - **Change:** Cement: one sentence after "`kiln_pyroprocessing` carries two disjoint validity
@@ -113,7 +113,7 @@ Consequences to state in §3.10.2:
     leaves no wording that contradicts the rule.
   - **Depends on:** Task 1. Same agent as Tasks 1 and 2.
 
-- [ ] **Task 4: Blocking check in the premise verifier**
+- [x] **Task 4: Blocking check in the premise verifier**
   - **Files:** `carb3/data/premises/verify_premise_keys.py`, `carb3/tests/test_load.py`.
   - **Test first:** `test_verifier_rejects_vintage_after_interval` in the premise-rules block of
     `test_load.py`. Use `_premise_copy(tmp_path)` and the existing
@@ -135,7 +135,7 @@ Consequences to state in §3.10.2:
     carb3/data/premises/verify_premise_keys.py` is clean on the real data, and `make check` is green.
   - **Depends on:** Task 1 (the reason string must match the spec). Independent of Tasks 2 and 3.
 
-- [ ] **Task 5: Register and ship**
+- [x] **Task 5: Register and ship**
   - **Files:** `docs/notes/README.md`, this plan's status line.
   - **Change:** Add a row for this plan beside the other `superpowers/plans` rows, and mark the
     plan built.

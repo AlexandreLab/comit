@@ -358,7 +358,8 @@ Stdlib only, because `pandas` is not installed in this repo. It checks, and curr
 - the §3.10.2 rules: `(window, cohort_id)` unique, a unit repeated in one window only with
   different `commissioned_year` values, `capacity_share` all-or-none and summing to 1 within
   1e-6 per window (V33, plant is named one unit at a time), each row's parent triple present,
-  and `commissioned_year ≤ data_year`;
+  `commissioned_year ≤ data_year`, and no `commissioned_year` after a closed parent window's
+  `valid_to_year` (`vintage_after_interval`, part of V26, validity intervals are disjoint);
 - **the note 21 §3.2 admission screen, applied to every incumbent these premises name** — no
   named unit has a blank cost field, a missing coefficient set, a declared fuel with no
   `fuel_input` row, or a consumed carrier that is not priced in all seven periods;
