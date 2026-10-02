@@ -685,6 +685,15 @@ space-heating duty at rank 2 and its electricity is motive power, which is the o
 for a process that is really a bundle of site overheads — and it is only expressible because
 §3.3.1 is keyed on `(process, vector)` rather than on the process alone.
 
+**The reference data has since moved on from this example at `site_services`**, and this
+example keeps its own figures. On 2026-10-02 the reference duty profile split the bundle's
+electricity three ways on the UK building-services survey (BEES): 0.860 electric service for
+lighting, ICT and small power, 0.079 motive power for fans and 0.061 chilled-water cooling. It
+also moved the space heating to `heat_lt60` at rank 1, because most factories heat the space
+with direct gas warm air or radiant tubes, not a water circuit at 60–100 °C
+([notes/20](../notes/20_reference_data_open_questions.md) items 72 and 73). `mvp-dairy` runs on
+the reference data, so it carries the split.
+
 ### 3.3 The collapse: 84 rows across eleven sectors to eight units
 
 `Food Processing Centre` reaches **30 of COMIT's 397 technology rows**, on the six `IFD`

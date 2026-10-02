@@ -493,7 +493,7 @@ carry a single duty family at 1.00 is therefore *unexamined*, not *confirmed sim
 expands into a premise's `process_duty` (§3.9) wherever no site intelligence overrides it.
 This is the demand side of the carrier model. Populated by
 [`../notes/data/activity_process_duty_profile.csv`](../notes/data/activity_process_duty_profile.csv) –
-430 rows covering all 375 of the register's keys, with provenance per row. Readiness is tracked in
+538 rows covering all 375 of the register's keys, with provenance per row. Readiness is tracked in
 [notes/16](../notes/16_input_data_readiness.md).
 
 | Field | Type | Unit | Req | Key | Validation |

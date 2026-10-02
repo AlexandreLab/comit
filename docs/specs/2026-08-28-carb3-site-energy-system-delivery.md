@@ -95,7 +95,7 @@ deliverables of each task, not the slice's code, and the evidence column says wh
 | T14 | §7 emissions attribution | Done | §7 states ten rules (7.1–7.10) and V22's four legs |
 | T15 | G4 Tier A scale gate and V20 (e) | Partial | V20 (e) is stated; G4 has no budget |
 | T16 | Food and drink worked example | Done | Carrier-mechanism worked example |
-| T17 | Duty family and heat grade per process | Done | `activity_process_duty_profile.csv`, 430 rows (427 at first build; the dairy spray dryer split into band segments on 2026-10-02, note 20 item 71) |
+| T17 | Duty family and heat grade per process | Done | `activity_process_duty_profile.csv`, 538 rows (427 at first build; the dairy spray dryer split into band segments on 2026-10-02, note 20 item 71, and the `site_services` electricity split three ways the same day, note 20 item 72) |
 | T18 | Default installed-unit table | Done | `activity_default_unit.csv` |
 | T19 | Site-composition archetype | Not started | `archetype_id` still has no referent |
 | T20 | Several years of history, one base year (D12) | Done | §3.1.1 |

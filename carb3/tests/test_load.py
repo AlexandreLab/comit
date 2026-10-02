@@ -476,6 +476,10 @@ def test_measured_counts_match_the_plan(
     no longer offers it at the nine grade-4 and three grade-3 drying duties: 3,302 rows.
     The fifth (2026-10-02, note 20 item 71) split the dairy spray dryer's air heating at the
     band edges, so the join offers ``dryer_heat_pump`` and ``dryer_steam`` there: 3,304.
+    The sixth (2026-10-02, note 20 items 72 and 73) split every ``site_services``
+    electricity row into electric service, fans and cooling, and moved site space heating to
+    ``heat_lt60``: four cooling units and ``generic_process_elec`` at 52 processes each, and
+    three grade-1 space-heat units at 32: 3,608.
     """
     dropped = {d.unit_id for d in screen.dropped}
     unit_leg = {d.unit_id for d in screen.dropped if d.leg != "import_price"}
@@ -485,7 +489,7 @@ def test_measured_counts_match_the_plan(
     assert len(screen.admitted) == 64
 
     elig = reference.unit_eligibility
-    assert len(elig) == 3304
+    assert len(elig) == 3608
     assert int(elig["unit_id"].isin(unit_leg).sum()) == 50
     assert int(elig["unit_id"].isin(dropped).sum()) == 1392
 

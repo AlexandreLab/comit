@@ -290,21 +290,15 @@ def test_c10_a_grade_2_unit_is_refused_a_grade_3_duty(dairy: sets.ModelSets) -> 
     assert "heat_pump_lt_air" not in dairy.eligible[DAIRY_G3]
 
 
-def test_c10_refuses_a_grade_1_unit_a_grade_2_duty(
-    reference, dairy: sets.ModelSets
-) -> None:
-    """``site_services`` offers a grade-1 heat pump beside grade-2 boilers to a grade-2 duty.
-
-    The fuel-fired space-heat boilers moved to ``grade_out`` 2 on 2026-09-25 (note 20 item
-    24: they supply an 82/71 °C LPHW circuit), so ``heat_pump_spc_air``, still at 1, is now
-    the grade-1 unit that must be refused.
-    """
+def test_site_space_heat_takes_a_grade_1_unit(reference, dairy: sets.ModelSets) -> None:
+    """``site_services`` space heating is ``heat_lt60`` (note 20 item 73), so the grade-1
+    space-heat heat pump serves it beside the grade-2 boilers, which C10 lets serve a colder
+    band. The refusal side of C10 is pinned at the boiler house's grade-3 duty above."""
     unit = reference.unit.set_index("unit_id")
     assert int(unit.loc["heat_pump_spc_air", "grade_out"]) == 1
     assert int(unit.loc["boiler_spc_gas", "grade_out"]) == 2
-    service_g2 = dairy.eligible[("fx-dairy", "site_services", "heat_60_100")]
-    assert "heat_pump_spc_air" not in service_g2
-    assert "boiler_spc_gas" in service_g2
+    service_g1 = dairy.eligible[("fx-dairy", "site_services", "heat_lt60")]
+    assert {"heat_pump_spc_air", "boiler_spc_gas"} <= service_g1
 
 
 def _duty(carrier_id: str, grade_rank: int | None) -> sets.Duty:
@@ -492,9 +486,9 @@ def test_min_duty_reads_the_right_activitys_row(
     """
     dairy = build(reference, screen, premise_root)
     assert (DAIRY_G2, "heat_pump_lt_air") in dairy.min_duty
-    service_g2 = ("fx-dairy", "site_services", "heat_60_100")
-    assert "heat_pump_lt_air" in dairy.eligible[service_g2]
-    assert (service_g2, "heat_pump_lt_air") not in dairy.min_duty
+    service_g1 = ("fx-dairy", "site_services", "heat_lt60")
+    assert "heat_pump_lt_air" in dairy.eligible[service_g1]
+    assert (service_g1, "heat_pump_lt_air") not in dairy.min_duty
 
 
 # ------------------------------------------- units the eligibility columns drop, reported
