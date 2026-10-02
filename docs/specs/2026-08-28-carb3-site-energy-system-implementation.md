@@ -2468,7 +2468,7 @@ degeneracy that would otherwise let the solver report either of two equal-cost a
 
 ## 10. Validation
 
-*Section last updated: 2026-10-01*
+*Section last updated: 2026-10-02*
 
 ### 10.1 Scopes
 
@@ -2532,7 +2532,7 @@ pass mark.
 |---|---|---|---|
 | V1 | release | yes | The coupled-off R run of §10.2 exists, is bounded and optimal, and is frozen with its tables and manifest. Never rerun; a comparison point, not ground truth |
 | **V1b** | release | yes | This model reproduces the R run's objective and per-carrier energy on the same 1,026 sites, in the carrier-equivalent configuration of §10.2, through the lineage table and within §10.2's tolerances |
-| V2 | load | yes | `capacity_to_activity_factor` and `io_coefficient` round-trip per unit to 1e-6 |
+| V2 | load | yes | `capacity_to_activity_factor` and `io_coefficient` round-trip per unit to 1e-6. Its energy-closure leg (§3.6) is an inequality: for a unit not flagged `draws_ambient`, energy out ≤ energy in + 1e-6, counting only `energy` carriers and a cooling output as heat drawn in, since losses are no carrier. It runs in the data validator and again in the `carb3` load, which refuses a breach `unit_makes_energy` |
 | V4 | load | yes | Carrier consistency: every unit's declared carriers appear in `unit_input_output`, and profile uncertainty bands order correctly (R1–R3) |
 | V5 | premise | yes | Emissions invariants over units, including biomass zero-rating **before** capture |
 | V6 | premise | yes | No component of the objective is assumed non-negative — $Z^{\text{exp}}$ is genuinely negative |

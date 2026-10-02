@@ -785,3 +785,119 @@ def test_an_activity_level_eligibility_row_admits_an_incumbent(
     assert not load.incumbent_is_eligible(
         reference, "no_such_unit", str(blank["carb3_activity"]), "any_process"
     )
+
+
+# ------------------------------------------------- V2 energy closure at load (§3.6)
+
+
+def _edit_csv(path: Path, edit) -> None:  # noqa: ANN001 - a row -> None mutator
+    with path.open(newline="") as handle:
+        reader = csv.DictReader(handle)
+        fields = reader.fieldnames
+        rows = list(reader)
+    for row in rows:
+        edit(row)
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _make_boiler_a_maker_of_energy(root: Path) -> None:
+    """Halve ``boiler_lt_gas``'s gas input: 1.13636 in becomes 0.5, against 1.13636 out."""
+
+    def edit(row: dict[str, str]) -> None:
+        if row["unit_id"] == "boiler_lt_gas" and row["carrier_id"] == "natural_gas":
+            row["coefficient"] = "-0.5"
+
+    _edit_csv(root / "unit_input_output.csv", edit)
+
+
+def _flag_draws_ambient(root: Path, unit_id: str) -> None:
+    def edit(row: dict[str, str]) -> None:
+        if row["unit_id"] == unit_id:
+            row["draws_ambient"] = "TRUE"
+
+    _edit_csv(root / "unit.csv", edit)
+
+
+def test_a_unit_that_makes_energy_is_refused(tmp_path: Path) -> None:
+    root = _reference_copy(tmp_path)
+    _make_boiler_a_maker_of_energy(root)
+    with pytest.raises(load.ResolutionError, match="unit_makes_energy.*boiler_lt_gas"):
+        load.load_reference_tables(root)
+
+
+def test_the_same_unit_flagged_draws_ambient_loads(tmp_path: Path) -> None:
+    root = _reference_copy(tmp_path)
+    _make_boiler_a_maker_of_energy(root)
+    _flag_draws_ambient(root, "boiler_lt_gas")
+    assert "boiler_lt_gas" in set(load.load_reference_tables(root).unit["unit_id"])
+
+
+#: The carriers the closure fixtures below need, typed as the loader types them.
+_CLOSURE_CARRIERS = pd.DataFrame({
+    "carrier_id": ["electricity", "natural_gas", "cooling_0_15", "heat_lt60", "heat_100_150"],
+    "denominator_kind": ["energy"] * 5,
+    "grade_family": [None, None, "cooling", "heat", "heat"],
+})
+
+
+def _closure(unit_id: str, rows: list[tuple[str, float, str]], ambient=False) -> None:  # noqa: ANN001
+    """Run the closure check on one unit described by ``(carrier_id, coefficient, role)``."""
+    units = pd.DataFrame({"unit_id": [unit_id],
+                          "draws_ambient": pd.array([ambient], dtype="boolean")})
+    io = pd.DataFrame({"unit_id": unit_id, "carrier_id": [r[0] for r in rows],
+                       "coefficient": [r[1] for r in rows], "role": [r[2] for r in rows]})
+    load._check_energy_closure(units, io, _CLOSURE_CARRIERS, Path("fixture"))
+
+
+_CHILLER = [("cooling_0_15", 1.0, "primary_output"), ("electricity", -0.3333, "fuel_input")]
+
+
+def test_a_chiller_closes_because_cooling_counts_as_heat_drawn_in() -> None:
+    """1 of cooling plus 0.3333 of power rejects exactly 1.3333: closed, so it loads.
+
+    Counted as an output instead, the cooling would put 2.3333 out for 0.3333 in.
+    """
+    _closure("chiller", [*_CHILLER, ("heat_lt60", 1.3333, "reject")])
+
+
+def test_a_chiller_rejecting_more_than_it_draws_is_refused() -> None:
+    with pytest.raises(load.ResolutionError, match="unit_makes_energy.*chiller"):
+        _closure("chiller", [*_CHILLER, ("heat_lt60", 1.3343, "reject")])
+
+
+@pytest.mark.parametrize("reject", [0.10, 0.13636])
+def test_a_lossy_or_exactly_closed_boiler_loads(reject: float) -> None:
+    """1.13636 of gas in, 1 of heat and at most 0.13636 of reject out; losses are no carrier."""
+    _closure("boiler", [("heat_100_150", 1.0, "primary_output"),
+                        ("natural_gas", -1.13636, "fuel_input"),
+                        ("heat_lt60", reject, "reject")])
+
+
+def test_a_blank_draws_ambient_is_named_not_crashed_on() -> None:
+    with pytest.raises(load.ResolutionError, match="unit_draws_ambient_unreadable.*boiler"):
+        _closure("boiler", [("heat_100_150", 1.0, "primary_output")], ambient=None)
+
+
+def test_a_carrier_missing_from_carrier_csv_is_refused() -> None:
+    with pytest.raises(load.ResolutionError, match="unit_input_output_unknown_carrier.*steam"):
+        _closure("boiler", [("steam", 1.0, "primary_output")])
+
+
+def test_a_reject_row_above_the_unit_losses_is_refused(tmp_path: Path) -> None:
+    """Note 20 item 70: raising a boiler's reject past its losses makes energy."""
+    root = _reference_copy(tmp_path)
+
+    def edit(row: dict[str, str]) -> None:
+        if (row["unit_id"], row["role"]) == ("boiler_lt_gas", "reject"):
+            row["coefficient"] = "0.5"
+
+    _edit_csv(root / "unit_input_output.csv", edit)
+    with pytest.raises(load.ResolutionError, match="unit_makes_energy.*boiler_lt_gas"):
+        load.load_reference_tables(root)
+
+
+def test_the_real_reference_tables_pass_the_energy_closure() -> None:
+    assert load.load_reference_tables(load.DEFAULT_REFERENCE_ROOT) is not None
