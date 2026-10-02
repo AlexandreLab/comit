@@ -106,6 +106,7 @@ for r in through:
 
 # --- premise_process_detail ----------------------------------------------
 parents = set()
+closed_to_year = {}
 by_pp = collections.defaultdict(list)
 for r in detail:
     p, proc, vf = r["premise_id"], r["process_id"], int(r["valid_from_year"])
@@ -136,6 +137,8 @@ for r in detail:
     if (p, proc, vf) in parents:
         E(f"premise_process_detail: duplicate key ({p}, {proc}, {vf})")
     parents.add((p, proc, vf))
+    if r["valid_to_year"]:
+        closed_to_year[(p, proc, vf)] = int(r["valid_to_year"])
     by_pp[(p, proc)].append((vf, int(r["valid_to_year"]) if r["valid_to_year"] else 9999))
 # intervals disjoint, and at least one row valid at the base year
 for (p, proc), ivs in by_pp.items():
@@ -172,6 +175,9 @@ for r in ppunit:
         E(f"premise_process_unit[{p}/{proc}]: {u} not eligible for ({ACT[p]}, {proc}) in unit_eligibility.csv")
     if r["commissioned_year"].strip() and int(r["commissioned_year"]) > DYEAR[p]:
         E(f"premise_process_unit[{p}/{proc}/{vf}/{coh}]: commissioned_year after data_year (vintage_in_future)")
+    if r["commissioned_year"].strip() and (p, proc, vf) in closed_to_year:
+        if int(r["commissioned_year"]) > closed_to_year[(p, proc, vf)]:
+            E(f"premise_process_unit[{p}/{proc}/{vf}/{coh}]: commissioned_year after the interval's valid_to_year (vintage_after_interval)")
     if r["confidence"] not in ("high", "medium", "low"):
         E(f"premise_process_unit[{p}/{proc}/{u}]: confidence not in the enum")
     cohort_units[(p, proc, vf)].append((u, r["commissioned_year"].strip()))

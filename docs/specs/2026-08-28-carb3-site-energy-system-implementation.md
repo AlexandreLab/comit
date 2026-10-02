@@ -1233,8 +1233,8 @@ normal case and means "use the register".
 |---|---|---|---|---|---|
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
 | `process_id` | string | — | yes | PK part | → `activity_process_register`, on the pair `(premise_record.carb3_activity, process_id)` |
-| `valid_from_year` | integer | year | yes | PK part | The year this process started at the premise. ≤ `premise_record.data_year`. A future year is rejected with reason `process_change_in_future`: a *planned* change is not an observation |
-| `valid_to_year` | integer | year | no | — | The year it stopped. Absent ⇒ still running. ≥ `valid_from_year` if present |
+| `valid_from_year` | integer | year | yes | PK part | The year this version of the process started at the premise (what opens a version is set out in the rule below). ≤ `premise_record.data_year`. A future year is rejected with reason `process_change_in_future`: a *planned* change is not an observation |
+| `valid_to_year` | integer | year | no | — | The year this version stopped. Absent ⇒ still running. ≥ `valid_from_year` if present |
 | `connection_id` | string | — | no | → `premise_connection` | **Optional.** Which electricity connection serves this process (§3.1.3). Absent ⇒ the default. This is what decides where electrified load lands |
 | `known_capacity` | real | capacity units | no | — | > 0 if present. The **installed nameplate capacity** of the process's plant, for example a permit's rated clinker line. Units follow the process's denominator (D5): PJ/yr-equivalent for energy, Mt/yr for mass |
 | `known_activity` | real | activity units | no | — | > 0 if present, and ≤ `known_capacity` where both are given. The **annual activity** of the process in its output unit, for example the clinker a kiln made in the base year. Same units as `known_capacity` (D5). Blank means unknown; a known zero is also left blank, with the reason in `provenance` |
@@ -1255,6 +1255,15 @@ in the same year, and the premise is rejected with reason `process_intervals_ove
 This is valid-time versioning, the pattern usually called a slowly-changing dimension of
 type 2. The two rules above are its standard obligations, stated here so an implementer
 recognises them rather than reinventing them.
+
+**Rule (what opens a new version).** A new interval opens when a fact on this row changes:
+the process's `connection_id`, or its `known_capacity` (a rebuild to a new rated capacity,
+as the cement works' kiln went from 0.70 to 0.95 Mt/yr in 2004). A change of plant alone
+does not open one, whether it replaces part of the plant or all of it. It is recorded in
+§3.10.2, whose rows under an interval list the plant **as at the end of that interval**:
+the base year for an open interval, `valid_to_year` for a closed one. A site that has made
+steam since 1960 and replaced its boiler in 2015 has one interval from 1960 and one cohort
+dated 2015. `known_activity` changes every year and opens nothing.
 
 **Rule (an unknown start year is stated, not left blank).** A permit or an audit commonly
 names the processes a site runs without saying when each began, and `valid_from_year` is
@@ -1362,7 +1371,7 @@ the candidate set.
 | `valid_from_year` | integer | year | yes | PK part | Part of the same triple. The parent interval this row belongs to, not a date of its own |
 | `cohort_id` | string | — | yes | PK part | Stable within the parent interval. `1`, `2`, … is sufficient |
 | `unit_id` | string | — | yes | — | → `unit`. Must be eligible for this process at the premise's activity (§3.5.1) |
-| `commissioned_year` | integer | year | no | — | **D11.** When this cohort was installed. ≤ `premise_record.data_year`, rejected with reason `vintage_in_future` otherwise. Absent ⇒ the cohort falls through to `premise_record.construction_year`, and then to the default (§5.3.1) |
+| `commissioned_year` | integer | year | no | — | **D11.** When this cohort was installed. ≤ `premise_record.data_year`, rejected with reason `vintage_in_future` otherwise. Under a closed interval, also ≤ that interval's `valid_to_year`, rejected with reason `vintage_after_interval` otherwise. Absent ⇒ the cohort falls through to `premise_record.construction_year`, and then to the default (§5.3.1) |
 | `capacity_share` | real | fraction | no | — | ∈ (0, 1]. The cohort's share of the parent's `known_capacity`. Where any row of one parent gives it, every row must, and they sum to 1 within 1e-6 |
 | `provenance` | string | — | yes | — | Citation: permit number, audit reference, asset register, disclosure |
 | `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
@@ -1384,10 +1393,21 @@ register dates it later by filling the field in. A premise may date its kiln and
 mills, and the mills simply fall to the next tier. **That evidence tier resolves per cohort**,
 `process_known` where `commissioned_year` is given and the next tier where it is not (§5.3.1).
 
-**Rule (a parent's children are its complete plant list).** The rows under one §3.10 interval
-are treated as the whole of what that process runs in that interval, the same completeness
-reading §3.10 takes over the process list itself. The same `unit_id` may appear in more than
-one cohort of a parent only with a different `commissioned_year`; otherwise it is one cohort.
+**Rule (a parent's children are its plant list as at the end of the interval).** The rows under
+one §3.10 interval are treated as the whole of what that process runs **as at the end of that
+interval**: the base year for an open interval, `valid_to_year` for a closed one. This is the
+same completeness reading §3.10 takes over the process list itself, taken at one date rather
+than over the whole interval. Plant that was replaced during the interval is not listed, and
+replacing plant does not open a new interval (§3.10, "what opens a new version"). The same
+`unit_id` may appear in more than one cohort of a parent only with a different
+`commissioned_year`; otherwise it is one cohort.
+
+**Rule (a cohort's year is not bounded below by its interval).** A cohort's `commissioned_year`
+may be **later** than its interval's `valid_from_year` (plant replaced or added during the
+interval) or **earlier** (plant carried over into a new interval, such as a cooler kept through
+a kiln rebuild). It may **not** be later than a closed interval's `valid_to_year`: plant
+installed after an interval ended cannot be that interval's plant, and the premise is rejected
+with reason `vintage_after_interval`. V26 (validity intervals are disjoint) carries this check.
 
 **Rule (only the base-year interval is aged).** D11 ages the cohorts under the interval valid
 at the base year and no others. A closed interval's cohorts describe plant the site no longer
@@ -1399,7 +1419,8 @@ Life extension through major refurbishment is real and is a known gap, noted in 
 recording an overhaul as a new commissioning date is the wrong way to represent it, because
 it also resets the residual value the asset is carrying and makes early replacement look more
 expensive than it is. `premise_process_detail.valid_from_year` is a different date again: when
-the *process* started at the site, which may be decades before its present plant was installed.
+this *version* of the process started at the site, which may be decades before its present plant
+was installed, because replacing plant opens no new version (§3.10, "what opens a new version").
 
 **`capacity_share` is optional because the split is usually derivable.** Where it is absent,
 A4 divides the parent's `known_capacity` by the §4.1 carrier mix: for a co-firing kiln, the
@@ -2625,7 +2646,7 @@ pass mark.
 | **V23** | load + premise | yes | A4's carrier mix resolves to exactly one tier per unit, tiers are tried in order, and `mix_evidence_tier` appears on every output row |
 | **V24** | load + premise | yes | One measured row per key at the base year or a recorded substitution; no duplicate `(key, year)`; the optional entities of §3.1.1's table report rather than reject |
 | **V25** | premise | yes | **History is never read.** Adding history rows at years both **before and after** the base year leaves every §5.3 parameter, every constraint coefficient, the solution, **and every reported reconciliation (§7.6)** identical to 1e-9 |
-| **V26** | premise | yes | Validity intervals per `(premise_id, process_id)` are disjoint, at least one row is valid at the base year, and A2, A4 and §3.10.2's cohort read touch no row outside it |
+| **V26** | premise | yes | Validity intervals per `(premise_id, process_id)` are disjoint, at least one row is valid at the base year, and A2, A4 and §3.10.2's cohort read touch no row outside it, and no §3.10.2 cohort under a closed interval has a `commissioned_year` after that interval's `valid_to_year` |
 | **V27** | load | yes | **Unit fuel identity (D13).** At most one row per unit carries `role = fuel_input`; two is rejected `unit_multi_fuel`. Auxiliary primary inputs — a capture train's electricity — are permitted and are not counted. Units flagged `draws_ambient` are exempt from V2's energy-closure leg and from nothing else |
 | **V28** | load + premise | yes | **Process energy.** §3.3.1's `energy_share` sums to 1.00 ± 0.015 for every `(activity, set, vector)`; renormalisation over absent processes preserves that; a premise's sub-metered quantities never exceed its meter for a vector without being reported `submeter_exceeds_meter`; and `energy_evidence_tier` resolves per `(process, carrier)` |
 | **V29** | premise | yes | **Disposal and allocation.** $d_{c,t}$ exists only where `carrier.may_dispose`, and every non-zero disposal appears as an output row. Every generating unit's §7.7 allocated emissions sum to its §7.1 accounted emissions to 1e-6, and no reported total adds the two layers together |

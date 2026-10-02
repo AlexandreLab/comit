@@ -793,6 +793,58 @@ def test_an_activity_level_eligibility_row_admits_an_incumbent(
     )
 
 
+def _append_ppunit_row(root: Path, row: dict[str, str]) -> None:
+    """Append a row to premise_process_unit.csv."""
+    path = root / "premise_process_unit.csv"
+    with path.open(newline="") as handle:
+        reader = csv.DictReader(handle)
+        fields = list(reader.fieldnames or [])
+        rows = list(reader)
+    rows.append(row)
+    with path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def test_verifier_rejects_vintage_after_interval(tmp_path: Path) -> None:
+    """A cohort under a closed interval cannot have commissioned_year after valid_to_year."""
+    root = _premise_copy(tmp_path)
+    new_row = {
+        "premise_id": "mvp-cement",
+        "process_id": "kiln_pyroprocessing",
+        "valid_from_year": "1957",
+        "cohort_id": "1",
+        "unit_id": "kiln_dry_coal",
+        "commissioned_year": "2010",
+        "capacity_share": "",
+        "provenance": "test: vintage after closed interval 1957-2003",
+        "confidence": "high",
+    }
+    _append_ppunit_row(root, new_row)
+    failures = _verifier_failures(tmp_path)
+    assert any("vintage_after_interval" in line for line in failures), failures
+
+
+def test_verifier_accepts_vintage_at_interval_end(tmp_path: Path) -> None:
+    """A cohort under a closed interval can have commissioned_year equal to valid_to_year."""
+    root = _premise_copy(tmp_path)
+    new_row = {
+        "premise_id": "mvp-cement",
+        "process_id": "kiln_pyroprocessing",
+        "valid_from_year": "1957",
+        "cohort_id": "1",
+        "unit_id": "kiln_dry_coal",
+        "commissioned_year": "2003",
+        "capacity_share": "",
+        "provenance": "test: vintage at interval end 1957-2003",
+        "confidence": "high",
+    }
+    _append_ppunit_row(root, new_row)
+    failures = _verifier_failures(tmp_path, expect_clean=True)
+    assert failures == []
+
+
 # ------------------------------------------------- V2 energy closure at load (§3.6)
 
 
