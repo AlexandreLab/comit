@@ -1252,6 +1252,10 @@ at least one row valid at the base year, or it is rejected with reason
 intervals must be disjoint. Overlap is two contradictory statements about the same process
 in the same year, and the premise is rejected with reason `process_intervals_overlap`.
 
+This is valid-time versioning, the pattern usually called a slowly-changing dimension of
+type 2. The two rules above are its standard obligations, stated here so an implementer
+recognises them rather than reinventing them.
+
 **Rule (what opens a new version).** A new interval opens when a fact on this row changes:
 the process's `connection_id`, or its `known_capacity` (a rebuild to a new rated capacity,
 as the cement works' kiln went from 0.70 to 0.95 Mt/yr in 2004). A change of plant alone
@@ -1260,10 +1264,6 @@ does not open one, whether it replaces part of the plant or all of it. It is rec
 the base year for an open interval, `valid_to_year` for a closed one. A site that has made
 steam since 1960 and replaced its boiler in 2015 has one interval from 1960 and one cohort
 dated 2015. `known_activity` changes every year and opens nothing.
-
-This is valid-time versioning, the pattern usually called a slowly-changing dimension of
-type 2. The two rules above are its standard obligations, stated here so an implementer
-recognises them rather than reinventing them.
 
 **Rule (an unknown start year is stated, not left blank).** A permit or an audit commonly
 names the processes a site runs without saying when each began, and `valid_from_year` is
