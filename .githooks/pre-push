@@ -1,0 +1,17 @@
+#!/bin/bash
+set -euo pipefail
+
+if [[ "${ALLOW_UNCHECKED_PUSH:-}" == "1" ]]; then
+  echo "⚠️  Skipping quality gate (ALLOW_UNCHECKED_PUSH=1): use only for docs-only emergencies"
+  exit 0
+fi
+
+if ! tools/quality_gate.sh; then
+  echo ""
+  echo "❌ Quality gate failed. Fix the errors above, then retry:"
+  echo "   git push"
+  echo ""
+  echo "Or, for docs-only changes (emergency only):"
+  echo "   ALLOW_UNCHECKED_PUSH=1 git push"
+  exit 1
+fi
