@@ -431,7 +431,7 @@ reject in full and a larger share of the condenser heat.
 
 ### 10.5 Left as it was
 
-- **The food and drink worked example keeps its dryer reject on `heat_lt60`** feeding
+- **The food and drink worked example kept its dryer reject on `heat_lt60`** feeding
   `heat_pump_lt_reject` (its §1.11 and §8.4), under its own coefficient table. Rewriting it onto
   `reject_dryer_exhaust` would remove its reject-heat leg entirely, since no unit draws that class
   yet; a note in the example says where it and the reference data part. Note 19 mirrors the
@@ -445,6 +445,18 @@ reject in full and a larger share of the condenser heat.
   £16.82m/PJ), and two fuel coefficients differ from the data (`boiler_lt_biomass` −1.28205
   against −1.1236, `dryer_direct_hydrogen` −1.17650 against −1.08696). The follow-up re-solves
   2025 to 2050 on the data, drops the export, and updates note 19 and M4's exit conditions.
+  *Done 2026-10-02.* The example now carries every reject row on its class carrier at the data's
+  coefficients, the three recovery units at `unit.csv`'s costs, and the corrected biomass boiler
+  and hydrogen dryer. Re-solved period by period, with a life test for new plant (a unit built in
+  a period must pay over all its periods in the horizon), the pathway is: from 2030
+  `heat_pump_chiller_condenser` and `recovery_engine_exhaust` take the hot water from the gas
+  boiler and direct emissions fall from 16.83 to 10.83 kt; the standing CHP and boiler keep the
+  120 °C duty to 2035; from 2040 `chp_hydrogen_ccgt` and `dryer_direct_hydrogen`, with no
+  `heat_pump_lt_reject` and no `heat_pump_lt_air` built. The site imports in every period, so
+  there is no export; M4's export condition now asserts an export priced below import that
+  stays at zero, exercised at 2050 on the pathway without the reject leg. The `carb3` run of
+  `mvp-dairy` agrees on the recovery units it builds and on no export, and differs where it
+  reads the reference costs and scenario (the example's §8.7 lists how).
 - **The cement worked example** quotes 0.12027 for its kilns, which are phase 2; unchanged.
   *Superseded by section 10.6: it now quotes 0.037801.*
 - **The 34 process-exhaust rows** still carry 0.12027 as if it were recoverable (note 20 item 75).
