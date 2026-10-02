@@ -116,7 +116,7 @@ dryer_direct_lpg,lpg,-1.08696,fuel_input,comit_reuse,low,"[COMIT_WB_140] sheet t
 dryer_electric,heat_150_400,1,primary_output,proxy,medium,[CARB3_WE_FOODDRINK] 1.11 coefficient table
 dryer_electric,electricity,-1.0526,fuel_input,proxy,medium,[CARB3_WE_FOODDRINK] 1.11 coefficient table
 dryer_electric,heat_lt60,0.08,reject,proxy,medium,[CARB3_WE_FOODDRINK] 1.11 coefficient table
-dryer_heat_pump,heat_150_400,1,primary_output,comit_reuse,low,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHDRYELCHP01"
+dryer_heat_pump,heat_60_100,1,primary_output,comit_reuse,low,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHDRYELCHP01 | carrier heat_60_100 (note 20 item 69, 2026-10-02), was heat_150_400: COMIT puts this heat pump on the 150-400 C band, which no heat pump reaches; the COP of 3 is kept, and is consistent with heat_pump_lt_air at 2.8 from colder ambient air ([CARB3_WE_FOODDRINK] 1.11)"
 dryer_heat_pump,electricity,-0.33333,fuel_input,comit_reuse,low,"[COMIT_WB_140] sheet technology_input_output, technology_code ICHDRYELCHP01"
 dryer_steam,heat_100_150,1,primary_output,proxy,low,"Rebased decided 2026-09-26 on PR #64 (note 20 item 64) from heat_150_400 +1 ([COMIT_WB_140] ICHDRYSTM01): the dryer delivers band 3 heat from band 4 steam, [VOITH_US5379528], [BEIS_IFS2018] Table 6"
 dryer_steam,heat_150_400,-1.11111,aux_input,proxy,low,"Rebased decided 2026-09-26 on PR #64 (note 20 item 64) from heat_100_150 -1: steam at band 4 (up to about 160 C in paper-machine cylinders, [VOITH_US5379528]; 190-240 C high-pressure steam, [BEIS_IFS2018] Table 6). The 1/0.9 = 1.11111 allows a 10% loss (condensate and casing losses); no source gives the figure, so it is a fallback, confidence low"

@@ -199,7 +199,7 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-10-01*
+*Section last updated: 2026-10-02*
 
 **Twenty-five entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, nine by the
@@ -853,7 +853,7 @@ sector specificity lives.**
 |---|---|---|---|---|---|
 | `unit_id` | string | — | yes | PK part → `unit` | — |
 | `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
-| `process_id` | string | — | no | PK part | → `activity_process_register`. **Blank ⇒ activity-level supply**: the row reaches every process of `carb3_activity`, and the carrier and grade test of C10 (the grade cascade), not the key, decides which duties the unit may serve. 142 of the 3,314 rows in `unit_eligibility.csv` are blank. Where a unit has both an exact-process row and an activity-level row, the exact row wins |
+| `process_id` | string | — | no | PK part | → `activity_process_register`. **Blank ⇒ activity-level supply**: the row reaches every process of `carb3_activity`, and the carrier and grade test of C10 (the grade cascade), not the key, decides which duties the unit may serve. 142 of the 3,302 rows in `unit_eligibility.csv` are blank. Where a unit has both an exact-process row and an activity-level row, the exact row wins |
 | `min_duty` | real | PJ/yr or Mt/yr | no | — | Below this the unit is not offered at all |
 | `max_share` | real | fraction | no | — | ∈ [0, 1]. Cap on this unit's share of the duty, $z_{u,q,t} \le \texttt{max\_share} \times D_{q,t}$. **0 is a hard prohibition**: the unit is removed from $U_q$, not bounded. Four rows carry one, one of them 0 |
 | `earliest_year` | integer | year | no | — | Availability |

@@ -59,12 +59,12 @@ open questions), whose item numbers are quoted below. The coverage check — `ma
 - [ ] **40 units cannot be fully costed (note 20 item 49).** 15 have a blank `capex`, 13 a
   blank `lifetime`, 15 a blank `fixed_opex`, 13 each a blank `availability_factor` and
   `capacity_to_activity_factor`, 25 have no `unit_input_output` rows, and 3 declare a fuel
-  they never consume. They reach 50 of `unit_eligibility.csv`'s 3,314 rows, all
+  they never consume. They reach 50 of `unit_eligibility.csv`'s 3,302 rows, all
   worked-example or options rows; the rebuilt family rows admit none of them.
 - [ ] **11 of the 15 importable carriers lack a price in every period (note 20 item 48).**
   Only `natural_gas`, `light_fuel_oil`, `coal` and `electricity` are priced in all seven
   periods; `heavy_fuel_oil` has 2021 only. Units burning an unpriced fuel reach 1,392 of the
-  3,314 eligibility rows. The new `lime_kiln_sugar_coke` burns `coke`, which has no price, so
+  3,302 eligibility rows. The new `lime_kiln_sugar_coke` burns `coke`, which has no price, so
   `carb3`'s admission screen drops it.
 
 ## Units not added for want of a source
@@ -83,6 +83,12 @@ open questions), whose item numbers are quoted below. The coverage check — `ma
   assumptions, and `hydrogen` has no import price (item 48), so the unit would be screened out
   anyway.
 - [ ] **A coke-oven battery** — see the decision above.
+- [ ] **A heat-pump preheat for a spray dryer, with an electric top-up.** The realistic
+  retrofit for a 180–200 °C dryer inlet (`Creamery`, `Food Processing Centre` `direct_heating`)
+  raises the air to about 100 °C by heat pump and tops it up electrically. One unit cannot
+  express that: it needs the drying duty split across two bands. Until then `dryer_heat_pump`
+  is grade 2 only (note 20 item 69) and the dairy's dryer goes from gas to
+  `resistance_heater_lt` in 2045.
 
 ## Proxy and fallback values to firm up
 
@@ -129,4 +135,6 @@ Each of these is in the data with `confidence` low and a provenance string sayin
 The duty-family and cooling work of note 22 is complete: Tasks 1–10 and note 20 items 24, 25,
 37, 60, 61, 62, 63, 64, 65 and 66 are settled, and item 27's unit half. The record of each is in
 note 22 §8 and note 20. On 2026-09-26 the diesel and battery mobile-plant units, the aluminium
-potline and the beet-sugar lime kiln took the unservable count from 24 to 2.
+potline and the beet-sugar lime kiln took the unservable count from 24 to 2. On 2026-10-02
+`dryer_heat_pump` was rated grade 2 with an exhaust-heat source (note 20 item 69), which
+took `unit_eligibility.csv` from 3,314 to 3,302 rows.

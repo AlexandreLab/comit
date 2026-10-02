@@ -46,8 +46,8 @@ from carb3.sets import model_units as sets_model_units
 #: sink — item 53.
 SOLVING_PREMISES: tuple[str, ...] = ("mvp-minimal", "mvp-dairy", "mvp-cement")
 
-#: Every heat-pump unit note 21 §4.2's contest can be won by. The dairy's grade-4 drying
-#: duty is won by ``dryer_heat_pump`` and its grade-2 duties by the two low-grade pumps.
+#: Every heat-pump unit note 21 §4.2's contest can be won by. The dairy's grade-2 duties
+#: are won by the two low-grade pumps; no heat pump reaches its grade-4 drying duty.
 HEAT_PUMPS: frozenset[str] = frozenset(
     {"heat_pump_lt_air", "heat_pump_lt_reject", "heat_pump_ht", "dryer_heat_pump"}
 )
@@ -781,14 +781,17 @@ def test_the_low_grade_heat_duty_switches_to_a_heat_pump_at_the_first_buildable_
     assert gas == pytest.approx(0.0, abs=TOLERANCE)
 
 
-def test_the_dairy_drying_duty_switches_to_a_heat_pump_too(runs: dict[str, Run]) -> None:
-    """The grade-4 drying duty is the dairy's own case, and it is the same arithmetic."""
+def test_no_heat_pump_serves_the_dairy_spray_dryer(runs: dict[str, Run]) -> None:
+    """The 200 C spray dryer stays on gas while the dryer lives, then goes resistive.
+
+    ``dryer_heat_pump`` once served this grade-4 duty at a COP of 3 with no heat source,
+    making two-thirds of its output from nothing; it is grade 2 since note 20 item 69.
+    """
     dispatch = runs["mvp-dairy"].tables.dispatch
-    drying = dispatch[dispatch["carrier_id"] == "heat_150_400"]
-    at_2021 = drying[(drying["period"] == 2021) & (drying["unit_id"] == "dryer_direct_gas")]
-    at_2025 = drying[(drying["period"] == 2025) & (drying["unit_id"] == "dryer_heat_pump")]
-    assert float(at_2021["activity"].iloc[0]) > 0.0
-    assert float(at_2025["activity"].iloc[0]) > 0.0
+    drying = dispatch[(dispatch["carrier_id"] == "heat_150_400") & (dispatch["activity"] > TOLERANCE)]
+    assert not drying["unit_id"].isin(HEAT_PUMPS).any()
+    on_gas = drying[drying["unit_id"] == "dryer_direct_gas"]["period"]
+    assert set(on_gas) == {2021, 2025, 2030, 2035, 2040}
 
 
 def test_nothing_is_built_in_the_start_year(runs: dict[str, Run]) -> None:
