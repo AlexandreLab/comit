@@ -8,7 +8,7 @@ carrier, at which ``grade_rank``. Only ``quantity`` is hand-written, taken from 
 examples. No premise energy allocation, no A3, no A4 back-solve, no D10 refinement ladder.
 
 **It reads a third table, and note 21 §3.3 omitted it.** The duty profile carries no mass
-carrier anywhere — 433 rows, 11 ``carrier_id`` values, neither ``cement`` nor ``clinker``
+carrier anywhere — 430 rows, 11 ``carrier_id`` values, neither ``cement`` nor ``clinker``
 among them — so a mass duty cannot come from it. §3.1.2 already says where it comes from:
 "Where the ``carrier_id`` is a product with ``may_export`` true, the row is the premise's
 duty on that product under D5 — a cement works' 1.13 Mt/yr of cement is what C1 makes it
@@ -359,7 +359,7 @@ def derive_duties(
     is fixed by C8 (carrier balance) instead, so it yields no duty here.
 
     **A product duty is a mass, and it comes from ``premise_throughput`` (§3.1.2).** The
-    duty profile carries no mass carrier at all — its 433 rows name 11 carriers and neither
+    duty profile carries no mass carrier at all — its 430 rows name 11 carriers and neither
     ``cement`` nor ``clinker`` is among them — so a process that makes a substance has its
     magnitude nowhere else. §3.1.2 settles it: "Where the ``carrier_id`` is a product with
     ``may_export`` true, the row is the premise's duty on that product under D5 — a cement
@@ -913,9 +913,11 @@ def _serves(
     primary_outputs: set[str],
     duty: Duty,
     families: Mapping[str, str | None],
+    *,
+    drying: bool = False,
 ) -> bool:
     """Whether one unit can serve one duty: C10 (the grade cascade) for a graded duty, the
-    carrier otherwise.
+    carrier otherwise, and for a drying duty the medium as well.
 
     **C10 reads its direction from the duty carrier's ``grade_family``, and never crosses
     families** (§5.5). A graded duty is served only by a unit whose primary output lies in
@@ -934,7 +936,20 @@ def _serves(
 
     A non-gradeable duty — ``motive_power``, ``electric_service`` — has no cascade, so the
     test is the plain one: the unit's primary output is the duty's own carrier.
+
+    **A drying duty is served by a ``DRY`` unit only** (§3.5.1). ``drying`` says the duty is
+    a ``DRY`` row. A dryer heats air in contact with the product, and a boiler, a hot-water
+    heat pump or a furnace delivers its heat in another medium, which C10 cannot see because
+    a carrier is a band. ``unit_eligibility`` is keyed by process, so options rows offering
+    such a unit at a drying process reach the duty unless this refuses them: before it,
+    ``resistance_heater_lt`` (an ``LTH`` unit) took the dairy's spray dryer in 2045, and
+    once §3.4's band segments put part of the duty below 150 °C, ``heat_pump_ht`` and the
+    biomethane boiler reached it too. The test comes before the eligibility columns, so a
+    unit refused here is not reported as a ``max_share`` or ``min_duty`` drop: it was never
+    a candidate, as a unit below the duty's grade is not.
     """
+    if drying and unit.get("duty_family") != "DRY":
+        return False
     if duty.grade_rank is None:
         return duty.carrier_id in primary_outputs
     family = families.get(duty.carrier_id)
@@ -946,6 +961,22 @@ def _serves(
     if family == "cooling":
         return int(grade_out) <= duty.grade_rank
     return int(grade_out) >= duty.grade_rank
+
+
+def _is_drying_duty(reference: ReferenceTables, carb3_activity: str, duty: Duty) -> bool:
+    """Whether the duty is a ``DRY`` row of the duty profile.
+
+    :class:`Duty` carries no family, and its fields are a frozen contract, so the family is
+    read back from the profile rows of the duty's activity, process and carrier. DutyKey
+    already makes that triple name one row within a process set.
+    """
+    profile = reference.activity_process_duty_profile
+    rows = profile[
+        (profile["carb3_activity"] == carb3_activity)
+        & (profile["process_id"] == duty.process_id)
+        & (profile["carrier_id"] == duty.carrier_id)
+    ]
+    return bool((rows["duty_family"] == "DRY").any())
 
 
 def eligible_units(
@@ -1003,6 +1034,7 @@ def _eligible_with_drops(
         primary_by_unit.setdefault(str(unit_id), set()).add(str(carrier_id))
 
     families = _grade_families(reference)
+    drying = _is_drying_duty(reference, carb3_activity, duty)
     ceiling = max(duty.quantity.values()) if duty.quantity else 0.0
     eligible: set[str] = set()
     refused: list[EligibilityDrop] = []
@@ -1011,7 +1043,8 @@ def _eligible_with_drops(
         if unit_id not in admitted or unit_id not in units.index:
             continue
         if not _serves(
-            units.loc[unit_id], primary_by_unit.get(unit_id, set()), duty, families
+            units.loc[unit_id], primary_by_unit.get(unit_id, set()), duty, families,
+            drying=drying,
         ):
             continue
         max_share = row["max_share"]

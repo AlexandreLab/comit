@@ -669,7 +669,8 @@ divisor of §1.12 — 0.60 × 2.22220 + 0.40 × 1.13636 — which is higher than
 a stream heated once through is split at the band edges). It draws outside air at 10.3 °C, the
 1991–2020 annual mean of §3.4, and heats it to 200 °C, so the rise crosses the edges at 60, 100
 and 150 °C and each band takes the share of the 189.7 °C rise that lies in it: 49.7, 40, 50 and
-50 °C. The four duties sum to 0.079050 PJ/yr before rounding (0.079051 as rounded above). The
+50 °C. The four duties sum to 0.079050 PJ/yr and their gas to 0.093000 PJ/yr before rounding
+(0.079051 and 0.092999 as rounded above). The
 placement rule alone would have put all of it at rank 4, as an earlier draft of this table did.
 
 **Every heat duty carries a `grade_rank`, and §3.3 makes it non-nullable wherever the carrier
@@ -1412,7 +1413,8 @@ have taken both, which is exactly the error the architecture document records.
 
 **Why no CHP reaches the spray dryer.** Not the grade: the CHP raises steam at rank 4. It is
 not offered, because §3.5.1 offers a `DRY` duty to `DRY` units only — a CHP delivers steam or
-hot water, and a spray dryer needs hot air — so the 200 °C duty is contested only by a
+hot water, and a spray dryer needs hot air — so the drying duties, all four band segments up to
+200 °C, are contested only by a
 direct-fired dryer and an electric one. That is M4's second
 assertion, at a different duty from the one it names.
 
@@ -1793,7 +1795,7 @@ expected tables. Table snapshots of the fixture outputs, rounded, are the regres
    `IFDSTMHP01` and `IFDLTHELCHP01` carry the same `33.333` coefficient, and under that number
    one machine would have taken both.
 5. **C10 is enforced at load, not in the matrix** (§3.4). No variable is created for a heat pump
-   at the 200 °C duty, so there is nothing to relax and nothing to get wrong — and `V19` is a
+   at the 150–200 °C drying segment, so there is nothing to relax and nothing to get wrong — and `V19` is a
    load-scope test for that reason.
 6. **Waste heat abates because §7's attribution rule says so** (§8.4, §10.1). The dryer's
    reject carries no fuel, the heat pump drawing it inherits nothing, and the reject node

@@ -240,6 +240,32 @@ def test_c10_a_heat_pump_dryer_serves_the_low_segments_only(dairy: sets.ModelSet
         assert "dryer_direct_gas" in dairy.eligible[key]
 
 
+def test_only_a_dryer_serves_a_drying_duty(reference, screen) -> None:
+    """§3.5.1: for every ``DRY`` row of the duty profile, U_q holds ``DRY`` units only.
+
+    ``unit_eligibility`` is keyed by process, and options rows offer hot-water heat pumps,
+    boilers, furnaces and ``resistance_heater_lt`` at drying processes. C10 (the grade
+    cascade) cannot refuse them where their grade reaches the duty, so this checks the
+    medium test does, on every drying row, and that each row keeps at least one dryer.
+    """
+    profile = reference.activity_process_duty_profile
+    family = reference.unit.set_index("unit_id")["duty_family"]
+    rows = profile[profile["duty_family"] == "DRY"]
+    assert len(rows) > 0
+    for _, row in rows.iterrows():
+        duty = sets.Duty(
+            "fx", str(row["process_id"]), str(row["carrier_id"]), int(row["grade_rank"]),
+            {2021: 1.0},
+        )
+        units = sets.eligible_units(
+            reference, duty, screen.admitted, carb3_activity=str(row["carb3_activity"])
+        )
+        assert units, (row["carb3_activity"], row["process_id"], row["carrier_id"])
+        assert set(family.loc[sorted(units)]) == {"DRY"}, (
+            row["carb3_activity"], row["process_id"], sorted(units),
+        )
+
+
 def test_c10_a_grade_3_unit_serves_a_grade_2_duty(dairy: sets.ModelSets) -> None:
     """C10 (the grade cascade) widens U_q downwards: heat made hotter still serves cooler."""
     assert "boiler_lt_gas" in dairy.eligible[DAIRY_G2]

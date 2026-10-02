@@ -358,7 +358,7 @@ def test_mvp_cement_states_its_mass_duty_from_premise_throughput(
 ) -> None:
     """**The cement works' duty is a mass, and the duty profile cannot state it.**
 
-    ``activity_process_duty_profile.csv`` holds no mass carrier anywhere: its 433 rows name
+    ``activity_process_duty_profile.csv`` holds no mass carrier anywhere: its 430 rows name
     11 distinct ``carrier_id`` values and neither ``cement`` nor ``clinker`` is among them.
     ``Cement Works``'s ``cement_grinding`` row is classified ``MOT`` on ``motive_power`` at
     ``duty_share`` 1.00000, so an A2 that read only the register and the profile turned
@@ -813,16 +813,32 @@ def test_the_low_grade_heat_duty_switches_to_a_heat_pump_at_the_first_buildable_
 
 
 def test_no_heat_pump_serves_the_dairy_spray_dryer(runs: dict[str, Run]) -> None:
-    """The 200 C spray dryer stays on gas while the dryer lives, then goes resistive.
+    """The 150-200 °C top of the spray dryer is served by a gas dryer throughout.
 
     ``dryer_heat_pump`` once served this grade-4 duty at a COP of 3 with no heat source,
-    making two-thirds of its output from nothing; it is grade 2 since note 20 item 69.
+    making two-thirds of its output from nothing; it is grade 2 since note 20 item 69. The
+    2019 dryer retires in 2044 and a new gas dryer replaces it: at 2045 prices
+    ``dryer_electric`` costs more per PJ of heat, and ``resistance_heater_lt``, which took
+    it before, is a hot-water unit and no longer reaches a drying duty (§3.5.1).
     """
     dispatch = runs["mvp-dairy"].tables.dispatch
     drying = dispatch[(dispatch["carrier_id"] == "heat_150_400") & (dispatch["activity"] > TOLERANCE)]
     assert not drying["unit_id"].isin(HEAT_PUMPS).any()
-    on_gas = drying[drying["unit_id"] == "dryer_direct_gas"]["period"]
-    assert set(on_gas) == {2021, 2025, 2030, 2035, 2040}
+    assert set(drying["unit_id"]) == {"dryer_direct_gas"}
+    assert set(drying["period"]) == set(PERIOD_YEARS)
+
+
+def test_only_dryers_serve_the_dairy_spray_dryer(
+    reference: ReferenceTables, runs: dict[str, Run]
+) -> None:
+    """§3.5.1: every unit dispatched to a ``DRY`` duty is a ``DRY`` unit, in every period."""
+    dispatch = runs["mvp-dairy"].tables.dispatch
+    drying = dispatch[
+        (dispatch["process_id"] == "direct_heating") & (dispatch["activity"] > TOLERANCE)
+    ]
+    family = reference.unit.set_index("unit_id")["duty_family"]
+    assert not drying.empty
+    assert set(family.loc[sorted(set(drying["unit_id"]))]) == {"DRY"}
 
 
 def test_nothing_is_built_in_the_start_year(runs: dict[str, Run]) -> None:
