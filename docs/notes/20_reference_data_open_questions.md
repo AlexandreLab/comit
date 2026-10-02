@@ -1251,10 +1251,13 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     engineer would accept. *Found reading the `mvp-dairy` disposal, 2026-10-02*: 0.1208 PJ of
     `heat_lt60` disposed in 2021, 0.0874 of it from the chiller.
 
-    **Open.** [Note 23](23_reject_heat_recovery_plan.md) proposes six source-class reject
-    carriers, a recovery unit per class with its own cost and output band, a recoverable fraction
-    per class, and a `min_source` screen in A2 (expanding the premise to duties and candidate
-    units) that keeps the problem linear. Phase 1 covers the 31 rows on boilers, CHP and engines,
-    dryers and chillers; the 34 process-exhaust rows wait for phase 2. Three decisions are for
-    Alexandre: source-class carriers or grade bands, when to do phase 2, and whether the screen
-    counts incumbent sources only.
+    **Open.** [Note 23](23_reject_heat_recovery_plan.md), revised after an engineering review the
+    same day, proposes source-class reject carriers, a recovery unit per class with its own cost
+    and output band, a recoverable fraction per class, and a minimum-size screen in A2 (expanding
+    the premise to duties and candidate units) through `unit.csv`'s existing `min_viable_scale`,
+    which keeps the problem linear. Phase 1 covers the 31 rows on boilers, CHP and engines,
+    dryers and chillers, and splits each chiller's reject into a desuperheat and a condenser row;
+    the 34 process-exhaust rows wait for phase 2. Five decisions are for Alexandre: source-class
+    carriers or grade bands, when to do phase 2, whether the screen counts incumbent sources
+    only, whether `heat_pump_lt_reject` keeps its food and drink rows, and whether an economiser
+    is a separate unit or a boiler variant.
