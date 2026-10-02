@@ -1608,7 +1608,8 @@ def check_energy_closure(unit: list[dict], io: list[dict], car: list[dict]) -> R
 REJECT_CLASSES: dict[str, tuple[int, bool]] = {
     # condensing increment, released below the flue gas water dew point (about 57 C)
     "reject_flue_clean": (1, False),
-    # sensible heat from a 180 C stack to a 149 C floor; no recovery unit, no cost found
+    # biomass flue only (coal and oil carry no reject row: their acid dew point bars condensing
+    # beyond the economiser in their efficiency); no recovery unit, no cost found
     "reject_flue_solid_liquid": (3, True),
     # residual turbine exhaust at 149 to 169 C, engine jacket water at 88 to 110 C
     "reject_engine_exhaust": (2, False),

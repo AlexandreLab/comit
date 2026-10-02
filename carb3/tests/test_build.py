@@ -514,7 +514,7 @@ def test_a_primary_carrier_is_never_disposable_even_if_the_flag_says_so() -> Non
 def test_disposal_lets_the_boiler_run_without_a_co_built_reject_heat_pump() -> None:
     """The finding that restored d_{c,t} (§2.2).
 
-    65 ``reject`` rows run into carriers nothing need consume: 34 into ``heat_lt60`` and 31
+    62 ``reject`` rows run into carriers nothing need consume: 34 into ``heat_lt60`` and 28
     into the five reject source classes of §3.4, two of which no unit draws (note 23). Without
     a disposal variable C8 forces every one of those units to zero.
     """

@@ -25,7 +25,7 @@ the spec calls `activity_process_energy_share`.
 | `activity_process_duty_profile.csv` | §3.3 `activity_process_duty_profile` | 538 | lanes `duty_a`, `duty_b`; the dairy spray dryer split into band segments on 2026-10-02 (note 20 item 71), and every `site_services` electricity row split three ways the same day (note 20 item 72) | `build/DONE_duty_a.md`, `build/DONE_duty_b.md` |
 | `carb3_comit_process_crosswalk.csv` | the process-level join T17 asked for (no spec entity) | 375 | lanes `duty_a`, `duty_b` | same |
 | `unit.csv` | §3.5 `unit` | 148 | lane `units`; `chiller_electric_lt0` added by note 22 Task 10, `kiln_ht_gas`, `engine_mot_gas` and `cooling_tower_wet` by the PR #64 decisions; the two mobile-plant units, `potline_prebake_elec` and `lime_kiln_sugar_coke` on 2026-09-26; the three reject-heat recovery units on 2026-10-02 (note 23) | `build/DONE_units.md` |
-| `unit_input_output.csv` | §3.6 `unit_input_output` | 480 | lane `units`; 31 reject rows moved to source-class carriers on 2026-10-02 (note 23) | same |
+| `unit_input_output.csv` | §3.6 `unit_input_output` | 477 | lane `units`; 28 reject rows moved to source-class carriers and the coal and oil flue rows removed on 2026-10-02 (note 23) | same |
 | `unit_bill_of_materials.csv` | §3.5.2 `unit_bill_of_materials` | 24 | lane `units` | same |
 | `unit_eligibility.csv` | §3.5.1 `unit_eligibility` | 3,773 | lane `eligibility`; family rows rebuilt from the join by `build/rebuild_eligibility_join.py` (note 22 Task 10) | `build/DONE_eligibility.md`, the script's docstring |
 | `unit_abatement_host.csv` | §3.5.3 `unit_abatement_host` | 37 | lane `units`, 2026-09-17 | `build/DONE_units.md` §8 |
@@ -125,8 +125,22 @@ V34 (duties are services at a grade) leg (c) is now blocking in `make data-check
 
 `build/build_*.py` and `build/check_*.py` are the lanes' own generators and checks, kept as a
 record of how each table was assembled; each ran clean at the time it was written.
-**Do not re-run `build/build_eligibility.py`**: its step (c) writes the no-grade-filter proxy
-rows back and would clobber later hand rows. `build/rebuild_eligibility_join.py` owns the
-family rows since note 22 Task 10; it is idempotent, and it is the one to run after any
-change to the duty profile, the units or the carriers, followed by `make data-worklist`. The
-authoritative check is `make data-check`, which now covers all fourteen tables.
+**`unit_eligibility.csv` is written by two scripts, always in this order**, and the pair
+reproduces the committed file exactly (checked 2026-10-02, empty diff):
+
+```
+python3 docs/notes/data/build/build_eligibility.py          # worked-example, options-join and chemistry-node rows
+python3 docs/notes/data/build/rebuild_eligibility_join.py   # the family rows, from the join
+make data-check && make data-worklist
+```
+
+`build_eligibility.py` rewrites only the rows it owns, by `provenance_ref`, and keeps every
+other row verbatim, including the hand-decided reach of the process-keyed service units that
+the rebuild reads back from the file. `rebuild_eligibility_join.py` owns the family rows since
+note 22 Task 10; it is idempotent, and on its own it is enough after a change to the duty
+profile, the units or the carriers. Run the pair after a change to the options join
+(`JOIN` in `build_eligibility.py`) or the worked-example rows. Until 2026-10-02
+`build_eligibility.py` still wrote its old no-grade-filter family rows and rewrote the whole
+file, so running it wiped that reach and the pair gave 4,329 rows against 3,773; its docstring
+records the change. The authoritative check is `make data-check`, which now covers all
+fourteen tables.

@@ -855,9 +855,9 @@ heat as another's; what no recovery unit takes is disposed of through $d_{c,t}$ 
 
 | `carrier_id` | Rejected by | The stream | What the row carries, per unit of fuel | Recovered by; the hottest band a passive recovery unit may deliver |
 |---|---|---|---|---|
-| `reject_flue_clean` | the gas, LPG, biomethane and hydrogen boilers | Clean flue gas, about 180 °C | The condensing increment over a standard economiser, which the boiler's efficiency already includes: 0.05 | `economiser_flue_condensing`; band 1 (`heat_lt60`), since the increment is released only below the flue gas water dew point, about 57 °C |
-| `reject_flue_solid_liquid` | the coal, biomass and oil boilers; the coal and biomass steam-turbine CHPs | Flue gas carrying ash or sulphur, cooled no further than its acid dew point, 110 to 160 °C | The sensible economiser share: 0.04 | none, for want of a cost for a fouling-resistant economiser; band 3 |
-| `reject_engine_exhaust` | the gas-turbine, combined-cycle and fuel-cell CHPs; the mechanical-drive gas engine | Exhaust at 149 to 169 °C left after the CHP's own heat recovery; an engine's whole exhaust and jacket water | 0.07 for a gas turbine, 0.30 for the engine; open for the combined cycles and the fuel cell | `recovery_engine_exhaust`; band 2 |
+| `reject_flue_clean` | the gas, LPG, biomethane and hydrogen boilers | Clean flue gas, about 180 °C | The condensing increment over a standard economiser, which the boiler's efficiency already includes: 0.05; for the hydrogen boiler, open, and held at the process-exhaust share below | `economiser_flue_condensing`; band 1 (`heat_lt60`), since the increment is released only below the flue gas water dew point, about 57 °C |
+| `reject_flue_solid_liquid` | the biomass boiler and the biomass steam-turbine CHP. The coal and oil boilers and the coal steam-turbine CHP carry no `reject` row: beyond the economiser their efficiency already includes, the acid dew point (130 to 177 °C) bars condensing, so nothing more is recoverable | Flue gas carrying ash, cooled no further than its acid dew point, 110 to 160 °C | 0.04, the sensible economiser share; an open gap, since the increment beyond a standard economiser is unsourced for biomass | none, for want of a cost for a fouling-resistant economiser; band 3 |
+| `reject_engine_exhaust` | the gas-turbine, combined-cycle and fuel-cell CHPs; the mechanical-drive gas engine | Exhaust at 149 to 169 °C left after the CHP's own heat recovery; an engine's whole exhaust and jacket water | 0.07 for a gas turbine, 0.30 for the engine; for the combined cycles and the fuel cell, open, and held at the process-exhaust share below | `recovery_engine_exhaust`; band 2 |
 | `reject_dryer_exhaust` | the six dryers with a `reject` row | Humid exhaust air at 65 to 75 °C carrying product dust | 0.20, capped at the unit's losses | none, for want of a directly stated capex; band 1 |
 | `reject_chiller_condenser` | the three electric chillers | Condenser heat at roughly 30 to 45 °C, an estimate no source yet confirms | The whole condenser heat, per unit of cooling | `heat_pump_chiller_condenser`, which lifts it with a work input; band 1 for a passive unit |
 
@@ -869,8 +869,10 @@ fraction in both would cut the same heat twice.
 **The reject rows of high-temperature process plant land on `heat_lt60`**: kilns, furnaces,
 glass and steel plant, crackers, reformers, gasifiers, the refinery heater and reheat furnaces,
 whose exhaust is too varied for one recovery unit. `heat_pump_lt_reject` draws that band. Their
-coefficient, 0.12027 of fuel, is rejected heat as a share of UK industrial energy, not a
-recoverable fraction ([notes/20](../notes/20_reference_data_open_questions.md) item 75).
+coefficient is 0.037801 of fuel, 11/291: [DECC_SURPLUSHEAT2014]'s technical potential for
+recovering UK industrial waste heat as a share of industrial energy (section 5, p.24). The
+technical share, not the economic one, because the LP prices recovery through each recovery
+unit's capex ([notes/20](../notes/20_reference_data_open_questions.md) item 75).
 V36 (reject heat by source class) checks every `reject` row lands on a class or on `heat_lt60`.
 
 ### 3.5 `unit`

@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, item 71 the same day, when Alexandre decided it on PR #81, items 72 and 73 the same day again, and item 74 the same day, when Alexandre decided note 23 and its phase 1 was built – **twenty-eight of the seventy-five, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, item 71 the same day, when Alexandre decided it on PR #81, items 72 and 73 the same day again, and item 74 the same day, when Alexandre decided note 23 and its phase 1 was built, and item 75 the same day again, when he chose the technical recoverable share – **twenty-nine of the seventy-five, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -1293,3 +1293,17 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
 
     **Open, for phase 2 of note 23.** The rows and the cement worked example are unchanged; the
     phase 1 rows touched on 2026-10-02 carry the corrected citation and per-class fractions.
+
+    **Settled 2026-10-02, decided by Alexandre: the technical share, 11/291.** Every row that
+    carried 0.12027 now carries [DECC_SURPLUSHEAT2014]'s technical potential, "a technical
+    potential of 11 TWh/yr ... can be technically recovered" (section 5, p.24, Figure 5), as
+    11/291 = 0.037801 of fuel energy in, capped at the unit's losses (no row reaches them).
+    Technical rather than economic, because the LP prices recovery through each recovery unit's
+    capex and an economic screen would count that cost twice. That is 41 rows: the 34
+    process-exhaust rows, the five combined-cycle CHPs, the fuel cell and the hydrogen boiler,
+    each citing section 5, p.24. The cement worked example follows: 0.17388 per Mt of clinker
+    where it was 0.55326, and 0.147798 PJ of kiln reject disposed where it was 0.470271. No
+    premise objective moves. The same day the coal and oil flue rows were removed, since the
+    economiser already in those boilers' efficiency is all their acid flue gas allows
+    ([note 23](23_reject_heat_recovery_plan.md) section 10.6). Per-class fractions for the
+    process-exhaust rows remain phase 2's work.

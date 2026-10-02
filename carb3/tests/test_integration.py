@@ -304,9 +304,10 @@ def test_c13_tracks_the_banned_coal_boilers_reject_heat_at_the_dairy(
     reference: ReferenceTables, runs: dict[str, Run]
 ) -> None:
     """``boiler_lt_coal`` is barred (``max_share`` 0.00) from the boiler house at a Food
-    Processing Centre and still serves other duties. Its reject heat no longer reaches the
-    boiler house: it lands on ``reject_flue_solid_liquid`` (note 23), which no unit draws, so
-    that route is closed by the data. Its 100-150 °C heat released through z° still is drawn,
+    Processing Centre and still serves other duties. Its reject heat cannot reach the boiler
+    house: a coal flue carries no ``reject`` row at all (note 23 section 10, the acid dew point
+    bars recovery beyond the economiser already in its efficiency), so that route is closed by
+    the data. Its 100-150 °C heat released through z° still is drawn,
     by ``heat_exchanger_spc_steam`` and ``heat_pump_ht``, and ``heat_pump_ht`` serves the
     boiler house; so C13 (a cap is not routed through a consumer) traces that boiler's
     energy."""
@@ -320,10 +321,9 @@ def test_c13_tracks_the_banned_coal_boilers_reject_heat_at_the_dairy(
     assert {unit for unit, _duty in tracking.capped} >= {"boiler_lt_coal"}
     assert tracking.traced == ("boiler_lt_coal",)
     assert "tr_in" in runs["mvp-dairy"].model.variables
-    # The reject route: the coal boiler's class has no drawer among the model's units.
-    by_activity, _by_release = parts["reject_flue_solid_liquid"]
-    assert by_activity["boiler_lt_coal"].min() > 0.0
-    assert not [unit for unit, weight in by_activity.items() if (weight < 0.0).any()]
+    # The reject route does not exist: the coal boiler puts nothing on any reject carrier.
+    assert not [carrier for carrier, (by_activity, _by_release) in parts.items()
+                if carrier.startswith("reject_") and "boiler_lt_coal" in by_activity]
     assert "boiler_lt_coal" in sets.released["heat_100_150"]
 
 
@@ -1078,7 +1078,7 @@ def test_disposal_is_reported_and_is_what_carbon_is_charged_on(
 
     Every premise fires fuel in 2021, so ``co2_fuel_fossil``, the row A6 derives at build
     time rather than reads, must be vented and charged, and the reject heat no unit recovers
-    must be dumped: 65 ``reject`` rows run into ``heat_lt60`` or a reject source class (§3.4,
+    must be dumped: 62 ``reject`` rows run into ``heat_lt60`` or a reject source class (§3.4,
     note 23), two of whose classes nothing draws, and without the disposal variable C8 would
     force the rejecting units to zero. The minimal premise's boiler rejects onto
     ``reject_flue_clean``, the dairy's chiller onto ``reject_chiller_condenser`` and the

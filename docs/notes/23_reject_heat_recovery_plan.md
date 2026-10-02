@@ -4,7 +4,9 @@
 [note 20](20_reference_data_open_questions.md) item 74. **Phase 1 was built the same day, under
 the owner's decisions of section 6; section 10 says what was built, what was left out and why,
 and where it departs from the plan below.** Sections 1 to 9 are kept as the plan was written,
-with corrections marked.*
+with corrections marked. Section 10.6 records four fixes made later the same day, after review:
+the process-exhaust and gap rows moved to [DECC_SURPLUSHEAT2014]'s technical share, the coal and
+oil flue rows were removed, and the eligibility build was made reproducible.*
 
 ## In plain terms
 
@@ -345,7 +347,7 @@ seven gaps and seven corrections. All are resolved above.
 7. **The chiller reject is not split.** With no desuperheater built, one carrier,
    `reject_chiller_condenser`, carries the whole condenser heat, as the coefficient did before.
 
-### 10.2 The reject rows: 31 moved
+### 10.2 The reject rows: 31 moved (28 after section 10.6)
 
 Counted by script: 4 rows on `reject_flue_clean`, 5 on `reject_flue_solid_liquid`, 13 on
 `reject_engine_exhaust`, 6 on `reject_dryer_exhaust` and 3 on `reject_chiller_condenser`; 34
@@ -366,7 +368,8 @@ boiler's 0.88 already, so recoverable heat beyond it is only the latent step, re
 water dew point (about 57 °C): 10 less 4 to 4.5 points leaves about 5.5, taken as 0.05. That is
 also why the economiser delivers `heat_lt60`, not `heat_60_100` as section 4 proposed.
 
-**A tension left standing.** The solid and liquid flue fraction, 0.04, is the sensible
+**A tension left standing** (*resolved in section 10.6: the coal and oil rows are removed, and
+the biomass rows are kept as a marked gap*). The solid and liquid flue fraction, 0.04, is the sensible
 economiser's own share, which decision 5's reading would also count as already inside those
 boilers' efficiency. No unit draws that class, so it moves only the reported disposal; it is
 kept because it is the sourced figure, and a later decision may set it to the increment over an
@@ -434,4 +437,67 @@ reject in full and a larger share of the condenser heat.
   yet; a note in the example says where it and the reference data part. Note 19 mirrors the
   example and is unchanged.
 - **The cement worked example** quotes 0.12027 for its kilns, which are phase 2; unchanged.
+  *Superseded by section 10.6: it now quotes 0.037801.*
 - **The 34 process-exhaust rows** still carry 0.12027 as if it were recoverable (note 20 item 75).
+  *Superseded by section 10.6.*
+
+### 10.6 Fixes after review, 2026-10-02
+
+Four open issues, fixed the same day. Every count below was measured by script against the
+tables after the change.
+
+**1. The technical recoverable share replaces 0.12027 (owner's decision).** 0.12027 is
+(48 - 13)/291, the heat UK industry rejects in non-solid form as a share of its energy
+([DECC_SURPLUSHEAT2014] section 5, p.24), not a recoverable fraction. Decided by Alexandre: the
+rows that carried it now carry the report's technical potential, "a technical potential of 11
+TWh/yr ... can be technically recovered" (section 5, p.24, Figure 5), as 11/291 = 0.037801 of
+fuel energy in. Technical, not economic (7 TWh/yr) or commercial (5 TWh/yr), because the LP
+already prices recovery through each recovery unit's capex, so an economic screen would count
+that cost twice. Each row is min(0.037801 × fuel input, the unit's losses); no row reaches its
+losses, so none is capped. **41 rows changed**: the 34 process-exhaust rows on `heat_lt60`, and
+7 phase 1 rows that had kept 0.12027 as a gap, namely the five combined-cycle CHPs (0.37895 to
+0.11910; `chp_hydrogen_ccgt` 0.27663 to 0.08694), `chp_hydrogen_fuelcell` (0.30069 to 0.09450)
+and `boiler_lt_hydrogen` (0.11111, its losses, to 0.04200). Each now cites section 5, p.24.
+The cement kilns' row goes from 0.55326 to 0.17388 per Mt of clinker, and the worked example's
+kiln reject from 0.470271 to 0.147798 PJ (coal 0.078378, gas 0.011570, waste fuel 0.057850).
+
+**2. No reject row on coal or oil flue gas (owner's decision).** Decision 5 puts a standard
+economiser inside the boilers' efficiency, so 0.04, [BREF_ENE2009]'s standard-economiser gain,
+counted it twice. Beyond it nothing is recoverable from coal or oil flue gas, because the acid
+dew point bars condensing: [DOE_STEAM3_2012] (the DOE steam tip sheet) puts the floor at 300 F
+(149 °C) for coal and low-sulphur oil and 350 F (177 °C) for high-sulphur oil, and
+[BREF_ENE2009] section 3.2.5 gives acid dew points of about 160 °C for heavy and 130 °C for light
+fuel oil. **The reject rows of `boiler_lt_coal`, `boiler_lt_oil` and `chp_coal_st` are
+removed**, with the reason in each unit's `unit.csv` provenance, as `mobile_plant_diesel` records
+why it has none. `boiler_lt_biomass` and `chp_biomass_st` keep 0.04 on
+`reject_flue_solid_liquid`, marked as a gap: the increment beyond a standard economiser is
+unsourced, and biomass flue-gas condensation exists but no source for it was verified. The class
+keeps two members, so V36 (reject heat by source class) and spec §3.4 still hold; §3.4's table
+now names them. `reject` rows: 65 to 62, of which 28 on source classes (`reject_flue_solid_liquid`
+5 to 2) and 34 on `heat_lt60`.
+
+**3. `build_eligibility.py` reproduces `unit_eligibility.csv` again.** Run before this fix, it
+wrote 3,350 rows, and `rebuild_eligibility_join.py` after it gave 4,329, against 3,773
+committed: 603 rows added and 47 removed, all `proxy` rows of the three process-keyed service
+units (`engine_mot_gas`, `mobile_plant_diesel`, `mobile_plant_battery`), and two chemistry rows
+whose citations (`lime_kiln_sugar_coke`, `potline_prebake_elec`) were reset. The cause: the
+rebuild reads a keyed unit's reach back from the file it rewrites, and that reach was set by
+hand (note 20 items 30 and 65), while `build_eligibility.py`, unchanged in that respect since it
+was written, still rewrote the whole file with its old step (c), offering every family unit at
+every process of its family. The rebuild alone was idempotent, which is why nothing caught it.
+`build_eligibility.py` now rewrites only the rows it owns (worked-example, options-join and
+chemistry-node rows, by `provenance_ref`) and keeps every other row; its old family step is
+gone. The pair now reproduces the committed file with an empty diff, on the tables before and
+after fixes 1 and 2. The canonical sequence is in both scripts' docstrings and in
+`data/README_spec_tables.md`.
+
+**4. Stale counts in CLAUDE.md** were re-measured and updated.
+
+**What the premises do.** No objective moves: `mvp-minimal` £39.5707m, `mvp-dairy` £142.7571m,
+`mvp-cement` £4,554.9330m, since reject heat that nothing draws is disposed of at no cost and
+none of the changed rows feeds a recovery unit that runs. `mvp-cement` disposes of 0.14780 PJ of
+`heat_lt60` in 2021 and 0.12992 from 2025, where it disposed of 0.47027 and 0.41340.
+`mvp-dairy`'s disposal is unchanged; its 2021 dispatch moves within a tie at the same objective
+(`boiler_spc_gas` now serves 0.01848 PJ of boiler-house hot water and `chp_gas_turbine` the
+same amount of space heat, with the gas boiler and the CHP trading as much steam), because the problem has 14 fewer variables and the solver lands on
+another optimal vertex.

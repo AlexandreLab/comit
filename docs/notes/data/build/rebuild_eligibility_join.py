@@ -3,13 +3,17 @@
 
 Stdlib only (pandas is not installed in this repo). Idempotent: run it after any change to
 the duty profile, the unit library or the carriers, then `make data-check` and
-`make data-worklist`.
+`make data-worklist`. After a change to the options join or the worked-example rows, run
+`build_eligibility.py` first and this script second; the pair reproduces the committed file
+exactly (see that script's docstring). This script reads the reach of the process-keyed
+service units back from the file it rewrites, so those rows are the record of a decision and
+must not be regenerated from anywhere else.
 
 What it replaces
 ----------------
-`build_eligibility.py` step (c) offered every service unit of a duty family to every
-register process its own `PROCESS_FAMILIES` table gave that family, with no grade filter
-and no coefficient check: 1,852 `proxy` rows, written before the duty profile or any
+`build_eligibility.py`'s old step (c), removed 2026-10-02, offered every service unit of a
+duty family to every register process its own `PROCESS_FAMILIES` table gave that family,
+with no grade filter and no coefficient check: 1,852 `proxy` rows, written before the duty profile or any
 `grade_out` existed. This script drops every `proxy` row and writes the family rows again
 from the tables as they now stand. Rows with any other provenance — the worked examples
 (`comit_reuse`), the options join (`bref`), the chemistry nodes (`comit_reuse`) and the
