@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, and items 69 and 70 on 2026-10-02 – **twenty-four of the seventy, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, and items 69, 70 and 71 on 2026-10-02 – **twenty-five of the seventy-one, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -1047,3 +1047,61 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     `check_energy_closure` in `validate_carb3_data.py`, which would have caught items 64 and
     69 too. §3.6 now says the leg is an inequality: losses are no carrier, so a unit may close
     short but never over.
+
+71. **A spray dryer's whole air-heating duty sat in one band, so no heat pump could take any of
+    it.** §3.4 places a heat duty in the band of the hottest temperature it needs, which put
+    the dairy's and the creamery's spray dryers wholly in `heat_150_400` (rank 4). Item 69 then
+    rightly rated `dryer_heat_pump` grade 2, and the realistic retrofit, a heat pump on the
+    dryer's exhaust preheating the inlet air with a higher-grade top-up, could no longer be
+    expressed: `mvp-dairy` kept its gas spray dryer to 2040 and moved the whole duty to
+    `resistance_heater_lt` in 2045. [LIANG_ECOS2022] states the physics: the energy is "mostly
+    due to heating of air up to ~240 °C from ambient temperature", and heat recovery and heat
+    pumping from the exhaust "are not state-of-the-art for heating the air above ~80 °C".
+    *Found verifying the dairy run, 2026-10-02.* **Settled 2026-10-02: a stream heated once
+    through is split at the band edges** (§3.4's new rule). Each band the rise from intake $T_0$
+    to delivery $T_1$ crosses becomes one row, a band segment, in its own band, with
+    `duty_share` the fraction of the rise lying in it, heat capacity taken as constant as
+    [MOEJES_IDS2016] Table A3 does. No schema change: `grade_rank` is already in §3.3's key.
+    $T_0$ is 10.3 °C, the 1991–2020 annual mean of [BEIS_LTM_2022] Table 1, right for an
+    annual duty because the heat is linear in $T_0$; $T_1$ is 200 °C, [CARB3_WE_FOOD] §3.2's
+    "DRY - spray dryer, 200 C" for the dairy and the top of [CARB3_PDO]'s "180-200C inlet" for
+    the creamery, whose `share_low` and `share_high` carry the 180 °C case. The four segments
+    are 0.261993 (10.3–60 °C), 0.210859 (60–100), 0.263574 (100–150) and 0.263574
+    (150–200). A `DRY` unit's heat is also no longer released through $z^{\circ}$ (§5.2): the
+    segments made `dryer_steam` eligible, and a carrier has no medium, so a gas dryer's hot air
+    could otherwise have fed its steam coil.
+
+    **Rows split: two**, `Food Processing Centre`/`direct_heating` and `Creamery`/
+    `evaporation_drying`; the duty profile goes from 427 to 433 rows. **Rows not split, the
+    other nine rank-3 and rank-4 `DRY` rows**, each for want of a sourced once-through rise:
+    `Artificial Fibre Works`/`chip_drying` (PET chip dryers run on dehumidified recirculated
+    air, and the row gives the 160–180 °C delivery only); `Asphalt Plant`/
+    `aggregate_drying_heating` (a direct-fired drum whose duty is the mix temperature, not an
+    air stream); `Beet Sugar Factory`/`pulp_pressing_drying`, `Chemical Works`/`drying`,
+    `Distillery`/`coproduct_evaporation_drying` and `Foundry`/`core_making` (band taken by
+    analogue, no temperature read); `Brickworks`/`drying` (40–120 °C from the repo's own
+    engineering judgement, and brick dryers commonly take recovered kiln air rather than
+    ambient); `Mill`/`process_heating_drying` and `Mineral Production - Brine`/
+    `drying_grading` (temperatures from option notes with no published source); `Motor Vehicle
+    Works`/`paint_shop` (recirculating cure ovens, with the booth make-up air an unsplit second
+    duty already). A sourced intake and delivery temperature for any of them is enough to
+    split it.
+
+    **Effect.** The join offers `dryer_heat_pump` and `dryer_steam` at both processes:
+    `unit_eligibility.csv` goes from 3,302 to 3,306 rows, and V19's advisory count of
+    evidence rows beyond their `grade_out` falls from 136 to 134. At `mvp-dairy` the
+    heat-pump dryer is built in 2025 (0.038111 PJ/yr, about 1.2 MW) and takes the two
+    segments below 100 °C, 0.037379 PJ/yr, through 2050; the 2019 gas dryer keeps the
+    100–200 °C top-up until it retires, and `resistance_heater_lt` takes that in 2045.
+    `dryer_steam` is screened out there, since nothing on site raises 150–400 °C steam. Gas
+    imports in 2030–2040 fall from 0.093002 to 0.049026 PJ/yr, vented fossil CO₂ from 4.70
+    to 2.48 kt/yr (11.29 to 9.07 in 2025), and the objective from £153.99m to £144.60m. The
+    other two premises do not move.
+
+    **Still open.** (a) Band 2 lets the heat pump reach 100 °C where [LIANG_ECOS2022] puts
+    today's exhaust heat pumping at about 80 °C: up to 20 of the 189.7 °C rise, 10.5 % of the
+    duty, is over-credited, and only a band edge at 80 °C would remove it. (b) The heat pump's
+    source is `draws_ambient` (item 69), so nothing caps it at what the exhaust holds;
+    [MOEJES_IDS2016] puts the exhaust at 60–90 °C. (c) The creamery's process includes its
+    falling-film evaporator, whose band-3 steam no source splits out, so the whole process is
+    segmented as air heating.

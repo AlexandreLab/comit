@@ -128,7 +128,7 @@ From the site's Climate Change Agreement audit, 2024:
 | `process_id` | `valid_from_year` | `valid_to_year` | `connection_id` | `known_capacity` | `known_activity` | `confidence` |
 |---|---|---|---|---|---|---|
 | `boiler_steam_hot_water` | 2011 | — | `G-01` | — | — | high |
-| `direct_heating` | **2019** | — | `G-01` | **0.10000 PJ/yr** | 0.07905 PJ/yr (the §3.2 duty) | **high** |
+| `direct_heating` | **2019** | — | `G-01` | **0.10000 PJ/yr** | 0.07905 PJ/yr (the §3.2 duty, its four band segments summed) | **high** |
 | `refrigeration` | 2016 | — | `E-01` | — | — | high |
 | `machinery_motors` | 2011 | — | `E-01` | — | — | medium |
 | `compressed_air` | 2011 | — | `E-01` | — | — | medium |
@@ -651,7 +651,10 @@ energy through the incumbent units of §1.5.1 and §1.12 and their coefficients:
 |---|---|---|---|---|---|---|
 | `boiler_steam_hot_water` | `LTH` — hot water and CIP, 80 °C | `heat_60_100` | **2** | 0.46180 | 0.085895 gas | **0.075587** |
 | `boiler_steam_hot_water` | `STM` — evaporator, 120 °C | `heat_100_150` | **3** | 0.53820 | 0.100105 gas | **0.055992** |
-| `direct_heating` | `DRY` — spray dryer, 200 °C | `heat_150_400` | **4** | 1.00000 | 0.093000 gas | **0.079050** |
+| `direct_heating` | `DRY`: spray dryer air, 10.3 to 60 °C | `heat_lt60` | **1** | 0.261993 | 0.024365 gas | **0.020711** |
+| `direct_heating` | `DRY`: spray dryer air, 60 to 100 °C | `heat_60_100` | **2** | 0.210859 | 0.019610 gas | **0.016668** |
+| `direct_heating` | `DRY`: spray dryer air, 100 to 150 °C | `heat_100_150` | **3** | 0.263574 | 0.024512 gas | **0.020836** |
+| `direct_heating` | `DRY`: spray dryer air, 150 to 200 °C | `heat_150_400` | **4** | 0.263574 | 0.024512 gas | **0.020836** |
 | `site_services` | `SPC` — space heating | `heat_60_100` | **2** | 1.00000 | 0.021000 gas | **0.018480** |
 | `refrigeration` | `REF` | `cooling_0_15` | **2** | 1.00000 | 0.021533 elec | **0.064598** |
 | `machinery_motors`, `compressed_air`, `site_services` | `MOT` | `motive_power` | — | 1.00000 | 0.064598 elec | **0.064598** |
@@ -659,16 +662,24 @@ energy through the incumbent units of §1.5.1 and §1.12 and their coefficients:
 The conversions: LTH 0.085895 × 0.88 (boiler η); STM 0.100105 ÷ 1.787864, the incumbent mix
 divisor of §1.12 — 0.60 × 2.22220 + 0.40 × 1.13636 — which is higher than the boiler's own
 1.13636 because a CHP burns more gas per unit of heat and gets electricity back for it; DRY
-0.093000 × 0.85; SPC 0.021000 × 0.88; REF 0.021533 × COP 3.00; MOT identity.
+0.093000 × 0.85 = 0.079050, split into band segments below; SPC 0.021000 × 0.88; REF
+0.021533 × COP 3.00; MOT identity.
+
+**The spray dryer is four duties, because its air is heated once through** (§3.4, the rule that
+a stream heated once through is split at the band edges). It draws outside air at 10.3 °C, the
+1991–2020 annual mean of §3.4, and heats it to 200 °C, so the rise crosses the edges at 60, 100
+and 150 °C and each band takes the share of the 189.7 °C rise that lies in it: 49.7, 40, 50 and
+50 °C. The four duties sum to 0.079050 PJ/yr before rounding (0.079051 as rounded above). The
+placement rule alone would have put all of it at rank 4, as an earlier draft of this table did.
 
 **Every heat duty carries a `grade_rank`, and §3.3 makes it non-nullable wherever the carrier
 is gradeable.** The rule covers cooling too, which is why `refrigeration` carries rank 2. A
 heat duty with no grade is invisible to C10's cascade: it could be served by
 any grade at all, including one far below what the process needs, and the LP would take the
 cheapest. That is failure mode 6 of §10.5, it fails silently, and this premise is where it
-would have bitten — a heat pump firing a 200 °C spray dryer.
+would have bitten: a heat pump firing the 150–200 °C top of a spray dryer.
 
-**Four heat duties at three grades, and `site_services` sits at two vectors.** Its gas is a
+**Seven heat duties at four grades, and `site_services` sits at two vectors.** Its gas is a
 space-heating duty at rank 2 and its electricity is motive power, which is the ordinary shape
 for a process that is really a bundle of site overheads — and it is only expressible because
 §3.3.1 is keyed on `(process, vector)` rather than on the process alone.
@@ -764,30 +775,35 @@ is enforced by **eligibility at load** rather than as an LP row — a unit whose
 below the duty's grade is never in $U_q$, so the variable is never created — which is why
 `V19` is a load-scope test.
 
-| Unit | `grade_out` | `LTH` rank 2 | `STM` rank 3 | `DRY` rank 4 |
+| Unit | `grade_out` | `LTH` rank 2 | `STM` rank 3 | `DRY` ranks 1–4 (the four band segments) |
 |---|---|---|---|---|
 | `boiler_lt_gas`, `_hydrogen`, `_biomass` | 4 | **eligible** | **eligible** | **refused** — not offered: `DRY` takes its own family (§3.5.1) |
-| `boiler_lt_lpg` | 3 | **eligible** | **eligible** | **refused** — 3 < 4 |
+| `boiler_lt_lpg` | 3 | **eligible** | **eligible** | **refused**: not offered, `DRY` takes its own family |
 | `boiler_lt_coal` | 3 | **screened** — `max_share` 0.00 at this site | screened | refused |
 | `resistance_heater_lt` | 4 | **eligible** | **eligible** | **refused** — not offered: `DRY` takes its own family (§3.5.1) |
 | `heat_pump_lt_air` | **2** | **eligible** | **refused** — 2 < 3 | **refused** |
 | `heat_pump_lt_reject` | **2** | **eligible** | **refused** — 2 < 3 | **refused** |
-| `heat_pump_ht` | 3 | **eligible** | **eligible** | **refused** — 3 < 4 |
+| `heat_pump_ht` | 3 | **eligible** | **eligible** | **refused**: not offered, `DRY` takes its own family, and 3 < 4 at the top segment |
 | `chp_gas_turbine` | 4 | **eligible** | **eligible** | **refused** — not offered: `DRY` takes its own family (§3.5.1) |
 | `chp_hydrogen_ccgt` | 4 | eligible from 2035 | eligible from 2035 | **refused** |
 | `chp_biomass_st` | 4 | **screened out** — `min_duty` 0.25 > 0.07559 | **screened out** | refused |
-| `dryer_direct_gas` | 4 | not eligible — bound to `direct_heating` | not eligible | **eligible** |
-| `dryer_electric` | 4 | not eligible | not eligible | **eligible** |
+| `dryer_direct_gas` | 4 | not eligible — bound to `direct_heating` | not eligible | **eligible** at all four |
+| `dryer_electric` | 4 | not eligible | not eligible | **eligible** at all four |
 
 **Four units compete at the 120 °C duty** — a gas boiler, a CHP, a high-temperature heat pump
 and an electric resistance heater — which is milestone M4's assertion, and it is the first
 time in either model that a duty has a genuine choice of *device* rather than a choice of
 *fuel*.
 
-**The heat pumps are absent from the drying duty's candidate set**, and not by a mapping table:
-150 °C output cannot reach a 200 °C duty, so `grade_out` 3 < 4 removes them at load. That is
-M4's second assertion, and stating it as physics is what lets a new unit be added to the
-library without editing anything.
+**The heat pumps are absent from the drying duties' candidate sets**, and not by a mapping table:
+150 °C output cannot reach the 150–200 °C segment, so `grade_out` 3 < 4 removes them from it at
+load, and below it the family does, since they make hot water and a spray dryer needs hot air.
+That is M4's second assertion, and stating it as physics is what lets a new unit be added to the
+library without editing anything. **This premise's library holds no dryer below grade 4**, so
+the same two dryers contest all four segments and every figure from §4 on is what it was with
+one drying duty. The reference library's `dryer_heat_pump` (grade 2) does reach the two lower
+segments, which is what moves `mvp-dairy` ([notes/20](../notes/20_reference_data_open_questions.md)
+item 71).
 
 `chp_biomass_st` is screened out by `min_duty`, outside the LP, in `A2`. COMIT would have
 introduced a binary per technology per site to express the same thing
@@ -1067,7 +1083,8 @@ expansion out past the horizon.
 
 ```
 T    = {0,1,2,3,4,5}                             six periods, Δ = 5
-Q    = { LTH, STM, DRY, REF, MOT }               five duties, all energy-denominated
+Q    = { LTH, STM, DRY×4, REF, MOT }             eight duties, all energy-denominated;
+                                                 DRY is the four band segments of §3.2
 U    = 12 units of §3.3, less chp_biomass_st (screened, §3.4), plus the B4 heat-pump split,
        plus pv_rooftop and battery_2h, less every hydrogen unit before 2035 (C9)
 U⁰   = { boiler_lt@natural_gas, chp_gas_turbine, dryer_direct_gas@natural_gas,
@@ -1107,7 +1124,7 @@ before the build.
 
 | # | Constraint | Instances here | Binds? |
 |---|---|---|---|
-| **C1** | Duty satisfaction | 5 duties × 6 periods = 30 | always — it is an equality |
+| **C1** | Duty satisfaction | 8 duties × 6 periods = 48 | always — it is an equality |
 | **C2** | Activity ≤ available capacity × γ × α | one per (unit, binding) per period | on the dryer at 0.85000 exactly (§5.1) |
 | **C3** | Capacity transfer between periods | as above | — |
 | **C4** | Incumbent ageing and early retirement (`D11`) | 5 × 6 = 30 | **the boiler house dies together at 2035** |
@@ -1158,7 +1175,7 @@ asserts to 1e-6 and `V30` extends to the emission carriers.
 | `natural_gas` | boiler −0.132346, CHP −0.074655, dryer −0.093000 | — | +0.300001 | — | **0** |
 | `electricity` | chiller −0.021533, motor −0.064598 | **CHP +0.026130** | +0.060000 | — | **0** |
 | `hydrogen`, `lpg`, `coal`, `solid_biomass` | — | — | 0 | — | **0** |
-| `heat_150_400` | — | dryer +0.079050, **all dispatched to `DRY`** ⇒ $z^{\circ}=0$ | — | — | **0** |
+| `heat_150_400` | — | dryer +0.079050, **all dispatched to the four `DRY` segments** ⇒ $z^{\circ}=0$ | — | — | **0** |
 | `heat_100_150` | — | boiler +0.116465 and CHP +0.033595, **all dispatched** ⇒ $z^{\circ}=0$ | — | — | **0** |
 | `heat_60_100` | — | no unit active | — | — | **0** |
 | **`heat_lt60`** | — | dryer **+0.009486 (reject)** | — | **−0.009486** | **0** |
@@ -1345,7 +1362,7 @@ clean-sheet decision on every heat duty at once. At the 2040 prices:
 |---|---|---|---|---|
 | `LTH` 80 °C **and `SPC`** | 2 | **`heat_pump_lt_reject`**, then **`heat_pump_lt_air`** | **9.72603** / **10.62841** | `boiler_lt_hydrogen` 18.91758 |
 | `STM`, 120 °C | 3 | **`chp_hydrogen_ccgt`** | **18.72742** | `boiler_lt_hydrogen` 18.91758 |
-| `DRY`, 200 °C | 4 | **`dryer_direct_hydrogen`** | **20.08975** | `dryer_direct_gas` 24.07389 |
+| `DRY`, all four segments, to 200 °C | 1–4 | **`dryer_direct_hydrogen`** | **20.08975** | `dryer_direct_gas` 24.07389 |
 
 `heat_pump_lt_reject`: 1.489997 + 0.423529 + 0.31250 × 25.00 = 7.812500 → **£9.72603m/PJ**.
 `heat_pump_lt_air`: 1.324442 + 0.376471 + 0.35710 × 25.00 = 8.927500 → **£10.62841m/PJ**.

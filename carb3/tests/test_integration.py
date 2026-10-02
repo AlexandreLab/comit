@@ -166,12 +166,22 @@ def test_the_screen_drops_the_steelworks_gas_chps_where_no_steelworks_is(
     reference: ReferenceTables, screen: AdmissionScreen, premise_id: str
 ) -> None:
     """``unit_eligibility.csv``'s grade join offers the blast-furnace and coke-oven gas CHPs
-    to any heat duty they reach; neither gas can be imported, and nothing here makes it."""
+    to any heat duty they reach; neither gas can be imported, and nothing here makes it.
+
+    At the dairy the steam-coil dryer goes too. §3.4's rule that a stream heated
+    once through is split at the band edges brings the spray dryer's 100-150 °C band segment
+    within its reach, but it draws 150-400 °C steam and nothing at this site raises any: the boiler and
+    the CHP make ``heat_100_150``, and a direct-fired dryer's hot air is never released
+    (§5.2)."""
     premise = load_premise_tables(premise_id)
     sets = build_sets(reference, premise, screen, PERIOD_YEARS)
     screened, drops = build.screen_premise(sets, reference, _incumbents(reference, premise))
     by_unit = {drop.unit_id: drop for drop in drops}
-    assert set(by_unit) == {"chp_bfg_gas_turbine", "chp_cog_gas_turbine"}
+    expected = {"chp_bfg_gas_turbine", "chp_cog_gas_turbine"}
+    if premise_id == "mvp-dairy":
+        expected |= {"dryer_steam"}
+        assert "heat_150_400" in by_unit["dryer_steam"].detail
+    assert set(by_unit) == expected
     assert "blast_furnace_gas" in by_unit["chp_bfg_gas_turbine"].detail
     assert "coke_oven_gas" in by_unit["chp_cog_gas_turbine"].detail
     assert not set(by_unit) & screened.units
@@ -194,6 +204,27 @@ def test_the_low_grade_heat_makers_release_to_the_lift_heat_pump(
             {"boiler_spc_coal", "boiler_spc_gas", "heat_pump_lt_air", "heat_pump_lt_reject"}
         )
     }
+
+
+def test_a_dryers_hot_air_is_never_released(runs: dict[str, Run]) -> None:
+    """§5.2: a ``DRY`` unit's heat is air in contact with the product, so it reaches a
+    drying duty through z only. The dairy's gas and electric dryers make ``heat_150_400``,
+    which ``dryer_steam`` draws, and its heat-pump dryer makes ``heat_60_100``, which
+    ``heat_pump_ht`` draws; neither carrier gets a dryer in its released set."""
+    sets = runs["mvp-dairy"].sets
+    released = {unit for units in sets.released.values() for unit in units}
+    assert not {u for u in released if u.startswith("dryer_")}
+    assert "heat_150_400" not in sets.released
+
+
+def test_the_dairy_stages_its_spray_dryer(runs: dict[str, Run]) -> None:
+    """§3.4's band segments at work: from 2025 the heat-pump dryer takes the two below
+    100 °C, and the 2019 gas dryer keeps only the top-up above it until it retires."""
+    z = runs["mvp-dairy"].model.variables["z"].solution.to_pandas()
+    heat_pump = z[z.index.str.startswith("dryer_heat_pump@")]
+    assert heat_pump.sum()[2025] > 0.0
+    served = {name.split("|")[-1] for name in heat_pump.index[heat_pump.sum(axis=1) > 1e-9]}
+    assert served <= {"heat_lt60", "heat_60_100"}
 
 
 def test_the_cement_works_gains_no_released_column(runs: dict[str, Run]) -> None:
@@ -327,8 +358,8 @@ def test_mvp_cement_states_its_mass_duty_from_premise_throughput(
 ) -> None:
     """**The cement works' duty is a mass, and the duty profile cannot state it.**
 
-    ``activity_process_duty_profile.csv`` holds no mass carrier anywhere: its 427 rows name
-    26 distinct ``carrier_id`` values and neither ``cement`` nor ``clinker`` is among them.
+    ``activity_process_duty_profile.csv`` holds no mass carrier anywhere: its 433 rows name
+    11 distinct ``carrier_id`` values and neither ``cement`` nor ``clinker`` is among them.
     ``Cement Works``'s ``cement_grinding`` row is classified ``MOT`` on ``motive_power`` at
     ``duty_share`` 1.00000, so an A2 that read only the register and the profile turned
     1.130000 **Mt of cement** into 1.130000 **PJ of motive power** — a weight labelled as an

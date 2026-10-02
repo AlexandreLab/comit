@@ -22,6 +22,14 @@ from carb3 import load, sets
 DAIRY_G2 = ("fx-dairy", "boiler_steam_hot_water", "heat_60_100")
 DAIRY_G3 = ("fx-dairy", "boiler_steam_hot_water", "heat_100_150")
 DAIRY_G4 = ("fx-dairy", "direct_heating", "heat_150_400")
+# The spray dryer's air heating, 10.3 to 200 °C, split at the band edges it crosses (§3.4's
+# rule on a stream heated once through): one duty per band, each sized by the span it adds.
+DAIRY_DRY_SEGMENTS = {
+    ("fx-dairy", "direct_heating", "heat_lt60"): (1, 0.261993),
+    ("fx-dairy", "direct_heating", "heat_60_100"): (2, 0.210859),
+    ("fx-dairy", "direct_heating", "heat_100_150"): (3, 0.263574),
+    DAIRY_G4: (4, 0.263574),
+}
 DAIRY_MOT = ("fx-dairy", "site_services", "motive_power")
 
 
@@ -128,7 +136,7 @@ def test_a2_takes_only_the_magnitude_from_the_premise(dairy: sets.ModelSets) -> 
     by_key = {d.key: d for d in dairy.duties}
     assert by_key[DAIRY_G2].quantity[2021] == pytest.approx(1.0 * 0.46180)
     assert by_key[DAIRY_G3].quantity[2021] == pytest.approx(1.0 * 0.53820)
-    assert by_key[DAIRY_G4].quantity[2021] == pytest.approx(0.4 * 1.00000)
+    assert by_key[DAIRY_G4].quantity[2021] == pytest.approx(0.4 * 0.263574)
     # Flat across the horizon: the slice models no demand growth.
     assert set(by_key[DAIRY_G2].quantity) == set(load.PERIOD_YEARS)
     assert len(set(by_key[DAIRY_G2].quantity.values())) == 1
@@ -204,6 +212,32 @@ def test_a2_fails_loud_with_no_process_valid_at_the_base_year(
 
 
 # --------------------------------------------------- U_q and C10, in both directions
+
+
+def test_a2_splits_the_spray_dryer_at_the_band_edges(dairy: sets.ModelSets) -> None:
+    """§3.4's band segments: four duties on four bands, each its temperature rise's share of the air's
+    heat, and together the whole drying duty (0.4 PJ/yr in the fixture)."""
+    by_key = {d.key: d for d in dairy.duties}
+    dry = {key: d for key, d in by_key.items() if key[1] == "direct_heating"}
+    assert set(dry) == set(DAIRY_DRY_SEGMENTS)
+    for key, (rank, share) in DAIRY_DRY_SEGMENTS.items():
+        assert dry[key].grade_rank == rank
+        assert dry[key].quantity[2021] == pytest.approx(0.4 * share)
+    assert sum(d.quantity[2021] for d in dry.values()) == pytest.approx(0.4)
+
+
+def test_c10_a_heat_pump_dryer_serves_the_low_segments_only(dairy: sets.ModelSets) -> None:
+    """``dryer_heat_pump`` is grade 2 (note 20 item 69), so C10 (the grade cascade) admits
+    it to the two band segments below 100 °C and refuses it the two above, while the incumbent
+    grade-4 gas dryer still reaches every segment."""
+    low = [key for key, (rank, _) in DAIRY_DRY_SEGMENTS.items() if rank <= 2]
+    high = [key for key, (rank, _) in DAIRY_DRY_SEGMENTS.items() if rank > 2]
+    for key in low:
+        assert "dryer_heat_pump" in dairy.eligible[key]
+    for key in high:
+        assert "dryer_heat_pump" not in dairy.eligible[key]
+    for key in DAIRY_DRY_SEGMENTS:
+        assert "dryer_direct_gas" in dairy.eligible[key]
 
 
 def test_c10_a_grade_3_unit_serves_a_grade_2_duty(dairy: sets.ModelSets) -> None:

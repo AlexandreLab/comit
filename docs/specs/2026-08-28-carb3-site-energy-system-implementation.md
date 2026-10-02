@@ -493,7 +493,7 @@ carry a single duty family at 1.00 is therefore *unexamined*, not *confirmed sim
 expands into a premise's `process_duty` (§3.9) wherever no site intelligence overrides it.
 This is the demand side of the carrier model. Populated by
 [`../notes/data/activity_process_duty_profile.csv`](../notes/data/activity_process_duty_profile.csv) –
-427 rows covering all 375 of the register's keys, with provenance per row. Readiness is tracked in
+433 rows covering all 375 of the register's keys, with provenance per row. Readiness is tracked in
 [notes/16](../notes/16_input_data_readiness.md).
 
 | Field | Type | Unit | Req | Key | Validation |
@@ -770,6 +770,49 @@ cooling duty takes the band containing the **coldest**. A unit's `grade_out` fol
 rule from the supply side: the band of the hottest heat, or the coldest cooling, it can
 deliver. Placing a duty by its mean temperature instead would let a unit that cannot reach the
 process's hardest point serve it.
+
+**Rule (a stream heated once through is split at the band edges).** The placement rule is right
+for heat a process needs *at* a temperature. It overstates a duty that heats a stream once
+through, from an intake temperature $T_0$ to a delivery temperature $T_1$, because such a duty
+needs heat across the whole rise and only its top end at $T_1$. The air of a convective dryer is
+the case: a milk powder spray dryer draws outside air and heats it to about 200 °C, and heat
+recovery and heat pumping from the dryer's own exhaust already supply the rise to about 80 °C
+([Liang et al. 2022](https://orbit.dtu.dk/en/publications/full-electrification-opportunities-of-spray-dryers-in-milk-powder/)). Placing all of it
+in `heat_150_400` hides that retrofit, which is the realistic one: heat pump preheat, then a
+higher-grade top-up. Such a duty is therefore written as one row per band the rise crosses, a
+**band segment**, each placed in its own band by the rule above. Segment $b$, the part of the rise
+lying in band $[T^{\text{lo}}_b, T^{\text{hi}}_b)$, takes
+
+$$\texttt{duty\_share}_b \;=\; \frac{\min(T_1, T^{\text{hi}}_b) - \max(T_0, T^{\text{lo}}_b)}{T_1 - T_0}$$
+
+of the duty, the stream's heat capacity being taken as constant over the rise, as the published
+spray-drying model of [Moejes et al. (2016)](https://edepot.wur.nl/404406) takes dry air's
+(Table A3, 1 kJ/kg °C). The rows share a `duty_family`, differ in
+`carrier_id` and `grade_rank`, and need no schema change, since `grade_rank` is part of §3.3's
+key. Three conditions, all of which must hold:
+
+1. **The stream is heated once through.** It enters at $T_0$ and is not recirculated: a
+   closed-loop dryer's heater lifts return air, and its rise is not known from the intake.
+2. **Both temperatures are sourced.** $T_1$ is the process's delivery temperature, as the
+   placement rule would have read it. For outside air, $T_0$ is 10.3 °C, the 1991–2020 annual mean
+   over 17 stations selected as representative of fuel consumption in Great Britain
+   ([BEIS 2022, Table 1](https://assets.publishing.service.gov.uk/media/624462cf8fa8f5277b365af6/Long-term_mean_temperatures_1991-2020.pdf)).
+   The annual mean is the right intake for an annual duty because the heat is linear in $T_0$.
+3. **Only sensible heat is split.** Latent heat or a reaction at $T_1$ stays in $T_1$'s band.
+
+**A band segment is one stream's physics, not a second technology.** §3.3 forbids splitting a duty
+because two technologies serve it; here the shares are fixed by temperatures alone and say
+nothing about who serves each segment. C10 (the grade cascade) decides that: an incumbent dryer
+whose `grade_out` reaches $T_1$ still serves every segment, so the base year is unchanged, and a
+heat pump at grade 2 reaches the segments below 100 °C only. **Any allocation the LP picks can be
+built as heaters in series.** A unit is eligible only for segments at or below its grade, so the
+energy that units at or below grade $g$ deliver never exceeds the segments at or below $g$, and
+ordering the heaters by grade along the air path realises the allocation.
+
+Two spray-dryer rows meet all three conditions, `Food Processing Centre`/`direct_heating` and
+`Creamery`/`evaporation_drying`, and are written this way. The other rank-3 and rank-4 `DRY` rows
+do not yet: their provenance either reads no temperature, gives a delivery temperature only, or
+describes recirculated air ([notes/20](../notes/20_reference_data_open_questions.md) item 71).
 
 **The cascade runs opposite ways in the two families, and never between them.** Heat at a
 higher rank may serve a heat duty at a lower rank — a 150–400 °C steam boiler serves a 120 °C
@@ -1691,7 +1734,7 @@ model wants it or not.
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-10-01*
+*Section last updated: 2026-10-02*
 
 **This section is authoritative.** Everything else serves it.
 
@@ -1809,7 +1852,11 @@ collapsed, not ignored. C11 and $Z^{\text{net}}$ are not built, and `import_pric
 forms are numerically identical there. $z^{\circ}_{u,t}$ exists, per carrier, for **supply units**
 (units that serve no duty and make a carrier no duty asks for: a kiln's `clinker`, a capture
 train's `co2_captured`) and for **duty units whose primary output another model unit draws**
-(`heat_pump_lt_air` releases `heat_60_100` that `heat_pump_ht` lifts). A unit with neither has
+(`heat_pump_lt_air` releases `heat_60_100` that `heat_pump_ht` lifts). **A `DRY` unit is never
+released**: its heat is air in contact with the product, and a carrier is a band with no medium,
+so without the bar a gas dryer's hot air would feed `dryer_steam`'s steam coil and a heat-pump
+dryer's would feed `heat_pump_ht`'s water circuit, routes §3.4's band segments made reachable. It
+is the medium argument the eligibility join keeps the duty family for (§3.5.1). A unit with neither has
 no $z^{\circ}$ column, which is the same as $z^{\circ}_{u,t}=0$. Because a released unit can then
 run past its duty and export the rest, $x_{c,t}$ is bounded by the connection's
 `export_capacity` run flat out ($\text{MW}\times 0.031536$ PJ/yr) for an energy carrier, a blank
