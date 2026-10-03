@@ -97,9 +97,11 @@ def test_signatures(assert_signature) -> None:
     assert_signature(sets, "diagnose_unservable_duties", ("sets", "screen"))
     # ``carb3_activity`` is the one addition to the scaffolded signatures. See the module
     # header: unit_eligibility is keyed on the activity and Duty carries none, and 29 of the
-    # 215 process_id values appear under more than one activity.
+    # 215 process_id values appear under more than one activity. ``premise`` is the second,
+    # optional: the recovery unit size screen (§3.5) is judged against the premise's
+    # incumbents, and without it eligible_units and build_sets would disagree.
     assert_signature(
-        sets, "eligible_units", ("reference", "duty", "admitted", "carb3_activity")
+        sets, "eligible_units", ("reference", "duty", "admitted", "carb3_activity", "premise")
     )
 
 
@@ -691,3 +693,77 @@ def test_sets_carry_the_periods_and_the_admitted_set(
     assert dairy.units == screen.admitted
     assert set(dairy.eligible) == {d.key for d in dairy.duties}
     assert all(isinstance(k, tuple) and len(k) == 3 for k in dairy.eligible)
+
+
+# ------------------------------------------------- the recovery unit size screen (§3.5)
+
+
+def _real(premise_id: str) -> load.PremiseTables:
+    return load.load_premise_tables(premise_id)
+
+
+def _with_cohorts(premise: load.PremiseTables, cohorts: pd.DataFrame) -> load.PremiseTables:
+    return dataclasses.replace(premise, premise_process_unit=cohorts)
+
+
+def test_incumbent_reject_skips_a_cohort_with_no_commissioned_year(reference) -> None:
+    """A cohort with a blank ``commissioned_year`` carries no incumbent capacity in the LP
+    (:func:`carb3.survival.vintage_capacity` skips it), so it rejects nothing either. Before,
+    the screen counted it and could offer a recovery unit on plant the LP does not hold."""
+    dairy = _real("mvp-dairy")
+    cohorts = dairy.premise_process_unit.copy()
+    chiller = (cohorts["process_id"] == "refrigeration") & (
+        cohorts["unit_id"] == "chiller_electric"
+    )
+    cohorts["commissioned_year"] = cohorts["commissioned_year"].astype("Float64")
+    cohorts.loc[chiller, "commissioned_year"] = pd.NA
+    source = sets.incumbent_reject(reference, _with_cohorts(dairy, cohorts))
+    # Only the site-services chiller cohort is left on the condenser class.
+    assert source["reject_chiller_condenser"] == pytest.approx(
+        0.033661 * 0.027733 * 1.3333, rel=1e-6
+    )
+
+
+def test_incumbent_reject_reads_blank_shares_as_vintage_capacity_does(reference) -> None:
+    """Two cohorts in one window with blank ``capacity_share`` make
+    :func:`carb3.survival.vintage_capacity` raise, since A4 (the carrier-mix split) is not
+    built. The screen must not read each blank as 1.0 and double the source instead."""
+    from carb3 import survival
+
+    dairy = _real("mvp-dairy")
+    cohorts = dairy.premise_process_unit.copy()
+    boilers = cohorts["process_id"] == "boiler_steam_hot_water"
+    cohorts["capacity_share"] = cohorts["capacity_share"].astype("Float64")
+    cohorts.loc[boilers, "capacity_share"] = pd.NA
+    broken = _with_cohorts(dairy, cohorts)
+    with pytest.raises(ValueError, match="capacity_share") as lp:
+        survival.vintage_capacity(broken, reference.unit)
+    with pytest.raises(ValueError, match="capacity_share") as screen_error:
+        sets.incumbent_reject(reference, broken)
+    assert str(screen_error.value) == str(lp.value)
+
+
+def test_every_eligible_set_is_a_frozenset(reference, screen) -> None:
+    """ModelSets.eligible is typed ``frozenset``; the recovery screen once left a ``set``
+    behind wherever it removed a unit, which ``mvp-minimal`` does."""
+    model = sets.build_sets(reference, _real("mvp-minimal"), screen, load.PERIOD_YEARS)
+    assert {d.reason for d in model.eligibility_dropped} >= {"min_viable_scale"}
+    assert all(type(units) is frozenset for units in model.eligible.values())
+
+
+def test_eligible_units_applies_the_recovery_screen_as_build_sets_does(
+    reference, screen
+) -> None:
+    """``min_viable_scale`` is applied beside ``max_share`` and ``min_duty``, so
+    :func:`sets.eligible_units` and :func:`sets.build_sets` agree on every duty."""
+    premise = _real("mvp-minimal")
+    model = sets.build_sets(reference, premise, screen, load.PERIOD_YEARS)
+    refused = set(sets.recovery_refusals(reference, premise))
+    assert refused
+    activity = str(premise.premise_record.iloc[0]["carb3_activity"])
+    for duty in model.duties:
+        units = sets.eligible_units(
+            reference, duty, screen.admitted, carb3_activity=activity, premise=premise
+        )
+        assert not units & refused, duty.key
+        assert units == model.eligible[duty.key], duty.key

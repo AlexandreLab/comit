@@ -56,6 +56,7 @@ from dataclasses import dataclass, field, replace
 
 import pandas as pd
 
+from carb3 import survival
 from carb3.load import (
     INPUT_ROLES,
     AdmissionScreen,
@@ -988,10 +989,19 @@ def eligible_units(
     admitted: frozenset[str],
     *,
     carb3_activity: str,
+    premise: PremiseTables | None = None,
 ) -> frozenset[str]:
-    """U_q for one duty; see :func:`_eligible_with_drops`, which also reports what it removed."""
+    """U_q for one duty; see :func:`_eligible_with_drops`, which also reports what it removed.
+
+    ``premise`` is what the recovery unit size screen (§3.5) reads: with it, a recovery unit
+    :func:`recovery_refusals` refuses at that premise is left out, exactly as
+    :func:`build_sets` leaves it out. Without it the screen cannot be applied, since a
+    ``min_viable_scale`` is judged against the premise's incumbents, and only the unit-level
+    columns (``max_share``, ``min_duty``) are.
+    """
+    too_small = recovery_refusals(reference, premise) if premise is not None else {}
     return _eligible_with_drops(
-        reference, duty, admitted, carb3_activity=carb3_activity
+        reference, duty, admitted, carb3_activity=carb3_activity, too_small=too_small
     )[0]
 
 
@@ -1001,6 +1011,7 @@ def _eligible_with_drops(
     admitted: frozenset[str],
     *,
     carb3_activity: str,
+    too_small: Mapping[str, str] | None = None,
 ) -> tuple[frozenset[str], tuple[EligibilityDrop, ...]]:
     """U_q for one duty: the three-table join, widened for C10 (the grade cascade).
 
@@ -1022,9 +1033,15 @@ def _eligible_with_drops(
     written correctly downstream, which is the kind of single point of failure this screen
     exists to remove.
 
+    ``too_small`` is :func:`recovery_refusals` for the premise: recovery unit -> the reason
+    its ``min_viable_scale`` refuses it there (§3.5). It is applied last, beside the other
+    two columns, so a unit already refused by ``max_share`` or ``min_duty`` is reported once.
+
     Returns U_q and, beside it, an :class:`EligibilityDrop` for each unit that passed the
-    screen and the C10 test and was then removed by ``max_share`` or ``min_duty``.
+    screen and the C10 test and was then removed by ``max_share``, ``min_duty`` or
+    ``min_viable_scale``.
     """
+    too_small = too_small or {}
     rows = _eligibility_rows(reference, carb3_activity, duty.process_id)
     if rows.empty:
         return frozenset(), ()
@@ -1065,6 +1082,12 @@ def _eligible_with_drops(
                 f"{float(floor):g}",
             ))
             continue
+        if unit_id in too_small:
+            refused.append(EligibilityDrop(
+                duty.premise_id, duty.process_id, unit_id, "min_viable_scale",
+                too_small[unit_id],
+            ))
+            continue
         eligible.add(unit_id)
     return frozenset(eligible), tuple(refused)
 
@@ -1072,16 +1095,36 @@ def _eligible_with_drops(
 # ------------------------------------------------- the recovery unit size screen (§3.5)
 
 
-def reject_classes(reference: ReferenceTables) -> frozenset[str]:
-    """§3.4's reject source classes: every carrier a ``reject`` row lands on that is not
-    gradeable. ``heat_lt60``, which the process-exhaust rows still land on, is a heat band and
-    so is not one; a class carrier says what made the heat, a band only how hot it is."""
+@dataclass(frozen=True)
+class _RecoveryScan:
+    """What the recovery unit size screen needs from ``unit_input_output``, read in one pass.
+
+    :func:`build_sets` makes one and hands it to :func:`recovery_refusals` and
+    :func:`incumbent_reject`, so the reject classes are computed once and the table is
+    scanned once per premise rather than once per helper.
+    """
+
+    #: §3.4's reject source classes (see :func:`reject_classes`).
+    classes: frozenset[str]
+    #: Unit -> reject class -> its ``reject`` coefficient on that class.
+    rejects: Mapping[str, Mapping[str, float]]
+    #: Recovery unit -> the reject classes it draws (see :func:`recovery_units`).
+    drawn: Mapping[str, frozenset[str]]
+
+
+def _scan_recovery(reference: ReferenceTables) -> _RecoveryScan:
+    """One pass over ``unit_input_output`` for :class:`_RecoveryScan`."""
     io = reference.unit_input_output
-    rejected = {
-        str(carrier_id)
-        for carrier_id, role in zip(io["carrier_id"], io["role"], strict=True)
-        if str(role).strip() == "reject"
-    }
+    reject_rows: list[tuple[str, str, float]] = []
+    input_rows: list[tuple[str, str]] = []
+    for unit_id, carrier_id, role, coefficient in zip(
+        io["unit_id"], io["carrier_id"], io["role"], io["coefficient"], strict=True
+    ):
+        role = str(role).strip()
+        if role == "reject":
+            reject_rows.append((str(unit_id), str(carrier_id), float(coefficient)))
+        elif role in INPUT_ROLES:
+            input_rows.append((str(unit_id), str(carrier_id)))
     gradeable = {
         str(carrier_id)
         for carrier_id, flag in zip(
@@ -1089,74 +1132,109 @@ def reject_classes(reference: ReferenceTables) -> frozenset[str]:
         )
         if bool(flag) is True
     }
-    return frozenset(rejected - gradeable)
+    classes = frozenset({carrier_id for _, carrier_id, _ in reject_rows} - gradeable)
+    rejects: dict[str, dict[str, float]] = {}
+    for unit_id, carrier_id, coefficient in reject_rows:
+        if carrier_id in classes:
+            rejects.setdefault(unit_id, {})[carrier_id] = coefficient
+    drawn: dict[str, set[str]] = {}
+    for unit_id, carrier_id in input_rows:
+        if carrier_id in classes:
+            drawn.setdefault(unit_id, set()).add(carrier_id)
+    return _RecoveryScan(
+        classes=classes,
+        rejects=rejects,
+        drawn={unit_id: frozenset(carriers) for unit_id, carriers in sorted(drawn.items())},
+    )
+
+
+def reject_classes(reference: ReferenceTables) -> frozenset[str]:
+    """§3.4's reject source classes: every carrier a ``reject`` row lands on that is not
+    gradeable. ``heat_lt60``, which the process-exhaust rows still land on, is a heat band and
+    so is not one; a class carrier says what made the heat, a band only how hot it is."""
+    return _scan_recovery(reference).classes
 
 
 def recovery_units(reference: ReferenceTables) -> dict[str, frozenset[str]]:
     """Recovery unit -> the reject classes it draws (§3.5): a unit with an input row on a
     reject class carrier. ``heat_pump_lt_reject`` draws the ``heat_lt60`` band and is not one."""
-    classes = reject_classes(reference)
-    io = reference.unit_input_output
-    drawn: dict[str, set[str]] = {}
-    for unit_id, carrier_id, role in zip(io["unit_id"], io["carrier_id"], io["role"], strict=True):
-        if str(role).strip() in INPUT_ROLES and str(carrier_id) in classes:
-            drawn.setdefault(str(unit_id), set()).add(str(carrier_id))
-    return {unit_id: frozenset(carriers) for unit_id, carriers in sorted(drawn.items())}
+    return dict(_scan_recovery(reference).drawn)
 
 
-def incumbent_reject(reference: ReferenceTables, premise: PremiseTables) -> dict[str, float]:
+def incumbent_reject(
+    reference: ReferenceTables,
+    premise: PremiseTables,
+    *,
+    scan: _RecoveryScan | None = None,
+) -> dict[str, float]:
     """Reject class -> the PJ/yr the premise's incumbent plant rejects onto it at the base year.
 
-    An incumbent's base-year activity is its process's ``known_activity`` times its cohort's
-    ``capacity_share`` (§3.10, §3.10.2; a blank share reads as 1, as :mod:`carb3.survival`
-    reads it), and its reject is that activity times its ``reject`` coefficient. Only named
-    plant counts: a process with no §3.10.2 children, or with a blank ``known_activity``,
-    contributes nothing, so the figure can only understate the source (note 23 decision 3).
+    **The incumbents are the ones the LP holds, read by the same rules.** The cohorts are
+    those :func:`carb3.survival.vintage_capacity` keeps (the window valid at the base year, a
+    stated ``commissioned_year``), so a cohort that carries no incumbent capacity in the LP
+    rejects nothing here, and a window with several cohorts and a blank ``capacity_share``
+    raises exactly as it does there. Each kept cohort's share is read by
+    :func:`carb3.survival._share`, and a cohort past its ``lifetime`` at the base year
+    (:func:`carb3.survival.survival_fraction`) counts as gone.
+
+    An incumbent's base-year activity is its process's ``known_activity`` (§3.10) times its
+    cohort's ``capacity_share`` (§3.10.2), and its reject is that activity times its
+    ``reject`` coefficient. A process with a blank ``known_activity`` contributes nothing,
+    even where it states a ``known_capacity``, so the figure can only understate the source
+    (note 23 decision 3).
     """
-    record = premise.premise_record.iloc[0]
-    processes = _processes_at(premise, int(record["data_year"]))
-    classes = reject_classes(reference)
-    io = reference.unit_input_output
-    rejects: dict[str, dict[str, float]] = {}
-    for unit_id, carrier_id, role, coefficient in zip(
-        io["unit_id"], io["carrier_id"], io["role"], io["coefficient"], strict=True
-    ):
-        if str(role).strip() == "reject" and str(carrier_id) in classes:
-            rejects.setdefault(str(unit_id), {})[str(carrier_id)] = float(coefficient)
-    children = premise.premise_process_unit
+    scan = scan if scan is not None else _scan_recovery(reference)
+    data_year = int(premise.premise_record.iloc[0]["data_year"])
+    vintages = survival.vintage_capacity(premise, reference.unit)
+    if vintages is None or len(vintages) == 0:
+        return {}
+    activity_of = {
+        (str(row.process_id), int(row.valid_from_year)): row.known_activity
+        for row in _processes_at(premise, data_year).itertuples(index=False)
+    }
+    lifetimes = survival._lifetimes(reference.unit)
     totals: dict[str, float] = {}
-    for _, process in processes.iterrows():
-        activity = process["known_activity"]
-        if pd.isna(activity):
+    for cohort in vintages.itertuples(index=False):
+        unit_id = str(cohort.unit_id)
+        coefficients = scan.rejects.get(unit_id)
+        if not coefficients or unit_id not in lifetimes:
             continue
-        named = children[
-            (children["process_id"] == process["process_id"])
-            & (children["valid_from_year"] == process["valid_from_year"])
-        ]
-        for _, cohort in named.iterrows():
-            share = cohort.get("capacity_share")
-            share = 1.0 if share is None or pd.isna(share) else float(share)
-            for carrier_id, coefficient in rejects.get(str(cohort["unit_id"]), {}).items():
-                totals[carrier_id] = (
-                    totals.get(carrier_id, 0.0) + float(activity) * share * coefficient
-                )
+        activity = activity_of.get((str(cohort.process_id), int(cohort.valid_from_year)))
+        if activity is None or pd.isna(activity):
+            continue
+        standing = survival.survival_fraction(
+            int(cohort.commissioned_year), lifetimes[unit_id], data_year
+        )
+        share = survival._share(getattr(cohort, "capacity_share", None))
+        base = float(activity) * share * standing
+        for carrier_id, coefficient in coefficients.items():
+            totals[carrier_id] = totals.get(carrier_id, 0.0) + base * coefficient
     return totals
 
 
 def recovery_refusals(
-    reference: ReferenceTables, premise: PremiseTables
+    reference: ReferenceTables,
+    premise: PremiseTables,
+    *,
+    scan: _RecoveryScan | None = None,
 ) -> dict[str, str]:
-    """Recovery unit -> why A2 does not offer it at this premise: its ``min_viable_scale``
-    (§3.5, PJ/yr of the class it draws) exceeds what the premise's incumbents reject onto that
-    class at the base year. A recovery unit with a blank ``min_viable_scale`` is not screened.
+    """Recovery unit -> why A2 (expanding the premise to duties and candidate units) does not
+    offer it at this premise: its ``min_viable_scale`` (§3.5, PJ/yr of the class it draws)
+    exceeds what the premise's incumbents reject onto that class at the base year. A recovery
+    unit with a blank ``min_viable_scale`` is not screened.
 
-    Like ``min_duty``, it is a decision made outside the LP, so the problem stays linear. It counts incumbents only (note 23 decision 3), so it can refuse a
-    unit that sources built later would have fed, never offer one with too little to draw.
+    Like ``min_duty``, it is a decision made outside the LP, so the problem stays linear. It
+    checks the incumbents' base-year reject only (note 23 decision 3), so it can refuse a
+    unit that sources built later would have fed, and it can offer one on a source that later
+    retires or is replaced; the optimiser then weighs that with full foresight. Nor does it
+    stop the LP building an offered unit smaller than its floor: that is reported after the
+    solve by :func:`carb3.ledger.check_recovery_scale` (§5.7).
     """
+    scan = scan if scan is not None else _scan_recovery(reference)
     scale = reference.unit.set_index("unit_id")["min_viable_scale"]
-    available = incumbent_reject(reference, premise)
+    available = incumbent_reject(reference, premise, scan=scan)
     refused: dict[str, str] = {}
-    for unit_id, carriers in recovery_units(reference).items():
+    for unit_id, carriers in scan.drawn.items():
         if unit_id not in scale.index or pd.isna(scale.loc[unit_id]):
             continue
         floor = float(scale.loc[unit_id])
@@ -1177,18 +1255,23 @@ def build_sets(
 ) -> ModelSets:
     """Assemble Q, U, U_q and the three eligibility columns for one premise.
 
-    Two fields beyond Q, U and U_q: ``supply`` carries the D16-suppressed producers
-    :func:`undutied_supply` finds, and ``no_activity`` the processes
-    :func:`processes_without_activity` could not size.
+    Two fields beyond Q, U and U_q: ``supply`` carries the producers D16 (the site boundary
+    on the carrier) leaves without a duty, which :func:`undutied_supply` finds, and
+    ``no_activity`` the processes :func:`processes_without_activity` could not size.
 
     ``min_duty`` is applied against the duty's largest quantity over the horizon: "below this
     the unit is not offered at all" (§3.5.1) is a statement about the duty, and U_q is not
     period-indexed. A recovery unit's ``min_viable_scale`` is applied against the premise
-    instead, by :func:`recovery_refusals`, and a refused unit leaves every U_q it reached with
-    an ``eligibility_dropped`` row per process, never through the admission screen: it might
-    have paid, so it was not held at zero. ``earliest_year`` and ``max_share`` are carried out to the LP instead,
-    where the period index exists; only the 0.00 ``max_share`` is resolved here, because a
-    zero cap is a prohibition rather than a bound.
+    instead: :func:`recovery_refusals` runs once per call, on one scan of
+    ``unit_input_output``, and :func:`_eligible_with_drops` applies its answer beside
+    ``max_share`` and ``min_duty``, so a refused unit leaves every U_q it reached with an
+    ``eligibility_dropped`` row per process, never through the admission screen: it might
+    have paid, so it was not held at zero. The screen checks the incumbents' base-year reject
+    only, so a recovery unit may be offered on a source that later retires or is replaced;
+    the optimiser then weighs that with full foresight, and a unit it builds below the floor
+    is reported after the solve (§5.7). ``earliest_year`` and ``max_share`` are carried out
+    to the LP instead, where the period index exists; only the 0.00 ``max_share`` is resolved
+    here, because a zero cap is a prohibition rather than a bound.
     """
     resolve_premise_references(reference, premise)
     periods = tuple(int(p) for p in periods)
@@ -1201,19 +1284,13 @@ def build_sets(
     min_duty: dict[tuple[DutyKey, str], float] = {}
 
     eligibility_dropped: list[EligibilityDrop] = []
-    too_small = recovery_refusals(reference, premise)
+    too_small = recovery_refusals(reference, premise, scan=_scan_recovery(reference))
 
     for duty in duties:
         units, refused = _eligible_with_drops(
-            reference, duty, screen.admitted, carb3_activity=activity
+            reference, duty, screen.admitted, carb3_activity=activity, too_small=too_small
         )
         eligibility_dropped.extend(refused)
-        for unit_id in sorted(units & too_small.keys()):
-            eligibility_dropped.append(EligibilityDrop(
-                duty.premise_id, duty.process_id, unit_id, "min_viable_scale",
-                too_small[unit_id],
-            ))
-        units = units - too_small.keys()
         eligible[duty.key] = units
         rows = _eligibility_rows(reference, activity, duty.process_id)
         for _, row in rows.iterrows():

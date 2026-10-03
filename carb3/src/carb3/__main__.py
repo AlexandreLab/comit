@@ -64,6 +64,9 @@ class PremiseRun:
     blocked: str = ""
     #: Units :func:`carb3.build.screen_premise` dropped here, set on blocked runs too.
     premise_dropped: tuple[UnitDrop, ...] = ()
+    #: Recovery units built below their ``min_viable_scale`` (§5.7, check 5). A report, so
+    #: it does not make the run fail.
+    sub_minimum: tuple[ledger.SubMinimumBuild, ...] = ()
 
     @property
     def ok(self) -> bool:
@@ -199,6 +202,7 @@ def run_premise(
 
     violations = build.check_constraint_rows(model, result)
     tables = ledger.build_ledger(result, sets, axis, reference, tariff_override)
+    sub_minimum = ledger.check_recovery_scale(tables.build, reference)
     written: tuple[Path, ...] = ()
     if out_dir is not None:
         report = ledger.RunReport(
@@ -211,6 +215,7 @@ def run_premise(
             objective=result.objective,
             eligibility_dropped=sets.eligibility_dropped,
             premise_dropped=premise_dropped,
+            sub_minimum=sub_minimum,
         )
         written = ledger.write_parquet(tables, report, out_dir)
         if site_report:
@@ -223,6 +228,7 @@ def run_premise(
         written=written,
         row_violations=violations,
         premise_dropped=premise_dropped,
+        sub_minimum=sub_minimum,
     )
 
 
@@ -474,6 +480,15 @@ def _print_premise(run: PremiseRun) -> None:
     print(f"C8 row check     {len(run.row_violations)} violations against the built matrix")
     for violation in run.row_violations[:10]:
         print(f"    {violation.constraint} {violation.coords} residual={violation.residual:.3e}")
+    print(
+        f"recovery scale   {len(run.sub_minimum)} recovery builds below min_viable_scale "
+        "(reported, not constrained)"
+    )
+    for item in run.sub_minimum:
+        print(
+            f"    {item.unit_id:<32} {item.period}  new capacity {item.new_capacity:.6f} "
+            f"PJ/yr, min_viable_scale {item.min_viable_scale:.6f}"
+        )
 
     if run.tables is not None:
         _print_costs(run.tables, result.objective)

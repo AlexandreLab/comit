@@ -199,7 +199,7 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-10-02*
+*Section last updated: 2026-10-03*
 
 **Twenty-five entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, nine by the
@@ -948,11 +948,16 @@ and `heat_pump_chiller_condenser` (condenser heat lifted to `heat_60_100`).
 PJ/yr of the class the unit draws. A2 (expanding the premise to duties and candidate units) offers the unit at a premise only if the premise's
 **incumbent** plant rejects at least that much of the class at the base year: each incumbent's
 base-year activity is its process's `known_activity` (§3.10) times its cohort's `capacity_share`
-(§3.10.2), and its reject is that activity times its `reject` coefficient. Sources the optimiser
-might build later are not counted, so the screen can refuse recovery that they would have fed but
-never offers a unit with too little to draw. A refused unit leaves every $U_q$ it reached and is
-reported as an eligibility refusal beside `min_duty`'s, not through the admission screen (§5.7).
-Like `min_duty`, it is decided outside the LP, so the problem stays linear.
+(§3.10.2), and its reject is that activity times its `reject` coefficient. The incumbents are the
+cohorts the LP holds (§5.3.1): a cohort with a blank `commissioned_year`, or one past its
+`lifetime` at the base year, rejects nothing. Sources the optimiser might build later are not
+counted, so the screen can refuse recovery that they would have fed. It checks the incumbents'
+base-year reject only, so it can also offer a unit on a source that later retires or is replaced;
+the optimiser then weighs that with full foresight. A refused unit leaves every $U_q$ it reached
+and is reported as an eligibility refusal beside `min_duty`'s, not through the admission screen
+(§5.7). Like `min_duty`, it is decided outside the LP, so the problem stays linear, and for the
+same reason an offered unit may be built smaller than its `min_viable_scale`: that is reported
+after the solve (§5.7, check 5), not constrained.
 
 #### 3.5.1 `unit_eligibility`
 
@@ -1835,7 +1840,7 @@ model wants it or not.
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-10-02*
+*Section last updated: 2026-10-03*
 
 **This section is authoritative.** Everything else serves it.
 
@@ -2442,10 +2447,11 @@ $\lambda$ alone is a floor and must be reported as one.
 
 ### 5.7 Pre-solve and post-solve checks
 
-Four checks surround the solve, in this order. Check 1 (the admission screen) drops units and
+Five checks surround the solve, in this order. Check 1 (the admission screen) drops units and
 reports each one. Checks 2 and 3 (an unservable duty, a start-year shortfall), like a non-optimal
 solve, are **diagnoses, not exceptions**: they are answers about the data and come back as a blocked
-premise carrying the reason. Check 4 (the row check) runs after a solve and reports.
+premise carrying the reason. Checks 4 and 5 (the row check, a recovery unit built below its
+minimum) run after a solve and report.
 
 | # | Check | Where | What it does |
 |---|---|---|---|
@@ -2453,6 +2459,7 @@ premise carrying the reason. Check 4 (the row check) runs after a solve and repo
 | 2 | **Unservable duties** | `sets.diagnose_unservable_duties` | Before the LP is built, names every duty with an empty $U_q$ in a period, by premise and period, together with the units the screen removed |
 | 3 | **Start-year shortfall** | `sets.diagnose_start_year_shortfall` | C1 is an equality, C2 caps each unit at its deliverable capacity, and C5 forbids building in the start year, so the incumbents alone must cover every duty in the first period. This is a transportation problem (incumbents supply, duties demand, an edge wherever the unit is in $U_q$, a `max_share` capping its edge), answered exactly by a **maximum flow**, and the **minimum cut** names the smallest group of duties whose demand exceeds what the incumbents able to serve them can deliver. It is a necessary condition only: units that supply an internal product with no duty (D16) also draw on C2 and are not in the flow |
 | 4 | **Row check** | `build.check_constraint_rows` | After the solve, multiplies the built matrix by the returned solution and verifies every row independently of the solver, so a carrier node that does not balance is caught even when the solver reports `optimal`. Violations are reported with the row, not raised |
+| 5 | **Recovery unit built below its minimum** | `ledger.check_recovery_scale` | After the solve, lists every recovery unit (§3.5) whose new capacity in a period is positive and below its `min_viable_scale`, with the unit, the period, the capacity built and the floor. The screen in A2 (expanding the premise to duties and candidate units) decides only whether the unit is offered, and the problem has no binary to hold a build at zero or at the floor, so this is reported rather than constrained, as §3.5.1 reports a site whose optimal size lands below a credible minimum. Written to `sub_minimum_recovery.parquet` |
 
 **A2's eligibility refusals come before these checks and are not check 1.** A2 (expanding the premise to duties and candidate units) removes a unit
 from a process for three reasons that are statements about the premise, not about the unit's

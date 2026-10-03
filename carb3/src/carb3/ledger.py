@@ -49,7 +49,7 @@ from carb3.build import (
     export_unit_cost,
 )
 from carb3.load import AdmissionScreen, ReferenceTables, UnitDrop
-from carb3.sets import EligibilityDrop, ModelSets
+from carb3.sets import EligibilityDrop, ModelSets, recovery_units
 
 #: The objective's five live terms, in §5.4's order. ``Z^infra``, ``Z^net`` and
 #: ``Z^strand`` are out of the slice (§2.1) and carry no row rather than a row of zeros.
@@ -96,6 +96,62 @@ class Ledger:
     unit_flow: pd.DataFrame
 
 
+#: New capacity at or below this is solver noise, not a build.
+BUILD_TOLERANCE: float = 1e-9
+
+#: Columns of ``sub_minimum_recovery.parquet``, one row per :class:`SubMinimumBuild`.
+SUB_MINIMUM_COLUMNS: tuple[str, ...] = (
+    "unit_id", "period", "new_capacity", "min_viable_scale",
+)
+
+
+@dataclass(frozen=True)
+class SubMinimumBuild:
+    """A recovery unit the LP built in a period at less than its ``min_viable_scale`` (§3.5).
+
+    The recovery unit size screen decides only whether the unit is offered; the problem stays
+    a pure LP, with no binary to hold a build at zero or at the floor, so the optimiser may
+    build less. That is reported after the solve rather than constrained, the way §3.5.1
+    reports a site whose optimal size lands below a credible minimum (§5.7, check 5).
+    """
+
+    unit_id: str
+    period: int
+    #: n_{u,t}, PJ/yr of primary output.
+    new_capacity: float
+    #: PJ/yr of the reject class the unit draws.
+    min_viable_scale: float
+
+
+def check_recovery_scale(
+    build_table: pd.DataFrame, reference: ReferenceTables
+) -> tuple[SubMinimumBuild, ...]:
+    """Every (recovery unit, period) whose new capacity is positive and below its
+    ``min_viable_scale``, read from the ledger's ``build`` table (§5.7, check 5).
+
+    A recovery unit is one drawing a reject source class (:func:`carb3.sets.recovery_units`);
+    one with a blank ``min_viable_scale`` has no floor to fall below. A report, never an
+    exception: the run stays solved and the objective is what the LP found.
+    """
+    if build_table is None or len(build_table) == 0:
+        return ()
+    scale = reference.unit.set_index("unit_id")["min_viable_scale"]
+    floors = {
+        unit_id: float(scale.loc[unit_id])
+        for unit_id in recovery_units(reference)
+        if unit_id in scale.index and not pd.isna(scale.loc[unit_id])
+    }
+    found: list[SubMinimumBuild] = []
+    for row in build_table.itertuples(index=False):
+        unit_id = str(row.unit_id)
+        if unit_id not in floors:
+            continue
+        new = float(row.new_capacity)
+        if BUILD_TOLERANCE < new < floors[unit_id]:
+            found.append(SubMinimumBuild(unit_id, int(row.period), new, floors[unit_id]))
+    return tuple(sorted(found, key=lambda item: (item.unit_id, item.period)))
+
+
 @dataclass(frozen=True)
 class RunReport:
     """What the run says about itself, beside the ledger."""
@@ -109,14 +165,17 @@ class RunReport:
     #: The objective the solver reported, £m. Written so a reader of the parquet alone — the
     #: site report — can check the cost terms against it without re-solving.
     objective: float | None = None
-    #: Units removed from a process by ``min_duty`` or a 0.00 ``max_share``. Written to its
-    #: own table because the unit stays admitted: ``screen_dropped`` is per unit, this is per
-    #: process.
+    #: Units removed from a process by ``min_duty``, a 0.00 ``max_share`` or a recovery
+    #: unit's ``min_viable_scale``. Written to its own table because the unit stays admitted:
+    #: ``screen_dropped`` is per unit, this is per process.
     eligibility_dropped: tuple[EligibilityDrop, ...] = ()
     #: Units :func:`carb3.build.screen_premise` dropped at this premise, because an input
     #: could be neither imported nor made here. Written beside the §3.2 screen's list in
     #: ``screen_dropped.parquet`` under their own leg.
     premise_dropped: tuple[UnitDrop, ...] = ()
+    #: Recovery units built below their ``min_viable_scale``, from
+    #: :func:`check_recovery_scale`. Written to ``sub_minimum_recovery.parquet``.
+    sub_minimum: tuple[SubMinimumBuild, ...] = ()
 
 
 def build_ledger(
@@ -206,7 +265,7 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
     """Write the ledger and the run report under ``out_dir``, returning the paths written.
 
     One directory per premise, so two premises written to the same root do not overwrite
-    each other. Nine files: the six ledger tables, ``run_report.parquet`` – one row, the
+    each other. Ten files: the six ledger tables, ``run_report.parquet`` – one row, the
     G1 (single-premise wall clock) measurement, the solver status and the objective –
     ``screen_dropped.parquet``, the §3.2 screen's work list, which is the table note 20
     records, followed by this premise's ``unreachable_input`` drops
@@ -214,10 +273,12 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
     was offered to a site that cannot fuel it, so a reader building note 20's list filters
     them out on ``leg``; ``n_units_dropped`` counts the §3.2 screen's units only and
     ``n_units_dropped_at_premise`` these. The ninth is
-    ``eligibility_dropped.parquet``, the units a process refused by ``min_duty`` or a 0.00
-    ``max_share`` (admitted units, so not in the screen's list). Both lists are written even
-    when empty, because "nothing was dropped" is a finding too and an absent file cannot say
-    it.
+    ``eligibility_dropped.parquet``, the units a process refused by ``min_duty``, a 0.00
+    ``max_share`` or a recovery unit's ``min_viable_scale`` (admitted units, so not in the
+    screen's list). The tenth is ``sub_minimum_recovery.parquet``, the recovery units the LP
+    built below their ``min_viable_scale`` (:func:`check_recovery_scale`). All three lists
+    are written even when empty, because "nothing was dropped" is a finding too and an
+    absent file cannot say it.
 
     Parquet, not CSV: §3.4's split is that hand-authored inputs stay diffable and outputs do
     not need to be.
@@ -276,6 +337,21 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
         columns=["premise_id", "process_id", "unit_id", "reason", "detail"],
     ).to_parquet(refused_path, index=False)
     written.append(refused_path)
+
+    small_path = directory / "sub_minimum_recovery.parquet"
+    pd.DataFrame(
+        [
+            {
+                "unit_id": item.unit_id,
+                "period": item.period,
+                "new_capacity": item.new_capacity,
+                "min_viable_scale": item.min_viable_scale,
+            }
+            for item in report.sub_minimum
+        ],
+        columns=list(SUB_MINIMUM_COLUMNS),
+    ).to_parquet(small_path, index=False)
+    written.append(small_path)
 
     return tuple(written)
 
