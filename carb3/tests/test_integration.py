@@ -330,7 +330,7 @@ def test_c13_tracks_the_banned_coal_boilers_reject_heat_at_the_dairy(
 def test_a_recovery_unit_is_offered_only_above_its_min_viable_scale(
     reference: ReferenceTables, screen: AdmissionScreen, runs: dict[str, Run]
 ) -> None:
-    """§3.5: A2 offers a recovery unit only where the premise's incumbents reject at least its
+    """§3.5: A2 (expanding the premise to duties and candidate units) offers a recovery unit only where the premise's incumbents reject at least its
     ``min_viable_scale`` of the class it draws, at the base year (note 23 decision 3). The
     dairy's chillers reject about 0.087 PJ/yr of condenser heat, above the condenser heat
     pump's 0.01178; the minimal premise has no chiller and no CHP. A refusal is an
@@ -366,6 +366,20 @@ def test_a_recovery_unit_is_offered_only_above_its_min_viable_scale(
     }
 
 
+def test_the_dairy_economiser_built_below_its_min_viable_scale_is_reported(
+    reference: ReferenceTables, runs: dict[str, Run]
+) -> None:
+    """The screen only decides whether a recovery unit is offered; the LP stays linear and
+    may still build one smaller than its ``min_viable_scale`` (§3.5). At ``mvp-dairy`` it
+    builds ``economiser_flue_condensing`` below its floor, and the post-solve check (§5.7)
+    reports it rather than constraining it, so the objective does not move."""
+    found = ledger.check_recovery_scale(runs["mvp-dairy"].tables.build, reference)
+    assert "economiser_flue_condensing" in {row.unit_id for row in found}
+    for row in found:
+        assert 0.0 < row.new_capacity < row.min_viable_scale
+        assert row.unit_id in recovery_units(reference)
+
+
 @pytest.mark.parametrize("premise_id", SOLVING_PREMISES)
 def test_c13_leaves_todays_objectives_where_they_were(
     reference: ReferenceTables,
@@ -392,7 +406,8 @@ def test_the_screen_drops_nothing_at_the_cement_works(
     Note 23 moved the works' incumbent ``chiller_electric`` reject onto
     ``reject_chiller_condenser``, but no recovery unit is offered at a cement works, the
     chiller sits in ``site_services``, whose ``known_activity`` is blank, and the kilns' rows
-    stay on ``heat_lt60`` (phase 2), so neither the screen nor A2 drops anything new."""
+    stay on ``heat_lt60`` (phase 2), so neither the screen nor A2 (expanding the premise to
+    duties and candidate units) drops anything new."""
     premise = load_premise_tables("mvp-cement")
     sets = build_sets(reference, premise, screen, PERIOD_YEARS)
     screened, drops = build.screen_premise(sets, reference, _incumbents(reference, premise))

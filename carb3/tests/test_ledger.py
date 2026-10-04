@@ -97,6 +97,7 @@ def test_write_parquet_writes_the_screen_list_even_when_it_is_empty(tmp_path: Pa
         "run_report.parquet",
         "screen_dropped.parquet",
         "eligibility_dropped.parquet",
+        "sub_minimum_recovery.parquet",
     }
     assert all(path.parent.name == "fx-empty" for path in written)
     dropped = pd.read_parquet(tmp_path / "fx-empty" / "screen_dropped.parquet")
@@ -107,6 +108,9 @@ def test_write_parquet_writes_the_screen_list_even_when_it_is_empty(tmp_path: Pa
     assert refused.empty
     run = pd.read_parquet(tmp_path / "fx-empty" / "run_report.parquet")
     assert run.loc[0, "n_units_dropped_at_premise"] == 0
+    small = pd.read_parquet(tmp_path / "fx-empty" / "sub_minimum_recovery.parquet")
+    assert list(small.columns) == ["unit_id", "period", "new_capacity", "min_viable_scale"]
+    assert small.empty
 
 
 def test_eligibility_drops_get_their_own_table_not_the_screens(tmp_path: Path) -> None:
@@ -204,3 +208,59 @@ def test_write_parquet_keeps_one_directory_per_premise(tmp_path: Path) -> None:
     report = pd.read_parquet(tmp_path / "fx-b" / "run_report.parquet")
     assert report.loc[0, "n_units_dropped"] == 1
     assert report.loc[0, "wall_clock_seconds"] == pytest.approx(0.25)
+
+
+def _build_rows(*rows: tuple[str, int, float]) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "unit_id": unit_id, "period": period, "new_capacity": new,
+                "available_capacity": new, "surviving_capacity": 0.0, "built_standing": new,
+            }
+            for unit_id, period, new in rows
+        ]
+    )
+
+
+def test_a_recovery_unit_built_below_its_min_viable_scale_is_reported() -> None:
+    """§3.5 and §5.7: the screen decides only whether a recovery unit is offered, and the LP
+    stays linear, so it may still build one smaller than ``min_viable_scale``. That is
+    reported after the solve, never constrained: (unit, period, new capacity, the floor) for
+    every positive build below the floor. A build at or above it, a zero build and a unit
+    that is not a recovery unit are not listed."""
+    from carb3.load import load_reference_tables
+
+    reference = load_reference_tables()
+    scale = reference.unit.set_index("unit_id")["min_viable_scale"]
+    floor = float(scale.loc["economiser_flue_condensing"])
+    table = _build_rows(
+        ("economiser_flue_condensing", 2025, 0.0),
+        ("economiser_flue_condensing", 2030, floor * 0.5),
+        ("economiser_flue_condensing", 2035, floor),
+        ("boiler_lt_gas", 2030, 1e-6),
+    )
+    found = ledger.check_recovery_scale(table, reference)
+    assert found == (
+        ledger.SubMinimumBuild("economiser_flue_condensing", 2030, floor * 0.5, floor),
+    )
+
+
+def test_sub_minimum_builds_are_written_to_their_own_table(tmp_path: Path) -> None:
+    empty = pd.DataFrame()
+    tables = ledger.Ledger(
+        cost_by_term=empty, carrier_mix=empty, dispatch=empty,
+        build=empty, disposal=empty, unit_flow=empty,
+    )
+    small = ledger.SubMinimumBuild("economiser_flue_condensing", 2030, 0.001432, 0.00169)
+    report = ledger.RunReport(
+        premise_id="fx-dairy",
+        screen=AdmissionScreen(frozenset(), ()),
+        n_variables=1,
+        n_constraints=1,
+        wall_clock_seconds=0.5,
+        status="optimal",
+        sub_minimum=(small,),
+    )
+    ledger.write_parquet(tables, report, tmp_path)
+    written = pd.read_parquet(tmp_path / "fx-dairy" / "sub_minimum_recovery.parquet")
+    assert written.to_dict("records") == [dataclasses.asdict(small)]

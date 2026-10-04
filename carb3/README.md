@@ -22,10 +22,13 @@ nor made there (below), any unservable duty with its premise and period, any sta
 in the incumbent plant (below), the solver status, the
 variable and constraint counts, the wall clock (the `G1` measurement), the objective
 decomposition, and the disposal and dispatch tables. It also lists each unit a process
-refused by `min_duty` or a 0.00 `max_share` (the unit stays admitted, so it is not in the
-screen's list). With `--out-dir` that list is written as `eligibility_dropped.parquet`
-(`premise_id`, `process_id`, `unit_id`, `reason`, `detail`), beside `screen_dropped.parquet`,
-which holds only the per-unit admission-screen findings.
+refused by `min_duty`, a 0.00 `max_share` or a recovery unit's `min_viable_scale` (the unit
+stays admitted, so it is not in the screen's list). With `--out-dir` that list is written as
+`eligibility_dropped.parquet` (`premise_id`, `process_id`, `unit_id`, `reason`, `detail`),
+beside `screen_dropped.parquet`, which holds only the per-unit admission-screen findings. After
+the solve it lists each recovery unit built below its `min_viable_scale` (spec §5.7, check 5),
+written as `sub_minimum_recovery.parquet`: reported, not constrained, since the problem stays a
+pure LP.
 
 ```
 make carb3                                       # the tests; also part of `make check`
@@ -157,8 +160,8 @@ result as a data artefact until item 57 is closed.
 
 ## Output tables
 
-With `--out-dir`, each solved premise writes eight parquet tables under `<out>/<premise_id>/`:
-six from the ledger and two from the run report. This is the slice's output, not the full
+With `--out-dir`, each solved premise writes ten parquet tables under `<out>/<premise_id>/`:
+six from the ledger and four from the run report. This is the slice's output, not the full
 spec §8 target contract.
 
 | Table | Rows | Columns (one row per) | Meaning |
@@ -171,6 +174,8 @@ spec §8 target contract.
 | `unit_flow.parquet` | one per unit per carrier per role per period | `unit_id`, `carrier_id`, `role`, `period`, `carrier_kind`, `flow` | Signed flow of each unit on each carrier in each role: a single `flow` column, drawn from the solved activity times the C8 coefficient set |
 | `run_report.parquet` | one row | `premise_id`, `status`, `objective`, `n_variables`, `n_constraints`, `wall_clock_seconds`, `n_units_admitted`, `n_units_dropped` | The G1 (single-premise wall clock) measurement, solver status, final objective, problem size, and the §3.2 admission screen counts |
 | `screen_dropped.parquet` | one per dropped unit per failed leg | `unit_id`, `leg`, `detail` | §3.2 admission screen's work list: which units were refused and why. Written even if empty |
+| `eligibility_dropped.parquet` | one per refused unit per process | `premise_id`, `process_id`, `unit_id`, `reason`, `detail` | Units a process refused by `min_duty`, a 0.00 `max_share` or a recovery unit's `min_viable_scale`. Written even if empty |
+| `sub_minimum_recovery.parquet` | one per recovery unit per period built below its floor | `unit_id`, `period`, `new_capacity`, `min_viable_scale` | Recovery units the LP built with positive new capacity below `min_viable_scale` (spec §5.7, check 5). Reported, not constrained. Written even if empty |
 
 ## Against the live spec
 
