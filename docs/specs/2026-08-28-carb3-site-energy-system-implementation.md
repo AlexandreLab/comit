@@ -199,7 +199,7 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-10-03*
+*Section last updated: 2026-10-06*
 
 **Twenty-five entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, nine by the
@@ -886,7 +886,7 @@ unit by `fuel_carrier_id` and enters the balance through the unit's `fuel_input`
 | `unit_name` | string | — | yes | — | — |
 | `unit_class` | enum{converter, generator, storage, hybrid, abatement} | — | yes | — | — |
 | `spine` | enum{service, chemistry} | — | yes | — | Service units are family-keyed, chemistry node-keyed |
-| `duty_family` | string | — | no | — | Required if `spine` = service |
+| `duty_family` | string | — | no | — | Required on a fuelled `converter` whose `spine` = service. Generators, storage and hybrids leave it blank, since they produce or shift a carrier and serve no duty; so does `anaerobic_digester`, which turns feedstock into biogas |
 | `process_id` | string | — | no | → `activity_process_register` | Required if `spine` = chemistry |
 | `fuel_carrier_id` | string | — | no | → `carrier` | **D13.** The one carrier the unit burns or draws as its fuel, which is what makes `boiler_lt_gas` and `boiler_lt_hydrogen` two units. Set on 132 of the 148 units in `unit.csv` and blank where a unit has no single fuel. Where the unit holds a `fuel_input` row (§3.6) the two name the same carrier. **A unit that names a fuel and holds no `fuel_input` row burns it free, and the admission screen drops it** (§5.7) |
 | `grade_out` | integer | — | no | → `carrier` | The furthest band it can deliver, in the `grade_family` of its primary output: the **highest** heat rank, or the **lowest** (coldest) cooling rank (§3.4). Required where the primary output is gradeable |
@@ -1291,11 +1291,20 @@ normal case and means "use the register".
 | `process_id` | string | — | yes | PK part | → `activity_process_register`, on the pair `(premise_record.carb3_activity, process_id)` |
 | `valid_from_year` | integer | year | yes | PK part | The year this version of the process started at the premise (what opens a version is set out in the rule below). ≤ `premise_record.data_year`. A future year is rejected with reason `process_change_in_future`: a *planned* change is not an observation |
 | `valid_to_year` | integer | year | no | — | The year this version stopped. Absent ⇒ still running. ≥ `valid_from_year` if present |
-| `connection_id` | string | — | no | → `premise_connection` | **Optional.** Which electricity connection serves this process (§3.1.3). Absent ⇒ the default. This is what decides where electrified load lands |
+| `connection_id` | string | — | no | → `premise_connection` | **Optional.** The **electricity** connection (§3.1.3) that serves this process's electric load: the load it draws today, and the load any unit that electrifies it would add. Names a `premise_connection` row whose `carrier_id` is `electricity`, never a fuel connection. Absent ⇒ the default |
 | `known_capacity` | real | capacity units | no | — | > 0 if present. The **installed nameplate capacity** of the process's plant, for example a permit's rated clinker line. Units follow the process's denominator (D5): PJ/yr-equivalent for energy, Mt/yr for mass |
 | `known_activity` | real | activity units | no | — | > 0 if present, and ≤ `known_capacity` where both are given. The **annual activity** of the process in its output unit, for example the clinker a kiln made in the base year. Same units as `known_capacity` (D5). Blank means unknown; a known zero is also left blank, with the reason in `provenance` |
 | `provenance` | string | — | yes | — | Citation: permit number, audit reference, disclosure |
 | `confidence` | enum{high, medium, low} | — | yes | — | Carried through to output |
+
+**Why the connection sits on the process, not on the unit.** A connection says where on the
+site a process runs, and that outlasts the plant. A unit the optimisation builds (a heat pump
+in place of a gas boiler) has no input row to carry a connection, yet its electricity must
+arrive through one meter for C11 (connection capacity, written per connection) to bound it. It
+takes the connection of the process it serves. Fuels need no per-process field: a networked
+fuel is imported through the premise's connection for that carrier, and a delivered fuel
+through none (§3.1.3). A site with two connections on one fuel network would need the fuel
+side named as well; no premise here has one, and nothing is designed for it.
 
 **Rule (completeness, as at a year).** The rows valid at a given year are treated as the
 premise's **complete** process list for that year. A partial list would silently delete

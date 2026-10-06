@@ -138,8 +138,8 @@ From the site's Climate Change Agreement audit, 2024:
 
 | `process_id` | `valid_from_year` | `valid_to_year` | `connection_id` | `known_capacity` | `known_activity` | `confidence` |
 |---|---|---|---|---|---|---|
-| `boiler_steam_hot_water` | 2011 | — | `G-01` | — | — | high |
-| `direct_heating` | **2019** | — | `G-01` | **0.10000 PJ/yr** | 0.07905 PJ/yr (the §3.2 duty, its four band segments summed) | **high** |
+| `boiler_steam_hot_water` | 2011 | — | `E-01` | — | — | high |
+| `direct_heating` | **2019** | — | `E-01` | **0.10000 PJ/yr** | 0.07905 PJ/yr (the §3.2 duty, its four band segments summed) | **high** |
 | `refrigeration` | 2016 | — | `E-01` | — | — | high |
 | `machinery_motors` | 2011 | — | `E-01` | — | — | medium |
 | `compressed_air` | 2011 | — | `E-01` | — | — | medium |
