@@ -765,6 +765,54 @@ def test_unit_flow_keeps_a_derived_emission_apart_from_a_declared_one(
     assert set(kiln["role"]) >= {"primary_output", "fuel_input", "emission", build.A6_ROLE}
 
 
+def test_the_cement_train_takes_ninety_percent_of_each_stream_its_kiln_makes(
+    runs: dict[str, Run],
+) -> None:
+    """Note 24: from 2035 ``ccs_amine`` treats ``kiln_dry_gas``'s flue and captures 0.90 of
+    each of its three CO₂ streams. Under the old blend reading the biogenic stream ran out
+    first and capture stopped at 0.0228 Mt/yr; here the scarce stream caps nothing."""
+    tables = runs["mvp-cement"].tables
+    flow = tables.unit_flow
+    for carrier_id in ("co2_process", "co2_fuel_fossil", "co2_fuel_biogenic"):
+        made = (
+            flow[
+                (flow["unit_id"] == "kiln_dry_gas")
+                & (flow["carrier_id"] == carrier_id)
+                & flow["role"].isin(["emission", build.A6_ROLE])
+            ]
+            .groupby("period")["flow"]
+            .sum()
+        )
+        taken = -(
+            flow[
+                (flow["unit_id"] == "ccs_amine")
+                & (flow["carrier_id"] == carrier_id)
+                & (flow["role"] == "emission_input")
+            ]
+            .groupby("period")["flow"]
+            .sum()
+        )
+        for year in (2035, 2040, 2045, 2050):
+            assert taken[year] == pytest.approx(0.90 * made[year], rel=1e-6), (carrier_id, year)
+    captured = tables.carrier_mix.set_index(["carrier_id", "period"])["produced"]
+    assert captured[("co2_captured", 2035)] > 0.5
+
+
+@pytest.mark.parametrize("premise_id", SOLVING_PREMISES)
+def test_the_post_solve_capture_check_is_clean(
+    runs: dict[str, Run], reference: ReferenceTables, premise_id: str
+) -> None:
+    """V37 (a capture rate is a fraction of its hosts' streams), legs (c) to (f), on every
+    premise that solves. A premise with no capture train has an empty per-host table."""
+    tables = runs[premise_id].tables
+    assert ledger.check_capture(tables, reference) == ()
+    by_host = tables.capture_by_host
+    if premise_id == "mvp-cement":
+        assert set(by_host["host_unit_id"]) == {"kiln_dry_coal", "kiln_dry_gas"}
+    else:
+        assert by_host.empty
+
+
 # --------------------------------------------------------------------------------------
 # The objective
 # --------------------------------------------------------------------------------------
@@ -839,8 +887,15 @@ def test_the_problem_is_sparse_not_dense(runs: dict[str, Run], premise_id: str) 
     model_units = {pair.unit_id for pair in build._dispatch_pairs(sets)}
     # Two copies of "which units the LP holds" (sets.py cannot import build.py); one answer.
     assert model_units == set(sets_model_units(sets))
+    # z^host of C14 (a capture train treats its hosts' flue gas): one column per (train,
+    # host) whose host is in the model, never one per (train, unit).
+    capture = (
+        run.model.variables["z_host"].shape[0] if "z_host" in run.model.variables else 0
+    )
+    hosts = run.tables.capture_by_host
+    assert capture == len(hosts.drop_duplicates(["unit_id", "host_unit_id"]))
     # n, a, e and at most one import and one disposal variable per carrier in the tables.
-    ceiling = (pairs + 3 * len(model_units) + 2 * len(sets.units)) * periods
+    ceiling = (pairs + 3 * len(model_units) + 2 * len(sets.units) + capture) * periods
     assert pairs * periods <= run.result.n_variables <= ceiling
 
     dense = len(sets.units) * len(sets.duties) * periods
@@ -1138,14 +1193,16 @@ def test_the_carbon_term_equals_the_disposal_charge_less_the_biogenic_credit(
 
     Asserting the two tables equal outright was only ever true while nothing captured any
     biogenic CO2 anywhere, which held until note 20 item 56 put the three dry cement kilns'
-    ``co2_process`` back on the kt-per-Mt basis spec 3.6 states. ``ccs_amine`` then became
-    worth building at ``mvp-cement`` and the objective's carbon term sat GBP 0.618m below
-    the disposal table at 2035 -- 2.0457 kt of captured biogenic CO2 at GBP 302.08/t, the
-    credit exactly.
+    ``co2_process`` back on the kt-per-Mt basis spec 3.6 states and ``ccs_amine`` became
+    worth building at ``mvp-cement``.
 
-    The credit is recomputed here from the reference CSVs rather than from
-    :func:`carb3.build.biogenic_capture_weights`, so the two sides of the identity stay
-    independent: the ledger reads the function, this reads the data.
+    Since note 24 a capture train's ``emission_input`` row is a rate, and what it captures is
+    Γ_{u,c,t} = ν × its hosts' gross production of c over the share of their activity it
+    treats (C14, a capture train treats its hosts' flue gas). The credit is recomputed here
+    from the solved flows and the reference CSVs, not from any ``build`` function, so the two
+    sides of the identity stay independent: the ledger reads the build's links, this reads
+    ``unit_flow`` and the data. Each captured biogenic stream is also held to ν times what
+    the train's hosts make, so a credit cannot pass here by crediting CO₂ nobody produced.
     """
     run = runs[premise_id]
     costs = run.tables.cost_by_term
@@ -1177,25 +1234,43 @@ def test_the_carbon_term_equals_the_disposal_charge_less_the_biogenic_credit(
         ].astype(str)
     )
     io = reference.unit_input_output
-    taken = io[
+    rates = io[
         io["unit_id"].astype(str).isin(abatement)
         & (io["role"].astype(str).str.strip() == "emission_input")
         & io["carrier_id"].astype(str).isin(zero_rated)
     ]
-    weights = (
-        taken["coefficient"].astype(float).abs().groupby(taken["unit_id"].astype(str)).sum()
-    )
+    rate = {
+        (str(u), str(c)): abs(float(v))
+        for u, c, v in zip(rates["unit_id"], rates["carrier_id"], rates["coefficient"],
+                           strict=True)
+    }
+    hosts = reference.unit_abatement_host
 
-    dispatch = run.tables.dispatch
+    flow = run.tables.unit_flow
     credit = pd.Series(0.0, index=carbon.index)
-    for unit_id, weight in weights.items():
-        rows = dispatch[dispatch["unit_id"].astype(str) == unit_id]
-        if rows.empty:
+    for (unit_id, carrier_id), nu in rate.items():
+        taken = flow[
+            (flow["unit_id"] == unit_id)
+            & (flow["carrier_id"] == carrier_id)
+            & (flow["role"] == "emission_input")
+        ]
+        if taken.empty:
             continue
-        activity = (
-            rows.groupby("period")["activity"].sum().reindex(carbon.index).fillna(0.0)
+        captured = -taken.groupby("period")["flow"].sum().reindex(carbon.index).fillna(0.0)
+        host_ids = set(hosts.loc[hosts["unit_id"] == unit_id, "host_unit_id"].astype(str))
+        made = (
+            flow[
+                flow["unit_id"].isin(host_ids)
+                & (flow["carrier_id"] == carrier_id)
+                & flow["role"].isin(["emission", build.A6_ROLE])
+            ]
+            .groupby("period")["flow"]
+            .sum()
+            .reindex(carbon.index)
+            .fillna(0.0)
         )
-        credit = credit + activity * weight * build.CARBON_UNIT_CONVERSION * price
+        assert (captured <= nu * made + TOLERANCE).all(), (unit_id, carrier_id)
+        credit = credit + captured * build.CARBON_UNIT_CONVERSION * price
 
     assert (carbon - (charged - credit)).abs().max() < TOLERANCE
     # The premise that pays for the leg above: without it this test cannot tell a correct

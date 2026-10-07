@@ -1458,6 +1458,13 @@ Three features of this pathway:
 
 #### 8.5.1 Where the `carb3` run of `mvp-cement` differs, and why
 
+*The run figures below are those of the run before 2026-10-07. Since then the slice reads a
+capture train's `emission_input` rows as per-stream capture rates under C14 (a capture train
+treats its hosts' flue gas), which changes the run from 2035: it captures 0.511187 Mt/yr and
+solves at £3,640.10m. This section is re-solved against the new run as a follow-on task
+([note 24](../notes/24_ccs_per_stream_capture_plan.md) Task 4); until then its figures are a
+record of the earlier run.*
+
 **The `carb3` run of `mvp-cement` is not this example, and it agrees where the inputs agree.**
 `mvp-cement` re-cuts `P-000123` onto the reference tables, and the run solves to optimality at
 **£4,554.93m**, discounted to 2021. Its base year reproduces §8.1's quantities:
@@ -1475,7 +1482,7 @@ Everything else differs, for the reasons below. The run is the slice's
 `uv run --directory carb3 python -m carb3 mvp-cement`; its figures are read from the parquet
 tables it writes.
 
-**Capture is capped by the scarcest stream.** The run builds `ccs_amine` at 2035 with
+**Capture was capped by the scarcest stream, and no longer is.** The earlier run built `ccs_amine` at 2035 with
 0.024933 Mt/yr of capacity and captures **0.022764 Mt/yr (22.76 kt)**, against this example's
 0.72034 Mt (720.34 kt), 4.0% of the kilns' 567.99 kt stack rather than 90%. §1.11 writes the
 train's three `emission_input` coefficients as a fixed blend, the stack composition of *this*
@@ -1484,14 +1491,16 @@ waste-derived fuel, so its only biogenic CO₂ is natural gas's: 2.020614 kt/yr 
 and 0.025427 from the train's own reboiler, 2.046041 kt in all, and 2.046041 ÷ 89.88 kt per Mt
 = 0.022764 Mt is all the blend allows. A train takes a fraction of each stream independently,
 which three fixed shares cannot say. [Notes/20](../notes/20_reference_data_open_questions.md)
-item 57 records the defect and its fix, per-stream capture rates, and this example is
-re-solved after that fix lands.
+item 57 records the defect, and its fix, per-stream capture rates, landed on 2026-10-07: the
+rows are now 0.90 of each of the hosts' streams, and the run captures 0.90 of the gas kiln's
+567.99 kt, 0.511187 Mt/yr. This example is re-solved against that run as a follow-on.
 
 **The train's capex runs over its own life, not its host's.** §8.4 annuitises `ccs_amine` over
 the 9 years left on the kiln and retires it with the kiln in 2043. The slice annuitises every
-unit over its own `unit.csv` `lifetime` (`carb3/src/carb3/build.py:1862`, 30 years for
-`ccs_amine`), and the train stands to 2050. `unit_abatement_host` is read only by the admission
-screen in `load.py`, which drops a train none of whose hosts was admitted.
+unit over its own `unit.csv` `lifetime` (`carb3/src/carb3/build.py:2006`, 30 years for
+`ccs_amine`), and the train stands to 2050. `unit_abatement_host` names the hosts a train
+captures from under C14 (a capture train treats its hosts' flue gas); the slice does not read it
+for the train's life.
 
 **The base-year kiln split is chosen, not pinned.** §5.2 pins the dispatch to the carrier mix
 read from `premise_energy`. The slice reads no `premise_energy` row and builds no carrier-mix

@@ -98,12 +98,12 @@ knows the gloss.
 > `build_interface_docs.py:137`, and `interfaces.enabled` is `false` for
 > `site-energy-system` while §8 is unwritten, so it never runs for the live spec at all;
 > `build_spec_flow_diagram.py` never calls it. Even where it does run it checks family
-> *presence*, never range values. **Widening `D1`–`D16`, `C1`–`C13` or `V1`–`V36` in §1.4 is a manual
+> *presence*, never range values. **Widening `D1`–`D16`, `C1`–`C14` or `V1`–`V37` in §1.4 is a manual
 > step, in the same commit as the label.** Verified 2026-09-07 while adding D12 and
 > V24–V26, again 2026-09-15 while adding D13–D15 and V27–V30, and again 2026-09-16 while
 > adding V31 — where the table at the foot of this file was widened and this sentence was
 > not, in the same commit, which is the failure it describes — and again 2026-09-17 while
-> adding D16 and V32, and V33 with points 8 and 11, and again 2026-09-24 while adding V34 (duties are services at a grade), and again 2026-10-01 while adding C13 (a cap is not routed through a consumer) and V35, and again 2026-10-02 while adding V36 (reject heat by source class). The `diagrams.domains` partition check described below *is* real; do not
+> adding D16 and V32, and V33 with points 8 and 11, and again 2026-09-24 while adding V34 (duties are services at a grade), and again 2026-10-01 while adding C13 (a cap is not routed through a consumer) and V35, and again 2026-10-02 while adding V36 (reject heat by source class), and again 2026-10-07 while adding C14 (a capture train treats its hosts' flue gas) and V37 (a capture rate is a fraction of its hosts' streams). The `diagrams.domains` partition check described below *is* real; do not
 > confuse the two.
 
 Python here is stdlib-only by necessity: **`pandas` is not installed.** Write validators
@@ -117,8 +117,8 @@ things:
 | Family | Means | Defined in |
 |---|---|---|
 | `D1`–`D16` | Design decisions | live spec §1.6 (the archived vision doc §6 carries the rationale for `D1`–`D11`) |
-| `C1`–`C13` | Constraints | live spec §5.5 |
-| `V1`–`V36` | Validation tests | live spec §10.3 |
+| `C1`–`C14` | Constraints | live spec §5.5 |
+| `V1`–`V37` | Validation tests | live spec §10.3 |
 | `A1`–`A9` | Algorithms | live spec §4 |
 | `S0`–`S9` | Pipeline stages | live spec §2.1 |
 | `R1`–`R3` | Profile rules | archived baseline §3.3.3 |
@@ -266,6 +266,12 @@ at the archived baseline's §6, lines 2126–2127.
   refinery rows at 4.93580 sit 1.35× above the floor and are doubtful on magnitude rather
   than basis — note 20 item 59. Before quoting any emission number, still check the
   coefficient's order of magnitude against its neighbours in the same column.
+  **One class of row is not kt and is skipped by the band: `emission_input` on an
+  `abatement` unit.** Since 2026-10-07 (note 24) it is a capture rate, the fraction of the
+  hosts' stream the train captures, banded in [−1, 0) by `check_capture_rates` (V37, a capture
+  rate is a fraction of its hosts' streams); `ccs_amine` holds −0.90 on each of its three CO₂
+  carriers. Every other `emission_input` row, `tgr_blast_furnace_coke`'s among them, keeps
+  the kt reading.
 - **No unit may put out more energy than it takes in, unless it is flagged `draws_ambient`.**
   `check_energy_closure` (V2's closure leg, §3.6) is blocking since 2026-10-02, after three
   defects made energy unseen: `dryer_steam` (note 20 item 64), `dryer_heat_pump` at COP 3 on

@@ -19,7 +19,7 @@
 
 ## 1. Scope, inputs, conventions, and how to read this
 
-*Section last updated: 2026-10-02*
+*Section last updated: 2026-10-07*
 
 ### 1.1 What this document is
 
@@ -74,10 +74,10 @@ Label families in this document, and where each is defined:
 
 | Family | Meaning | Defined in |
 |---|---|---|
-| `C1`–`C13` | Constraints | §5.5 |
+| `C1`–`C14` | Constraints | §5.5 |
 | `A1`–`A9` | Algorithms | §4 |
 | `S0`–`S9` | Pipeline stages | §2.1 |
-| `V1`–`V36` | Validation tests | §10 |
+| `V1`–`V37` | Validation tests | §10 |
 | `G1`–`G4` | Scale gates | §9 |
 | `D1`–`D16` | Design decisions | §1.6 |
 | `PD1`–`PD2` | Programme decisions | the [overview](2026-08-28-carb3-site-energy-system-overview.md) |
@@ -199,7 +199,7 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-10-06*
+*Section last updated: 2026-10-07*
 
 **Twenty-five entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, nine by the
@@ -897,7 +897,6 @@ unit by `fuel_carrier_id` and enters the balance through the unit's `fuel_input`
 | `availability_factor` | real | fraction | yes | — | ∈ (0, 1] |
 | `capacity_to_activity_factor` | real | — | yes | — | > 0 |
 | `area_per_capacity` | real | m² per capacity unit | no | — | ≥ 0. **Set only on area-bound units** — PV, solar thermal, anything sited against roof or land. Unset means the unit takes no area and is outside C12: a CHP is compact plant and leaves it unset |
-| `emissions_released` | real | fraction | yes | — | ∈ [0, 1]. Fraction **not** captured |
 | `min_viable_scale` | real | capacity units; on a recovery unit, PJ/yr of the reject class it draws | no | — | Screening threshold, applied in A2, **never a binary**. Required on a recovery unit (V36, reject heat by source class), where A2 applies it as below; not yet applied to any other unit |
 | `load_shape_override` | string | — | no | → `process_load_shape` | **By exception only.** The shape belongs to the process (§3.13); a unit overrides it only where the device genuinely changes the draw |
 | `is_hybrid` | boolean | — | yes | — | If true, `unit_bill_of_materials` rows must exist |
@@ -929,7 +928,9 @@ the maintainability claim: adding hydrogen firing is now one unit row per family
 it, roughly ten rows against the 52 hydrogen technology rows today, rather than one.
 
 **Abatement is a unit, not a cost differential against another unit.** A CCS train is a unit
-that consumes a CO₂ carrier produced by its host. **A train may have several hosts**, and under
+that captures a fraction of each CO₂ carrier its hosts produce. The fraction is the train's
+`emission_input` row on that carrier (§3.6), so a capture rate is stated per stream and in one
+place; `unit` carries no rate of its own. **A train may have several hosts**, and under
 D13 (one primary carrier per unit) it usually does: a co-firing kiln is three units, and one
 capture train serves all three. The hosts are therefore named in a table of their own,
 `unit_abatement_host` (§3.5.3), not in a field on the unit. Under D11 (existing plant has an
@@ -1032,7 +1033,9 @@ V20 (c) checks that against.
 #### 3.5.3 `unit_abatement_host`
 
 **Which units an abatement unit captures from.** One row per abatement unit per host.
-Required for every unit with `unit_class = abatement`; meaningless for any other class.
+Required for every unit with `unit_class = abatement`; meaningless for any other class. The hosts
+are what C14 (a capture train treats its hosts' flue gas, §5.5) bounds a train by: a train
+captures only from the hosts named here, and only from those the premise's model holds.
 
 | Field | Type | Unit | Req | Key | Validation |
 |---|---|---|---|---|---|
@@ -1060,6 +1063,14 @@ exactly as the old single-host rule did. Where they differ, the train dies with 
 to go, which is the conservative reading: a train sized for a line cannot outlive the part of
 the line that still feeds it.
 
+**Rule (the hosts are the flue the train treats).** A train captures from its hosts' gross
+production of each CO₂ carrier it holds a rate on, and from nothing else on the site: not from
+another unit's flue, and not from its own reboiler, since it may not host itself. The trains
+named on one host share that host's activity, so one flue is treated once (C14). A host making
+none of a train's carriers contributes nothing, and a train with no such host at a premise is
+dropped there before the solve (§5.7). Every dry cement kiln hosts five alternative trains, which
+are choices for one flue, not absorbers in series.
+
 ### 3.6 `unit_input_output`
 
 Coefficients per unit per carrier per role, per unit of the unit's output. This entity is
@@ -1079,7 +1090,7 @@ consumed negative, produced positive.
 |---|---|---|
 | `fuel_input` | − | **D13.** The one input row that is the unit's fuel. At most one per unit |
 | `aux_input` | − | Any other consumed carrier: a capture train's electricity, a heat pump's source heat, a store's charge leg |
-| `emission_input` | − | An emission carrier the unit consumes — a capture train taking its host's CO₂, a top-gas-recycling furnace taking back its own |
+| `emission_input` | − | An emission carrier the unit consumes. **On an `abatement` unit it is a capture rate**, $-\nu_{u,c}$, the fraction of that carrier the train captures from its hosts (rule below). On any other unit, a top-gas-recycling furnace taking back its own CO₂, it is kt per unit of output like every other row |
 | `primary_output` | + | The carrier the unit exists to make. **Exactly one per unit** |
 | `coproduct` | + | Another produced carrier that is not reject heat: `chp_gas_turbine`'s electricity |
 | `reject` | + | Recoverable heat leaving the unit, on the carrier of its source class (§3.4) |
@@ -1097,7 +1108,7 @@ families need this and neither could be written down when the key was the pair:
 | Case | The two rows |
 |---|---|
 | **Storage** | A battery charges and discharges on `electricity`; a hot-water store on the same heat band. `aux_input` for the charge leg, `primary_output` for the discharge leg, and the round-trip loss is the difference between them |
-| **A capture train with a fired reboiler** | `ccs_amine` takes its host's `co2_fuel_fossil` at −352.57000 as `emission_input` and makes its own from the reboiler at +106.59000 as `emission`, both in kt per Mt of `co2_captured` |
+| **A capture train with a fired reboiler** | `ccs_amine` captures its hosts' `co2_fuel_fossil` at a rate of −0.90 as `emission_input`, and makes its own from the reboiler as a derived `emission` row (D15): 1.9 PJ of gas per Mt of `co2_captured` at the scenario's 51.12 kt/PJ, so 96.011 kt fossil and 1.117 kt biogenic per Mt. The cement worked example's +106.59 is the same row at its own 56.1 kt/PJ |
 
 Netting the two legs into one coefficient is **not** an alternative. It makes the unit load and
 destroys the number: a train that recirculates its flue gas and one that does not become the
@@ -1108,6 +1119,21 @@ A store's charge leg is `aux_input` and not `fuel_input`, so D15 derives no emis
 against it. That is correct rather than convenient: `electricity` is an indirect carrier and
 §7.8 charges an indirect carrier on the import, not on consumption, so the round-trip loss is
 already paid for where it is imported.
+
+**Rule (an `emission_input` row on an `abatement` unit is a capture rate).** On a capture train
+the row is $-\nu_{u,c}$ with $\nu_{u,c} \in (0, 1]$: the fraction of carrier $c$ the train
+captures from the gross production of its hosts (§3.5.3), not a coefficient per unit of the
+train's output. `ccs_amine` holds −0.90 on each of `co2_process`, `co2_fuel_fossil` and
+`co2_fuel_biogenic`, because a post-combustion train sees one mixed flue gas and takes the same
+fraction of every stream in it; a partial oxyfuel train capturing only a calciner's process CO₂
+would hold one row. What the train captures is $\Gamma_{u,c,t}$ of C14 (a capture train treats
+its hosts' flue gas, §5.5), and its activity, Mt of `co2_captured`, is $10^{-3}\sum_c
+\Gamma_{u,c,t}$. **One role then has two bases**, kt per output on a converter and a fraction on
+a train, and a coefficient read on the wrong basis is exactly the error the emission-coefficient
+band exists to catch, so the band skips these rows and only these, and V37 (a capture rate is a
+fraction of its hosts' streams) bands them in $[-1, 0)$ instead. Read as kt per Mt, three fixed
+shares would state one premise's blend, and the scarcest stream would cap the train wherever the
+fuel mix differs.
 
 **Rule (exactly one fuel input) — D13.** At most one row carries `role = fuel_input`, and
 that carrier is the unit's fuel. `boiler_gas` names gas; `boiler_hydrogen` is a different
@@ -1786,7 +1812,7 @@ would change a premise's answer without changing any input the reader can see.
 
 ## 4. Algorithms
 
-*Section last updated: 2026-10-01*
+*Section last updated: 2026-10-07*
 
 > **Partially written.** The numbered pseudocode for A1–A9 is outstanding; the delivery plan
 > names its owner. What each algorithm is responsible for, and the two rules that were open
@@ -1801,7 +1827,7 @@ Nine algorithms run the pipeline of §2.1. A1–A9 map onto the stages S1–S9 o
 | A3 | Allocate premise energy onto carriers | Split metered energy across carriers. It does **not** allocate energy across processes: the carrier balance decides that. **Reads the base year only; history rows are carried to reporting untouched** |
 | A4 | Back-solve implied capacity, carrier mix and vintage | Turn metered energy into installed unit capacity, the mix of carriers each unit burns (§4.1), and plant age under D11. **Back-solves from the base year only, reads only base-year-valid process rows, and carries a substituted carrier vintage into the mix evidence. Where a process has no duty (D16), the `premise_throughput` evidence row is what the utilisation and implied-output checks of §5.1 are run against** |
 | A5 | Apply the scenario | Attach prices, carbon price, infrastructure availability and the archetype coefficients ψ, β, χ, ε |
-| A6 | Build the per-premise problem | Declare variables over units and carrier flows, assemble C1–C13 and the objective of §5.4. **Derive the fuel-emission coefficients of §3.6 over $\mathcal{C}^{\text{burn}}_u$** — every consumed carrier that is `primary` and not `is_indirect`, summed across carriers and roles, so a unit's secondary fuels are charged and its electricity is not |
+| A6 | Build the per-premise problem | Declare variables over units and carrier flows, assemble C1–C14 and the objective of §5.4. **Derive the fuel-emission coefficients of §3.6 over $\mathcal{C}^{\text{burn}}_u$** — every consumed carrier that is `primary` and not `is_indirect`, summed across carriers and roles, so a unit's secondary fuels are charged and its electricity is not |
 | A7 | Solve and extract | Solve, extract the pathway, and handle infeasibility by the relaxation ladder of §4.2 |
 | A8 | Assemble output tables | Produce the per-premise pathway rows, each carrying its evidence tier, **the disposal quantities of §5.2 and the §7.7 allocated intensities beside the accounted figures they derive from** |
 | A9 | Aggregate to GB and compare | Roll up across premises; compare against ECUK and the GHGI |
@@ -1849,7 +1875,7 @@ model wants it or not.
 
 ## 5. The optimisation model
 
-*Section last updated: 2026-10-03*
+*Section last updated: 2026-10-07*
 
 **This section is authoritative.** Everything else serves it.
 
@@ -1866,6 +1892,8 @@ model wants it or not.
 | $U_q$ | Units eligible for duty $q$, after `unit_eligibility` screening |
 | $Q_u$ | Duties $u$ is eligible for, $Q_u = \{q : u \in U_q\}$. The transpose of $U_q$ |
 | $U^{\text{gen}}$ | Generator units, those with `unit_class` = generator |
+| $U^{\text{abate}}$ | Capture trains, those with `unit_class` = abatement. One holding no `emission_input` rate captures nothing and C14 holds it at zero |
+| $H_u$ | The hosts of train $u \in U^{\text{abate}}$: its `unit_abatement_host` rows (§3.5.3), intersected with the units in the model at the premise. Never contains $u$ |
 | $U^{\text{area}}$ | Area-bound units, those with `area_per_capacity` set (§3.5). Not $U^{\text{gen}}$: PV is in both; a CHP, an engine or a boiler house takes no area and is outside $U^{\text{area}}$ whatever its class |
 | $c^{\star}_u$ | Primary output carrier of $u$ — the one `role = primary_output` row of §3.6 |
 | $U^0$ | **Incumbent** units, those with existing capacity |
@@ -1943,6 +1971,7 @@ All continuous and non-negative. **The problem is a pure LP and must stay one.**
 | $x_{c,k,t}$ | Export of carrier $c$ at connection $k$. Declared where `carrier.may_export` (§3.4) is true **and** a `premise_connection` row carries $c$ | PJ/yr |
 | $w_{k,t}$ | Reinforcement purchased at connection $k$ | MW |
 | $d_{c,t}$ | **Disposal of carrier $c$** — heat rejected to atmosphere, CO₂ vented. Declared only where `carrier.may_dispose` (§3.4) | PJ/yr or Mt/yr |
+| $z^{\text{host}}_{u,u',t}$ | Activity of host $u'$ whose flue gas train $u$ treats (C14). Declared for $u \in U^{\text{abate}}$ and $u' \in H_u$ where $u'$ makes a carrier $u$ captures | output units of $u'$ |
 | $\zeta^{\text{in}}_{k,w,c,t}$ | Energy of capped unit $k$ (its **tracer**) entering unit $w$ through carrier $c$ (C13). Declared only for a capped unit $k$, and a unit $w$ and energy carrier $c$ that $k$'s energy can reach through the balance | PJ/yr |
 | $\zeta^{\text{duty}}_{k,w,q,t}$ | $k$'s energy leaving $w$ in its dispatch to duty $q$ (C13) | PJ/yr |
 | $\zeta^{\text{rel}}_{k,w,t}$ | $k$'s energy leaving $w$ in its $z^{\circ}$ release (C13) | PJ/yr |
@@ -2014,10 +2043,12 @@ expressible.
 |---|---|---|
 | $D_{q,t}$ | `process_duty` | Duty quantity |
 | $\iota_{u,c,\theta}$ | `unit_input_output.coefficient` | Signed coefficient of $u$ for $c$ in role $\theta$. A unit may hold one row per role on a carrier, which is how a store and a fired capture train are written (§3.6) |
-| $\theta \in \Theta_{u,c}$ | `unit_input_output.role` | A §3.6 role, and the set of roles $u$ holds on $c$. **$\theta$, not $\rho$** — $\rho_u$ two rows below is the fraction not captured, and the two are unrelated |
+| $\theta \in \Theta_{u,c}$ | `unit_input_output.role` | A §3.6 role, and the set of roles $u$ holds on $c$ |
 | $\Theta^{-}_{u,c}$ | `unit_input_output.role` | The **consuming** roles in $\Theta_{u,c}$ — `fuel_input`, `aux_input`, `emission_input`. Used by §3.6's A6 derivation, which must not read a unit's *output* rows on a carrier it also burns. The superscript is a restriction of $\Theta_{u,c}$, not a second symbol |
 | $\kappa_u, \phi_u, L_u$ | `unit` | Capex, fixed opex, lifetime |
-| $\alpha_u, \gamma_u, \rho_u$ | `unit` | Availability, capacity→activity, fraction not captured |
+| $\alpha_u, \gamma_u$ | `unit` | Availability, capacity→activity |
+| $\nu_{u,c}$ | `unit_input_output.coefficient` | Capture rate of train $u \in U^{\text{abate}}$ on emission carrier $c$, in (0, 1]: minus its `emission_input` coefficient (§3.6) |
+| $\iota^{\text{gross}}_{u',c,t}$ | `unit_input_output`, A6 | Host $u'$'s **gross** production of $c$ per unit of its activity: its declared `emission` row plus A6's derived row, never net of its own `emission_input`. Netting would give `tgr_blast_furnace_coke`, which draws back 183 kt of `co2_process` per Mt, a negative production |
 | $\psi_u, \beta_u, \chi_u, \varepsilon_u$ | `archetype_coefficient` | Tier A coefficients |
 | $\eta_{u,t}, \bar R_{u,t}$ | D11 survival function | Fraction surviving, mean remaining life |
 | $\xi$ | `scenario_parameters` | Stranding factor |
@@ -2166,16 +2197,18 @@ carbon on what is vented.
 carrier, so produced CO₂ must either be captured or disposed of, and the disposal variable is
 the emission event:
 
-$$Z^{\text{carbon}}_t = 10^{-3}\,\pi_t \Big( \underbrace{\sum_{c\,:\,\text{charged}} d_{c,t}}_{\text{vented}} \;-\; \underbrace{\sum_{c\,:\,\text{zero\_rated}}\;\sum_{u \in U^{\text{abate}}} \big|\iota_{u,c,\,\text{emission\_input}}\big|\, z_{u,t}}_{\text{biogenic captured}} \Big)$$
+$$Z^{\text{carbon}}_t = 10^{-3}\,\pi_t \Big( \underbrace{\sum_{c\,:\,\text{charged}} d_{c,t}}_{\text{vented}} \;-\; \underbrace{\sum_{c\,:\,\text{zero\_rated}}\;\sum_{u \in U^{\text{abate}}} \Gamma_{u,c,t}}_{\text{biogenic captured}} \Big)$$
 
-with `charged` and `zero_rated` read from `carrier.carbon_charge` (§3.4). The first term is
-what leaves the stack; the second is the credit for biogenic carbon that did not, and it is
-the only negative emission the model can produce.
+with `charged` and `zero_rated` read from `carrier.carbon_charge` (§3.4) and $\Gamma_{u,c,t}$ the
+capture C14 (a capture train treats its hosts' flue gas) defines. The first term is what leaves
+the stack; the second is the credit for biogenic carbon that did not, and it is the only negative
+emission the model can produce. Since $\Gamma$ is $\nu$ times the biogenic CO₂ the treated share
+of each host makes, the credit can never exceed what the hosts produced.
 
 **This is equivalent to charging fuel consumption less capture, and better behaved.** C8
 forces produced CO₂ to go somewhere, so venting cannot be avoided by not modelling it. What
-changes is that capture needs no term of its own — a train simply consumes the carrier and
-the charge falls — and that biomass zero-rating sits in the carrier set rather than in an
+changes is that capture needs no term of its own (a train takes $\Gamma$ out of the carrier's
+balance and the charge falls), and that biomass zero-rating sits in the carrier set rather than in an
 accounting rule applied afterwards.
 
 **Carbon cost carries a $10^{-3}$ unit conversion.** Emission
@@ -2249,14 +2282,17 @@ premise:
 
 $$\sum_{u \in U} \;\sum_{\theta \,\in\, \Theta_{u,c}} \Big( \mathbb{1}[\theta \neq \texttt{primary\_output}]\, z_{u,t} \;+\; \mathbb{1}[\theta = \texttt{primary\_output}]\, z^{\circ}_{u,t} \Big)\,\iota_{u,c,\theta}
 \;+\; \sum_{c'' :\, f(c'') = f(c),\ \hat g(c'') > \hat g(c)} h_{c'' \to c,t} \;-\; \sum_{c' :\, f(c') = f(c),\ \hat g(c') < \hat g(c)} h_{c \to c',t}
-\;+\; \sum_{k \in \mathcal{K}} \big(m_{c,k,t} - x_{c,k,t}\big) \;+\; m_{c,t} \;-\; d_{c,t} \;=\; 0 \qquad \forall c \in \mathcal{C},\, t$$
+\;+\; \sum_{k \in \mathcal{K}} \big(m_{c,k,t} - x_{c,k,t}\big) \;+\; m_{c,t} \;-\; d_{c,t} \;-\; \sum_{u \in U^{\text{abate}}} \Gamma_{u,c,t} \;=\; 0 \qquad \forall c \in \mathcal{C},\, t$$
 
 with $m_{c,k,t} = m_{c,t} = 0$ where `carrier.may_import` is false and $x_{c,k,t} = 0$ where
 `carrier.may_export` is false (D16); of the two import terms **exactly one is declared** for a
 carrier the flag admits — $m_{c,k,t}$ where a `premise_connection` row carries $c$, $m_{c,t}$
 where none does (§5.2) — and $x_{c,k,t} = 0$ where the premise has no connection carrying $c$,
 since an export must go onto a network. Both cascade sums are empty where $c$ is not gradeable,
-and $d_{c,t} = 0$ where `carrier.may_dispose` is false. Every carrier balances, including
+and $d_{c,t} = 0$ where `carrier.may_dispose` is false. **A capture train's `emission_input` rows
+are not in the first sum**: they are rates, not coefficients per unit of output (§3.6), and the
+train's draw enters as $-\Gamma_{u,c,t}$ from C14 instead. Its other rows, a reboiler's fuel and
+the CO₂ A6 derives from it, enter the first sum like any unit's. Every carrier balances, including
 electricity: that is what makes onsite generation, CHP and export expressible at all.
 
 **Three things the form settles.** A unit's inputs, co-products and reject heat scale with
@@ -2402,6 +2438,50 @@ proportional mixing at a pool would be bilinear and is not used.
 energy another unit draws, gets no tracer variable and no C13 row. A capped unit with no
 traced energy reaching its capped duty keeps only its bound on $z_{k,q,t}$. Checked by V35.
 
+**C14: a capture train treats its hosts' flue gas.** A real train treats a flue gas and takes the
+same fraction of every CO₂ stream in it. Written directly, "the same fraction of each stream" is a
+fraction variable times the streams, which are themselves variables: bilinear. C14 keeps it
+linear by treating a **share of each host's activity**. For every train $u \in U^{\text{abate}}$,
+host $u'$ and period:
+
+$$\Gamma_{u,c,t} \;\equiv\; \nu_{u,c} \sum_{u' \in H_u} \iota^{\text{gross}}_{u',c,t}\, z^{\text{host}}_{u,u',t} \qquad\qquad z_{u,t} \;=\; 10^{-3} \sum_{c} \Gamma_{u,c,t} \qquad\qquad \sum_{u \,:\, u' \in H_u} z^{\text{host}}_{u,u',t} \;\le\; z_{u',t}$$
+
+$\Gamma_{u,c,t}$, kt/yr, is an expression and not a variable, and C8 on $c$ takes $-\Gamma_{u,c,t}$.
+The equality makes the train's activity, Mt of `co2_captured`, the mass it captures. A train in
+the model with no rate, or with no host making any of its carriers, has no $z^{\text{host}}$ and
+its activity is held at zero.
+
+**A design point left for the owner: credit pumping.** Because a kt of captured biogenic CO₂
+earns a credit, a biogenic host whose output may be disposed of could be run harder than its
+duties need, purely to make more biogenic CO₂ for its train to capture and be credited for; C14
+does not forbid it, and whether the credit should be capped by the host's duty-driven activity
+is not settled here.
+
+**The bound is summed over the trains on one host, and that is load-bearing.** Every dry cement
+kiln hosts five trains (§3.5.3). A bound per train, $z^{\text{host}}_{u,u',t} \le z_{u',t}$, would
+let two trains each treat the whole kiln and capture 180% of its CO₂. Summed, one flue is treated
+once. A second train stacked on the residual stream the first vents would need a residual carrier
+and is not expressible.
+
+**What it fixes, and what it relaxes.** Within one host the mix is exact: the train treats a
+share of that host's activity and takes $\nu_{u,c}$ of every stream that share produces, so the
+streams are captured in the host's own proportions by construction. Across hosts it is not: when
+a train's capacity binds, the LP may treat one host's flue and not another's, where on a co-fired
+line D13 (one primary carrier per unit) has split one physical flue into one unit per fuel. The
+relaxation moves no objective: a kt of charged CO₂ captured avoids $10^{-3}\pi_t$, a kt of
+biogenic CO₂ captured earns the same as a credit, and the train's costs are per Mt captured
+whatever the stream, so only the reported split between hosts can differ, and only in a period
+where capacity binds. The per-host split is then an allocation, not a measurement.
+
+**The train's own reboiler is not captured.** A train is never its own host (§3.5.3), so the CO₂
+its reboiler burns vents and is charged. COMIT's bundle `ICMKLNMNQ01` applies its one capture
+rate to all its fuel CO₂, the CHP's included; that difference is recorded for §10.2's
+carrier-equivalent configuration.
+
+**Size.** $\sum_u |H_u| \times |T|$ variables and as many bound rows (one per host and period,
+whatever the number of trains), plus $|U^{\text{abate}}| \times |T|$ equalities. No binary, so the
+problem stays a linear programme. Checked by V37.
+
 **Non-degeneracy rule.** $p^{\text{exp}}_{c,t} < p^{\text{imp}}_{c,t}$ strictly, per carrier
 per period, asserted at load (V21). Equal prices make building and importing exactly
 cost-equivalent, and the solver is then free to report either — two identical runs would
@@ -2412,7 +2492,8 @@ stopped being once a store and a fired capture train could hold two rows on one 
 **What the slice builds.** C1 (duty satisfaction), C2 (activity limited by available capacity),
 C3 (capacity transfer), C4 (incumbent ageing, as an equality), C5 (no building in the start
 year) and C8 (carrier balance); C9 (infrastructure availability) as the CO₂ export gate; C10
-(the grade cascade) as a filter; and C13 (a cap is not routed through a consumer) in full. **C6 (unit stability), C7 (known changes), C11 (connection
+(the grade cascade) as a filter; C13 (a cap is not routed through a consumer) and C14 (a
+capture train treats its hosts' flue gas) in full. **C6 (unit stability), C7 (known changes), C11 (connection
 capacity) and C12 (siting cap) are not built.** The notes under each constraint above say where
 the slice departs from the form written here.
 
@@ -2456,11 +2537,11 @@ $\lambda$ alone is a floor and must be reported as one.
 
 ### 5.7 Pre-solve and post-solve checks
 
-Five checks surround the solve, in this order. Check 1 (the admission screen) drops units and
+Six checks surround the solve, in this order. Check 1 (the admission screen) drops units and
 reports each one. Checks 2 and 3 (an unservable duty, a start-year shortfall), like a non-optimal
 solve, are **diagnoses, not exceptions**: they are answers about the data and come back as a blocked
-premise carrying the reason. Checks 4 and 5 (the row check, a recovery unit built below its
-minimum) run after a solve and report.
+premise carrying the reason. Checks 4, 5 and 6 (the row check, a recovery unit built below its
+minimum, the capture check) run after a solve and report.
 
 | # | Check | Where | What it does |
 |---|---|---|---|
@@ -2469,6 +2550,16 @@ minimum) run after a solve and report.
 | 3 | **Start-year shortfall** | `sets.diagnose_start_year_shortfall` | C1 is an equality, C2 caps each unit at its deliverable capacity, and C5 forbids building in the start year, so the incumbents alone must cover every duty in the first period. This is a transportation problem (incumbents supply, duties demand, an edge wherever the unit is in $U_q$, a `max_share` capping its edge), answered exactly by a **maximum flow**, and the **minimum cut** names the smallest group of duties whose demand exceeds what the incumbents able to serve them can deliver. It is a necessary condition only: units that supply an internal product with no duty (D16) also draw on C2 and are not in the flow |
 | 4 | **Row check** | `build.check_constraint_rows` | After the solve, multiplies the built matrix by the returned solution and verifies every row independently of the solver, so a carrier node that does not balance is caught even when the solver reports `optimal`. Violations are reported with the row, not raised |
 | 5 | **Recovery unit built below its minimum** | `ledger.check_recovery_scale` | After the solve, lists every recovery unit (§3.5) whose new capacity in a period is positive and below its `min_viable_scale`, with the unit, the period, the capacity built and the floor. The screen in A2 (expanding the premise to duties and candidate units) decides only whether the unit is offered, and the problem has no binary to hold a build at zero or at the floor, so this is reported rather than constrained, as §3.5.1 reports a site whose optimal size lands below a credible minimum. Written to `sub_minimum_recovery.parquet` |
+| 6 | **Capture check** | `ledger.check_capture` | After the solve, V37 (a capture rate is a fraction of its hosts' streams) legs (c) to (f), read back from the output tables rather than from the build: (c) no train captures more of a carrier than $\nu$ times its hosts' gross production; (d) within one host the captured streams stand in that host's production proportions; (e) the trains on one host treat at most its activity in total; (f) the carbon term equals the charged venting less $10^{-3}\pi_t\sum\Gamma$ on the `zero_rated` carriers. The hosts are read from `unit_abatement_host`, never from the build, so a train counted as its own host is caught. **Leg (d) is a consistency check, not an independent one**: its expected value is built from the host's production as the output tables report it, so it catches a per-host row that disagrees with those tables, not a wrong $\iota^{\text{gross}}$, which would be wrong on both sides. Violations are reported by leg and fail the run, because each is a build defect rather than an answer about the data |
+
+**The per-premise screen sits between check 1 and the build.** A unit check 1 admits may still be
+unable to run at a given premise: it draws a carrier the premise can neither import nor make, or it
+is a capture train none of whose hosts (§3.5.3) is in the premise's model and makes a carrier it
+captures, judged on the hosts' gross production as C14 reads it, or an abatement unit holding no
+rate at all. Either is dropped before the LP is built and reported beside check 1's drops, under its
+own leg, because the unit is sound and was offered to a site that cannot use it. A capture train's
+`emission_input` rows are rates on its hosts' streams, not draws, so they never strand it here; its
+hosts do.
 
 **A2's eligibility refusals come before these checks and are not check 1.** A2 (expanding the premise to duties and candidate units) removes a unit
 from a process for three reasons that are statements about the premise, not about the unit's
@@ -2496,13 +2587,13 @@ which the slice builds, builds in a reduced form, or leaves out.
 
 ## 7. Emissions accounting
 
-*Section last updated: 2026-10-01*
+*Section last updated: 2026-10-07*
 
 Emissions have two sources: combustion of a fuel carrier, and process chemistry tied to
 physical throughput. Under D15 both are **carriers**, so this section is a readout of the
 balance rather than a calculation beside it:
 
-$$\text{direct emissions}_t \;=\; \sum_{c\,:\,\text{charged}} d_{c,t} \;-\; \sum_{c\,:\,\text{zero\_rated}}\;\sum_{u \in U^{\text{abate}}} \big|\iota_{u,c,\,\text{emission\_input}}\big|\, z_{u,t}$$
+$$\text{direct emissions}_t \;=\; \sum_{c\,:\,\text{charged}} d_{c,t} \;-\; \sum_{c\,:\,\text{zero\_rated}}\;\sum_{u \in U^{\text{abate}}} \Gamma_{u,c,t}$$
 
 the same expression the objective charges (§5.4), which is what stops the reported total and
 the costed total from ever drifting apart. The rules below say how the carriers are produced
@@ -2512,7 +2603,7 @@ and who they are attributed to; none of them is a second calculation.
 |---|---|
 | 7.1 | **Two sources, both carriers (D15).** Fuel CO₂ is **produced by** the unit that burns the fuel, never by the unit that consumes the heat that fuel made; its coefficient is derived in §3.6 over $\mathcal{C}^{\text{burn}}_u$, so a unit's **second and later fuels count exactly like its first** — the role a row carries does not change whether its carbon is released. Process CO₂ is produced by the chemistry unit against its mass denominator (D5) and is declared |
 | 7.2 | **Non-CO₂ gases** are tracked separately, are **not** carriers, and **CCS never abates them** |
-| 7.3 | **Biomass zero-rating is applied before capture** — the split into `co2_fuel_fossil` and `co2_fuel_biogenic` happens at production (§3.6), so capture of a co-fired stream takes both pro rata and the biogenic share returns a **credit**. Net-negative, not zero |
+| 7.3 | **Biomass zero-rating is applied before capture** — the split into `co2_fuel_fossil` and `co2_fuel_biogenic` happens at production (§3.6), so capture of a co-fired stream takes both pro rata and the biogenic share returns a **credit**. Net-negative, not zero. Pro rata holds by construction within each host: C14 (a capture train treats its hosts' flue gas) captures $\nu_{u,c}$ of every stream the treated share of a host makes |
 | 7.4 | **Direct versus indirect** is a property of the carrier — `carrier.is_indirect` (§3.4) — not a list held in code |
 | 7.5 | **Reporting categories** are derived over units. Categories may overlap, and a unit may appear in more than one |
 | 7.6 | **Reconciliation, at the base year.** Reported totals reconcile against `premise_measured_emissions` (§3.11) **at the base year** wherever a row exists there. Other years are a reported trend and never a calibration target. A premise with rows but none at the base year is reported `emissions_year_unmatched` and not reconciled (§3.1.1) |
@@ -2641,7 +2732,7 @@ degeneracy that would otherwise let the solver report either of two equal-cost a
 
 ## 10. Validation
 
-*Section last updated: 2026-10-02*
+*Section last updated: 2026-10-07*
 
 ### 10.1 Scopes
 
@@ -2733,6 +2824,7 @@ pass mark.
 | **V34** | load | yes | **Duties are services at a grade (§3.3, §3.4).** (a) no `activity_process_duty_profile` or `process_duty` row names a `primary` or `emission` carrier, whatever its family — an `OTH` row on `electricity` fails here; (b) every row on a gradeable carrier carries a `grade_rank`, equal to that carrier's own, and no row on a non-gradeable carrier carries one; (c) each family's rows sit on the carrier §3.4's table names for it — `REF` on a cooling band, the six heat families on a heat band, `MOT` on `motive_power` — and no row carries `EN`, `NEUOTH` or `HRS`; (d) every gradeable carrier has a `grade_family`, and `grade_rank` is unique within it. Failure names the row |
 | **V35** | premise | yes | **A cap is not routed through a consumer (C13, §5.5).** On fixtures where a capped unit's output pays to launder: (a) with C13 off the unit exceeds its share, so the fixture bites; (b) with C13 on, its own dispatch plus its traced energy in the duty stays within $s\,D$; (c) a 0.00 prohibition blocks routing into its own process but not into another; (d) the route through a capped unit's reject heat, into a unit drawing its reject carrier, is closed as well as the $z^{\circ}$ one; (e) a consumer's output carries the capped unit's energy at $\eta_w$, never its ambient gain; (f) the energy follows a consumer's by-products, not only its primary output; (g) an uncapped use (export, disposal, another duty) absorbs it rather than barring the unit; (h) a release with no duty is followed through to the barred duty; (i) output is read net, so a store is never a source; (j) a premise with nothing traced builds no C13 variable or row. Failure names the unit and the duty |
 | **V36** | load | yes | **Reject heat by source class (§3.4, §3.5).** (a) every `reject` row lands on a reject source class or on `heat_lt60`, and each class carrier is `intermediate`, not gradeable, `energy`, `may_dispose` true and `may_import` and `may_export` false; (b) every class is made by at least one `reject` row and drawn by at least one recovery unit, except the classes §3.4's table leaves without one, which nothing may draw; (c) a recovery unit draws exactly one class, and unless it takes a work input its `grade_out` is no hotter than the band §3.4 allows for that class; (d) a recovery unit carries a positive `min_viable_scale` stated in PJ/yr of the class it draws. Failure names the unit or the class |
+| **V37** | load + premise | yes | **A capture rate is a fraction of its hosts' streams (§3.6, C14).** At load: (a) every `emission_input` row on an `abatement` unit lies in $[-1, 0)$, an `abatement` unit with any coefficient rows holds at least one such rate, and the emission-coefficient band skips exactly those rows and no others; (b) each carrier a train holds a rate on is produced by at least one of its hosts, with fuel CO₂ re-derived from the hosts' burnt `primary`, non-`is_indirect` carriers and their `biogenic_fraction` as A6 does. After the solve (§5.7, check 6): (c) no train captures more of a carrier than $\nu$ times its hosts' gross production; (d) within one host the captured streams stand in that host's production proportions; (e) the trains on one host treat at most its activity in total; (f) the reported biogenic credit equals $10^{-3}\pi_t\sum\Gamma$ on the `zero_rated` carriers. Failure names the train, the carrier and the leg |
 
 **V20's five legs.**
 
@@ -2780,6 +2872,8 @@ write. Its scope is the whole built problem, not just A3 and A4: the archetype m
   a cap is not routed (C13)        ───▶ V35               premise
   reject heat by source class      ───▶ V36 (a)-(c)       load
   recovery unit minimum size       ───▶ V36 (d)           load
+  capture rates on a train         ───▶ V37 (a)-(b)       load
+  a train treats its hosts (C14)   ───▶ V37 (c)-(f)       premise
   archetype coefficients ψ/β/χ/ε   ───▶ V20 (a)           load
   hybrid unit bill of materials    ───▶ V20 (b)           load
   hybrid unit capex levelisation   ───▶ V20 (c)           load
@@ -2844,7 +2938,7 @@ Widening a range is a manual step in the same commit as the label.
 | 13 | A CHP's electricity is given its own emission factor on top of its fuel being charged, and the site total inflates by whatever it generated | V29 | §7.7's two layers; the objective reads only the accounted one |
 | 14 | A premise generating its own electricity is charged the grid factor on power that never came off the grid | V29 | §7.8 — an indirect carrier is charged on $m_{c,k,t}$, not on consumption |
 | 15 | A product a downstream unit consumes is given a duty as well, so C1 (duty satisfaction) and C8 (carrier balance) compete for the same tonne and one of them must fail | V32 (b) + V18 | Load assertion on the duty tables, premise assertion on the node |
-| 16 | A capture train is named one host of several, so two thirds of a co-firing kiln's CO₂ has no route to it and the train's life is read off whichever host happened to be named | V33 (b) + V17 | Load assertion on the host table, premise assertion on the inherited life |
+| 16 | A capture train is named one host of several, so two thirds of a co-firing kiln's CO₂ has no route to it and the train's life is read off whichever host happened to be named. Or its rates are read as a fixed blend of streams, so the scarcest stream caps it wherever the fuel mix differs from the one the blend was written for; or two trains on one flue each treat all of it | V33 (b) + V17 + V37 | Load assertion on the host table and the rates, premise assertion on the inherited life, C14's summed host bound, and the post-solve capture check (§5.7) |
 | 17 | A unit the model cannot fully cost enters $U$, so the optimiser reads the blank as free energy and builds it or burns the fuel at no price | §5.7 admission screen (`make data-report` counts it) | The unit is dropped at load and reported once per failed leg |
 | 18 | The incumbent plant cannot cover the start year's duties, so the LP is infeasible with nothing to say which duty failed | §5.7 start-year shortfall | Diagnosed before the LP is built by a maximum flow; the minimum cut names the duties, and the premise is reported blocked |
 | 19 | The solver reports `optimal` but a row of the built matrix is violated | §5.7 row check | Reported with the row, independently of the solver |

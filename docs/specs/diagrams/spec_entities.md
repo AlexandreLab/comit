@@ -178,7 +178,7 @@ One row per table, in the order §3 defines them.
 |  | `process_duty` | §3.9 | — | `quantity`, `evidence_tier` |
 |  | `activity_process_energy_share` | §3.3.1 | how much energy each process takes | `energy_share`, `share_low`, `share_high`, `evidence_tier`, `provenance`, `confidence` |
 | Carriers | `carrier` | §3.4 | — | `carrier_name`, `carrier_kind`, `is_gradeable`, `grade_family`, `grade_rank`, `grade_label`, `is_indirect`, `biogenic_fraction`, `carbon_charge`, `denominator_kind`, `may_dispose`, `may_import`, `may_export` |
-| Units | `unit` | §3.5 | — | `unit_name`, `unit_class`, `spine`, `duty_family`, `capex`, `fixed_opex`, `lifetime`, `availability_factor`, `capacity_to_activity_factor`, `area_per_capacity`, `emissions_released`, `min_viable_scale`, `is_hybrid`, `draws_ambient`, `provenance`, `confidence` |
+| Units | `unit` | §3.5 | — | `unit_name`, `unit_class`, `spine`, `duty_family`, `capex`, `fixed_opex`, `lifetime`, `availability_factor`, `capacity_to_activity_factor`, `area_per_capacity`, `min_viable_scale`, `is_hybrid`, `draws_ambient`, `provenance`, `confidence` |
 |  | `unit_eligibility` | §3.5.1 | — | `min_duty`, `max_share`, `earliest_year`, `provenance` |
 |  | `unit_bill_of_materials` | §3.5.2 | — | `capacity_share`, `capex_share`, `component_lifetime`, `replacements_in_life` |
 |  | `unit_abatement_host` | §3.5.3 | — | `provenance` |
@@ -353,7 +353,6 @@ erDiagram
     real availability_factor "required"
     real capacity_to_activity_factor "required"
     real area_per_capacity "optional"
-    real emissions_released "required"
     real min_viable_scale "optional"
     string load_shape_override FK "optional"
     boolean is_hybrid "required"

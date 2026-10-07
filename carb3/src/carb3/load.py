@@ -93,7 +93,7 @@ REFERENCE_SCHEMA: dict[str, _ReferenceSchema] = {
             "unit_id", "unit_name", "unit_class", "spine", "duty_family", "process_id",
             "fuel_carrier_id", "grade_out", "grade_in_max", "capex", "fixed_opex",
             "lifetime", "availability_factor", "capacity_to_activity_factor",
-            "area_per_capacity", "emissions_released", "min_viable_scale",
+            "area_per_capacity", "min_viable_scale",
             "load_shape_override", "is_hybrid", "draws_ambient", "provenance",
             "confidence", "provenance_ref",
         ),

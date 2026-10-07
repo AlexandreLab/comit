@@ -136,9 +136,6 @@ for r in units:
     af = r["availability_factor"]
     if af and not (0 < float(af) <= 1):
         fail.append("range %s.availability_factor = %s, not in (0, 1]" % (r["unit_id"], af))
-    er = r["emissions_released"]
-    if er and not (0 <= float(er) <= 1):
-        fail.append("range %s.emissions_released = %s, not in [0, 1]" % (r["unit_id"], er))
 
 ROLES = {"fuel_input", "aux_input", "emission_input",
          "primary_output", "coproduct", "reject", "emission"}

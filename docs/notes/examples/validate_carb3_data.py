@@ -396,7 +396,7 @@ SPEC_COLUMNS = {
         "unit_id", "unit_name", "unit_class", "spine", "duty_family", "process_id",
         "fuel_carrier_id", "grade_out", "grade_in_max", "capex", "fixed_opex", "lifetime",
         "availability_factor", "capacity_to_activity_factor", "area_per_capacity",
-        "emissions_released", "min_viable_scale", "load_shape_override", "is_hybrid",
+        "min_viable_scale", "load_shape_override", "is_hybrid",
         "draws_ambient", "provenance", "confidence", "provenance_ref",
     ],
     "unit_abatement_host.csv": [
@@ -1354,7 +1354,7 @@ def check_units(unit: list[dict], io: list[dict], bom: list[dict], car: list[dic
             r.fail(f"{u}: process_id {row['process_id']!r} not in register")
         if row["is_hybrid"] == "TRUE":
             hybrids.add(u)
-        for col in ("capex", "fixed_opex", "availability_factor", "emissions_released"):
+        for col in ("capex", "fixed_opex", "availability_factor"):
             v = _f(row[col])
             if v is not None and v < 0:
                 r.fail(f"{u}: {col} negative")
@@ -1490,13 +1490,21 @@ EMISSION_COEFFICIENT_BAND = {
 }
 
 
-def check_emission_coefficient_basis(io: list[dict], car: list[dict]) -> Result:
+def check_emission_coefficient_basis(io: list[dict], car: list[dict],
+                                     unit: list[dict]) -> Result:
     """BLOCKING. Every emission-carrier coefficient sits inside its stoichiometric band.
 
     Catches a coefficient written on the wrong basis — the thousandfold error of note 20
     item 56 — which no key, enum or sign check can see.
+
+    **Exactly one class of row is skipped: `emission_input` on an `abatement` unit.** There
+    the row is a capture rate, a fraction of the hosts' stream (§3.6), and
+    `check_capture_rates` (V37) bands it in [-1, 0) instead. Banded here, -0.90 reads as
+    "below the mass band, x1000 would fit", which is the wrong fix. Every other row,
+    `tgr_blast_furnace_coke`'s `emission_input` among them, keeps the kt reading.
     """
     r = Result("emission coefficients on the kt basis (§3.6)")
+    abatement = {u["unit_id"] for u in unit if u["unit_class"] == "abatement"}
     kind = {c["carrier_id"]: c["carrier_kind"] for c in car}
     denom = {c["carrier_id"]: c["denominator_kind"] for c in car}
     emission_carriers = {cid for cid, k in kind.items() if k == "emission"}
@@ -1507,11 +1515,15 @@ def check_emission_coefficient_basis(io: list[dict], car: list[dict]) -> Result:
             primary[row["unit_id"]] = row["carrier_id"]
 
     checked = 0
+    rates = 0
     for i, row in enumerate(io, start=2):
         cid = row["carrier_id"]
         if cid not in emission_carriers:
             continue
         uid = row["unit_id"]
+        if uid in abatement and row["role"] == "emission_input":
+            rates += 1  # a capture rate, banded by V37 in check_capture_rates
+            continue
         out = primary.get(uid)
         if out is None:
             r.fail(f"{uid}: {cid} {row['role']} row, but the unit has no primary_output "
@@ -1543,7 +1555,82 @@ def check_emission_coefficient_basis(io: list[dict], car: list[dict]) -> Result:
     energy_lo, energy_hi = EMISSION_COEFFICIENT_BAND["energy"]
     r.note = (f"{checked} emission-carrier coefficients banded; "
               f"mass [{mass_lo:.3f}, {mass_hi:.2f}] kt/Mt, "
-              f"energy [{energy_lo:.3f}, {energy_hi:.2f}] kt/PJ")
+              f"energy [{energy_lo:.3f}, {energy_hi:.2f}] kt/PJ; "
+              f"{rates} capture rates on abatement units left to V37")
+    return r
+
+
+def check_capture_rates(unit: list[dict], io: list[dict], car: list[dict],
+                        host: list[dict]) -> Result:
+    """BLOCKING. V37 (a capture rate is a fraction of its hosts' streams), legs (a) and (b).
+
+    (a) Every `emission_input` row on an `abatement` unit is a capture rate, -nu with nu in
+    (0, 1]: the fraction of that carrier the train captures from its hosts (§3.6). The
+    exemption in `check_emission_coefficient_basis` covers exactly these rows. And an
+    `abatement` unit with any coefficient rows holds at least one rate: without one it would
+    make `co2_captured` from its reboiler and power while capturing nothing. A train with no
+    rows at all is the admission screen's to drop, not this check's.
+
+    (b) Each carrier a train captures is produced by at least one of its hosts in
+    `unit_abatement_host.csv`, or the rate is a dead row. Process CO2 is declared, so it is
+    read from a host's positive `emission` row; fuel CO2 is derived by A6 (D15) and is never
+    a row, so it is re-derived here the way the build does: a host burning a `primary`,
+    non-`is_indirect` carrier in any consuming role makes `co2_fuel_fossil` where the
+    carrier's `biogenic_fraction` is below 1 and `co2_fuel_biogenic` where it is above 0.
+
+    Legs (c) to (f) are post-solve checks on a premise's captured quantities (§5.7), run by
+    `carb3.ledger.check_capture`.
+    """
+    r = Result("V37 (a capture rate is a fraction of its hosts' streams): rates and hosts")
+    abatement = {u["unit_id"] for u in unit if u["unit_class"] == "abatement"}
+    facts = {c["carrier_id"]: c for c in car}
+    consuming = {"fuel_input", "aux_input", "emission_input"}
+
+    made: dict[str, set[str]] = {}
+    for row in io:
+        uid, cid, role = row["unit_id"], row["carrier_id"], row["role"]
+        c = _f(row["coefficient"])
+        if role == "emission" and c is not None and c > 0:
+            made.setdefault(uid, set()).add(cid)
+        fact = facts.get(cid)
+        if role in consuming and fact is not None and fact["carrier_kind"] == "primary" \
+                and fact["is_indirect"] != "TRUE":
+            share = _f(fact["biogenic_fraction"])
+            share = 0.0 if share is None else share
+            if share < 1:
+                made.setdefault(uid, set()).add("co2_fuel_fossil")
+            if share > 0:
+                made.setdefault(uid, set()).add("co2_fuel_biogenic")
+
+    hosts: dict[str, set[str]] = {}
+    for row in host:
+        hosts.setdefault(row["unit_id"], set()).add(row["host_unit_id"])
+
+    with_rows = {row["unit_id"] for row in io} & abatement
+    rated = {row["unit_id"] for row in io if row["role"] == "emission_input"} & abatement
+    for uid in sorted(with_rows - rated):
+        r.fail(f"{uid}: abatement unit with coefficient rows and no emission_input rate, so "
+               "it captures nothing (V37 (a): a train states the fraction of each stream "
+               "it captures)")
+
+    rates = 0
+    for i, row in enumerate(io, start=2):
+        uid, cid = row["unit_id"], row["carrier_id"]
+        if uid not in abatement or row["role"] != "emission_input":
+            continue
+        rates += 1
+        c = _f(row["coefficient"])
+        if c is None or not -1 <= c < 0:
+            r.fail(f"unit_input_output.csv:{i}: {uid} emission_input on {cid} = "
+                   f"{row['coefficient']!r}; on an abatement unit the row is a capture rate, "
+                   "-nu with nu in (0, 1] (V37 (a); a kt-per-Mt figure here is the "
+                   "pre-note-24 blend reading)")
+        makers = sorted(h for h in hosts.get(uid, set()) if cid in made.get(h, set()))
+        if not makers:
+            named = ", ".join(sorted(hosts.get(uid, set()))) or "none"
+            r.fail(f"{uid}: captures {cid}, which none of its hosts ({named}) produces "
+                   "(V37 (b): a rate on a stream no host makes is a dead row)")
+    r.note = f"{rates} capture rates on {len({u for u in abatement if u in hosts})} hosted trains"
     return r
 
 
@@ -2060,7 +2147,9 @@ def run() -> tuple[list[Result], dict[str, list[dict]]]:
         check_eligibility_and_join(elig, tables["decarbonisation_option_unit.csv"],
                                    unit, reg, lib),
         check_v19_grade_out(elig, duty, unit, tables["unit_input_output.csv"], car),
-        check_emission_coefficient_basis(tables["unit_input_output.csv"], car),
+        check_emission_coefficient_basis(tables["unit_input_output.csv"], car, unit),
+        check_capture_rates(unit, tables["unit_input_output.csv"], car,
+                            tables["unit_abatement_host.csv"]),
         check_energy_closure(unit, tables["unit_input_output.csv"], car),
         check_reject_classes(car, unit, tables["unit_input_output.csv"]),
         check_lineage(tables["comit_technology_lineage.csv"], unit, car),
