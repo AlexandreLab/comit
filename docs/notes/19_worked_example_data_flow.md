@@ -285,7 +285,7 @@ flowchart LR
   DMOT["duty MOT<br/><b>0.064598 PJ motive_power</b>"]
 
   DV["dispose reject heat, by source class<br/>condenser 0.086129 · dryer exhaust 0.013952<br/>flue 0.006618 · CHP exhaust 0.005226<br/><b>0.111925 PJ</b>, no recovery unit until 2030"]
-  DF["dispose co2_fuel_fossil<br/><b>16.83005 kt</b> · charged<br/>boiler 7.42461 + CHP 4.18814 + dryer 5.21730"]
+  DF["dispose co2_fuel_fossil<br/><b>16.83006 kt</b> · charged<br/>boiler 7.42461 + CHP 4.18815 + dryer 5.21730"]
   DB["dispose co2_fuel_biogenic<br/><b>0 kt</b> — declared, no biomass unit built<br/>solid_biomass factor is <b>97.22 gross</b>, not zero"]
 
   IG --> BO
@@ -317,16 +317,16 @@ flowchart LR
 | $Z^{\text{capex}}$ — C5 forbids building at $t_0$ | 0.00000 |
 | $Z^{\text{opex}}$ — boiler 0.024663, CHP 0.047429, dryer 0.021000, chiller 0.015791, motor 0.023799 | 0.13268 |
 | $Z^{\text{fuel}}$ — gas 2.130007, electricity 1.920000 | 4.05001 |
-| $Z^{\text{carbon}}$ — **on disposal**, 16.83005 kt × £90/t | 1.51470 |
+| $Z^{\text{carbon}}$ — **on disposal**, 16.83006 kt × £90/t | 1.51471 |
 | $Z^{\text{infra}}$, $Z^{\text{net}}$, $Z^{\text{exp}}$, $Z^{\text{strand}}$ | 0.00000 |
-| **Total** | **£5.69739m** |
+| **Total** | **£5.69740m** |
 
-Direct emissions **16.83005 kt**, all natural gas, all vented. There is **nothing to reconcile
+Direct emissions **16.83006 kt**, all natural gas, all vented. There is **nothing to reconcile
 against** — no base-year measured row — so §7.6 is skipped and said to be skipped on every
 output row. Indirect, reported and not charged: 0.060000 × 18.0 = **1.08000 kt**, on the
 import, which is 30% below the site's consumption because the CHP supplies the rest.
 
-The §7.7 allocation of the CHP's 4.18814 kt across its two outputs puts its electricity at
+The §7.7 allocation of the CHP's 4.18815 kt across its two outputs puts its electricity at
 **282 gCO₂e/kWh** against a 2025 grid import at 65 gCO₂e/kWh — reported beside the accounted
 layer and **never added to it**.
 
@@ -372,7 +372,7 @@ pair. This is that table.
 | C11 connection | **breached** at 2035, −1.00 MW | **slack** on the chosen pathway, −3.85 MW on the all-electric counterfactual |
 | `D11` stranding weight | the three kiln units carry **£119.5m** at $t_0$ — dominates | boiler house **under £1.1m** — prices delay in fractions |
 | Direct emissions, 2025 → 2050 | **728.44 → 84.88 kt** | **16.83 → 0 kt** |
-| Base-year annual cost | **£97.97782m** | **£5.69739m** |
+| Base-year annual cost | **£97.97782m** | **£5.69740m** |
 
 Neither example exercises both branches of any row. That is the design: the pair is the
 fixture, not either document alone.
