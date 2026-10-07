@@ -787,6 +787,14 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     independently; three fixed shares cannot express that. Either the coefficients become
     per-stream capture rates, or a train is authored per premise, and the first is the only
     one that scales. *Note 21 §4.4; `docs/notes/data/unit_input_output.csv`.*
+
+    **Decided 2026-10-07:** the fix is per-stream capture rates, the option above that scales:
+    each `emission_input` coefficient becomes the fraction of that CO₂ carrier the train
+    captures, in place of a fixed share of a blend. The cement worked example is not re-solved
+    until that lands, so it is not done twice; it is labelled instead as a hand solve on its
+    own premise and inputs, and its §8.5.1 sets out where and why the `carb3` run of
+    `mvp-cement` differs, this cap first (0.022764 Mt/yr captured against the example's
+    0.72034).
 58. **§3.7 says A1 assigns each premise to a cluster and §3 gives that assignment nowhere
     to live.** "A premise is assigned to the nearest in-scope cluster on ingest (A1). Its
     availability is read from that cluster's rows." `premise_record` (§3.1) has no

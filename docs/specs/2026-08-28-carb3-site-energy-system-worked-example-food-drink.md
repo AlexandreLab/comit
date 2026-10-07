@@ -3,7 +3,8 @@
 **The mechanism case.** One premise carried end to end through the nine algorithms `A1`–`A9`
 (§4), exercising the thing the model exists for and the
 [cement works](2026-08-28-carb3-site-energy-system-worked-example-cement.md) structurally
-cannot show: eight fuel-variant technology rows collapsing to three units, a 120 °C duty with
+cannot show: 84 low-temperature-heat technology rows across eleven sectors collapsing to eight
+units under D13 (fuel is part of a unit's identity), a 120 °C duty with
 a boiler, a CHP, a heat pump and an electric resistance heater competing under C10 (the grade
 cascade), reject heat carried by its source class with the chillers' condenser heat lifted by a
 heat pump, a CHP producing heat **and** electricity into the carrier balance, rooftop PV
@@ -26,9 +27,11 @@ Intermediate arithmetic is carried at six significant figures and quoted at five
 [`unit_input_output.csv`](../notes/data/unit_input_output.csv), and the three heat-recovery
 units take their costs from [`unit.csv`](../notes/data/unit.csv), which is the only place they
 are stated. The other units' costs, lifetimes and availability factors, the scenario of §6 and
-the duty profile of §3.2 are the example's own and differ from the reference tables; the
-`carb3` run of the synthetic dairy `mvp-dairy` reads those tables instead, which is why its
-pathway differs from §8.7 in the ways §8.7 lists.
+the base the §3.2 duty shares are applied to are the example's own and differ from the
+reference tables and the `carb3` slice: the shares themselves are the reference profile's, but
+§3.2 applies them to delivered gas where the slice applies them to useful heat. The `carb3`
+run of the synthetic dairy `mvp-dairy` reads the reference tables and builds a narrower
+problem, which is why its pathway differs from §8.7 in the ways §8.7 lists.
 
 This document and the
 [cement one](2026-08-28-carb3-site-energy-system-worked-example-cement.md) are deliberately
@@ -76,7 +79,7 @@ that matters.
 | `electricity` | electricity | 0.05700 | measured | 2022 | history |
 | `electricity` | electricity | 0.05900 | measured | 2023 | history |
 | `electricity` | electricity | **0.06000** | measured | **2024** | **base year** |
-| `fuel_oil` | oil | **0.00000** | **not_consumed** | **2024** | **base year** |
+| `light_fuel_oil` | oil | **0.00000** | **not_consumed** | **2024** | **base year** |
 | `coal` | coal | **0.00000** | **not_consumed** | **2024** | **base year** |
 | `solid_biomass` | biomass | **0.00000** | **not_consumed** | **2024** | **base year** |
 
@@ -93,7 +96,7 @@ would otherwise report as unexamined.
 **The electricity row is a net import, not site consumption**, and this premise is where that
 distinction bites. The site runs a CHP (§1.12), so the meter reads what the CHP did not
 supply. Reconstructing consumption from the meter is `A4`'s job (§5.1), and getting it wrong
-understates the site's electrical load by 32%.
+understates the site's electrical load by 30%.
 
 The 2022 and 2023 rows are **history**. `V25` (history is never read) asserts that adding
 them, at years before *and* after the base year, moves no §5.3 parameter, no constraint
@@ -314,7 +317,7 @@ chilled-water band and has nothing to do with heat rank 2.
 | `carrier_id` | `carrier_kind` | `is_gradeable` | `grade_rank` | `grade_label` | `is_indirect` | `denominator_kind` | `may_import` | `may_export` |
 |---|---|---|---|---|---|---|---|---|
 | `natural_gas` | primary | no | — | — | no | energy | yes | no |
-| `hydrogen` | primary | no | — | — | no | energy | yes | no |
+| `hydrogen` | primary | no | — | — | **yes** | energy | yes | no |
 | `solid_biomass` | primary | no | — | — | no | energy | yes | no |
 | `lpg` | primary | no | — | — | no | energy | yes | no |
 | `coal` | primary | no | — | — | no | energy | yes | no |
@@ -356,9 +359,12 @@ this site**, so the D16 case that the cement works exercises — an internal pro
 `may_export` false and therefore no duty — has no instance here.
 
 **The emission carriers are thin here, and that is the contrast with cement.** This dairy
-burns natural gas and, later, hydrogen. Gas carries `biogenic_fraction` 0 so A6 derives a
-`co2_fuel_fossil` coefficient and nothing else; hydrogen carries a zero factor so it derives
-neither. There is **no `co2_process` carrier at all**, because no process here has a mass
+burns natural gas and, later, hydrogen. `carrier.csv` gives gas a `biogenic_fraction` of
+0.0115, the biogas share of mains gas, but this example takes it as 0, its own simplification
+beside its own 56.1 kt/PJ factor (§6.3), so A6 (the problem builder) derives a
+`co2_fuel_fossil` coefficient and nothing else; the `carb3` run uses 0.0115 (§8.7).
+Hydrogen is `is_indirect` in `carrier.csv`, its emissions sitting with its production
+route, and on this example's zero factor it derives neither. There is **no `co2_process` carrier at all**, because no process here has a mass
 denominator (§1.3) — where the cement works books 446.25 kt of calcination CO₂ that no fuel
 switch can touch, this site's entire footprint is combustion and disappears when the fuel
 does.
@@ -926,7 +932,7 @@ row's `(carrier_id, vector)` onto a `carrier` row, checks that the vector agrees
 |---|---|---|---|
 | `natural_gas` | 0.30000 PJ/yr | 2024 | `base_year` |
 | `electricity` | 0.06000 PJ/yr | 2024 | `base_year` |
-| `fuel_oil` | 0.00000 | 2024 | `base_year` |
+| `light_fuel_oil` | 0.00000 | 2024 | `base_year` |
 | `coal` | 0.00000 | 2024 | `base_year` |
 | `solid_biomass` | 0.00000 | 2024 | `base_year` |
 
@@ -1085,12 +1091,17 @@ at a dairy the whole boiler house is worth under £1.1m and `D11` prices delay i
 a million. The mechanism is the same and its weight is not, which is worth knowing before
 assuming `D11` matters everywhere.
 
-**The MVP implements the fallback tier only** (`MF-43`, C4 at the fallback tier only, which
-reproduces COMIT's linear decay and is what `V1b` needs). Cohort vintage, the stranding charge
-and the early-retirement variable are `MF-46`, a Should landing at milestone M6. At the
-fallback tier all three units decay linearly from $t_0$ instead of standing whole to a known
-death, which at this premise **softens** the 2040 cliff of §8.4 into a gradual replacement from
-2030: a materially different pathway, on the same inputs.
+**The `carb3` slice implements tier 1 only**: `process_known`, a point mass on each
+`premise_process_unit` cohort's commissioning year (`carb3/src/carb3/survival.py`). That is the
+reading this section uses, each unit standing whole to its known death, so here the slice and
+the example agree. A unit with no vintage row carries **no** incumbent capacity in the slice,
+because there is no fallback tier for it to fall back to; the stranding charge and the
+early-retirement variable $r$ are not built either (`MF-46`, a Should landing at milestone M6).
+*Illustration only, not what the slice does:* at the fallback tier of `MF-43` (C4, incumbent ageing, by the
+uniform survival function, which reproduces COMIT's linear decay for `V1b`, the COMIT parity
+comparison), all three units would decay linearly from $t_0$ instead of standing whole to a
+known death, which at this premise **softens** the 2040 cliff of §8.4 into a gradual
+replacement from 2030: a materially different pathway, on the same inputs.
 
 ---
 
@@ -1162,7 +1173,7 @@ Emission factors, kt CO₂ per PJ:
 | `carrier_id` | 2025 | 2030 | 2035 | 2040 | 2045 | 2050 | Note |
 |---|---|---|---|---|---|---|---|
 | `natural_gas` | 56.1 | 56.1 | 56.1 | 56.1 | 56.1 | 56.1 | direct |
-| `hydrogen` | — | — | **0.0** | 0.0 | 0.0 | 0.0 | direct; a low-carbon production standard is the scenario's assumption |
+| `hydrogen` | — | — | **0.0** | 0.0 | 0.0 | 0.0 | **indirect** in `carrier.csv` (`is_indirect` true), so nothing is charged on site; a low-carbon production standard is the scenario's assumption |
 | `solid_biomass` | **97.22** | 97.22 | 97.22 | 97.22 | 97.22 | 97.22 | direct, **gross**; `biogenic_fraction` 1, so A6 derives fossil 0.0 and biogenic 97.22, and §7.3 zero-rates the carrier rather than the fuel |
 | `lpg` | 63.1 | 63.1 | 63.1 | 63.1 | 63.1 | 63.1 | direct |
 | `coal` | 94.6 | 94.6 | 94.6 | 94.6 | 94.6 | 94.6 | direct |
@@ -1194,7 +1205,7 @@ Q    = { LTH, STM, SPC, DRY×4, REF, MOT }        nine duties, all energy-denomi
 U    = 12 units of §3.3, less chp_biomass_st (screened, §3.4), plus the B4 heat-pump split,
        plus the three recovery units of §1.11, plus pv_rooftop and battery_2h,
        less every hydrogen unit before 2035 (C9)
-U⁰   = { boiler_lt@natural_gas, chp_gas_turbine, dryer_direct_gas@natural_gas,
+U⁰   = { boiler_lt_gas, chp_gas_turbine, dryer_direct_gas,
          chiller_electric, motor_elec }                                       incumbents
 Ugen = { chp_gas_turbine, chp_hydrogen_ccgt, pv_rooftop }                    generators
 Uarea= { pv_rooftop }             area_per_capacity set; NEITHER CHP is in it, nor the battery
@@ -1208,7 +1219,7 @@ g(c) = 1 … 4 on the heat carriers; 2 on cooling_0_15, in the cooling family
 
 | Variable | Instances here | Note |
 |---|---|---|
-| $n_{u,t}$ new capacity | one per (unit, binding) pair per period | §3.4's expansion |
+| $n_{u,t}$ new capacity | one per unit per period | no per-fuel expansion: under D13 (fuel is part of a unit's identity) each fuel variant is its own unit |
 | $a_{u,t}$ available capacity | as above | |
 | $z_{u,q,t}$ dispatch to a duty | declared over $u \in U_q$ only, per §3.4's eligibility table | **the duty index is what stops one unit being credited twice** |
 | $z^{\circ}_{u,t}$ released to the balance | declared for every unit whose primary carrier balances; on the solved pathway non-zero for `pv_rooftop` alone | no heat is released, because no unit that draws heat from the balance (`heat_pump_ht`, `heat_pump_lt_reject`) is ever built |
@@ -1233,10 +1244,10 @@ before the build.
 | # | Constraint | Instances here | Binds? |
 |---|---|---|---|
 | **C1** | Duty satisfaction | 9 duties × 6 periods = 54 | always, as an equality |
-| **C2** | Activity ≤ available capacity × γ × α | one per (unit, binding) per period | on every incumbent but the dryer in the base year (§5.3), which is why none can grow into a duty |
+| **C2** | Activity ≤ available capacity × γ × α | one per unit per period | on every incumbent but the dryer in the base year (§5.3), which is why none can grow into a duty |
 | **C3** | Capacity transfer between periods | as above | — |
 | **C4** | Incumbent ageing and early retirement (`D11`) | 5 × 6 = 30 | **the boiler house dies together at 2035**, and the gas boiler's idle part retires early that year (§8.4) |
-| **C5** | No building in the start year | one per (unit, binding) | binds — $n_{u,0} = 0$ |
+| **C5** | No building in the start year | one per unit | binds — $n_{u,0} = 0$ |
 | **C6** | Unit stability | deferred (`MF-51`, Could) | — |
 | **C7** | Known changes | none announced at this premise | — |
 | **C8** | **Carrier balance** | 19 carriers × 6 = 114 | always, as equalities |
@@ -1294,7 +1305,7 @@ asserts to 1e-6 and `V30` extends to the emission carriers.
 | `reject_flue_solid_liquid` | — | no biomass unit runs | — | 0 | **0** |
 | `motive_power` | — | motor +0.064598, dispatched | — | — | **0** |
 | `cooling_0_15` | — | chiller +0.064598, dispatched | — | — | **0** |
-| **`co2_fuel_fossil`** | — | boiler +7.42461, CHP +4.18814, dryer +5.21730 = **+16.83005 kt** | — | **−16.83005** | **0** |
+| **`co2_fuel_fossil`** | — | boiler +7.42461, CHP +4.18815, dryer +5.21730 = **+16.83006 kt** | — | **−16.83006** | **0** |
 | **`co2_fuel_biogenic`** | — | **none at 2025** — no biomass unit is built in this period | — | 0 | **0** |
 
 Arithmetic: gas −0.132346 − 0.074655 − 0.093000 + 0.300001 = **0.000000**; electricity
@@ -1334,14 +1345,14 @@ Arithmetic: gas −0.132346 − 0.074655 − 0.093000 + 0.300001 = **0.000000**;
 | $Z^{\text{capex}}$ | C5: $n_{u,0}=0$ | **0.00000** |
 | $Z^{\text{opex}}$ | boiler 0.137018 × 0.18 = 0.024663; CHP 0.039524 × 1.20 = 0.047429; dryer 0.100000 × 0.21 = 0.021000; chiller 0.071776 × 0.22 = 0.015791; motor 0.067998 × 0.35 = 0.023799 | **0.13268** |
 | $Z^{\text{fuel}}$ | gas 0.300001 × 7.10 = 2.130007; electricity 0.060000 × 32.00 = 1.920000 | **4.05001** |
-| $Z^{\text{carbon}}$ | **disposal, not fuel** — 16.83005 kt × £90/t × 10⁻³ | **1.51470** |
+| $Z^{\text{carbon}}$ | **disposal, not fuel** — 16.83006 kt × £90/t × 10⁻³ | **1.51471** |
 | $Z^{\text{infra}}$ | no infrastructure tariff before 2035 | **0.00000** |
 | $Z^{\text{net}}$ | $w_{k,0}=0$ | **0.00000** |
 | $Z^{\text{exp}}$ | generation 0.026130 < consumption 0.086130, so no surplus | **0.00000** |
 | $Z^{\text{strand}}$ | nothing retired early | **0.00000** |
-| **Total** | | **£5.69739m** |
+| **Total** | | **£5.69740m** |
 
-Direct emissions: **16.83005 kt**, all natural gas, all vented. Indirect, reported and not
+Direct emissions: **16.83006 kt**, all natural gas, all vented. Indirect, reported and not
 charged: 0.060000 × 18.0 = **1.08000 kt**, charged on the **import** under §7.8, which at this
 premise is 30% less than the site's consumption because the CHP supplies the rest.
 
@@ -1357,7 +1368,7 @@ electricity, and taking it from a second emission factor would count the same ga
 trap D14 closes.
 
 **Accounted layer (§7.1), which is the model's answer.** The CHP burns 0.074655 PJ of gas and
-is charged 0.074655 × 56.1 = **4.18814 kt**. That figure is in $Z^{\text{carbon}}$ and in the
+is charged 0.074655 × 56.1 = **4.18815 kt**. That figure is in $Z^{\text{carbon}}$ and in the
 site total, and it does not move.
 
 **Allocated layer (§7.7), on the avoided-boiler convention.** The CHP produced 0.033595 PJ of
@@ -1367,8 +1378,8 @@ heat and 0.026130 PJ of electricity. A reference boiler at η 0.88 would have bu
 | | PJ | Gas allocated | kt CO₂ | Intensity |
 |---|---|---|---|---|
 | Heat | 0.033595 | 0.038176 | **2.14167** | 63.75 kt/PJ, the reference boiler's |
-| Electricity | 0.026130 | 0.074655 − 0.038176 = 0.036479 | **2.04647** | **78.32 kt/PJ** = **282 gCO₂e/kWh** |
-| **Total** | | **0.074655** | **4.18814** | sums to the accounted figure |
+| Electricity | 0.026130 | 0.074655 − 0.038176 = 0.036479 | **2.04648**, the remainder 4.18815 − 2.14167 | **78.32 kt/PJ** = **282 gCO₂e/kWh** |
+| **Total** | | **0.074655** | **4.18815** | sums to the accounted figure |
 
 **282 gCO₂e per kWh**, against a 2025 grid import at 18.0 kt/PJ = **65 gCO₂e/kWh**. On this
 scenario's grid the dairy's CHP electricity is more than four times as carbon-intensive as the
@@ -1378,11 +1389,11 @@ the allocation is done.
 
 Three properties `V29` asserts, and the third is the one that matters:
 
-- The allocation sums to 4.18814 kt exactly, by construction.
+- The allocation sums to 4.18815 kt exactly, by construction.
 - The objective read the **accounted** layer, so changing convention from avoided-boiler to
   energy or exergy allocation moves the intensities and moves **no pathway**.
-- The two layers are reported side by side and **never added**. A site reporting 4.18814 kt of
-  accounted emissions plus 2.04647 kt of "CHP electricity emissions" would be double-counting
+- The two layers are reported side by side and **never added**. A site reporting 4.18815 kt of
+  accounted emissions plus 2.04648 kt of "CHP electricity emissions" would be double-counting
   its own gas, which is exactly the error §7.7 exists to prevent.
 
 ### 8.2 C12 and the PV decision
@@ -1400,9 +1411,10 @@ which is not a constraint either has. The gas turbine is a container in the yard
 `V12` (capacity bounds hold, including the siting cap, whose sum runs over area-bound units
 only) asserts it.
 
-At the cap, PV output is 1.846154 × 0.031536 × 0.11 = **0.006404 PJ/yr**, which is **7.28%** of
-the dairy's 0.088000 PJ of consumption, four times the share the cement works' much larger
-roof achieved, because the load is forty times smaller. The decision at 2030:
+At the cap, PV output is 1.846154 × 0.031536 × 0.11 = **0.006404 PJ/yr**, which is **5.90%** of
+the dairy's 0.108626 PJ of consumption at 2030 (the chiller's 0.021533, the motors' 0.064598
+and the condenser heat pump's 0.088841 × 0.25320 = 0.022495, §8.4), three times the share the cement
+works' much larger roof achieved, because the load is about four times smaller. The decision at 2030:
 
 | | £m/yr |
 |---|---|
@@ -1717,9 +1729,10 @@ Three features of this pathway:
   avoidable cost they undercut by more than £7m per PJ, and direct emissions fall by a third
   five years before the boiler house dies. The incumbents' sunk capex keeps them only where no
   recovered heat can reach, the 120 °C duty and the dryer, until C4 removes them at 2035 and
-  2038. Under the MVP's fallback vintage tier (`MF-43`) the boiler house decays gradually from
-  2030 instead, and the pathway is materially different: the same inputs, a different answer,
-  decided by which tier of C4 is implemented.
+  2038. Had C4 (incumbent ageing) been applied at its fallback tier (`MF-43`), which the `carb3`
+  slice does not do (§5.3), the boiler house would decay gradually from 2030 instead, and the
+  pathway would be materially different: the same inputs, a different answer, decided by
+  which tier of C4 is applied.
 - **Direct emissions go to zero at 2040 and the site is still burning something.** Hydrogen at
   a zero factor is a scenario assumption (§6.3), stated as one, and the indirect column is what
   keeps the grid's remaining carbon visible. This is the reporting `D10` and §7.4 exist to
@@ -1732,13 +1745,57 @@ Three features of this pathway:
 
 **The `carb3` run of `mvp-dairy` is not this example, and it agrees where the inputs agree.**
 Both build `heat_pump_chiller_condenser` for the boiler-house hot water and `recovery_engine_exhaust`
-for the CHP's exhaust in their first build period, neither builds `heat_pump_lt_reject` or
-`heat_pump_lt_air`, and neither exports. The run differs because it reads the reference tables:
-its base year is 2021, so its first build period is 2025; `published_2026` brings no hydrogen,
-so `heat_pump_ht` takes the 120 °C duty and the gas dryer stays; the reference library's
-`dryer_heat_pump` takes the dryer's two lower segments; its space heat sits at `heat_lt60`, where
-`economiser_flue_condensing` can serve it; and its costs, lifetimes and availability factors are
-`unit.csv`'s.
+for the CHP's exhaust in their first build period, and neither builds `heat_pump_lt_reject` or
+`heat_pump_lt_air`. The run (optimal, objective £142.7571m) differs because it reads the
+reference tables and builds a narrower problem:
+
+- **Calendar, scenario and costs.** Its base year is 2021, so its first build period is 2025;
+  `published_2026` brings no hydrogen, so `heat_pump_ht` takes the 120 °C duty and the gas
+  dryer stays on the two upper segments; the reference library's `dryer_heat_pump` takes the
+  dryer's two lower segments; its space heat sits at `heat_lt60`, where
+  `economiser_flue_condensing` and `heat_pump_spc_air` can serve it; and its costs, lifetimes
+  and availability factors are `unit.csv`'s.
+- **The boiler-house duties swap size.** The duty shares are the same 0.46180 and 0.53820, but
+  the slice applies them to the process's useful heat, `premise_process_detail.known_activity`
+  0.131579 PJ/yr, where §3.2 applies them to delivered gas before converting. The run's hot
+  water is therefore 0.060763 and its 120 °C duty 0.070816, against this example's 0.075587
+  and 0.055992, so the larger duty is the other one. The incumbent split between CHP and boiler
+  is `premise_process_unit.capacity_share` 0.35 / 0.65, against §1.12's 0.60 / 0.40. With A4
+  (back-solve capacity, carrier mix and vintage) not in the slice, nothing ties the base year
+  to the meter: the run imports 0.3124 PJ of gas and 0.0478 PJ of electricity in 2021, not the
+  metered 0.300 and 0.060 of §1.2.
+- **No PV.** `pv_rooftop` serves no duty in the slice, so it gets no activity variable and
+  cannot be built, and C12 (siting cap) is not built either. This example builds 1.846 MW from
+  2030 (§8.2).
+- **"Neither exports" is a refusal in the run, not a result.** The slice declares an export
+  variable only where the carrier has a price in every period, and `scenario_parameters.csv`
+  has no electricity `export_price` row for 2021, so the run refuses the export outright and
+  prints the refusal. In this example the variable exists and stays at zero on the economics (§8.6). The
+  slice's export cap also converts MW to PJ over 8,760 h a year, 0.063072 PJ/yr for the 2 MW
+  connection,
+  against this example's 7,200 operating hours and 0.051840 PJ/yr.
+- **Carrier data.** `carrier.csv` gives `natural_gas` a `biogenic_fraction` of 0.0115, so the
+  run's gas puts 0.18365 kt of `co2_fuel_biogenic` on the balance in 2021, zero-rated; this
+  example's 0 is its own simplification (§1.11), and that is why §8.1's biogenic node is
+  empty. `hydrogen` is `is_indirect` in `carrier.csv`; the run burns none, and this example's
+  zero hydrogen factor makes the flag move no figure.
+
+**What this example walks and the slice does not build** (the module docstring of
+`carb3/src/carb3/build.py` lists it): the cascade variables $h$, since C10 (the grade
+cascade) is enforced by eligibility alone; the early-retirement variable $r$ and the stranding
+charge; C11 (connection capacity) and the reinforcement variable $w$, and with them the method
+for rebuilding peak with λ (the peak factor, §5.6), which is open; C6 (unit stability), C7
+(known changes) and C12 (siting cap); and imports and exports per connection, which the slice
+holds site-wide as $m_{c,t}$ and $x_{c,t}$. §7.2's $h$, $r$ and $w$ rows, §8.2 and §8.5 are
+therefore the example's alone.
+
+**What the run shows that this example omits.** C13 (a cap is not routed through a consumer)
+is built: `boiler_lt_coal`'s 0.00 `max_share` on the boiler-house duties is traced through
+`heat_pump_ht`, `heat_pump_lt_reject` and `heat_exchanger_spc_steam`, so no coal heat can reach
+those duties by way of another unit. The run builds `economiser_flue_condensing` at 0.001432
+PJ/yr in 2025, below its `min_viable_scale` of 0.00169, which check 5 of §5.7 (recovery unit
+built below its minimum) reports rather than forbids. And `recovery_engine_exhaust` runs only
+in 2025: the run stops dispatching the CHP from 2030, so there is no exhaust left to draw.
 
 ### 8.8 The relaxation ladder (§4.2)
 
@@ -1812,7 +1869,7 @@ emissions budget. The budget comparison is **reported, never enforced**: the
 | 7.1 | Fuel CO₂ is **produced by** the unit that burns the fuel, on a coefficient A6 derived (D15); process CO₂ by the chemistry unit | all 16.83 kt produced by the boiler, the CHP and the dryer, and all of it vented; **no process CO₂ at all** — the contrast with cement |
 | 7.2 | Non-CO₂ gases tracked separately; CCS never abates them | the site's refrigerant losses are reported and are not a combustion emission |
 | 7.3 | Biomass zero-rated before capture | `solid_biomass` carries a **gross** 97.22 kt/PJ and `biogenic_fraction` 1 (§1.11, §6.3), so A6 derives the whole of it onto `co2_fuel_biogenic`; the zero-rating is on the **carrier**, so the quantity is reported and the charge is £0. No period of this pathway burns biomass, so the quantity is zero here, and with no capture at this site the ordering the rule is about has nothing to bite on |
-| 7.4 | Direct versus indirect is a property of the carrier | `electricity.is_indirect` = true; every other carrier here is direct |
+| 7.4 | Direct versus indirect is a property of the carrier | `electricity.is_indirect` and `hydrogen.is_indirect` are true in `carrier.csv`; every other carrier here is direct. Hydrogen's flag moves no figure here, because §6.3 gives it a zero factor |
 | 7.5 | Reporting categories derived over units, and they may overlap | `chp_gas_turbine` appears under *combustion* and under *generation* |
 | 7.6 | Reconciliation **at the base year** | §10.2 — **skipped and reported** |
 
@@ -1900,7 +1957,7 @@ Tests are the specification's, at §10.3. Scope is `load`, `premise` or `release
 | **V28** | load + premise | §3.2 — the published `Food Processing Centre` shares sum to 1.00 per vector, all six register processes carry rows, and no renormalisation is needed |
 | **V29** | premise | §8.1, §8.1.1 — disposal is used on the four reject carriers that carry heat and on `co2_fuel_fossil`, and declared at zero on `reject_flue_solid_liquid` and `co2_fuel_biogenic`; the CHP's §7.7 allocation sums to its 4.18815 kt accounted figure exactly; the two layers are never added |
 | **V30** | premise | §8.1, §10.1 — emission carriers balance; §7's total equals the objective's carbon term ÷ π × 10³; on the two biomass units the derived fossil and biogenic coefficients sum to the **gross 97.22 kt/PJ** — 0.00000 + 109.23639 on `boiler_lt_biomass`, 0.00000 + 133.67750 on `chp_biomass_st`, each per PJ of heat — and any `co2_fuel_biogenic` disposal is a reported quantity charged at **£0** rather than an absent one; hydrogen's derived coefficients are zero **in this scenario** and change with it, which is why §3.6 derives them rather than declaring them |
-| **V31** | load | §1.11 — no unit at this site consumes a carrier it also makes, so every `(unit, carrier)` pair here holds one role; each row's sign agrees with it, each of the nineteen units has exactly one `primary_output`, every unit's reject heat is `reject` on its class's carrier, and the heat pumps' and recovery units' source heat is `aux_input` |
+| **V31** | load | §1.11 — no unit at this site consumes a carrier it also makes, so every `(unit, carrier)` pair here holds one role; each row's sign agrees with it, each of the twenty units has exactly one `primary_output`, every unit's reject heat is `reject` on its class's carrier, and the heat pumps' and recovery units' source heat is `aux_input` |
 
 **This fixture is what milestone M4, the MVP exit, runs on.** Its gate, item by item:
 
@@ -1984,19 +2041,22 @@ expected tables. Table snapshots of the fixture outputs, rounded, are the regres
 ### 13.1 What it demonstrates
 
 1. **The collapse is real, and under D13 it is a cross-sector one** (§3.3). 84 low-temperature-heat rows across eleven sectors become eight units — a factor of ten, against the three-to-one the within-sector reading gave. Five boiler rows differing only by
-   fuel become one unit with five carrier bindings; the electric boiler and the heat pump are
-   preserved as their own devices; and the CHP-steam pseudo-technology is dropped outright
-   because C8 and C10 replace it. Adding hydrogen firing is now one row in
-   `unit_input_output`, not a new technology.
+   fuel stay five units under D13 (fuel is part of a unit's identity), `boiler_lt_gas`,
+   `boiler_lt_hydrogen`, `boiler_lt_lpg`, `boiler_lt_coal` and `boiler_lt_biomass`, and each is
+   shared by every sector's identical row; the electric boiler (`resistance_heater_lt`) and the
+   heat pump are preserved as their own devices; and the CHP-steam pseudo-technology is dropped
+   outright because C8 (carrier balance) and C10 (the grade cascade) replace it. Adding
+   hydrogen firing is one `unit` row and its `unit_input_output` rows, shared by every sector,
+   not a new technology per sector.
 2. **A CHP produces two carriers at once, and one of them balances** (§8.1). Its heat satisfies
    a duty through C1 and never touches the `heat_100_150` node; its electricity enters C8
    regardless, because a unit's co-products scale with total activity. That asymmetry is what
    makes onsite generation, self-consumption and export expressible at all.
-3. **The meter hides a third of this site's electrical load** (§5.1), and only a known CHP
+3. **The meter hides 30% of this site's electrical load** (§5.1), and only a known CHP
    recovers it. Here the audit names it (§1.5.1) and `activity_default_unit` sizes it; for a
    dairy whose audit named nothing, §3.16 alone would put it there. Without either, a dairy with
    a CHP and one without are the same row, and every electrification decision downstream runs on
-   a base that is 32% too small.
+   a base that is 30% too small.
 4. **The grade ladder separates two duties a flat coefficient would have merged** (§3.4, §8.4).
    The 80 °C duty goes to a heat pump and the 120 °C duty to a CHP, because the rank-3 heat
    pump must buy rank-2 source heat and the rank-2 one cannot reach rank 3 at all. Today
