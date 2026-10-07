@@ -795,6 +795,12 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     own premise and inputs, and its §8.5.1 sets out where and why the `carb3` run of
     `mvp-cement` differs, this cap first (0.022764 Mt/yr captured against the example's
     0.72034).
+
+    **Decided 2026-10-07, the detail:** the seven decisions of
+    [note 24](24_ccs_per_stream_capture_plan.md) §7 were settled as that note recommends (treated
+    host activity, the rate in the `emission_input` coefficient, 0.90 on all three streams, the
+    reboiler not captured, `unit.emissions_released` retired, C14 and V37 new, one flue treated
+    once); see note 24's decisions section.
 58. **§3.7 says A1 assigns each premise to a cluster and §3 gives that assignment nowhere
     to live.** "A premise is assigned to the nearest in-scope cluster on ingest (A1). Its
     availability is read from that cluster's rows." `premise_record` (§3.1) has no
