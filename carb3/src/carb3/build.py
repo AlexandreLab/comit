@@ -105,7 +105,7 @@ sums to the reported objective.
 **A capture train's ``emission_input`` rows are rates, and C14 is how they enter.** On an
 ``abatement`` unit the row is −ν_{u,c}, the fraction of carrier c the train captures from its
 hosts (§3.6), not kt per Mt of ``co2_captured``. A variable z^host_{u,u',t} says how much of
-host u''s activity the train treats; the train captures Γ_{u,c,t} = Σ_{u'} ν_{u,c} ι^gen_{u',c,t}
+host u''s activity the train treats; the train captures Γ_{u,c,t} = Σ_{u'} ν_{u,c} ι^gross_{u',c,t}
 z^host_{u,u',t}, which enters C8 as −Γ, and its activity is 10⁻³ Σ_c Γ. The trains on one host
 share its activity, so one flue is treated once. The train is never its own host, so its
 reboiler's CO₂ vents. Read as a fixed blend, the rows made the scarcest stream cap the train:
@@ -167,7 +167,7 @@ EMISSION_INPUT_ROLE: str = "emission_input"
 #: train treats its hosts' flue gas) builds.
 ABATEMENT_CLASS: str = "abatement"
 
-#: The roles that make up a host's **gross** production of an emission carrier, ι^gen (§5.3):
+#: The roles that make up a host's **gross** production of an emission carrier, ι^gross (§5.3):
 #: the declared ``emission`` row and A6's derived one, never net of the host's own
 #: ``emission_input``. Netting would give ``tgr_blast_furnace_coke`` a negative production.
 GROSS_EMISSION_ROLES: frozenset[str] = frozenset({"emission", A6_ROLE})
@@ -1006,12 +1006,25 @@ def screen_premise(
     # serves every round: each round only reads them over the units still standing.
     # Read C8 split as the LP builds it: a primary output scales with z°, every other role
     # with total activity, so a unit's +1 output cannot net away its own draw here either.
-    parts = _balance_parts(
-        _balance_terms(
-            reference, sorted(present), periods, carrier_facts, _supplied(sets), screening=True
-        ),
-        len(periods),
+    terms = _balance_terms(
+        reference, sorted(present), periods, carrier_facts, _supplied(sets), screening=True
     )
+    parts = _balance_parts(terms, len(periods))
+    # A host's flue carries its gross production (§5.3, ι^gross), not its net C8 coefficient:
+    # a host that both emits and draws a carrier still has a stream to treat. The same rows
+    # capture_links reads, so the screen and C14 agree on who can feed a train.
+    gross_makers: dict[str, set[str]] = {
+        carrier_id: {
+            unit_id
+            for unit_id, by_role in by_unit.items()
+            if any(
+                np.any(np.asarray(values) > 0.0)
+                for role, values in by_role.items()
+                if role in GROSS_EMISSION_ROLES
+            )
+        }
+        for carrier_id, by_unit in terms.items()
+    }
     producers: dict[str, set[str]] = {
         carrier_id: {
             unit_id
@@ -1033,16 +1046,25 @@ def screen_premise(
 
     rates = capture_rates(reference)
     hosts_of = capture_hosts(reference)
+    abatement = _abatement_units(reference)
 
     drops: list[UnitDrop] = []
     dropped: set[str] = set()
     while True:
         hostless: dict[str, str] = {}
-        for train in sorted(set(rates) & present - set(incumbents)):
+        for train in sorted(abatement & present - set(incumbents)):
+            if not rates.get(train):
+                hostless[train] = (
+                    "abatement unit with no capture rate: no emission_input row, so it "
+                    "captures nothing (V37, a capture rate is a fraction of its hosts' streams)"
+                )
+                continue
             feeding = {
                 host
                 for host in hosts_of.get(train, frozenset()) & present - {train}
-                if any(host in producers.get(carrier_id, set()) for carrier_id in rates[train])
+                if any(
+                    host in gross_makers.get(carrier_id, set()) for carrier_id in rates[train]
+                )
             }
             if not feeding:
                 named = ", ".join(sorted(hosts_of.get(train, frozenset()))) or "none"
@@ -2153,7 +2175,7 @@ def _biogenic_credit(
     """§5.4's subtrahend: Σ_{c zero_rated} Σ_{u ∈ U^abate} Γ_{u,c,t}, kt/yr.
 
     The only negative emission the model can produce. Γ is the capture C14 (a capture train
-    treats its hosts' flue gas) builds, ν_{u,c} ι^gen_{u',c,t} z^host_{u,u',t} summed over the
+    treats its hosts' flue gas) builds, ν_{u,c} ι^gross_{u',c,t} z^host_{u,u',t} summed over the
     hosts, so the credit is the rate times the biogenic CO₂ the treated share of each host
     makes. ``None`` rather than a zero term keeps the objective free of a row that carries
     nothing, which is the answer at a premise with no capture train.
@@ -2189,7 +2211,7 @@ def biogenic_capture_links(
 class CaptureLink:
     """One (train, host, carrier) term of C14 (a capture train treats its hosts' flue gas).
 
-    Γ_{u,c,t} = Σ_{u' ∈ H_u} ν_{u,c} ι^gen_{u',c,t} z^host_{u,u',t} (§5.5): the train ``train``
+    Γ_{u,c,t} = Σ_{u' ∈ H_u} ν_{u,c} ι^gross_{u',c,t} z^host_{u,u',t} (§5.5): the train ``train``
     captures ``rate`` of the ``carrier_id`` that ``host`` makes per unit of its activity,
     ``production``, over the share of that activity it treats.
     """
@@ -2199,7 +2221,7 @@ class CaptureLink:
     carrier_id: str
     #: ν_{u,c}, the fraction of the host's stream the train captures, in (0, 1].
     rate: float
-    #: ι^gen_{u',c,t} over the periods: the host's gross production of the carrier per unit
+    #: ι^gross_{u',c,t} over the periods: the host's gross production of the carrier per unit
     #: of its activity, kt per unit.
     production: np.ndarray
 
@@ -2210,7 +2232,7 @@ class CaptureLink:
 
     @property
     def weight(self) -> np.ndarray:
-        """ν_{u,c} ι^gen_{u',c,t}: kt of the carrier captured per unit of treated activity."""
+        """ν_{u,c} ι^gross_{u',c,t}: kt of the carrier captured per unit of treated activity."""
         return self.rate * self.production
 
 
@@ -2276,7 +2298,7 @@ def capture_links(
     """Every (train, host, carrier) C14 builds a term for, in a stable order.
 
     H_u is the train's host rows intersected with the model units, and a host enters only on
-    the carriers it makes: ι^gen is read from ``terms``, the coefficient set C8 is built from,
+    the carriers it makes: ι^gross is read from ``terms``, the coefficient set C8 is built from,
     as the declared ``emission`` row plus A6's derived one. A host making none of the train's
     carriers contributes nothing, and a train whose hosts all do so has no link at all.
     """
@@ -2304,9 +2326,13 @@ def capture_links(
 
 
 def capture_trains(reference: ReferenceTables, model_units: Sequence[str]) -> tuple[str, ...]:
-    """The model units that are capture trains: ``abatement`` units holding a rate."""
+    """The model's ``abatement`` units, which C14 governs whether or not they hold a rate.
+
+    One with no rate has no link and C14 holds it at zero: without that it would make
+    ``co2_captured`` from its reboiler and power alone, capturing nothing.
+    """
     present = set(model_units)
-    return tuple(sorted(train for train in capture_rates(reference) if train in present))
+    return tuple(sorted(_abatement_units(reference) & present))
 
 
 def captured_flows(
@@ -2326,7 +2352,7 @@ def captured_flows(
 
 
 def _captured_expression(links: Sequence[CaptureLink], host_treated, period_index: pd.Index):
-    """Σ over ``links`` of ν ι^gen z^host, as a linopy expression on (capture, period).
+    """Σ over ``links`` of ν ι^gross z^host, as a linopy expression on (capture, period).
 
     Links sharing a z^host column (one train and host, several carriers) are summed into one
     weight first, so the ``capture`` coordinate stays unique.

@@ -504,6 +504,11 @@ the `carb3` tests on pre-push and the new rows break the old C8 the moment they 
   and it keeps its fixed form here; it is worth a note 20 item of its own.
 - **Coincidence in time.** The model is annual, so it cannot check that a train and its hosts
   run in the same hours.
+- **Credit pumping, flagged for Alexandre (2026-10-07 code review).** A biogenic host whose
+  output may be disposed of could be run beyond its duties to make biogenic CO₂ for its train
+  to capture and be credited for. C14 (a capture train treats its hosts' flue gas) does not
+  forbid it, and no premise today has such a host. Whether the credit should be capped by the
+  host's duty-driven activity is a design decision; the model is unchanged.
 
 ## 10. The cascade
 

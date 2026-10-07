@@ -329,3 +329,27 @@ def test_the_report_package_imports_no_model_code() -> None:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     assert alias.name not in forbidden, f"{path.name} imports {alias.name}"
+
+
+def test_captured_co2_counts_capture_trains_only() -> None:
+    """A converter's ``emission_input`` draw, ``tgr_blast_furnace_coke`` taking back its own
+    top gas, is recycling, not capture. The trains are the units in ``capture_by_host``."""
+    flow = pd.DataFrame(
+        [
+            {"unit_id": "ccs", "carrier_id": "co2_process", "role": "emission_input",
+             "period": 2035, "carrier_kind": "emission", "flow": -90.0},
+            {"unit_id": "tgr_blast_furnace_coke", "carrier_id": "co2_process",
+             "role": "emission_input", "period": 2035, "carrier_kind": "emission",
+             "flow": -183.0},
+        ]
+    )
+    tables = {
+        "unit_flow": flow,
+        "disposal": pd.DataFrame(columns=["carrier_id", "period", "quantity"]),
+        "capture_by_host": pd.DataFrame(
+            [{"unit_id": "ccs", "host_unit_id": "kiln", "carrier_id": "co2_process",
+              "period": 2035, "rate": 0.9, "treated_activity": 1.0, "captured": 90.0}]
+        ),
+    }
+    series = sankey_data._co2_series(tables, {"co2_process": "emission"}, [2035])
+    assert series["captured"] == [90.0]

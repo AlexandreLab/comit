@@ -869,7 +869,17 @@ def check_capture(
         .sum()
     )
     activity = tables.dispatch.groupby(["unit_id", "period"])["activity"].sum()
-    hosts_of = by_host.groupby("unit_id")["host_unit_id"].agg(lambda h: sorted(set(h)))
+    # The hosts come from the data, not from the build's links: a link the build should not
+    # have made (a train named as its own host) must not widen what leg (c) allows. A train
+    # never hosts itself (§3.5.3), and only hosts with rows in this run count.
+    in_run = set(flow["unit_id"].astype(str))
+    host_table = reference.unit_abatement_host
+    hosts_of: dict[str, list[str]] = {}
+    if host_table is not None and "unit_id" in host_table.columns:
+        for train, host in zip(host_table["unit_id"], host_table["host_unit_id"], strict=True):
+            train, host = str(train), str(host)
+            if host != train and host in in_run:
+                hosts_of.setdefault(train, []).append(host)
 
     def scale(value: float) -> float:
         return tolerance * max(1.0, abs(value))

@@ -58,6 +58,10 @@ REQUIRED_TABLES: tuple[str, ...] = (
     "run_report",
 )
 
+#: Read where present. ``capture_by_host`` names the capture trains, which the report needs
+#: to tell capture from a converter's own ``emission_input`` draw without reading a CSV.
+OPTIONAL_TABLES: tuple[str, ...] = ("capture_by_host",)
+
 #: Flows below this magnitude are solver noise, not a ribbon.
 EPSILON: float = 1e-9
 
@@ -103,7 +107,8 @@ class ReportDataError(ValueError):
 
 
 def read_ledger(directory: Path) -> dict[str, pd.DataFrame]:
-    """The seven tables the report needs, by name. Raises naming any that is missing."""
+    """The seven tables the report needs, by name, and the optional ones present. Raises
+    naming any required table that is missing."""
     directory = Path(directory)
     missing = [
         name for name in REQUIRED_TABLES if not (directory / f"{name}.parquet").is_file()
@@ -113,7 +118,13 @@ def read_ledger(directory: Path) -> dict[str, pd.DataFrame]:
             f"{directory} is missing {', '.join(f'{name}.parquet' for name in missing)}; "
             "re-run `python -m carb3 --out-dir …` to write the ledger the report reads"
         )
-    return {name: pd.read_parquet(directory / f"{name}.parquet") for name in REQUIRED_TABLES}
+    tables = {name: pd.read_parquet(directory / f"{name}.parquet") for name in REQUIRED_TABLES}
+    # Optional, so a ledger written before the table existed still draws.
+    for name in OPTIONAL_TABLES:
+        path = directory / f"{name}.parquet"
+        if path.is_file():
+            tables[name] = pd.read_parquet(path)
+    return tables
 
 
 def build_report_data(directory: Path) -> dict[str, Any]:
@@ -402,12 +413,18 @@ def _co2_series(
 
     Captured is read as the ``emission_input`` draw in ``unit_flow``, which is already in kt.
     The exported stream, ``co2_captured``, is a Mt ``product``; reading the draw avoids
-    converting it, and avoids naming the carrier.
+    converting it, and avoids naming the carrier. Only a capture train's draw counts: a
+    converter's ``emission_input``, ``tgr_blast_furnace_coke`` taking back its own top gas, is
+    recycling. The trains are the units in ``capture_by_host``; a ledger written before that
+    table existed counts every draw, as the report did then.
     """
     disposal = tables["disposal"]
     vented = disposal[disposal["carrier_id"].map(kind_of) == "emission"]
     flow = tables["unit_flow"]
     drawn = flow[(flow["role"] == "emission_input") & (flow["carrier_kind"] == "emission")]
+    if "capture_by_host" in tables:
+        trains = set(tables["capture_by_host"]["unit_id"].astype(str))
+        drawn = drawn[drawn["unit_id"].astype(str).isin(trains)]
     drawn = drawn.assign(captured=-drawn["flow"])
     captured = _series(drawn.assign(key="captured"), "key", "captured", periods)
     return {

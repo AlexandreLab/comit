@@ -1566,7 +1566,10 @@ def check_capture_rates(unit: list[dict], io: list[dict], car: list[dict],
 
     (a) Every `emission_input` row on an `abatement` unit is a capture rate, -nu with nu in
     (0, 1]: the fraction of that carrier the train captures from its hosts (§3.6). The
-    exemption in `check_emission_coefficient_basis` covers exactly these rows.
+    exemption in `check_emission_coefficient_basis` covers exactly these rows. And an
+    `abatement` unit with any coefficient rows holds at least one rate: without one it would
+    make `co2_captured` from its reboiler and power while capturing nothing. A train with no
+    rows at all is the admission screen's to drop, not this check's.
 
     (b) Each carrier a train captures is produced by at least one of its hosts in
     `unit_abatement_host.csv`, or the rate is a dead row. Process CO2 is declared, so it is
@@ -1602,6 +1605,13 @@ def check_capture_rates(unit: list[dict], io: list[dict], car: list[dict],
     hosts: dict[str, set[str]] = {}
     for row in host:
         hosts.setdefault(row["unit_id"], set()).add(row["host_unit_id"])
+
+    with_rows = {row["unit_id"] for row in io} & abatement
+    rated = {row["unit_id"] for row in io if row["role"] == "emission_input"} & abatement
+    for uid in sorted(with_rows - rated):
+        r.fail(f"{uid}: abatement unit with coefficient rows and no emission_input rate, so "
+               "it captures nothing (V37 (a): a train states the fraction of each stream "
+               "it captures)")
 
     rates = 0
     for i, row in enumerate(io, start=2):

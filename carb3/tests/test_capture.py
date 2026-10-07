@@ -97,6 +97,8 @@ def _reference(*, second_train: bool = False, hosts: tuple[str, ...] = ("kiln_ga
         _unit("kiln_gas", "converter", 5.0, 0.1),
         _unit("kiln_coal", "converter", 5.0, 0.1),
         _unit("ccs", "abatement", 50.0, 1.0, lifetime=30),
+        # A co-fired kiln, one unit burning two fuels: gas as its fuel, coal as a second fuel.
+        _unit("kiln_mix", "converter", 5.0, 0.1),
     ]
     io = [
         _io("kiln_gas", "heat_60_100", 1.0, "primary_output"),
@@ -105,6 +107,10 @@ def _reference(*, second_train: bool = False, hosts: tuple[str, ...] = ("kiln_ga
         _io("kiln_coal", "heat_60_100", 1.0, "primary_output"),
         _io("kiln_coal", "coal", -1.0, "fuel_input"),
         _io("kiln_coal", "co2_process", PROCESS_CO2, "emission"),
+        _io("kiln_mix", "heat_60_100", 1.0, "primary_output"),
+        _io("kiln_mix", "natural_gas", -0.6, "fuel_input"),
+        _io("kiln_mix", "coal", -0.4, "aux_input"),
+        _io("kiln_mix", "co2_process", PROCESS_CO2, "emission"),
         *_train_rows("ccs"),
     ]
     host_rows = [{"unit_id": "ccs", "host_unit_id": host} for host in hosts]
@@ -436,3 +442,167 @@ def test_a_converters_emission_input_keeps_its_kt_reading() -> None:
     activity = activity[activity["unit_id"] == "kiln_coal"].groupby("period")["activity"].sum()
     np.testing.assert_allclose(drawn, -10.0 * activity, rtol=1e-9)
     assert "z_host" not in run.model.variables
+
+
+# --------------------------------------------------------------------------------------
+# Check 6, one failing fixture per leg (V37 legs (c) to (f))
+# --------------------------------------------------------------------------------------
+
+
+def _legs(run: _Run, **tables) -> set[str]:
+    broken = dataclasses.replace(run.tables, **tables)
+    return {item.leg for item in ledger.check_capture(broken, run.reference)}
+
+
+def test_the_capture_check_names_a_host_row_out_of_its_share() -> None:
+    """Leg (d): what a host row says was captured must be ν × that host's production × the
+    share of its activity treated. Only the per-host table is broken, so (c) still holds."""
+    run = _gas_run()
+    by_host = run.tables.capture_by_host.copy()
+    rows = (by_host["carrier_id"] == "co2_process") & (by_host["period"] == 2030)
+    by_host.loc[rows, "captured"] *= 1.5
+    assert "d" in _legs(run, capture_by_host=by_host)
+
+
+def test_the_capture_check_names_a_host_treated_twice_over() -> None:
+    """Leg (e): the trains on one host treat at most its activity."""
+    run = _gas_run(second_train=True)
+    by_host = run.tables.capture_by_host.copy()
+    by_host["treated_activity"] *= 2.0
+    assert "e" in _legs(run, capture_by_host=by_host)
+
+
+def test_the_capture_check_names_a_carbon_term_without_its_credit() -> None:
+    """Leg (f): the carbon term is the charged venting less the biogenic credit."""
+    run = _gas_run()
+    costs = run.tables.cost_by_term.copy()
+    rows = (costs["term"] == "carbon") & (costs["period"] == 2030)
+    costs.loc[rows, "annual"] += 1.0
+    assert _legs(run, cost_by_term=costs) == {"f"}
+
+
+def test_the_capture_check_reads_hosts_from_the_data_not_from_the_build() -> None:
+    """A self-link (the train named as its own host) would let leg (c) count the reboiler's
+    CO₂ as the host's. Check 6 reads the hosts from ``unit_abatement_host``, so a train that
+    claims its own reboiler stack is caught."""
+    run = _gas_run()
+    flow = run.tables.unit_flow.copy()
+    own = flow[
+        (flow["unit_id"] == "ccs") & (flow["carrier_id"] == "co2_fuel_fossil")
+        & (flow["role"] == build.A6_ROLE)
+    ].set_index("period")["flow"]
+    taken = (flow["unit_id"] == "ccs") & (flow["role"] == "emission_input") & (
+        flow["carrier_id"] == "co2_fuel_fossil"
+    )
+    flow.loc[taken, "flow"] -= RATE * flow.loc[taken, "period"].map(own).to_numpy()
+    by_host = run.tables.capture_by_host
+    self_rows = by_host[by_host["carrier_id"] == "co2_fuel_fossil"].assign(
+        host_unit_id="ccs", treated_activity=0.0, captured=0.0
+    )
+    assert "c" in _legs(
+        run, unit_flow=flow, capture_by_host=pd.concat([by_host, self_rows], ignore_index=True)
+    )
+
+
+# --------------------------------------------------------------------------------------
+# A co-fired host, two trains
+# --------------------------------------------------------------------------------------
+
+
+def test_a_co_fired_host_is_captured_across_both_fuels_and_treated_once() -> None:
+    """``kiln_mix`` burns 0.6 PJ of gas and 0.4 of coal per PJ of heat. A6 sums the fuel CO₂
+    over both fuels, so per unit of activity it makes 0.6 × 51.12 × 0.9885 + 0.4 × 94 =
+    67.919 kt fossil and 0.6 × 51.12 × 0.0115 = 0.3527 kt biogenic, and Γ reads those sums.
+    Two trains are offered on it and together treat it once."""
+    reference = _reference(second_train=True, hosts=("kiln_coal", "kiln_mix"))
+    run = _run(
+        reference, frozenset({"kiln_mix", "kiln_coal"}), frozenset({"ccs", "ccs_b"}), "kiln_mix"
+    )
+    fossil = 0.6 * EF_GAS * (1 - GAS_BIOGENIC) + 0.4 * EF_COAL
+    biogenic = 0.6 * EF_GAS * GAS_BIOGENIC
+    assert fossil == pytest.approx(67.919, abs=1e-3)
+    assert biogenic == pytest.approx(0.3527, abs=1e-4)
+
+    by_host = run.tables.capture_by_host
+    mix = by_host[(by_host["host_unit_id"] == "kiln_mix") & (by_host["period"] == 2030)]
+    treated = mix.drop_duplicates("unit_id")["treated_activity"].sum()
+    activity = run.tables.dispatch
+    activity = activity[(activity["unit_id"] == "kiln_mix") & (activity["period"] == 2030)][
+        "activity"
+    ].sum()
+    assert activity > 0.0
+    assert treated == pytest.approx(activity, rel=1e-6), "capture pays, so the flue is treated"
+    captured = mix.groupby("carrier_id")["captured"].sum()
+    assert captured["co2_fuel_fossil"] == pytest.approx(RATE * fossil * activity, rel=1e-6)
+    assert captured["co2_fuel_biogenic"] == pytest.approx(RATE * biogenic * activity, rel=1e-6)
+    assert captured["co2_process"] == pytest.approx(RATE * PROCESS_CO2 * activity, rel=1e-6)
+    assert ledger.check_capture(run.tables, reference) == ()
+
+
+# --------------------------------------------------------------------------------------
+# The screen reads gross production; an abatement unit with no rate captures nothing
+# --------------------------------------------------------------------------------------
+
+
+def test_the_screen_keeps_a_train_whose_host_also_draws_its_carrier() -> None:
+    """A host that makes 50 kt of process CO₂ and draws back 60 is a net consumer, but its
+    flue still carries 50. The screen judges a train's hosts on gross production, as C14
+    does, so the train is not stranded."""
+    reference = _reference()
+    io = pd.concat(
+        [
+            reference.unit_input_output,
+            pd.DataFrame([_io("kiln_gas", "co2_process", -60.0, "emission_input")]),
+        ],
+        ignore_index=True,
+    )
+    # The train captures process CO₂ only, so the host's fuel CO₂ cannot rescue it.
+    io = io[~((io["unit_id"] == "ccs") & io["carrier_id"].isin(
+        ["co2_fuel_fossil", "co2_fuel_biogenic"]))]
+    reference = dataclasses.replace(reference, unit_input_output=io.reset_index(drop=True))
+    sets, drops = build.screen_premise(
+        _sets(reference, frozenset({"kiln_gas"}), frozenset({"ccs"})),
+        reference,
+        frozenset({"kiln_gas"}),
+    )
+    assert "ccs" in sets.units, drops
+
+
+def _rateless_reference() -> ReferenceTables:
+    """``ccs`` with its three rates removed: an abatement unit making ``co2_captured`` from
+    a reboiler and power alone."""
+    reference = _reference()
+    io = reference.unit_input_output
+    io = io[~((io["unit_id"] == "ccs") & (io["role"] == "emission_input"))]
+    return dataclasses.replace(reference, unit_input_output=io.reset_index(drop=True))
+
+
+def test_an_abatement_unit_with_no_rate_is_held_at_zero() -> None:
+    """Without a rate it has nothing to capture, so C14 holds it at zero rather than letting
+    it make ``co2_captured`` from nothing."""
+    reference = _rateless_reference()
+    sets = _sets(reference, frozenset({"kiln_gas"}), frozenset({"ccs"}))
+    surviving = survival.surviving_capacity(
+        pd.DataFrame([{"unit_id": "kiln_gas", "commissioned_year": 2015, "capacity": 2.0}]),
+        reference.unit,
+        PERIODS,
+    )
+    model = build.build_model(sets, surviving, build.period_axis(PERIODS, DISCOUNT_RATE),
+                              reference)
+    assert "C14_unhosted" in model.constraints
+    result = build.solve(model)
+    assert result.termination_condition == "optimal"
+    z = model.variables["z"].solution.to_pandas()
+    assert z.loc["ccs@supply:co2_captured"].abs().max() < TOLERANCE
+
+
+def test_the_screen_drops_an_abatement_unit_with_no_rate() -> None:
+    reference = _rateless_reference()
+    _sets_out, drops = build.screen_premise(
+        _sets(reference, frozenset({"kiln_gas"}), frozenset({"ccs"})),
+        reference,
+        frozenset({"kiln_gas"}),
+    )
+    assert [(drop.unit_id, drop.leg) for drop in drops] == [("ccs", build.NO_CAPTURE_HOST_LEG)]
+    assert "no capture rate" in drops[0].detail
+
