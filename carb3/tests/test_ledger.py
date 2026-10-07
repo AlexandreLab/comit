@@ -19,7 +19,7 @@ from carb3.load import AdmissionScreen, UnitDrop
 from carb3.sets import EligibilityDrop
 
 
-def test_ledger_carries_the_six_output_tables() -> None:
+def test_ledger_carries_the_seven_output_tables() -> None:
     fields = {f.name for f in dataclasses.fields(ledger.Ledger)}
     assert fields == {
         "cost_by_term",
@@ -28,7 +28,9 @@ def test_ledger_carries_the_six_output_tables() -> None:
         "build",
         "disposal",
         "unit_flow",
+        "capture_by_host",
     }
+    assert set(ledger.LEDGER_TABLES) == fields
 
 
 def test_run_report_carries_the_screen_and_the_g1_measurement() -> None:

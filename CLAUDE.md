@@ -266,6 +266,12 @@ at the archived baseline's §6, lines 2126–2127.
   refinery rows at 4.93580 sit 1.35× above the floor and are doubtful on magnitude rather
   than basis — note 20 item 59. Before quoting any emission number, still check the
   coefficient's order of magnitude against its neighbours in the same column.
+  **One class of row is not kt and is skipped by the band: `emission_input` on an
+  `abatement` unit.** Since 2026-10-07 (note 24) it is a capture rate, the fraction of the
+  hosts' stream the train captures, banded in [−1, 0) by `check_capture_rates` (V37, a capture
+  rate is a fraction of its hosts' streams); `ccs_amine` holds −0.90 on each of its three CO₂
+  carriers. Every other `emission_input` row, `tgr_blast_furnace_coke`'s among them, keeps
+  the kt reading.
 - **No unit may put out more energy than it takes in, unless it is flagged `draws_ambient`.**
   `check_energy_closure` (V2's closure leg, §3.6) is blocking since 2026-10-02, after three
   defects made energy unseen: `dryer_steam` (note 20 item 64), `dryer_heat_pump` at COP 3 on

@@ -67,6 +67,9 @@ class PremiseRun:
     #: Recovery units built below their ``min_viable_scale`` (§5.7, check 5). A report, so
     #: it does not make the run fail.
     sub_minimum: tuple[ledger.SubMinimumBuild, ...] = ()
+    #: V37 (a capture rate is a fraction of its hosts' streams), legs (c) to (f), read back
+    #: from the ledger (§5.7, check 6). A violation is a build defect, so it fails the run.
+    capture_violations: tuple[ledger.CaptureViolation, ...] = ()
 
     @property
     def ok(self) -> bool:
@@ -75,6 +78,7 @@ class PremiseRun:
             and self.result is not None
             and self.result.termination_condition == "optimal"
             and not self.row_violations
+            and not self.capture_violations
         )
 
 
@@ -203,6 +207,7 @@ def run_premise(
     violations = build.check_constraint_rows(model, result)
     tables = ledger.build_ledger(result, sets, axis, reference, tariff_override)
     sub_minimum = ledger.check_recovery_scale(tables.build, reference)
+    capture_violations = ledger.check_capture(tables, reference)
     written: tuple[Path, ...] = ()
     if out_dir is not None:
         report = ledger.RunReport(
@@ -229,6 +234,7 @@ def run_premise(
         row_violations=violations,
         premise_dropped=premise_dropped,
         sub_minimum=sub_minimum,
+        capture_violations=capture_violations,
     )
 
 
@@ -480,6 +486,12 @@ def _print_premise(run: PremiseRun) -> None:
     print(f"C8 row check     {len(run.row_violations)} violations against the built matrix")
     for violation in run.row_violations[:10]:
         print(f"    {violation.constraint} {violation.coords} residual={violation.residual:.3e}")
+    print(
+        f"capture check    {len(run.capture_violations)} V37 violations (a capture rate is a "
+        "fraction of its hosts' streams)"
+    )
+    for item in run.capture_violations[:10]:
+        print(f"    leg {item.leg} {item.unit_id} {item.carrier_id} {item.period}: {item.detail}")
     print(
         f"recovery scale   {len(run.sub_minimum)} recovery builds below min_viable_scale "
         "(reported, not constrained)"

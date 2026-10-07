@@ -23,7 +23,7 @@ Owed by T8's reporting paths.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -45,7 +45,11 @@ from carb3.build import (
     _scenario_series,
     _supplied,
     _unit_parameters,
-    biogenic_capture_weights,
+    CaptureLink,
+    biogenic_capture_links,
+    capture_links,
+    capture_rates,
+    captured_flows,
     export_unit_cost,
 )
 from carb3.load import AdmissionScreen, ReferenceTables, UnitDrop
@@ -72,12 +76,18 @@ LEDGER_TABLES: tuple[str, ...] = (
     "build",
     "disposal",
     "unit_flow",
+    "capture_by_host",
+)
+
+#: Columns of ``capture_by_host.parquet``: one row per (train, host, carrier, period).
+CAPTURE_BY_HOST_COLUMNS: tuple[str, ...] = (
+    "unit_id", "host_unit_id", "carrier_id", "period", "rate", "treated_activity", "captured",
 )
 
 
 @dataclass(frozen=True)
 class Ledger:
-    """The six output tables, long-form, one row per keyed observation."""
+    """The seven output tables, long-form, one row per keyed observation."""
 
     #: One row per ``(period, term)`` over :data:`COST_TERMS`: capex, opex, fuel, carbon and
     #: export. The terms must sum to the reported objective – that is one of the §5.3 test
@@ -94,6 +104,14 @@ class Ledger:
     #: How much of which carrier each unit drew or made — one row per
     #: ``(unit_id, carrier_id, role, period)``, signed: + produced, − consumed.
     unit_flow: pd.DataFrame
+    #: C14 (a capture train treats its hosts' flue gas), split by host — one row per
+    #: ``(unit_id, host_unit_id, carrier_id, period)``: the rate ν, the host activity the
+    #: train treats (z^host) and the kt captured. Its ``captured`` sums, over hosts, to the
+    #: train's ``emission_input`` rows in ``unit_flow``. Where a train's capacity binds the
+    #: split across hosts is an allocation the LP chose, not a measurement.
+    capture_by_host: pd.DataFrame = field(
+        default_factory=lambda: pd.DataFrame(columns=list(CAPTURE_BY_HOST_COLUMNS))
+    )
 
 
 #: New capacity at or below this is solver noise, not a build.
@@ -185,7 +203,7 @@ def build_ledger(
     reference: ReferenceTables,
     tariff_override: float | None = None,
 ) -> Ledger:
-    """Decompose the solution into the six tables above.
+    """Decompose the solution into the seven tables above.
 
     **``reference`` is the fourth argument the scaffolded signature lacked.** The three it
     named carry the *shape* of the answer and none of its prices: κ, φ and L live in
@@ -226,6 +244,11 @@ def build_ledger(
     x = _series(solution, "x", "carrier", periods)
 
     activity = _activity_by_unit(pairs, z, model_units, periods)
+    # C14 (a capture train treats its hosts' flue gas): Γ_{u,c,t} from the solved z^host,
+    # through the same links the LP was built from.
+    links = capture_links(reference, model_units, terms)
+    treated = _series(solution, "z_host", "capture", periods)
+    captured = captured_flows(links, treated, len(periods))
     # Each unit's net C8 flow per carrier, with every role scaled by the variable C8 scales it
     # by: a primary output by the unit's z° column, everything else by total activity.
     c8_flow = {
@@ -242,14 +265,17 @@ def build_ledger(
         }
         for carrier_id, by_unit in terms.items()
     }
+    for (train, carrier_id), values in captured.items():
+        node = c8_flow.setdefault(carrier_id, {})
+        node[train] = node.get(train, np.zeros(len(periods))) - values
     dispatch = _dispatch_table(pairs, z, periods)
     build = _build_table(model_units, periods, n, a, e)
     disposal = _disposal_table(reference, carrier_facts, d, periods)
     carrier_mix = _carrier_mix_table(c8_flow, carrier_facts, m, d, x, dispatch, periods)
-    unit_flow = _unit_flow_table(terms, carrier_facts, activity, pairs, z, periods)
+    unit_flow = _unit_flow_table(terms, carrier_facts, activity, pairs, z, periods, captured)
     cost_by_term = _cost_table(
         reference, axis, periods, model_units, parameters, carrier_facts, a, e, m, d, x,
-        activity, tariff_override,
+        links, treated, tariff_override,
     )
     return Ledger(
         cost_by_term=cost_by_term,
@@ -258,6 +284,7 @@ def build_ledger(
         build=build,
         disposal=disposal,
         unit_flow=unit_flow,
+        capture_by_host=_capture_by_host_table(links, treated, periods),
     )
 
 
@@ -265,17 +292,18 @@ def write_parquet(ledger: Ledger, report: RunReport, out_dir: Path) -> tuple[Pat
     """Write the ledger and the run report under ``out_dir``, returning the paths written.
 
     One directory per premise, so two premises written to the same root do not overwrite
-    each other. Ten files: the six ledger tables, ``run_report.parquet`` – one row, the
+    each other. Eleven files: the seven ledger tables (``capture_by_host`` among them,
+    empty at a premise with no capture train), ``run_report.parquet`` – one row, the
     G1 (single-premise wall clock) measurement, the solver status and the objective –
     ``screen_dropped.parquet``, the §3.2 screen's work list, which is the table note 20
-    records, followed by this premise's ``unreachable_input`` drops
+    records, followed by this premise's ``unreachable_input`` and ``no_capture_host`` drops
     (:func:`carb3.build.screen_premise`). Those are not data defects: the unit is sound and
     was offered to a site that cannot fuel it, so a reader building note 20's list filters
     them out on ``leg``; ``n_units_dropped`` counts the §3.2 screen's units only and
-    ``n_units_dropped_at_premise`` these. The ninth is
+    ``n_units_dropped_at_premise`` these. The tenth is
     ``eligibility_dropped.parquet``, the units a process refused by ``min_duty``, a 0.00
     ``max_share`` or a recovery unit's ``min_viable_scale`` (admitted units, so not in the
-    screen's list). The tenth is ``sub_minimum_recovery.parquet``, the recovery units the LP
+    screen's list). The eleventh is ``sub_minimum_recovery.parquet``, the recovery units the LP
     built below their ``min_viable_scale`` (:func:`check_recovery_scale`). All three lists
     are written even when empty, because "nothing was dropped" is a finding too and an
     absent file cannot say it.
@@ -626,6 +654,7 @@ def _unit_flow_table(
     pairs,
     z: dict[str, np.ndarray],
     periods: tuple[int, ...],
+    captured: dict[tuple[str, str], np.ndarray] | None = None,
 ) -> pd.DataFrame:
     """Each unit's draw and output per carrier, role and period, signed.
 
@@ -641,6 +670,11 @@ def _unit_flow_table(
     C8-side flows sum to ``produced``, the negative to ``consumed``, and the duty-side flows
     to ``dispatched``, per carrier and period. Nothing here is re-joined from the CSV.
 
+    A capture train's draw is the third source: Γ_{u,c,t} from C14 (a capture train treats
+    its hosts' flue gas), negative and under the role ``emission_input``, which is what
+    ``report/sankey_data.py`` reads as captured CO₂. Its rate row is not a C8 coefficient,
+    so it is not in ``terms``.
+
     A (unit, carrier, role) whose flow is zero in every period carries no rows.
     """
     n_periods = len(periods)
@@ -653,6 +687,9 @@ def _unit_flow_table(
                 )
                 key = (unit_id, carrier_id, role)
                 series[key] = series.get(key, np.zeros(n_periods)) + flow
+    for (train, carrier_id), values in (captured or {}).items():
+        key = (train, carrier_id, "emission_input")
+        series[key] = series.get(key, np.zeros(n_periods)) - values
     for pair in pairs:
         if pair.duty_key is None:
             continue
@@ -696,7 +733,8 @@ def _cost_table(
     m: dict[str, np.ndarray],
     d: dict[str, np.ndarray],
     x: dict[str, np.ndarray],
-    activity: dict[str, np.ndarray],
+    links: tuple[CaptureLink, ...] = (),
+    treated: dict[str, np.ndarray] | None = None,
     tariff_override: float | None = None,
 ) -> pd.DataFrame:
     """Z^capex, Z^opex, Z^fuel, Z^carbon and Z^exp by period, undiscounted and discounted.
@@ -707,11 +745,10 @@ def _cost_table(
     ``scenario_parameters`` and ``unit.csv`` values the build read, so the two agreeing is
     evidence that the objective was assembled from the parameters it claims.
 
-    §5.4's biogenic credit **is** live now and nets off the carbon term. It was
-    structurally zero while no abatement unit could take an activity column, and a ledger
-    that ignored it still balanced; once ``ccs_amine`` reached the dispatch dimension the
-    decomposition stopped summing to the reported objective by exactly the credit. Both
-    sides now read :func:`carb3.build.biogenic_capture_weights`.
+    §5.4's biogenic credit nets off the carbon term: 10⁻³ π_t Σ Γ_{u,c,t} over the
+    ``zero_rated`` carriers, with Γ read from the solved z^host through the same links the
+    objective was built from. Both sides read :func:`carb3.build.biogenic_capture_links`, so a
+    ledger that dropped the credit could not still sum to the reported objective.
     """
     rate = _scalar_parameter(reference, "discount_rate")
     n_periods = len(periods)
@@ -735,15 +772,9 @@ def _cost_table(
     for carrier_id, vented in d.items():
         if carrier_facts[carrier_id].carbon_charge == "charged":
             carbon += vented * CARBON_UNIT_CONVERSION * carbon_price
-    for unit_id, weight in biogenic_capture_weights(
-        reference, model_units, parameters, carrier_facts
-    ).items():
-        carbon -= (
-            activity.get(unit_id, np.zeros(n_periods))
-            * weight
-            * CARBON_UNIT_CONVERSION
-            * carbon_price
-        )
+    credited = biogenic_capture_links(links, carrier_facts)
+    for values in captured_flows(credited, treated or {}, n_periods).values():
+        carbon -= values * CARBON_UNIT_CONVERSION * carbon_price
 
     export = np.zeros(n_periods)
     for carrier_id, exported in x.items():
@@ -769,3 +800,147 @@ def _cost_table(
     return pd.DataFrame.from_records(
         records, columns=["period", "term", "annual", "discount_factor", "discounted"]
     )
+
+
+def _capture_by_host_table(
+    links: tuple[CaptureLink, ...],
+    treated: dict[str, np.ndarray],
+    periods: tuple[int, ...],
+) -> pd.DataFrame:
+    """C14 split by host: what each train treats of each host and captures from it."""
+    records = []
+    for link in links:
+        activity = treated.get(link.coordinate, np.zeros(len(periods)))
+        captured = link.weight * activity
+        for index, year in enumerate(periods):
+            records.append(
+                {
+                    "unit_id": link.train,
+                    "host_unit_id": link.host,
+                    "carrier_id": link.carrier_id,
+                    "period": year,
+                    "rate": float(link.rate),
+                    "treated_activity": float(activity[index]),
+                    "captured": float(captured[index]),
+                }
+            )
+    return pd.DataFrame.from_records(records, columns=list(CAPTURE_BY_HOST_COLUMNS))
+
+
+@dataclass(frozen=True)
+class CaptureViolation:
+    """One way a solved capture breaks V37 (a capture rate is a fraction of its hosts'
+    streams), by leg: (c) a stream above ν times its hosts' gross production, (d) streams
+    out of their host's proportions, (e) the trains on a host treating more than its
+    activity, (f) the carbon term disagreeing with the credit the captured biogenic CO₂
+    earns."""
+
+    leg: str
+    unit_id: str
+    carrier_id: str
+    period: int
+    detail: str
+
+
+def check_capture(
+    tables: Ledger, reference: ReferenceTables, tolerance: float = 1e-6
+) -> tuple[CaptureViolation, ...]:
+    """V37's post-solve legs (c) to (f), read from the ledger's own tables (§5.7, check 6).
+
+    Nothing here asks the build: hosts' gross production comes from ``unit_flow``'s
+    ``emission`` and derived rows, host activity from ``dispatch``, the rates from
+    ``unit_input_output``, so a C14 written wrongly is caught even where the row check passes.
+    A report, never an exception.
+    """
+    found: list[CaptureViolation] = []
+    flow = tables.unit_flow
+    by_host = tables.capture_by_host
+    rates = capture_rates(reference)
+    if by_host is None or len(by_host) == 0:
+        return ()
+    gross = (
+        flow[flow["role"].isin(["emission", "emission_derived"])]
+        .groupby(["unit_id", "carrier_id", "period"])["flow"]
+        .sum()
+    )
+    taken = (
+        -flow[(flow["role"] == "emission_input") & flow["unit_id"].isin(list(rates))]
+        .groupby(["unit_id", "carrier_id", "period"])["flow"]
+        .sum()
+    )
+    activity = tables.dispatch.groupby(["unit_id", "period"])["activity"].sum()
+    hosts_of = by_host.groupby("unit_id")["host_unit_id"].agg(lambda h: sorted(set(h)))
+
+    def scale(value: float) -> float:
+        return tolerance * max(1.0, abs(value))
+
+    # (c) no stream above ν times its hosts' gross production.
+    for (train, carrier_id, period), value in taken.items():
+        rate = rates.get(train, {}).get(carrier_id)
+        if rate is None:
+            continue
+        made = sum(
+            float(gross.get((host, carrier_id, period), 0.0)) for host in hosts_of.get(train, [])
+        )
+        if value > rate * made + scale(made):
+            found.append(CaptureViolation(
+                "c", train, carrier_id, int(period),
+                f"captured {value:.6g} kt against {rate} x {made:.6g} kt its hosts make",
+            ))
+
+    # (d) within a host the captured streams stand in its production proportions, which
+    # here reads: what is captured from a host is ν × its production × treated / activity.
+    for row in by_host.itertuples(index=False):
+        host_activity = float(activity.get((row.host_unit_id, row.period), 0.0))
+        made = float(gross.get((row.host_unit_id, row.carrier_id, row.period), 0.0))
+        if host_activity <= tolerance:
+            expected = 0.0 if row.treated_activity <= tolerance else None
+        else:
+            expected = row.rate * made * row.treated_activity / host_activity
+        if expected is None or abs(row.captured - expected) > scale(expected):
+            found.append(CaptureViolation(
+                "d", row.unit_id, row.carrier_id, int(row.period),
+                f"captured {row.captured:.6g} kt from {row.host_unit_id}, where its share of "
+                f"that host's stream gives {expected if expected is not None else 'nothing'}",
+            ))
+
+    # (e) the trains on one host treat at most its activity in total.
+    shares = by_host.drop_duplicates(["unit_id", "host_unit_id", "period"])
+    for (host, period), total in shares.groupby(["host_unit_id", "period"])[
+        "treated_activity"
+    ].sum().items():
+        host_activity = float(activity.get((host, period), 0.0))
+        if total > host_activity + scale(host_activity):
+            found.append(CaptureViolation(
+                "e", host, "", int(period),
+                f"trains treat {total:.6g} of {host}'s activity of {host_activity:.6g}",
+            ))
+
+    # (f) the carbon term is the charged venting less 10⁻³ π Σ Γ on the zero-rated carriers.
+    costs = tables.cost_by_term
+    carbon = costs[costs["term"] == "carbon"].set_index("period")["annual"]
+    charged = tables.disposal.groupby("period")["carbon_cost"].sum()
+    prices = tables.disposal.groupby("period")["carbon_price"].first()
+    zero_rated = set(
+        reference.carrier.loc[
+            reference.carrier["carbon_charge"].astype(str).str.strip() == "zero_rated",
+            "carrier_id",
+        ].astype(str)
+    )
+    biogenic = (
+        taken[taken.index.get_level_values("carrier_id").isin(zero_rated)]
+        .groupby(level="period")
+        .sum()
+    )
+    for period, value in carbon.items():
+        credit = float(biogenic.get(period, 0.0)) * CARBON_UNIT_CONVERSION * float(
+            prices.get(period, 0.0)
+        )
+        expected = float(charged.get(period, 0.0)) - credit
+        if abs(value - expected) > scale(expected):
+            found.append(CaptureViolation(
+                "f", "", "", int(period),
+                f"carbon term {value:.6g} against charged venting less the credit, "
+                f"{expected:.6g}",
+            ))
+    return tuple(found)
