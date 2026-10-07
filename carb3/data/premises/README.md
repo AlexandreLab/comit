@@ -294,9 +294,11 @@ process. **It is genuinely testable from 2026-09-20 and was not before**: `ccs_a
 serves no duty, so it sat in no $U_q$, the duty-keyed `earliest_year` never reached it, and
 its `co2_captured` output had no sink at all. A `C-03` connection on `co2_captured` and the
 restored export variable give it one; C9 (infrastructure availability) then opens `humber`
-at 2030 and the 2035 eligibility gate binds first. The train is buildable and, on the
-reference data as it stands, still not built — see
-[note 20](../../../docs/notes/20_reference_data_open_questions.md) items 56 and 57.
+at 2030 and the 2035 eligibility gate binds first. The train is built at 2035: it treats the
+gas kiln's flue and captures 0.90 of each of its three CO₂ streams, 0.511 Mt/yr on 0.560 Mt/yr of
+capacity. See
+[note 20](../../../docs/notes/20_reference_data_open_questions.md) items 56 and 57 and
+[note 24](../../../docs/notes/24_ccs_per_stream_capture_plan.md).
 
 **Which figures are taken from the worked example.** The premise record (§1.1), both
 throughput rows (§1.3), both connections (§1.4), the nine `premise_process_detail` rows

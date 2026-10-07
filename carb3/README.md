@@ -28,7 +28,9 @@ stays admitted, so it is not in the screen's list). With `--out-dir` that list i
 beside `screen_dropped.parquet`, which holds only the per-unit admission-screen findings. After
 the solve it lists each recovery unit built below its `min_viable_scale` (spec §5.7, check 5),
 written as `sub_minimum_recovery.parquet`: reported, not constrained, since the problem stays a
-pure LP.
+pure LP. It then runs the capture check (spec §5.7, check 6): V37 (a capture rate is a fraction
+of its hosts' streams) legs (c) to (f), read back from the output tables. A violation there is a
+build defect, so it fails the run.
 
 ```
 make carb3                                       # the tests; also part of `make check`
@@ -47,7 +49,10 @@ it clears its zero rows from the ledger and leaves the optimum unchanged. **Incu
 with surviving capacity) are never dropped**: the site pays their fixed opex whether they run
 or not, so removing one would lower the objective by a real cost. An incumbent with an
 unsourceable input stays, held at zero by C8. The drops are printed per premise and written to
-`screen_dropped.parquet` under the leg `unreachable_input`. A duty unit's output counts as made where
+`screen_dropped.parquet` under the leg `unreachable_input`. A capture train is judged by its
+hosts instead: its `emission_input` rows are capture rates on its hosts' streams, not draws, so
+it is dropped, under the leg `no_capture_host`, only when no host it names in
+`unit_abatement_host.csv` is in the model and makes a CO₂ stream it captures. A duty unit's output counts as made where
 another unit draws it, because z° (the activity a unit releases to the carrier balance rather
 than dispatches to a duty) puts it in C8: `heat_pump_ht` lifts the `heat_60_100` that the
 low-grade heat pumps and space-heating boilers release. A unit is never its own source. The
@@ -135,15 +140,15 @@ are in `src/carb3/report/vendor/`.
 
 ## State of the three premises
 
-All three solve to optimality (checked 2026-10-02, `make carb3-run`).
+All three solve to optimality (checked 2026-10-07, `make carb3-run`).
 
 | Premise | Objective | Outcome |
 |---|---|---|
 | `mvp-minimal` | £39.5707m | The grade-2 and grade-3 heat duties switch to heat pumps at 2025, the first period C5 (no building in the start year) allows |
 | `mvp-dairy` | £142.7571m | The grade-2 and grade-4 drying duties switch at 2025; refrigeration is met by an electric chiller, and from 2025 a heat pump on its condenser heat (`heat_pump_chiller_condenser`) serves the boiler-house hot water ([note 23](../docs/notes/23_reject_heat_recovery_plan.md) section 10) |
-| `mvp-cement` | £4,554.9330m | The kiln moves from coal to gas and the grinder substitutes clinker at 2025; an amine capture train is built at 2035 and its CO₂ is exported |
+| `mvp-cement` | £3,640.0994m | The kiln moves from coal to gas and the grinder substitutes clinker at 2025; an amine capture train is built at 2035, captures 90% of each of the gas kiln's three CO₂ streams, and its CO₂ is exported |
 
-Carbon is 77% of the cement works' objective. The works stopped being infeasible on
+Carbon is 60% of the cement works' objective. The works stopped being infeasible on
 2026-09-20, after two fixes. The first is that A2 (premise to duties) now reads a product duty
 from `premise_throughput` at the base year, as spec §3.1.2 says. The second restores export,
 x_{c,t}, for carriers with `may_export`, a `premise_connection` row and a complete price
@@ -152,16 +157,21 @@ capture train to zero. [Note 20](../docs/notes/20_reference_data_open_questions.
 to 53 record this. The kilns' `co2_process` coefficients were then corrected to the kt basis
 (item 56), which is when capture started being built.
 
-The capture train is small: it captures 0.023 Mt/yr against about 0.55 Mt/yr still vented.
-Item 57 is the reason. `ccs_amine` draws a fixed composition, 89.88 kt of biogenic CO₂ per Mt
-captured, and the works vents only about 2 kt/yr of biogenic CO₂. The scarcest stream caps
-the train, and `co2_fuel_biogenic` disposal drops to nothing from 2035. Treat the capture
-result as a data artefact until item 57 is closed.
+**The capture train takes a fraction of each stream its hosts make**
+([note 24](../docs/notes/24_ccs_per_stream_capture_plan.md), closing item 57). Each of
+`ccs_amine`'s `emission_input` rows is a capture rate, 0.90, from the COMIT workbook, and C14
+(a capture train treats its hosts' flue gas) lets it treat a share of each host kiln's
+activity and capture 0.90 of every CO₂ stream that share makes. From 2035 it treats the whole
+gas kiln: 0.511 Mt/yr captured of 568 kt/yr made, on 0.560 Mt/yr of capacity. Its own
+reboiler's CO₂ is not captured, so the works still vents about 106 kt/yr of charged CO₂ (39.2
+of process CO₂ and 66.4 of fossil fuel CO₂, the reboiler's 49.1 among it). Until 2026-10-07
+the three rows were read as a fixed blend, the cement worked example's own stack, and the
+scarce biogenic stream capped the train at 0.023 Mt/yr; the objective was £4,554.93m.
 
 ## Output tables
 
-With `--out-dir`, each solved premise writes ten parquet tables under `<out>/<premise_id>/`:
-six from the ledger and four from the run report. This is the slice's output, not the full
+With `--out-dir`, each solved premise writes eleven parquet tables under `<out>/<premise_id>/`:
+seven from the ledger and four from the run report. This is the slice's output, not the full
 spec §8 target contract.
 
 | Table | Rows | Columns (one row per) | Meaning |
@@ -171,8 +181,9 @@ spec §8 target contract.
 | `dispatch.parquet` | one per unit per duty per period | `unit_id`, `premise_id`, `process_id`, `carrier_id`, `duty`, `kind`, `period`, `activity` | Activity of a unit on a duty (z_{u,q,t}). `kind` is `supply` for a unit making a carrier that no duty asks for, which carries no process and is settled by C8 rather than C1 (duty satisfaction) |
 | `build.parquet` | one per unit per period | `unit_id`, `period`, `new_capacity`, `available_capacity`, `surviving_capacity`, `built_standing` | n_{u,t}, a_{u,t} and e_{u,t}. `built_standing` is `a - e`, the new capacity standing that capex is charged on |
 | `disposal.parquet` | one per carrier per period | `carrier_id`, `period`, `quantity`, `carbon_charge`, `carbon_price`, `carbon_cost` | Amount vented (d_{c,t}); `carbon_cost` is non-zero only where `carbon_charge` is 'charged' (spec §3.4) |
-| `unit_flow.parquet` | one per unit per carrier per role per period | `unit_id`, `carrier_id`, `role`, `period`, `carrier_kind`, `flow` | Signed flow of each unit on each carrier in each role: a single `flow` column, drawn from the solved activity times the C8 coefficient set |
-| `run_report.parquet` | one row | `premise_id`, `status`, `objective`, `n_variables`, `n_constraints`, `wall_clock_seconds`, `n_units_admitted`, `n_units_dropped` | The G1 (single-premise wall clock) measurement, solver status, final objective, problem size, and the §3.2 admission screen counts |
+| `unit_flow.parquet` | one per unit per carrier per role per period | `unit_id`, `carrier_id`, `role`, `period`, `carrier_kind`, `flow` | Signed flow of each unit on each carrier in each role: a single `flow` column, drawn from the solved activity times the C8 coefficient set. A capture train's `emission_input` rows are its capture, −Γ, read from `capture_by_host` |
+| `capture_by_host.parquet` | one per capture train per host per carrier per period | `unit_id`, `host_unit_id`, `carrier_id`, `period`, `rate`, `treated_activity`, `captured` | C14 (a capture train treats its hosts' flue gas) split by host: the rate ν, the host activity the train treats (z^host) and the kt it captures. `captured` sums over hosts to the train's `emission_input` rows in `unit_flow`. Where a train's capacity binds, the split across hosts is an allocation the LP chose, not a measurement. Empty at a premise with no capture train |
+| `run_report.parquet` | one row | `premise_id`, `status`, `objective`, `n_variables`, `n_constraints`, `wall_clock_seconds`, `n_units_admitted`, `n_units_dropped`, `n_units_dropped_at_premise` | The G1 (single-premise wall clock) measurement, solver status, final objective, problem size, and the §3.2 admission screen counts |
 | `screen_dropped.parquet` | one per dropped unit per failed leg | `unit_id`, `leg`, `detail` | §3.2 admission screen's work list: which units were refused and why. Written even if empty |
 | `eligibility_dropped.parquet` | one per refused unit per process | `premise_id`, `process_id`, `unit_id`, `reason`, `detail` | Units a process refused by `min_duty`, a 0.00 `max_share` or a recovery unit's `min_viable_scale`. Written even if empty |
 | `sub_minimum_recovery.parquet` | one per recovery unit per period built below its floor | `unit_id`, `period`, `new_capacity`, `min_viable_scale` | Recovery units the LP built with positive new capacity below `min_viable_scale` (spec §5.7, check 5). Reported, not constrained. Written even if empty |
@@ -207,4 +218,5 @@ product is a carrier and not a duty) and is settled by C8.
 
 Still open from the build: note 20 item 54, the activity variable a D16-suppressed process
 still needs; item 55, the CO₂ export route has no sourced price, so the £40/t tariff is
-synthetic; and item 57 above.
+synthetic. Item 57 is closed by note 24; the cement worked example is re-solved against it
+as a follow-on (note 24 Task 4).
