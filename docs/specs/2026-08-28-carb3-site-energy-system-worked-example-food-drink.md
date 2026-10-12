@@ -85,9 +85,7 @@ that matters.
 
 **Base-year energy read by the model: 0.30000 + 0.06000 = 0.36000 PJ/yr.**
 
-**Carrier coverage is complete**, and that is the contrast with the cement works, where
-`solid_biomass` was absent and the premise carried an incomplete-coverage flag on every output
-row. Here all five main vectors are stated — two by a positive quantity and three by an
+**Carrier coverage is complete**, as it is at the cement works. Here all five main vectors are stated — two by a positive quantity and three by an
 explicit `not_consumed` zero — which is what §3.1.1 asks the stock model to aim for. A missing
 row would have meant *"nobody checked"*, and at a dairy that is a materially different claim
 from *"this site burns no coal"*: coal firing is exactly the option a decarbonisation model
@@ -111,7 +109,7 @@ mass-denominated process need no rows at all — and `A1` does **not** reject th
 `missing_throughput`.
 
 This is the cleanest available contrast with the cement works, where the same rule makes
-throughput mandatory and the two duties are masses. `D5`'s two denominator conventions are
+throughput mandatory and the cement duty is a mass. `D5`'s two denominator conventions are
 both exercised across the pair of examples and neither example exercises both.
 
 ### 1.4 `premise_connection` (§3.1.3)
@@ -224,9 +222,8 @@ From the site's Climate Change Agreement returns:
 **No row at the base year.** Under §3.1.1's table this is **reported as
 `emissions_year_unmatched` and never a rejection**: the entity is optional intelligence, and
 rejecting the premise would discard the evidence. §7.6's reconciliation is skipped and said to
-be skipped (§10.2). The cement works is the opposite case — a base-year row exists there, the
-reconciliation runs, and it closes to 1.96% — so the two examples between them exercise both
-branches of the rule.
+be skipped (§10.2). The cement works states no measured emissions at all, so it is skipped
+there too, and the branch where the reconciliation runs is exercised by neither example.
 
 No `process` rows, because the site has no process chemistry; no `total` row, because the
 split was never in doubt.
@@ -261,8 +258,8 @@ Neither is reported as `profile_energy_inconsistent`.
 
 The within-shift peak factor is *observed*: mean electrical demand over operating hours is
 16,667 ÷ 7,200 = **2.3148 MW**, and 3.4 ÷ 2.3148 = **1.4688**, quoted as 1.47. That figure is
-what §8.5's connection arithmetic runs on, and it is higher than the cement works' 1.17
-because a three-shift dairy with batch clean-in-place is peakier than a continuous kiln.
+what §8.5's connection arithmetic runs on. A three-shift dairy with batch clean-in-place is
+peakier than a continuous kiln; the cement works states no operating profile to compare.
 
 **The electricity load factor is measured against the meter, and the meter nets the CHP.** A
 site peak of 3.4 MW against a 4 MW connection leaves 0.6 MW of headroom on the *import* side
@@ -669,8 +666,8 @@ Two things are **reported rather than failed**:
   `summer_weighted` seasonality (§1.9), so the annual peak cannot be attributed to the right
   process when the mix changes.
 
-Carrier coverage is **complete** — all five main vectors stated (§1.2) — which is the contrast
-with the cement works.
+Carrier coverage is **complete**: all five main vectors are stated (§1.2), as at the cement
+works.
 
 The premise is assigned to the nearest of the nine in-scope GB clusters, `mersey`.
 **Accepted.**
@@ -937,9 +934,8 @@ row's `(carrier_id, vector)` onto a `carrier` row, checks that the vector agrees
 | `solid_biomass` | 0.00000 | 2024 | `base_year` |
 
 **Every carrier reads at the base year**, so no substitution occurs and no output row carries
-`year_evidence_tier = substituted`. The cement works is the opposite case, where 35.4% of the
-site's energy is pinned from a 2023 reading. Both branches of §3.1.1's ladder are exercised
-across the pair.
+`year_evidence_tier = substituted`. The cement works also reads every carrier at the base
+year, so §3.1.1's substitution branch is exercised by neither example.
 
 **`A3` does not allocate energy across processes**, and that is the live specification's change
 from the COMIT-parity baseline, which did. Which unit burns what is decided by C8 (carrier
@@ -1030,9 +1026,8 @@ Tiers are tried in order and exactly one resolves:
 mix_evidence_tier = "activity_default"
 ```
 
-**This is the tier that cement did not reach, and it matters.** At the cement works the kiln was
-the only consumer of coal, gas and waste-derived fuel, so tier 2 determined the mix by
-division. Here three units share `natural_gas` and division cannot separate them. §4.1's rule
+**This is the tier that cement did not need, and it matters.** At the cement works the
+premise states each kiln unit's `capacity_share`, so tier 1 settles the mix. Here three units share `natural_gas` and division cannot separate them. §4.1's rule
 is that where several units share a carrier at tier 2 the split is made by duty share and
 **recorded as an assumption rather than presented as measured** — and at this premise even that
 is unavailable, because the audit names the boiler-house plant but not its split, and the
@@ -1085,9 +1080,7 @@ The CHP's 2025 write-off is 38.0 × 1.0 × 11 ÷ 25 = £16.720m per PJ/yr, times
 $a_{u,0}$ of §5.1, so each incumbent runs at its availability factor exactly in the base year
 and has no headroom to grow into.
 
-**The write-offs here are small, and that is itself the result.** At the cement works the kiln
-carried £119.5m of residual value at $t_0$ and the charge dominated the switching decision;
-at a dairy the whole boiler house is worth under £1.1m and `D11` prices delay in fractions of
+**The write-offs here are small, and that is itself the result.** At a dairy the whole boiler house is worth under £1.1m and `D11` prices delay in fractions of
 a million. The mechanism is the same and its weight is not, which is worth knowing before
 assuming `D11` matters everywhere.
 
@@ -1413,8 +1406,8 @@ only) asserts it.
 
 At the cap, PV output is 1.846154 × 0.031536 × 0.11 = **0.006404 PJ/yr**, which is **5.90%** of
 the dairy's 0.108626 PJ of consumption at 2030 (the chiller's 0.021533, the motors' 0.064598
-and the condenser heat pump's 0.088841 × 0.25320 = 0.022495, §8.4), three times the share the cement
-works' much larger roof achieved, because the load is about four times smaller. The decision at 2030:
+and the condenser heat pump's 0.088841 × 0.25320 = 0.022495, §8.4), a high share because the load is
+small. The decision at 2030:
 
 | | £m/yr |
 |---|---|
@@ -1921,9 +1914,9 @@ biomass the two would first have to agree on whether the measured figure is gros
 zero-rated carrier — §7.6 compares like with like or not at all — and this example cannot
 exercise that.
 
-Where the cement works reconciles to 1.96% and adopts the measured combustion/process split for
-its base year, this premise has nothing to reconcile against and says so on every output row.
-Both branches are exercised across the pair of examples.
+This premise has nothing to reconcile against and says so on every output row. The cement
+works has no measured emissions either, so the branch where §7.6 runs waits for a premise
+that states them.
 
 ---
 
@@ -2081,18 +2074,18 @@ expected tables. Table snapshots of the fixture outputs, rounded, are the regres
    `activity_default`, one unit's vintage `process_known` and another's `premise_bounded`, and
    no emissions reconciliation at all. A single site-level quality score would have averaged
    that into nothing.
-10. **`D11` matters much less here than at the cement works** (§5.3). The whole boiler house
-    carries under £1.1m of residual value against a kiln's £119.5m. The mechanism is identical
-    and its weight is not, which is worth knowing before assuming plant age is decisive
-    everywhere.
+10. **`D11` (existing plant has an age) carries little weight here** (§5.3). The whole boiler
+    house carries under £1.1m of residual value, so plant age prices delay in fractions of a
+    million, which is worth knowing before assuming plant age is decisive everywhere.
 
 ### 13.2 What it cannot show
 
 - **No mass denominator.** Every duty here is energy-denominated, so `D5`'s second convention,
   the process-emission term and the `premise_throughput` requirement are all exercised only at
   the [cement works](2026-08-28-carb3-site-energy-system-worked-example-cement.md).
-- **No abatement unit, so no `unit_abatement_host` rows and no host-life annuity.** `V17`'s
-  abatement leg and `V33` (a capture train abates several hosts) are asserted there.
+- **No abatement unit, so no `unit_abatement_host` rows and no host-life annuity.** `V33` (a capture
+  train abates several hosts) and `V37` (a capture rate is a fraction of its hosts' streams) are
+  asserted there.
 - **No `V1b` comparison.** This premise is deliberately **outside** the carrier-equivalent
   configuration of §10.2: it has a battery in the candidate set (condition 2), onsite
   generation (condition 3) and an active cascade, siting cap and connection limit (condition 4),
@@ -2165,5 +2158,4 @@ were there one.
   `Food Processing Centre` default process set.
 - The [cement worked example](2026-08-28-carb3-site-energy-system-worked-example-cement.md),
   which walks the parity case on the same thirteen sections. Read together, the two cover both
-  denominators of `D5`, both branches of §3.1.1's base-year rule, both branches of §7.6, and
-  all three tiers of §4.1's carrier-mix ladder.
+  denominators of `D5` and the first and third tiers of §4.1's carrier-mix ladder.

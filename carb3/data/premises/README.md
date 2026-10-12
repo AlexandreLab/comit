@@ -275,7 +275,7 @@ by the price leg first), no closed validity interval.
 | | |
 |---|---|
 | `carb3_activity` | `Cement Works` |
-| Cut from | [Cement worked example](../../../docs/specs/2026-08-28-carb3-site-energy-system-worked-example-cement.md), premise `P-000123` |
+| Cut from | A hand-built cement premise, `P-000123`, of an earlier cut of the [cement worked example](../../../docs/specs/2026-08-28-carb3-site-energy-system-worked-example-cement.md). Since 2026-10-08 the example describes this premise exactly, so the section numbers in these rows' `source` and `provenance` strings point at that earlier cut, which git history holds |
 | Processes | Eight valid at the base year, plus one closed interval |
 | Duties | The `cement` mass duty 1.130000 Mt/yr from `premise_throughput` (§3.1.2), and `motive_power` 0.168000 PJ/yr over four processes. Neither `kiln_pyroprocessing` nor `cement_grinding` carries a duty from the profile: both make a `product`, so their profile rows classify their energy need rather than stating a demand (§3.9) |
 | Incumbents | Nine rows over eight processes: `kiln_dry_coal` + `kiln_dry_gas`, `grinder_mixer_elec`, `motor_elec` ×6 |

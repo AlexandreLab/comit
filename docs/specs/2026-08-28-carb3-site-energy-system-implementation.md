@@ -199,7 +199,7 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-10-07*
+*Section last updated: 2026-10-12*
 
 **Twenty-five entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, nine by the
@@ -1108,7 +1108,7 @@ families need this and neither could be written down when the key was the pair:
 | Case | The two rows |
 |---|---|
 | **Storage** | A battery charges and discharges on `electricity`; a hot-water store on the same heat band. `aux_input` for the charge leg, `primary_output` for the discharge leg, and the round-trip loss is the difference between them |
-| **A capture train with a fired reboiler** | `ccs_amine` captures its hosts' `co2_fuel_fossil` at a rate of −0.90 as `emission_input`, and makes its own from the reboiler as a derived `emission` row (D15): 1.9 PJ of gas per Mt of `co2_captured` at the scenario's 51.12 kt/PJ, so 96.011 kt fossil and 1.117 kt biogenic per Mt. The cement worked example's +106.59 is the same row at its own 56.1 kt/PJ |
+| **A capture train with a fired reboiler** | `ccs_amine` captures its hosts' `co2_fuel_fossil` at a rate of −0.90 as `emission_input`, and makes its own from the reboiler as a derived `emission` row (D15): 1.9 PJ of gas per Mt of `co2_captured` at the scenario's 51.12 kt/PJ, so 96.011 kt fossil and 1.117 kt biogenic per Mt, the figures the cement worked example quotes |
 
 Netting the two legs into one coefficient is **not** an alternative. It makes the unit load and
 destroys the number: a train that recirculates its flue gas and one that does not become the
@@ -2963,7 +2963,7 @@ Widening a range is a manual step in the same commit as the label.
 
 ## 13. Worked examples
 
-*Section last updated: 2026-10-02*
+*Section last updated: 2026-10-12*
 
 Two examples, both written, each a document of its own because each is long enough to be one
 and because both are published as test fixtures. They share a thirteen-section structure so
@@ -2971,7 +2971,7 @@ that the same step can be read side by side in either.
 
 | Example | What it exercises |
 |---|---|
-| [A cement works](2026-08-28-carb3-site-energy-system-worked-example-cement.md) | **The parity case.** One chemistry node at the top grade, a mass denominator (D5), two products, tier-1 vintage with a 2004 cohort, the stranding charge, a CCS train as an abatement unit inheriting its host's remaining life, a footprint-proxy area against C12, C11 breached by the capture train's auxiliary load, §7.6 reconciling to 1.96%, and §10.2's carrier-equivalent configuration, which is what V1b compares |
+| [A cement works](2026-08-28-carb3-site-energy-system-worked-example-cement.md) | **The parity case**, on the `carb3` slice's synthetic premise `mvp-cement`, so every figure checks against a run. One chemistry node at the top grade, a mass denominator (D5), two products and an internal one (D16), tier-1 vintage on every incumbent, the kiln switching from coal to gas and the grinder substituting clinker, a CCS train treating its host's flue gas under C14 with a biogenic credit, and §10.2's carrier-equivalent configuration, which is what V1b compares. C11, C12, PV and stranding are described, not solved |
 | [A food and drink site](2026-08-28-carb3-site-energy-system-worked-example-food-drink.md) | **The mechanism case.** `IFDLTH`, `IFDSTM`, `IFDDRY`, `IFDREF` and `IFDMOT`: the cross-sector collapse — 84 low-temperature-heat rows across eleven sectors to eight units, of which this dairy reaches seven — a 120 °C duty with boiler, CHP, heat pump and electric resistance competing under C10, a heat pump refused at the 200 °C drying duty, reject heat on its source-class carriers with the chillers' condenser heat and the CHP's exhaust recovered, an existing CHP made visible by §3.16 and producing heat **and** electricity into the carrier balance, PV bounded by C12 while the CHP is not, and an electricity export priced below the import price that stays at zero because the site never has a surplus |
 
 **Cement alone is not sufficient**, and the reason is structural rather than a matter of
@@ -2982,10 +2982,11 @@ inside bundled capture rows. A worked example on a cement works would demonstrat
 except the mechanism this model exists for.
 
 **Neither example is sufficient alone, and the pair is deliberate.** Between them they cover
-both denominators of D5, both branches of §3.1.1's base-year rule (a base-year row, and a
-substitution from the nearest year), both branches of §7.6 (a reconciliation that runs, and
-one reported as `emissions_year_unmatched`), all three tiers of §4.1's carrier-mix ladder, and
-both areas of evidence for C12 (a measured survey and a floorspace proxy). The food and drink
+both denominators of D5, the first and third tiers of §4.1's carrier-mix ladder, and both
+areas of evidence for C12 (a measured survey and a floorspace proxy). Neither exercises
+§3.1.1's substitution from the nearest year, tier 2 of §4.1, or a §7.6 reconciliation that
+runs: both premises read every carrier at the base year, and neither carries a base-year
+measured emissions row. The food and drink
 example is milestone M4's exit gate; the cement one is M2's.
 
 **Both documents carry an open-points table**, and four entries are shared between them: the
