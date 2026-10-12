@@ -473,7 +473,7 @@ the `carb3` tests on pre-push and the new rows break the old C8 the moment they 
 
 ### Task 4 (follow-on, not part of this change): re-solve the cement worked example
 
-**Done 2026-10-08, more widely than planned.** The owner decided to retire the example's
+**Done 2026-10-12, more widely than planned.** The owner decided on 2026-10-08 to retire the example's
 hand-built premise and its own costs, prices and emission factors, so the example now describes
 `mvp-cement` exactly on the reference tables and every figure checks against the run
 (objective £3,640.0994m, 0.511187 Mt/yr captured from 2035). The reboiler question below is
