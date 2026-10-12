@@ -85,8 +85,8 @@ that matters.
 
 **Base-year energy read by the model: 0.30000 + 0.06000 = 0.36000 PJ/yr.**
 
-**Carrier coverage is complete**, as it is at the cement works. Here all five main vectors are stated — two by a positive quantity and three by an
-explicit `not_consumed` zero — which is what §3.1.1 asks the stock model to aim for. A missing
+**Carrier coverage is complete**, as it is at the cement works. Here all five main vectors are stated, two by a positive quantity and three by an
+explicit `not_consumed` zero, which is what §3.1.1 asks the stock model to aim for. A missing
 row would have meant *"nobody checked"*, and at a dairy that is a materially different claim
 from *"this site burns no coal"*: coal firing is exactly the option a decarbonisation model
 would otherwise report as unexamined.
@@ -125,9 +125,10 @@ supply are not 22 MW of anything.
 
 **`available_area` is supplied directly**, from a site survey, so
 `area_evidence_tier = measured` — the top rung of the `D10` ladder (tiered site intelligence)
-for this input. The cement works had none and fell to `MF-09`'s footprint proxy, floorspace
-times a per-activity usable-area ratio, at tier `proxy`. Both tiers appear on output rows and
-neither is mistaken for the other. Without an area at all, C12 is unbounded and the LP builds
+for this input. The cement works has none, so under the specification it would fall to `MF-09`'s
+footprint proxy, floorspace times a per-activity usable-area ratio, at tier `proxy`; the slice
+builds no C12 there, so its example computes no area. Both tiers would appear on output rows and
+neither be mistaken for the other. Without an area at all, C12 is unbounded and the LP builds
 infinite PV.
 
 The 2 MW `export_capacity` never binds: the site imports electricity in every period, so the

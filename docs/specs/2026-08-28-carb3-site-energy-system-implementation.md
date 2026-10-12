@@ -2971,7 +2971,7 @@ that the same step can be read side by side in either.
 
 | Example | What it exercises |
 |---|---|
-| [A cement works](2026-08-28-carb3-site-energy-system-worked-example-cement.md) | **The parity case**, on the `carb3` slice's synthetic premise `mvp-cement`, so every figure checks against a run. One chemistry node at the top grade, a mass denominator (D5), two products and an internal one (D16), tier-1 vintage on every incumbent, the kiln switching from coal to gas and the grinder substituting clinker, a CCS train treating its host's flue gas under C14 with a biogenic credit, and §10.2's carrier-equivalent configuration, which is what V1b compares. C11, C12, PV and stranding are described, not solved |
+| [A cement works](2026-08-28-carb3-site-energy-system-worked-example-cement.md) | **The parity case**, on the `carb3` slice's synthetic premise `mvp-cement`, so every figure checks against a run. One chemistry node at the top grade, a mass denominator (D5), two products and an internal one (D16), tier-1 vintage on every incumbent, the kiln switching from coal to gas and the grinder substituting clinker, a CCS train treating its host's flue gas under C14 (a capture train treats its hosts' flue gas) with a biogenic credit, and §10.2's carrier-equivalent configuration, which V1b (reproduce the R run) is meant to compare but whose condition 5 its CO₂ export breaks (open, below). C11 (connection capacity), C12 (siting cap), PV and stranding are described, not solved |
 | [A food and drink site](2026-08-28-carb3-site-energy-system-worked-example-food-drink.md) | **The mechanism case.** `IFDLTH`, `IFDSTM`, `IFDDRY`, `IFDREF` and `IFDMOT`: the cross-sector collapse — 84 low-temperature-heat rows across eleven sectors to eight units, of which this dairy reaches seven — a 120 °C duty with boiler, CHP, heat pump and electric resistance competing under C10, a heat pump refused at the 200 °C drying duty, reject heat on its source-class carriers with the chillers' condenser heat and the CHP's exhaust recovered, an existing CHP made visible by §3.16 and producing heat **and** electricity into the carrier balance, PV bounded by C12 while the CHP is not, and an electricity export priced below the import price that stays at zero because the site never has a surplus |
 
 **Cement alone is not sufficient**, and the reason is structural rather than a matter of
@@ -2994,10 +2994,18 @@ absence of any per-premise tier over
 [`../notes/data/activity_process_energy_share.csv`](../notes/data/activity_process_energy_share.csv);
 C8 (carrier balance)'s lack of a disposal route for a carrier nothing consumes; §7's
 attribution once electricity is generated on site; and the service carrier a `MOT` or `REF`
-duty needs. They are recorded there rather than closed there, and T23 (complete §5) owns the
-last three. **A fifth shared entry is closed and should be dropped from both tables**: §3.3.1
-makes that file the input that sizes a premise's processes, not the parity target §3.3 once
-treated it as.
+duty needs. All four are closed, and the cement example records them so: by §3.10.1
+`premise_process_energy`, by the disposal variable $d_{c,t}$ of §5.2, by §7.7 and §7.8, and by
+§3.4's service carriers. A fifth shared entry is closed as well: §3.3.1 makes that file the
+input that sizes a premise's processes, not the parity target §3.3 once treated it as.
+
+**One point is open, raised by the cement example: §10.2's condition 5 against a tariffed CO₂
+export.** Condition 5 (no export) excludes every $x_{c,k,t}$, but the parity premise captures
+CO₂ and can only be rid of it through an export at a tariff, a cost and not a revenue (§5.4).
+COMIT's capture bundles keep the captured CO₂ inside the technology, so the R run has no
+corresponding flow. Until §10.2 says whether a tariffed `co2_captured` export is compatible
+with the comparison, V1b (reproduce the R run's objective and per-carrier energy) cannot
+compare a premise that captures. No delivery task owns it yet.
 
 **The cement document's product-carrier point is closed by D16.** It recorded that a `product`
 carrier consumed by a downstream unit had no route through C8 (carrier balance) that also
@@ -3010,7 +3018,7 @@ through C8 by way of $z^{\circ}$. V32 guards it.
 **The two singular-plant points are closed by a pair of child tables.** Both documents recorded
 that one field could name only one unit where D13 (one primary carrier per unit) routinely makes
 several: §3.10 named a process's installed plant with a single `unit_id`, and `unit` named a
-capture train's host with a single field. Neither survived a co-firing kiln, which is three
+capture train's host with a single field. Neither survived a co-firing kiln, which is several
 units with one capture train bolted to the line. §3.10.2 `premise_process_unit` and §3.5.3
 `unit_abatement_host` replace them with one row per unit and one row per host; the train inherits
 the earliest remaining life over its hosts (C3, capacity transfer; C4, incumbent ageing) and

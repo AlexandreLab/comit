@@ -3,9 +3,11 @@
 **The parity case.** One premise carried end to end through the nine algorithms `A1`–`A9`
 (§4), exercising the mass denominator (`D5`, hybrid denominators), tier-1 plant vintage
 (`D11`, existing plant has an age), a capture train as an abatement unit treating its hosts'
-flue gas under C14, `D16` (internal products are carriers, not duties) on the clinker this
-works grinds itself, and the carrier-equivalent configuration of the specification's §10.2,
-which `V1b` (reproduce the R run's objective and per-carrier energy) compares against.
+flue gas under C14 (a capture train treats its hosts' flue gas), and `D16` (internal products
+are carriers, not duties) on the clinker this works grinds itself. It is the premise `V1b` (reproduce the R run's objective and
+per-carrier energy) is meant to compare in the carrier-equivalent configuration of the
+specification's §10.2, but its captured-CO₂ export breaks that configuration's condition 5
+(no export) as written, which §13.3 point 13 records as open.
 
 Section references without a document name are to the
 [implementation specification](2026-08-28-carb3-site-energy-system-implementation.md).
@@ -26,13 +28,15 @@ uv run --directory carb3 python -m carb3 mvp-cement --out-dir <dir> --show-dropp
 which solves to optimality at **£3,640.0994m**, discounted to 2021, and writes the parquet
 tables §9 lists. The hand arithmetic beside each result is there so a reader can check the
 key figures without the solver. Where the specification describes a mechanism the slice does
-not build (C11, C12, the peak rebuild, reinforcement, stranding, PV, storage, A1's named
+not build (C11 connection capacity, C12 siting cap, the peak rebuild, reinforcement, stranding, PV, storage, A1's named
 checks and the base-year carrier-mix rule), the example says what the specification would do,
 marks it as not built, and quotes no number for it (§8.5.1).
 
 Money is £m at 2021 prices, energy PJ, mass Mt, emissions kt CO₂, power MW. Figures are
-quoted at six decimal places where the run prints them, and hand arithmetic agrees with the
-run to the last place quoted. The figures are synthetic: the premise is hand-authored and
+quoted at six decimal places where the run prints them. Where a hand check multiplies run
+quantities, the inputs are quoted at eight or nine places, and the 30-year annuity factor at
+nine, so that the product shown reproduces the run's figure at six. The figures are
+synthetic: the premise is hand-authored and
 several reference rows carry low confidence (§1.11), so nothing here is a statement about a
 real works.
 
@@ -185,7 +189,7 @@ foreign key to the §1.5 parent. `known_capacity` stays on the parent, because a
 the line's capacity once, and the two kiln children split it by `capacity_share`: 0.95 ×
 0.871369 = **0.827801 Mt/yr** of `kiln_dry_coal` and 0.95 × 0.128631 = **0.122199** of
 `kiln_dry_gas`. The kiln is two units, not one, because D13 (one primary carrier per unit)
-puts the fuel in the unit's identity. The three `site_services` shares are the activity's
+puts the fuel in the unit's identity (D13, one primary carrier per unit). The three `site_services` shares are the activity's
 duty-profile split of that process (§3.3), and they sum to 1.000000.
 
 ### 1.6 Plant age (§3.10.2's `commissioned_year`): `D11` tier 1
@@ -465,7 +469,9 @@ draws clinker and only the kilns make it. The slice prints this as *supply, no d
 **`clinker_cooling` and `site_services` get no duty**, because their `known_activity` is
 blank (§1.5). The specification derives the same duties another way, by applying
 [`activity_process_energy_share.csv`](../notes/data/activity_process_energy_share.csv)'s
-`Cement Works` shares to §1.2's electricity, and lands on the same figures:
+`Cement Works` shares to §1.2's electricity, and lands within 3 × 10⁻⁶ PJ of them. The
+difference is rounding: §1.2's electricity row was built up from the duties and the unit
+coefficients (0.092404 + 0.159601 + 0.168000), and the shares split the rounded total back down:
 
 | Process | `energy_share` (electricity) | × 0.420005 PJ | Goes to |
 |---|---|---|---|
@@ -606,8 +612,8 @@ The kiln is two units on two fuels, so the base-year split between them is the c
 
 Under the specification the mix is observed, `mix_evidence_tier = site_known`, and the
 dispatch is pinned to it: 0.850000 × 0.871369 = **0.740664 Mt** of clinker on coal and
-**0.109336** on gas, which is what §1.2's fuel rows were written from (0.740664 × 4.6 =
-3.407053 PJ of coal, 0.109336 × 4.6 = 0.502947 of gas). `V23` (one tier resolves, tried in
+**0.109336** on gas, which is what §1.2's fuel rows were written from (0.74066370 × 4.6 =
+3.407053 PJ of coal, 0.10933630 × 4.6 = 0.502947 of gas). `V23` (one tier resolves, tried in
 order, and `mix_evidence_tier` on every row) passes on all three properties.
 
 **The slice builds no carrier-mix rule**, so the LP chooses the base-year dispatch inside the
@@ -776,7 +782,7 @@ own proportions. C8 on each CO₂ carrier takes $-\Gamma_{c,t}$.
 $$\min Z = \sum_t \delta_t\big(Z^{\text{capex}}_t + Z^{\text{opex}}_t + Z^{\text{fuel}}_t + Z^{\text{carbon}}_t - Z^{\text{exp}}_t\big)$$
 
 - $Z^{\text{capex}}_t$: capex × annuity on the **new** capacity standing in $t$; an incumbent's
-  capex is sunk. Annuity $i/(1-(1+i)^{-L})$: **0.054371** at $L$ = 30, **0.070361** at 20.
+  capex is sunk. Annuity $i/(1-(1+i)^{-L})$: **0.054371332** at $L$ = 30, **0.07036108** at 20.
 - $Z^{\text{opex}}_t$: `fixed_opex` × available capacity, incumbents included.
 - $Z^{\text{fuel}}_t$: import × `import_price`.
 - $Z^{\text{carbon}}_t = 10^{-3}\pi_t\,(d_{\text{co2\_process}} + d_{\text{co2\_fuel\_fossil}} - \Gamma_{\text{co2\_fuel\_biogenic}})$:
@@ -792,7 +798,7 @@ $Z^{\text{infra}}$, $Z^{\text{net}}$ and $Z^{\text{strand}}$ are not built.
 
 The run: `status=ok termination=optimal`, **objective £3,640.0994m**, 245 variables, 237
 constraints. Check 4 of §5.7 (the row check, every constraint row re-verified against the
-built matrix) finds 0 violations, and check 6 (the capture check, V37's post-solve legs)
+built matrix) finds 0 violations, and check 6 (the capture check, the post-solve legs of V37, a capture rate is a fraction of its hosts' streams)
 finds 0.
 
 ### 8.1 The base year, 2021, worked in full
@@ -831,8 +837,9 @@ closes to 1e-6) and V30 (emissions close through the balance) together.
 | `co2_fuel_biogenic` | | gas +0.301708 kt | | −0.301708 | |
 | `co2_captured` | | none | | | export 0 |
 
-Hand checks: coal 0.738431 × 4.6 = 3.396785 PJ and × 411.194 = 303.638587 kt; gas 0.111568 ×
-4.6 = 0.513213 PJ, × 232.447752 = 25.933754 kt fossil and × 2.704248 = 0.301708 kt biogenic;
+Hand checks: coal 0.73843146 × 4.6 = 3.396785 PJ and × 411.194 = 303.638587 kt; gas
+0.11156810 × 4.6 = 0.513213 PJ, × 232.447752 = 25.933754 kt fossil and × 2.704248 = 0.301708
+kt biogenic;
 process CO₂ 0.84999956 × 525 = 446.249769 kt; kiln electricity 0.84999956 × 0.10871 =
 0.092404; grinder 1.13 × 0.14124 = 0.159601. **The base year reproduces §1.2's electricity,
 0.420005 PJ, exactly**; the fuels differ from §1.2 by the dispatch choice of §5.2 (coal
@@ -850,14 +857,14 @@ on an output row, priced at £0.
 | Term | Computation | £m |
 |---|---|---|
 | $Z^{\text{capex}}$ | C5: nothing new | **0.000000** |
-| $Z^{\text{opex}}$ | kilns 0.950000 × 4.01633 = 3.815514; grinder 1.237678 × 1.13747 = 1.407822; motor 0.176842 × 0.0717 = 0.012680 | **5.236015** |
-| $Z^{\text{fuel}}$ | coal 3.396785 × 3.26 = 11.073518; gas 0.513213 × 7.04 = 3.613021; electricity 0.420005 × 31.50 = 13.230147 | **27.916686** |
+| $Z^{\text{opex}}$ | kilns 0.95 × 4.01633 = 3.815514; grinder 1.23767798 × 1.13747 = 1.407822; motor 0.17684211 × 0.0717 = 0.012680 | **5.236015** |
+| $Z^{\text{fuel}}$ | coal 3.39678473 × 3.26 = 11.073518; gas 0.51321325 × 7.04 = 3.613021; electricity 0.420004652 × 31.50 = 13.230147 | **27.916686** |
 | $Z^{\text{carbon}}$ | (446.249769 + 329.572340) = 775.822109 kt × £244.47/t × 10⁻³ | **189.665231** |
 | $-Z^{\text{exp}}$ | no export | **0.000000** |
 | **Total** | | **£222.817932m** |
 
 Discounted: 222.817932 × 3.801637 = **£847.0729m**, the base year's share of the objective.
-Carbon is 85% of it. Indirect emissions on the electricity import, 0.420005 × 58.02 =
+Carbon is 85% of it. Indirect emissions on the electricity import, 0.42000465 × 58.02 =
 24.368670 kt, are reported by the specification and not charged; the slice's tables do not
 carry them.
 
@@ -879,7 +886,7 @@ from a new gas kiln costs 4.6 × 10.53 = 48.438 of gas, 232.448 kt × £259.70/t
 fuel CO₂, 525 kt × £259.70/t = 136.343 of process CO₂, 0.10871 × 45.14 = 4.907 of auxiliary
 electricity and 6.836 + 4.399 of kiln capital and fixed cost (below): **£261.29m**. The saving
 is 0.151622 × 261.29 + 0.06875 × 45.14 = **£42.72m** a year per Mt of cement, against the
-substituting grinder's 28.3319 × 0.054371 ÷ 0.913 + 1.13747 ÷ 0.913 = **£2.93m**. The cap binds,
+substituting grinder's 28.3319 × 0.054371332 ÷ 0.913 + 1.13747 ÷ 0.913 = **£2.93m**. The cap binds,
 and it binds in every later period too.
 
 **The kiln moves to gas.** The coal kiln still stands (to 2033), but it is cheaper to build gas
@@ -889,7 +896,7 @@ kiln capacity and leave coal idle:
 per Mt clinker per year, 2025          coal kiln (standing)     new gas kiln
 fuel                                   4.6 x 8.16  = 37.536     4.6 x 10.53 = 48.438
 fuel CO2 at £259.70/t                  411.194 kt  = 106.787    232.448 kt  = 60.367
-capital, 114.7832 x 0.054371 / 0.913                           6.836
+capital, 114.7832 x 0.054371332 / 0.913                         6.836
 fixed opex, 4.01633 / 0.913                                     4.399
 total                                               144.323                  120.039
 ```
@@ -899,17 +906,23 @@ and paying either way. Gas saves **£24.28m per Mt of clinker a year**, so the L
 0.747200 ÷ 0.913 − 0.122199 = **0.696201 Mt/yr** of `kiln_dry_gas`, enough with the gas cohort
 to make all 0.747200 Mt, and dispatches the coal kiln at zero from 2025.
 
-**C8 at 2025**: natural gas 0.747200 × 4.6 = **3.437119 PJ**; electricity 0.081228 (kiln) +
+**That saving is the budget a gas reinforcement must beat.** It is 24.28 × 0.7472 ≈ **£18.1m a
+year** at 2025 prices, and the switch takes the works' gas draw from 0.502947 PJ (15.9 MW on
+mean flow) to 3.437119 PJ (109.0 MW) against `C-02`'s 20 MW `import_capacity`. The slice does
+not build C11 (connection capacity), so the switch is free of that cost here; §8.5.1 says what
+the specification would do.
+
+**C8 at 2025**: natural gas 0.74719984 × 4.6 = **3.437119 PJ**; electricity 0.081228 (kiln) +
 0.063840 (grinder) + 0.049148 (substituting grinder) + 0.168000 (motors) = **0.362217 PJ**;
-`co2_process` 0.747200 × 525 = **392.279918 kt**; `co2_fuel_fossil` 0.747200 × 232.447752 =
+`co2_process` 0.747199844 × 525 = **392.279918 kt**; `co2_fuel_fossil` 0.747199844 × 232.447752 =
 **173.684924 kt**; `co2_fuel_biogenic` **2.020614 kt**; reject heat 0.129923 PJ. All of it is
 disposed.
 
 | Term, 2025 | Computation | £m |
 |---|---|---|
-| $Z^{\text{capex}}$ | gas kiln 0.696201 × 114.7832 × 0.054371 = 4.344933; substituting grinder 0.742607 × 28.3319 × 0.054371 = 1.143944 | **5.488877** |
-| $Z^{\text{opex}}$ | kilns (0.827801 + 0.818401) × 4.01633 = 6.611687; grinders (1.237678 + 0.742607) × 1.13747 = 2.252515; motor 0.012680 | **8.876882** |
-| $Z^{\text{fuel}}$ | gas 3.437119 × 10.53 = 36.192866; electricity 0.362217 × 45.14 = 16.350466 | **52.543332** |
+| $Z^{\text{capex}}$ | gas kiln 0.69620126 × 114.7832 × 0.054371332 = 4.344933; substituting grinder 0.74260679 × 28.3319 × 0.054371332 = 1.143944 | **5.488877** |
+| $Z^{\text{opex}}$ | kilns (0.82780055 + 0.81840071) × 4.01633 = 6.611687; grinders (1.23767798 + 0.74260679) × 1.13747 = 2.252515; motor 0.012680 | **8.876882** |
+| $Z^{\text{fuel}}$ | gas 3.43711928 × 10.53 = 36.192866; electricity 0.36221680 × 45.14 = 16.350466 | **52.543332** |
 | $Z^{\text{carbon}}$ | (392.279918 + 173.684924) = 565.964842 kt × £259.70/t | **146.981070** |
 | **Total** | | **£213.890160m** |
 
@@ -917,16 +930,16 @@ disposed.
 
 **2030.** The 1998 grinder's last year is 2027 (§1.6), so it is gone, and the LP rebuilds
 0.452 ÷ 0.913 = **0.495071 Mt/yr** of `grinder_mixer_elec` for the share the substituting
-grinder may not take. Capex rises by 0.495071 × 28.3319 × 0.054371 = 0.762629 to **6.251506**.
-Nothing else changes in quantity; prices do: gas 3.437119 × 7.50 = 25.778395, electricity
-0.362217 × 32.10 = 11.627159, carbon 565.964842 × 0.28009 = 158.521093.
+grinder may not take. Capex rises by 0.49507119 × 28.3319 × 0.054371332 = 0.762629 to **6.251506**.
+Nothing else changes in quantity; prices do: gas 3.43711928 × 7.50 = 25.778395, electricity
+0.36221680 × 32.10 = 11.627159, carbon 565.964842 × 0.28009 = 158.521093.
 
 **2035.** The 2004 kiln cohorts reach their last year in 2033. The coal kiln, idle since 2025,
 simply goes, and its fixed opex with it; the gas cohort's 0.122199 Mt/yr is rebuilt as new
 `kiln_dry_gas` (capex 0.762636 a year). The capture train arrives the same period (§8.4).
 
 **2040.** The 2016 motors' last year is 2035, so **0.176842 PJ/yr** of `motor_elec` is rebuilt,
-at 0.176842 × 2.8679 × 0.070361 = 0.035685 a year.
+at 0.17684211 × 2.8679 × 0.07036108 = 0.035685 a year.
 
 ### 8.4 The capture decision at 2035
 
@@ -939,9 +952,9 @@ train treats its hosts' flue gas) sets $z^{\text{host}}$ on the gas kiln to its 
 
 ```
 host stream (gas kiln, 0.747200 Mt clinker)          made           captured (x 0.9)    vented
-  co2_process        0.747200 x 525             = 392.279918 kt     353.051926          39.227992
-  co2_fuel_fossil    0.747200 x 232.447752      = 173.684924 kt     156.316432          17.368492
-  co2_fuel_biogenic  0.747200 x 2.704248        =   2.020614 kt       1.818552           0.202061
+  co2_process        0.747199844 x 525          = 392.279918 kt     353.051926          39.227992
+  co2_fuel_fossil    0.747199844 x 232.447752   = 173.684924 kt     156.316432          17.368492
+  co2_fuel_biogenic  0.747199844 x 2.704248     =   2.020614 kt       1.818552           0.202061
                                                   567.985456 kt     511.186910 kt
 z(ccs_amine) = 511.186910 / 1000                                    = 0.511187 Mt/yr of co2_captured
 capacity     = 0.511187 / (gamma 1 x alpha 0.913)                    = 0.559898 Mt/yr
@@ -955,10 +968,10 @@ captured streams stand in the host's own proportions, which is V37's leg (d).
 0.35 PJ of electricity:
 
 ```
-reboiler gas        1.9  x 0.511187 = 0.971255 PJ
-  fossil CO2        0.971255 x 50.53212 = 49.079581 kt     vented, charged (never its own host)
-  biogenic CO2      0.971255 x 0.58788  =  0.570981 kt     vented, zero-rated
-auxiliary power     0.35 x 0.511187 = 0.178915 PJ
+reboiler gas        1.9  x 0.51118691 = 0.971255 PJ
+  fossil CO2        0.97125513 x 50.53212 = 49.079581 kt     vented, charged (never its own host)
+  biogenic CO2      0.97125513 x 0.58788  =  0.570981 kt     vented, zero-rated
+auxiliary power     0.35 x 0.51118691 = 0.178915 PJ
 ```
 
 **What is vented at 2035**, the disposal the run reports:
@@ -975,17 +988,17 @@ $$10^{-3} \times 302.08 \times (39.227992 + 66.448073 - 1.818552) = 0.30208 \tim
 
 **Biogenic CO₂ captured is a credit, not a zero.** Its 1.818552 kt enters the carbon term
 negative, £0.549 m a year, because §7.3 zero-rates biomass *before* capture. Had zero-rating
-been applied after, it would be lost. V5 (biomass zero-rated before capture) and V30 assert it.
+been applied after, it would be lost. V5 (biomass zero-rated before capture) and V30 (emissions close through the balance) assert it.
 
 **The 2035 economics, annual.**
 
 | Term | Computation | £m/yr |
 |---|---|---|
-| Capex, annuitised over the train's own 30 years | 0.559898 × 354.5981 × 0.054371 | 10.794818 |
-| Fixed opex | 0.559898 × 8.86495 | 4.963468 |
-| Reboiler gas | 0.971255 × 7.53 | 7.313551 |
-| Auxiliary electricity | 0.178915 × 30.45 | 5.447975 |
-| Transport and storage tariff | 0.511187 × 40.00 | 20.447476 |
+| Capex, annuitised over the train's own 30 years | 0.55989804 × 354.5981 × 0.054371332 | 10.794818 |
+| Fixed opex | 0.55989804 × 8.86495 | 4.963468 |
+| Reboiler gas | 0.97125513 × 7.53 | 7.313551 |
+| Auxiliary electricity | 0.17891542 × 30.45 | 5.447975 |
+| Transport and storage tariff | 0.51118691 × 40.00 | 20.447476 |
 | **Cost of capture** | | **48.967288** |
 | Carbon without capture | 565.964842 kt × £302.08/t | 170.966660 |
 | Carbon with capture | (above) | 31.373277 |
@@ -998,7 +1011,7 @@ Per Mt captured the train costs 21.117 (capital) + 9.710 (fixed) + 14.307 (gas) 
 train treats the whole kiln: it would treat more if there were more.
 
 **The capital is charged over the train's own life, not the host's.** The specification's
-retrofit rule (C3 and C4 with §3.5.3, checked by V17) gives an abatement unit the earliest
+retrofit rule (C3 capacity transfer and C4 incumbent ageing with §3.5.3, checked by V17, vintage and stranding per unit) gives an abatement unit the earliest
 remaining life among its hosts. The slice annuitises every unit over its own `lifetime`, and
 the gas kiln capacity the train treats was built in 2025 and 2035 and outlives the horizon, so
 at this premise the two readings would not differ within it.
@@ -1008,8 +1021,8 @@ at this premise the two readings would not differ within it.
 | Term | Computation | £m |
 |---|---|---|
 | $Z^{\text{capex}}$ | 6.251506 + gas kiln rebuild 0.762636 + train 10.794818 | **17.808960** |
-| $Z^{\text{opex}}$ | kiln 0.818401 × 4.01633 = 3.286969; grinders 1.237678 × 1.13747 = 1.407822; motor 0.012680; train 4.963468 | **9.670937** |
-| $Z^{\text{fuel}}$ | gas (3.437119 + 0.971255) = 4.408374 × 7.53 = 33.195059; electricity (0.362217 + 0.178915) = 0.541132 × 30.45 = 16.477476 | **49.672535** |
+| $Z^{\text{opex}}$ | kiln 0.81840071 × 4.01633 = 3.286967; grinders 1.23767798 × 1.13747 = 1.407822; motor 0.012680; train 4.963468 | **9.670937** |
+| $Z^{\text{fuel}}$ | gas (3.43711928 + 0.97125513) = 4.40837441 × 7.53 = 33.195059; electricity (0.36221680 + 0.17891542) = 0.54113221 × 30.45 = 16.477476 | **49.672535** |
 | $Z^{\text{carbon}}$ | above | **31.373277** |
 | $-Z^{\text{exp}}$ | tariff on 0.511187 Mt | **20.447476** |
 | **Total** | | **£128.973186m** |
@@ -1061,7 +1074,8 @@ Three features of this pathway:
 #### 8.5.1 What the specification does here that the slice does not build
 
 The slice builds a narrower problem than the specification describes. These are the gaps that
-remain at this premise; none changes a figure above, and none is given a figure here.
+remain at this premise. None is built, so none moves the run's figures; the figures below are
+arithmetic on the run, not results of the missing mechanisms.
 
 - **The base-year carrier-mix rule.** Under §4.1 tier 1 the 2021 dispatch is pinned to the
   stated `capacity_share`, 0.740664 Mt of clinker on coal and 0.109336 on gas, which is what
@@ -1074,16 +1088,18 @@ remain at this premise; none changes a figure above, and none is given a figure 
   is computed. **Mean flow alone says C11 would bind on gas.** From 2025 the kiln draws
   3.437119 PJ a year, a mean of 3.437119 × 277,778 MWh ÷ 8,760 h = **109.0 MW**, and from 2035
   4.408374 PJ, **139.8 MW**, against `C-02`'s 20 MW `import_capacity`; electricity's mean is
-  17.2 MW against `C-01`'s 25 MW. Under the specification the coal-to-gas switch would either
-  pay for gas reinforcement or not happen as it does here.
+  17.2 MW against `C-01`'s 25 MW, which binds if λ exceeds 25 ÷ 17.2 = 1.46. The 20 MW gas
+  connection is not a data defect: it covers the base year's 0.502947 PJ (15.9 MW mean) and the
+  gas cohort at full output (16.3 MW). Under the specification the coal-to-gas switch would
+  either pay for transmission-scale gas reinforcement or not happen as it does here.
 - **Reinforcement $w_{k,t}$ and $Z^{\text{net}}$.** Not built, so no reinforcement cost.
 - **C12 (siting cap) and PV.** Not built. `pv_rooftop` is admitted but gets no variable, and
   with no `available_area` the specification's area would be the footprint proxy, whose
   usable-area ratio nobody owns yet.
 - **Storage.** `battery_2h` is dropped by the screen (no coefficients), so β, its
   firm-capacity contribution to C11, is never exercised.
-- **Early retirement and stranding.** C4 is an equality in the slice, so the idle coal kiln
-  stands and pays 0.827801 × 4.01633 = £3.32m of fixed opex a year in 2025 and 2030. The
+- **Early retirement and stranding.** C4 (incumbent ageing) is an equality in the slice, so the idle coal kiln
+  stands and pays 0.82780055 × 4.01633 = £3.32m of fixed opex a year in 2025 and 2030. The
   specification would let it retire early against a stranding charge whose formula is still
   unwritten (§13.3, point 6).
 - **The retrofit's host life.** Not built (§8.4); it would not bind within the horizon here.
@@ -1095,8 +1111,9 @@ remain at this premise; none changes a figure above, and none is given a figure 
 ### 8.6 The relaxation ladder (§4.2)
 
 This premise is feasible at every period, so no rung is used. The ladder's order is
-**C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1** (C4b is leg (b) of C4, forced ageing). In the
-slice, of these only C4, C9 and C1 have rows here, and none binds infeasibly. Under the
+**C6 → C7 → C4b → C12 → C10 → C11 → C9 → C1** (C6 unit stability, C7 known changes, C4b forced ageing, C12 siting cap, C10 grade cascade,
+C11 connection capacity, C9 infrastructure availability, C1 duty satisfaction). In the slice,
+of these only C4, C9 and C1 have rows here, and none binds infeasibly. Under the
 specification C11 (connection capacity) is the rung this works would reach first: on the gas
 connection, by the margin §8.5.1 shows. Relaxing it must be loud, because it asserts a network
 reinforcement nobody has costed.
@@ -1133,7 +1150,7 @@ premise, not columns the slice writes. One row, `kiln_dry_gas` on `natural_gas` 
 | `data_status` | `modelled` on the energy it rests on (§1.2) |
 
 **Every row carries every tier**, which is `D10`'s (tiered site intelligence) stated cost: the
-quality is invisible unless each row says what it rests on. `V23` asserts that
+quality is invisible unless each row says what it rests on. `V23` (one carrier-mix tier per unit) asserts that
 `mix_evidence_tier` in particular appears on all of them. A9 (roll-up and comparison) rolls the
 rows up to GB and compares against ECUK, the inventory and the emissions budget, reported and
 never enforced.
@@ -1161,12 +1178,12 @@ $$\text{direct}_t = \sum_{c\,:\,\text{charged}} d_{c,t} - \sum_{c\,:\,\text{zero
 | Term, 2021 | Computation | kt CO₂ |
 |---|---|---|
 | $d_{\text{co2\_process}}$ | 0.84999956 Mt × 525 | 446.249769 |
-| $d_{\text{co2\_fuel\_fossil}}$, coal | 3.396785 PJ × 89.39 | 303.638587 |
-| $d_{\text{co2\_fuel\_fossil}}$, gas | 0.513213 PJ × 50.53212 | 25.933754 |
-| $d_{\text{co2\_fuel\_biogenic}}$ | 0.513213 PJ × 0.58788 | 0.301708, zero-rated |
+| $d_{\text{co2\_fuel\_fossil}}$, coal | 3.39678473 PJ × 89.39 | 303.638587 |
+| $d_{\text{co2\_fuel\_fossil}}$, gas | 0.51321325 PJ × 50.53212 | 25.933754 |
+| $d_{\text{co2\_fuel\_biogenic}}$ | 0.51321325 PJ × 0.58788 | 0.301708, zero-rated |
 | Biogenic captured | none before 2035 | 0 |
 | **Direct total** | | **775.822109** |
-| Indirect, on the import (§7.8) | 0.420005 PJ × 58.02 | 24.368670, reported |
+| Indirect, on the import (§7.8) | 0.42000465 PJ × 58.02 | 24.368670, reported |
 
 `V30` (emissions close through the balance) holds: 775.822109 kt × £244.47/t × 10⁻³ =
 £189.665231m, the carbon term of §8.1. At 2035 the same identity gives 103.857513 kt and
@@ -1189,31 +1206,32 @@ means the `carb3` slice on this premise, and "data-check" means `make data-check
 
 | # | Scope | Asserted here as |
 |---|---|---|
-| **V1**, **V1b** | release | *not asserted by this fixture*: the coupled-off R run is `MF-57`, and the comparison is §10.2's (see §13.3, point 13) |
-| **V2** | load | §1.11: coefficients round-trip against `capacity_to_activity_factor`, and no unit puts out more energy than it takes in (data-check) |
-| **V5** | premise | §8.4: biogenic CO₂ is zero-rated before capture, so the captured 1.818552 kt is a credit of £0.549m at 2035, not lost |
-| **V6** | premise | §7.4: no cost term is assumed non-negative; the export term here is a *cost*, the tariff on captured CO₂ |
-| **V10** | release | two runs of this fixture agree under the §9.3 tie-break |
-| **V11** | load | §3.1: one process tier resolves, `site_known` |
-| **V17** | premise | §5.3: incumbents stand whole to their known last year at tier 1; the abatement leg is not built in the slice (§8.4) |
-| **V18** | premise | §8.1: all eleven carrier nodes close to 1e-6 in every period, including `clinker` (D16) and the three CO₂ carriers; the run's row check finds 0 violations |
-| **V19** | load | vacuous: no duty carries a grade |
-| **V22** | premise | (a) only primary, non-indirect carriers derive emissions: coal and gas do, electricity does not; (b) and (c) untestable here, since the reject heat feeds nothing |
-| **V23** | load + premise | §5.2: the mix resolves at tier 1, `site_known`; the slice does not pin to it |
-| **V26** | premise | §1.5: `kiln_pyroprocessing`'s two intervals are disjoint and only the 2004 one is read |
-| **V27** | load | §1.11: each unit has at most one `fuel_input`; `ccs_amine`'s electricity is `aux_input` |
-| **V28** | load + premise | §3.2: the `Cement Works` electricity shares sum to 1.00, and the oil vector renormalises over the processes this premise runs |
-| **V29** | premise | §8.1: disposal only on `may_dispose` carriers, the three CO₂ carriers and `heat_lt60`, each a row of the run's `disposal` table |
-| **V30** | premise | §10.1: §7's direct total equals the carbon term ÷ π × 10³ in every period, net of the biogenic credit |
-| **V31** | load | §1.11: `ccs_amine` holds `co2_fuel_fossil` and `co2_fuel_biogenic` twice, as `emission_input` (the rate −0.9) and as the derived reboiler `emission`; every sign agrees with its role |
-| **V32** | load + premise | §1.4, §1.11: exports exist only for `co2_captured` (at `C-03`); `clinker` gets neither import nor export and no duty; electricity's export is refused for want of a price in every period |
-| **V33** | load + premise | §1.5.1, §1.11: every `premise_process_unit` row names an eligible unit, the kiln's shares sum to 1, and `ccs_amine`'s four hosts are `converter` units on `kiln_pyroprocessing`, none of them itself |
-| **V36** | load | §1.11: the kilns' reject lands on `heat_lt60` (data-check) |
-| **V37** | load + premise | §1.11, §8.4: the three rates lie in [−1, 0); after the solve, no stream is captured above 0.9 of its host's production, the streams are pro rata, the host is treated once, and the credit is π × Γ on the biogenic stream; the run's capture check finds 0 violations |
+| **V1** (the coupled-off R run), **V1b** (reproduce its objective and energy) | release | *not asserted by this fixture*: the coupled-off R run is `MF-57`, and the comparison is §10.2's (see §13.3, point 13) |
+| **V2** (unit coefficients round-trip) | load | §1.11: coefficients round-trip against `capacity_to_activity_factor`, and no unit puts out more energy than it takes in (data-check) |
+| **V5** (emissions invariants, biomass before capture) | premise | §8.4: biogenic CO₂ is zero-rated before capture, so the captured 1.818552 kt is a credit of £0.549m at 2035, not lost |
+| **V6** (no cost term assumed non-negative) | premise | §7.4: no cost term is assumed non-negative; the export term here is a *cost*, the tariff on captured CO₂ |
+| **V10** (determinism) | release | two runs of this fixture agree under the §9.3 tie-break |
+| **V11** (one process tier) | load | §3.1: one process tier resolves, `site_known` |
+| **V17** (vintage and stranding per unit) | premise | §5.3: incumbents stand whole to their known last year at tier 1; the abatement leg is not built in the slice (§8.4) |
+| **V18** (carrier balance closes) | premise | §8.1: all eleven carrier nodes close to 1e-6 in every period, including `clinker` (D16) and the three CO₂ carriers; the run's row check finds 0 violations |
+| **V19** (no unit above its grade) | load | vacuous: no duty carries a grade |
+| **V22** (attribution closes across a chain) | premise | (a) only primary, non-indirect carriers derive emissions: coal and gas do, electricity does not; (b) and (c) untestable here, since the reject heat feeds nothing |
+| **V23** (one carrier-mix tier) | load + premise | §5.2: the mix resolves at tier 1, `site_known`; the slice does not pin to it |
+| **V26** (disjoint validity intervals) | premise | §1.5: `kiln_pyroprocessing`'s two intervals are disjoint and only the 2004 one is read |
+| **V27** (unit fuel identity) | load | §1.11: each unit has at most one `fuel_input`; `ccs_amine`'s electricity is `aux_input` |
+| **V28** (process energy) | load + premise | §3.2: the `Cement Works` electricity shares sum to 1.00, and the oil vector renormalises over the processes this premise runs |
+| **V29** (disposal and allocation) | premise | §8.1: disposal only on `may_dispose` carriers, the three CO₂ carriers and `heat_lt60`, each a row of the run's `disposal` table |
+| **V30** (emissions close through the balance) | premise | §10.1: §7's direct total equals the carbon term ÷ π × 10³ in every period, net of the biogenic credit |
+| **V31** (role and sign agree) | load | §1.11: `ccs_amine` holds `co2_fuel_fossil` and `co2_fuel_biogenic` twice, as `emission_input` (the rate −0.9) and as the derived reboiler `emission`; every sign agrees with its role |
+| **V32** (the site boundary is honoured) | load + premise | §1.4, §1.11: exports exist only for `co2_captured` (at `C-03`); `clinker` gets neither import nor export and no duty; electricity's export is refused for want of a price in every period |
+| **V33** (plant is named one unit at a time) | load + premise | §1.5.1, §1.11: every `premise_process_unit` row names an eligible unit, the kiln's shares sum to 1, and `ccs_amine`'s four hosts are `converter` units on `kiln_pyroprocessing`, none of them itself |
+| **V36** (reject heat by source class) | load | §1.11: the kilns' reject lands on `heat_lt60` (data-check) |
+| **V37** (a capture rate is a fraction of its hosts' streams) | load + premise | §1.11, §8.4: the three rates lie in [−1, 0); after the solve, no stream is captured above 0.9 of its host's production, the streams are pro rata, the host is treated once, and the credit is π × Γ on the biogenic stream; the run's capture check finds 0 violations |
 
-**What the slice checks itself.** Check 4 of §5.7 (the row check) covers V18 and the C8 half of
-V30; check 6 (the capture check) covers V37's post-solve legs; `make data-check` covers the load
-legs of V2, V27, V31, V36 and V37. The rest are asserted by this document and wait for their
+**What the slice checks itself.** Check 4 of §5.7 (the row check) covers V18 (carrier balance closes) and the C8 half of
+V30 (emissions close through the balance); check 6 (the capture check) covers V37's post-solve legs; `make data-check` covers the load
+legs of V2 (round-trip and energy closure), V27 (unit fuel identity), V31 (role and sign
+agree), V36 (reject heat by source class) and V37. The rest are asserted by this document and wait for their
 tests.
 
 ---
@@ -1237,7 +1255,7 @@ CO₂/yr. Figures are compared at six decimal places, the precision the run prin
 HiGHS, presolve on, single-threaded.
 
 **What M2's gate does with it** (`MF-22`, `MF-59`): the fixture solves to the objective of §8.5
-and the tables of §8; V18 (the carrier balance, all eleven nodes including `clinker`), V30, V32
+and the tables of §8; V18 (the carrier balance, all eleven nodes including `clinker`), V30 (emissions close through the balance), V32
 (the site boundary on the carrier) and V37 (per-stream capture) pass; the row check verifies
 every constraint row independently of the solver; and G1 (single-premise wall clock) is
 measured and recorded with its machine and settings.
@@ -1260,7 +1278,7 @@ measured and recorded with its machine and settings.
 4. **Plant age decides when, not whether** (§1.6, §8.3). The grinder, the gas kiln cohort and
    the motors are rebuilt exactly when their stated cohorts end; the coal kiln stops running at
    2025 while it still stands, because nothing compels an incumbent to run.
-5. **A capture train treats a flue gas** (C14, §8.4). It captures 0.9 of every stream of the
+5. **A capture train treats a flue gas** (C14, a capture train treats its hosts' flue gas, §8.4). It captures 0.9 of every stream of the
    activity it treats, in the host's own proportions: 353.05 kt of process, 156.32 kt of fossil
    and 1.82 kt of biogenic CO₂, 0.511187 Mt a year.
 6. **Biomass zero-rating before capture makes captured biogenic CO₂ a credit** (§8.4). Small
@@ -1292,8 +1310,8 @@ which is why §13 of the specification says cement alone is not sufficient.
 
 ### 13.3 Open points against the specification
 
-Twelve points have been raised against the specification by working this premise; ten are
-closed, and they are kept with their resolutions because the record of *why* a rule exists is
+Thirteen points have been raised against the specification by working this premise; ten are
+closed and three remain open, and they are kept with their resolutions because the record of *why* a rule exists is
 what stops it being undone.
 
 | # | Point | Status |
@@ -1315,7 +1333,7 @@ Three remain open:
 |---|---|---|---|
 | **6** | **The stranding formula is not written.** $Z^{\text{strand}}$ is named in §5.4's objective and has no defining expression | §5.3, §8.5.1: the idle coal kiln could retire early against a charge nobody can compute | `T23` (complete §5) / `MF-18` |
 | **7** | **§5.6 defines only the peak factor λ**, so nothing says how C11's peak is rebuilt or which year it reads | §8.5.1: the gas connection's breach is shown on mean flow only | `T23` / `MF-18` |
-| **13** | **§10.2's condition 5 forbids every export, and the parity case exports captured CO₂.** COMIT's capture bundles keep the CO₂ inside the technology; this model routes it out through `C-03` at a tariff, a cost and not a revenue | §11: `V1b` cannot compare this premise as §10.2 is written | an amendment to §10.2 naming a tariffed CO₂ export as compatible with the comparison |
+| **13** | **§10.2's condition 5 forbids every export, and the parity case exports captured CO₂.** COMIT's capture bundles keep the CO₂ inside the technology; this model routes it out through `C-03` at a tariff, a cost and not a revenue | §11: `V1b` (reproduce the R run's objective and energy) cannot compare this premise as §10.2 is written | an amendment to §10.2 naming a tariffed CO₂ export as compatible with the comparison |
 
 One thing stated rather than filed: **the objective charges direct carbon only** (§6.3).
 §5.4 charges what is vented, and both worked examples report indirect emissions without
