@@ -491,6 +491,28 @@ not a fact about cement works. The oil vector's split {`quarry_mobile_plant` 0.8
 renormalises over the processes this premise runs to {kiln 1.00}, the R2 rule of the archived
 baseline §3.3.3; it moves nothing, because the premise burns no oil.
 
+**A blank pair is safe here only because both processes really draw nothing.** The slice
+sizes a duty from `known_activity` alone and reads neither §1.2 nor the shares above, so a
+process that does run and is left blank loses its energy without complaint. Blanking
+`packing_dispatch`'s 0.021000 PJ/yr in a copy of the premise and re-running shows it: the 2021
+electricity import falls from 0.420005 to 0.399005 PJ, 5.0% under §1.2's meter, the run exits
+0, and the only trace is the process's name on the *no duty derived* line, beside
+`clinker_cooling` and `site_services`, whose zeros are real. Nothing tells the two apart. None
+of the six checks of the specification's §5.7 compares the base year's imports with the meter
+(§8.5.1). As written the premise closes: its 2021 electricity import is 0.420005 PJ, equal to
+§1.2.
+
+**So a process that runs needs a stated activity before the slice can size it.** Where there
+is no sub-meter (§3.10.1), state `known_activity` as the share route would derive it: the
+base-year quantity of each vector the process draws × its `energy_share` on that vector × its
+incumbent's useful output per unit of input. For a motor stage that factor is 1, because
+`motor_elec` makes 1 PJ of `motive_power` from 1 PJ of electricity, so `packing_dispatch` is
+0.420005 × 0.05 = 0.021000 PJ/yr, the figure §1.5 carries. The incumbent's capacity then
+follows from §5.1, `known_activity` ÷ (γ α), where γ is its capacity-to-activity factor and α
+its availability. Record the derivation in `provenance` and set `confidence` to match. Leave
+the pair blank only for a process whose base-year activity is genuinely zero, and say so in
+`provenance`, as these two rows do.
+
 No duty carries a `grade_rank`: the one gradeable carrier in play, `heat_lt60`, appears only
 as the kilns' reject.
 
@@ -1105,6 +1127,13 @@ arithmetic on the run, not results of the missing mechanisms.
 - **The retrofit's host life.** Not built (§8.4); it would not bind within the horizon here.
 - **A1's named checks, the evidence tiers on output rows and §7.6's reconciliation.** Not in the
   slice's code (§2, §9, §10.2).
+- **Sizing from the meter, and any check against it.** The specification sizes every process
+  from §3.3.1's shares of the base-year meter, or from §3.10.1's sub-meters, so the meter is
+  allocated in full by construction (within V28's 1.00 ± 0.015, process energy). The slice
+  sizes from `known_activity` only and never loads `premise_energy`, so a process left blank
+  that does draw energy drops out of the base year unreported (§3.2). No §5.7 check closes the
+  gap, in the specification or the slice: all six test units, duties or the solved matrix, none
+  the meter. Here the gap is zero, because §1.5's activities were written from §3.2's shares.
 - **Imports and exports per connection.** The slice holds them site-wide, as $m_{c,t}$ and
   $x_{c,t}$.
 
@@ -1310,8 +1339,8 @@ which is why §13 of the specification says cement alone is not sufficient.
 
 ### 13.3 Open points against the specification
 
-Thirteen points have been raised against the specification by working this premise; ten are
-closed and three remain open, and they are kept with their resolutions because the record of *why* a rule exists is
+Fourteen points have been raised against the specification by working this premise; ten are
+closed and four remain open, and they are kept with their resolutions because the record of *why* a rule exists is
 what stops it being undone.
 
 | # | Point | Status |
@@ -1327,13 +1356,14 @@ what stops it being undone.
 | 11 | `abates_unit_id` was singular, and a train abates several kiln units | **Closed**: §3.5.3 `unit_abatement_host` (§1.11) |
 | 12 | A6 would derive fuel CO₂ on `electricity` and §7.8 charge it again | **Closed**: A6 derives only for carriers that are not `is_indirect` (§1.11) |
 
-Three remain open:
+Four remain open:
 
 | # | Open point | Where it bites | Closed by |
 |---|---|---|---|
 | **6** | **The stranding formula is not written.** $Z^{\text{strand}}$ is named in §5.4's objective and has no defining expression | §5.3, §8.5.1: the idle coal kiln could retire early against a charge nobody can compute | `T23` (complete §5) / `MF-18` |
 | **7** | **§5.6 defines only the peak factor λ**, so nothing says how C11's peak is rebuilt or which year it reads | §8.5.1: the gas connection's breach is shown on mean flow only | `T23` / `MF-18` |
 | **13** | **§10.2's condition 5 forbids every export, and the parity case exports captured CO₂.** COMIT's capture bundles keep the CO₂ inside the technology; this model routes it out through `C-03` at a tariff, a cost and not a revenue | §11: `V1b` (reproduce the R run's objective and energy) cannot compare this premise as §10.2 is written | an amendment to §10.2 naming a tariffed CO₂ export as compatible with the comparison |
+| **14** | **§3.10 and A2 (duties and candidate units) disagree on what sizes a process.** §3.10's precedence rule says `known_activity` sizes the duty and that a row with neither `known_activity` nor `known_capacity` yields no duty and no incumbent capacity; §4 has A2 size every process from §3.3.1's shares or §3.10.1's sub-meters, which needs neither field | §3.2: the four motor stages get the same duties by either route only because §1.5's activities were written from the shares. A premise that leaves a running process blank gets a duty under A2 and none under §3.10, and the slice follows §3.10 | an amendment to §3.10 saying which route wins where both apply, and a §5.7 check that the base year's imports per vector reconcile with `premise_energy` |
 
 One thing stated rather than filed: **the objective charges direct carbon only** (§6.3).
 §5.4 charges what is vented, and both worked examples report indirect emissions without
