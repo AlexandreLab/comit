@@ -165,7 +165,7 @@ activity and capture 0.90 of every CO₂ stream that share makes. From 2035 it t
 gas kiln: 0.511 Mt/yr captured of 568 kt/yr made, on 0.560 Mt/yr of capacity. Its own
 reboiler's CO₂ is not captured, so the works still vents about 106 kt/yr of charged CO₂ (39.2
 of process CO₂ and 66.4 of fossil fuel CO₂, the reboiler's 49.1 among it). Until 2026-10-07
-the three rows were read as a fixed blend, the cement worked example's own stack, and the
+the three rows were read as a fixed blend, the stack of a hand-built cement premise, and the
 scarce biogenic stream capped the train at 0.023 Mt/yr; the objective was £4,554.93m.
 
 ## Output tables
@@ -218,5 +218,5 @@ product is a carrier and not a duty) and is settled by C8.
 
 Still open from the build: note 20 item 54, the activity variable a D16-suppressed process
 still needs; item 55, the CO₂ export route has no sourced price, so the £40/t tariff is
-synthetic. Item 57 is closed by note 24; the cement worked example is re-solved against it
-as a follow-on (note 24 Task 4).
+synthetic. Item 57 is closed by note 24, and the cement worked example now describes `mvp-cement` and
+this run exactly (note 24 Task 4, 2026-10-08).

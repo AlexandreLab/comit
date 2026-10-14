@@ -239,8 +239,9 @@ derives a `co2_fuel_biogenic` coefficient and no fossil one at all. `ef_solid_bi
 emissions.** It is derived, it balances through C8 (carrier balance) like any other emission
 carrier, and it is **reported as a vented `zero_rated` quantity** — free to vent, not absent.
 A zero factor would have made the tonnes disappear before anything could report them, which is
-the failure the cement example's 71.93 kt of biogenic CO₂ makes concrete: that quantity is
-what turns capture net-negative, and it cannot do that if it was never derived. `zero_rated`
+the failure the cement example's biogenic CO₂ makes concrete: its gas kiln makes 2.02 kt a
+year from mains gas's biogenic share, and capture credits the 1.82 kt it takes, which it
+cannot do if the quantity was never derived. `zero_rated`
 and "not there" look identical in a total and are opposite in a balance.
 
 ### 4.8 Infrastructure: `available = FALSE` where nothing is published

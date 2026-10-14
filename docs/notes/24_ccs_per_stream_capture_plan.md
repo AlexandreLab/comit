@@ -473,6 +473,14 @@ the `carb3` tests on pre-push and the new rows break the old C8 the moment they 
 
 ### Task 4 (follow-on, not part of this change): re-solve the cement worked example
 
+**Done 2026-10-12, more widely than planned.** The owner decided on 2026-10-08 to retire the example's
+hand-built premise and its own costs, prices and emission factors, so the example now describes
+`mvp-cement` exactly on the reference tables and every figure checks against the run
+(objective £3,640.0994m, 0.511187 Mt/yr captured from 2035). The reboiler question below is
+settled by the same decision: the example quotes the reference data's 96.011028 kt fossil and
+1.116972 kt biogenic per Mt captured, and the live spec's §3.6 row says so. The file and line
+references below are to the example before that rewrite.
+
 - **Goal:** the example quotes the rate form, and its §8.5.1 compares against the new run.
 - **Files:** `docs/specs/2026-08-28-carb3-site-energy-system-worked-example-cement.md`: header
   (`:27-29`), §1.11's three rows and prose (`:470-472`, `:495`), §8.4's share table

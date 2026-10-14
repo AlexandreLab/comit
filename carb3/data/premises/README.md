@@ -171,7 +171,7 @@ process**, in PJ/yr for an energy-denominated process and Mt/yr for a mass-denom
 permit gives it (the cement kiln's 0.95 Mt/yr and the closed wet line's 0.70 Mt/yr). Where
 given it sizes the incumbent directly; otherwise the incumbent is `known_activity / (γα)`.
 The kiln's `known_activity` is 0.850000 Mt/yr, its nameplate 0.95 times the worked example's
-utilisation (§5.1: 0.85 declared throughput over 0.95 × γ 1.0 = 0.89474). Each row's `provenance` names the unit it is in.
+utilisation (§5.1: 0.85 drawn over 0.95 × γ 1.0 = 0.894737). Each row's `provenance` names the unit it is in.
 
 Two consequences worth knowing before reading a number:
 
@@ -275,10 +275,10 @@ by the price leg first), no closed validity interval.
 | | |
 |---|---|
 | `carb3_activity` | `Cement Works` |
-| Cut from | [Cement worked example](../../../docs/specs/2026-08-28-carb3-site-energy-system-worked-example-cement.md), premise `P-000123` |
+| Cut from | A hand-built cement premise, `P-000123`, of an earlier version of the [cement worked example](../../../docs/specs/2026-08-28-carb3-site-energy-system-worked-example-cement.md). Since 2026-10-12 the example describes this premise exactly, and the `source` and `provenance` strings cite its current sections |
 | Processes | Eight valid at the base year, plus one closed interval |
 | Duties | The `cement` mass duty 1.130000 Mt/yr from `premise_throughput` (§3.1.2), and `motive_power` 0.168000 PJ/yr over four processes. Neither `kiln_pyroprocessing` nor `cement_grinding` carries a duty from the profile: both make a `product`, so their profile rows classify their energy need rather than stating a demand (§3.9) |
-| Incumbents | Nine rows over eight processes: `kiln_dry_coal` + `kiln_dry_gas`, `grinder_mixer_elec`, `motor_elec` ×6 |
+| Incumbents | Eleven rows over eight processes: `kiln_dry_coal` + `kiln_dry_gas`, `grinder_mixer_elec`, `motor_elec` ×6, and `generic_process_elec` + `chiller_electric` on `site_services` |
 | Base-year energy | `coal` 3.407053, `natural_gas` 0.502947, `electricity` 0.420005 PJ/yr; three explicit `not_consumed` zeros |
 
 **What it exists to exercise.** The high-grade kiln, delivered fuels, and process CO₂ through
@@ -300,31 +300,25 @@ capacity. See
 [note 20](../../../docs/notes/20_reference_data_open_questions.md) items 56 and 57 and
 [note 24](../../../docs/notes/24_ccs_per_stream_capture_plan.md).
 
-**Which figures are taken from the worked example.** The premise record (§1.1), both
-throughput rows (§1.3), both connections (§1.4), the nine `premise_process_detail` rows
-including the closed 1957–2003 wet-line interval (§1.5), the kiln's 0.95 Mt/yr permit capacity
-(§1.5), the four `motive_power` duty figures (§3.2), and the 2004 kiln commissioning year
-(§1.6).
+**How it relates to the hand-built premise it was cut from.** The premise record, both
+throughput rows, the nine `premise_process_detail` rows (including the closed 1957–2003
+interval), the kiln's 0.95 Mt/yr nameplate, the four `motive_power` duty figures and the 2004
+kiln commissioning year were taken from `P-000123`. The rest is synthetic: the kiln is **two
+units, not three**, because `kiln_dry_wdf` burns `waste_derived_fuel`, which has no
+`import_price` in any period, so the fuel split was renormalised over the two survivors to
+**0.871369 / 0.128631**. The fuel rows follow from that split through the kilns' 4.6 PJ/Mt
+coefficient (coal 3.407053, gas 0.502947 PJ/yr), and electricity is built the same way, kiln
+auxiliary 0.092404 + grinder 0.159601 + motive power 0.168000 = **0.420005 PJ/yr**. `C-02`'s
+`import_capacity` is 20 MW, which covers the base year's gas (15.9 MW on mean flow). The
+incumbents and cohort years for the processes `P-000123` left unnamed are the
+`activity_default_unit` choices at a 2016 drives refit. The worked example now quotes all of
+these figures as this premise's own (its §1).
 
-**Which figures are synthetic.** The kiln is **two units, not three**: `kiln_dry_wdf` is
-dropped because `waste_derived_fuel` carries no `import_price` in any period, so the example's
-fuel split 0.530303 / 0.391414 / 0.078283 renormalises over the survivors to
-**0.871369 / 0.128631**. The three fuel quantities follow from that split through the kilns'
-own 4.6 PJ/Mt coefficient rather than from the example's meter, which is why `coal` is
-3.407053 rather than 2.10000 and `waste_derived_fuel` is an explicit zero. The electricity
-figure is built the same way — kiln aux 0.092403 + grinder 0.159601 + motive 0.168000 =
-**0.420005 PJ/yr** — and reproduces the example's metered 0.42000 to five decimal places,
-which is the check that the reconstruction is right. `C-02`'s `import_capacity` is raised from
-12 MW to 20 MW because gas now carries part of the dropped WDF kiln's share. The incumbents
-and cohort years for the seven processes the example leaves unnamed are the
-`activity_default_unit` choices at a 2016 drives refit.
-
-**The closed interval has no child rows.** The example's §1.5.1 hangs `kiln_wet_ICMCLK` off
-the 1957–2003 interval, and **that `unit_id` does not exist in `unit.csv`**. The interval is
-kept, because it is what exercises §3.10's validity machinery and V26 (validity intervals
-are disjoint and only base-year rows are read), but it names no unit —
-which under §3.10's precedence rule means the plant is unknown, and is correct for a line
-scrapped two decades before the base year.
+**The closed interval has no child rows.** The interval is kept, because it is what exercises
+§3.10's validity machinery and V26 (validity intervals are disjoint and only base-year rows are
+read), but it names no unit, which under §3.10's precedence rule means the plant is unknown, and
+is correct for a line scrapped two decades before the base year. (`P-000123` named
+`kiln_wet_ICMCLK` here, a `unit_id` `unit.csv` does not have.)
 
 **Feasibility is tight and deliberate.** The kiln's 0.95 Mt/yr at `availability_factor` 0.913
 is 0.86735 Mt/yr of clinker against a requirement of 0.850000 — 2% of headroom. The grinder
@@ -403,10 +397,11 @@ Recorded, not fixed. Nothing under `docs/notes/data/` was changed.
    (`CIBSEJ_RETURN`), so they produce `heat_60_100` at `grade_out` 2. `heat_pump_spc_air`,
    `resistance_heater_spc` and `heat_exchanger_spc_steam` stay at 1: nothing sourced puts
    them above 60 °C.
-2. **`kiln_wet_ICMCLK` does not exist.** The cement worked example §1.5.1 names it as a
-   `premise_process_unit.unit_id`; `unit.csv` has no such row.
-3. **`fuel_oil` is not a `carrier_id`.** Both worked examples use it in their §1.2
-   `premise_energy` tables. `carrier.csv` has `light_fuel_oil` and `heavy_fuel_oil`.
+2. **`kiln_wet_ICMCLK` does not exist.** The hand-built premise `P-000123` named it as a
+   `premise_process_unit.unit_id`; `unit.csv` has no such row. **Resolved 2026-10-12**: the
+   cement worked example now describes `mvp-cement`, whose closed interval names no unit.
+3. **`fuel_oil` is not a `carrier_id`.** Both worked examples used it in their §1.2
+   `premise_energy` tables; the cement example now uses `light_fuel_oil`. `carrier.csv` has `light_fuel_oil` and `heavy_fuel_oil`.
 4. **Lifetimes disagree between the worked examples and `unit.csv`.** The food and drink
    example's §1.6 end-of-life table gives `boiler_lt_gas` 20 years and `dryer_direct_gas` 20;
    `unit.csv` gives both 25. These tables follow `unit.csv`.
