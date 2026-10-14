@@ -22,7 +22,7 @@ the spec calls `activity_process_energy_share`.
 | File | Spec entity | Rows | Built by | Report |
 |---|---|---:|---|---|
 | `carrier.csv` | §3.4 `carrier` | 53 | coordinator (skeleton) + lane `carriers` (factors) + lane `units` (product carriers); the five reject source classes on 2026-10-02 (note 23) | `build/DONE_carriers.md` |
-| `activity_process_duty_profile.csv` | §3.3 `activity_process_duty_profile` | 538 | lanes `duty_a`, `duty_b`; the dairy spray dryer split into band segments on 2026-10-02 (note 20 item 71), and every `site_services` electricity row split three ways the same day (note 20 item 72) | `build/DONE_duty_a.md`, `build/DONE_duty_b.md` |
+| `activity_process_duty_profile.csv` | §3.3 `activity_process_duty_profile` | 538 | lanes `duty_a`, `duty_b`; the dairy spray dryer split into band segments on 2026-10-02 (note 20 item 71), and every `site_services` electricity row split three ways the same day (note 20 item 72) | `build/DONE_duty_a.md`, `build/DONE_duty_b.md`; field guide and how it is read: [README_duty_profile.md](README_duty_profile.md) |
 | `carb3_comit_process_crosswalk.csv` | the process-level join T17 asked for (no spec entity) | 375 | lanes `duty_a`, `duty_b` | same |
 | `unit.csv` | §3.5 `unit` | 148 | lane `units`; `chiller_electric_lt0` added by note 22 Task 10, `kiln_ht_gas`, `engine_mot_gas` and `cooling_tower_wet` by the PR #64 decisions; the two mobile-plant units, `potline_prebake_elec` and `lime_kiln_sugar_coke` on 2026-09-26; the three reject-heat recovery units on 2026-10-02 (note 23) | `build/DONE_units.md` |
 | `unit_input_output.csv` | §3.6 `unit_input_output` | 477 | lane `units`; 28 reject rows moved to source-class carriers and the coal and oil flue rows removed on 2026-10-02 (note 23) | same |
