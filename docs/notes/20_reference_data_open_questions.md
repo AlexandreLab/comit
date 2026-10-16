@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, item 71 the same day, when Alexandre decided it on PR #81, items 72 and 73 the same day again, and item 74 the same day, when Alexandre decided note 23 and its phase 1 was built, and item 75 the same day again, when he chose the technical recoverable share – **twenty-nine of the seventy-five, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, item 71 the same day, when Alexandre decided it on PR #81, items 72 and 73 the same day again, and item 74 the same day, when Alexandre decided note 23 and its phase 1 was built, and item 75 the same day again, when he chose the technical recoverable share – **twenty-nine of the seventy-six, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -1332,3 +1332,27 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     economiser already in those boilers' efficiency is all their acid flue gas allows
     ([note 23](23_reject_heat_recovery_plan.md) section 10.6). Per-class fractions for the
     process-exhaust rows remain phase 2's work.
+
+76. **A process names one connection, its electricity one, so a process fed through two
+    connections on one carrier cannot be written.** `premise_process_detail.connection_id`
+    (§3.10) is the electricity connection serving the process's load; a networked fuel is
+    routed through the premise's single connection for that carrier and a delivered fuel
+    through none (§3.1.3). The proposal is a `premise_process_connection` table keyed
+    `(premise_id, process_id, valid_from_year, carrier_id, connection_id)`, so every
+    connection a process draws through is stated. *Raised by Alexandre, 2026-10-16.*
+
+    Two readings, with different costs. **One connection per carrier per process** only
+    makes explicit what §3.1.3 already implies: it is clearer (the cement kiln would show its
+    gas on `C-02` and its electricity on `C-01`) and changes no result. **Several connections
+    per carrier per process**, the case the table is really for, also needs either a stated
+    split share per connection, which a data supplier rarely knows, or a routing variable per
+    (process, connection, period) for the optimiser to choose, which only means something once
+    C11 (connection capacity) is enforced. Measured 2026-10-16: 16
+    `premise_process_detail` rows carry a `connection_id`, and the field is named 29 times
+    across the live spec, both worked examples, the premises README, `carb3/src/carb3/load.py`
+    and `verify_premise_keys.py`, all mechanical to migrate.
+
+    **Open, deferred until C11 (connection capacity) is built or a premise with two
+    connections on one carrier arrives.** Neither holds today: C11 is outside the slice
+    (`build.py:84-93`) and none of the three MVP premises has such a pair. §3.10's own
+    paragraph on why the connection sits on the process already names the gap.
