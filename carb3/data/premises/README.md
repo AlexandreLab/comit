@@ -100,7 +100,6 @@ One row per carrier, per connection, per year. Required: a premise without it is
 | `premise_id` | yes | **PK** part; → `premise_record` | The premise | `mvp-dairy` |
 | `carrier_id` | yes | **PK** part; → `carrier.csv` | The carrier as metered | `natural_gas` |
 | `connection_id` | no | **PK** part; → `premise_connection` | The connection the quantity came through. Blank means the premise's default connection | blank on every row here |
-| `vector` | yes | | The broad grouping (electricity, gas, oil, coal, biomass, other) used to join the duty profile | `gas` for `natural_gas`; `other` for `waste_derived_fuel` |
 | `quantity` | yes | | Annual consumption in PJ/yr, ≥ 0 | `0.300000` PJ/yr of gas at `mvp-dairy` |
 | `data_status` | yes | | measured, estimated, modelled, or `not_consumed`. **A carrier known not to be used is written as a zero with `not_consumed`**, because a missing row means "nobody checked", not "zero" | `measured` for `mvp-dairy`'s gas; `not_consumed` for its coal; `modelled` for all of `mvp-cement` |
 | `data_year` | yes | **PK** part | The year the quantity was measured. Only the base-year row is read; other years are history | `2024` on every row |

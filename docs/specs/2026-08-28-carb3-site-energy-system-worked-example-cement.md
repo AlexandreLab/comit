@@ -82,7 +82,7 @@ the nearest cluster, A1 is not built in the slice, so the assignment is written 
 
 ### 1.2 `premise_energy` (§3.1.1): consumption by carrier
 
-| `carrier_id` | `vector` | `quantity` PJ/yr | `data_status` | `data_year` |
+| `carrier_id` | Vector (from `carrier`) | `quantity` PJ/yr | `data_status` | `data_year` |
 |---|---|---|---|---|
 | `coal` | coal | 3.407053 | modelled | 2024 |
 | `natural_gas` | gas | 0.502947 | modelled | 2024 |
@@ -591,7 +591,7 @@ duty carries a grade.
 ## 4. `A3`: allocate premise energy onto carriers
 
 `premise_energy` already names its carriers, so A3 is close to an identity here: each row maps
-onto a `carrier` row whose `vector` agrees, and the base-year quantities pass on with
+onto its `carrier` row, which supplies its `vector` (§3.4), and the base-year quantities pass on with
 `year_evidence_tier = base_year` on all six. **A3 does not allocate energy across processes.**
 Which unit burns what is decided by C8 (carrier balance), and at this works it is forced:
 `kiln_dry_coal` is the only unit that can consume coal, and from 2035 natural gas has two

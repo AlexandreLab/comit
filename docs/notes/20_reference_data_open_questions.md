@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, item 71 the same day, when Alexandre decided it on PR #81, items 72 and 73 the same day again, and item 74 the same day, when Alexandre decided note 23 and its phase 1 was built, and item 75 the same day again, when he chose the technical recoverable share – **twenty-nine of the seventy-seven, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, item 71 the same day, when Alexandre decided it on PR #81, items 72 and 73 the same day again, and item 74 the same day, when Alexandre decided note 23 and its phase 1 was built, and item 75 the same day again, when he chose the technical recoverable share, and item 77 on 2026-10-16 – **thirty of the seventy-seven, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -1378,4 +1378,9 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     column of the 16-row `carb3/data/premises/premise_energy.csv`. No validator or code
     changes, since none reads it. All mechanical.
 
-    **Open, recommended: drop the column.**
+    **Settled 2026-10-16, decided by Alexandre: dropped.** `premise_energy` no longer carries
+    `vector`; §3.4 now defines `carrier.vector` (required on a `primary` carrier, absent
+    otherwise, which is what `carrier.csv` already held), and §3.1.1, §3.3.1 and the §3.10
+    sub-metering rule read the vector from the carrier. The worked examples keep a vector
+    column in their `premise_energy` tables, labelled as looked up from `carrier`.
+    `README_spec_tables.md` no longer lists `carrier.vector` as an extra column.

@@ -199,7 +199,7 @@ it, do not model it.
 
 ## 3. Data model
 
-*Section last updated: 2026-10-12*
+*Section last updated: 2026-10-16*
 
 **Twenty-five entities.** Every one of them is defined here in full: fields, types, units,
 keys and validation rules. Four are supplied by the CaRB3 stock model, nine by the
@@ -265,7 +265,6 @@ itself. Only the base year is read (D12); the rest is history.
 | `premise_id` | string | — | yes | PK part | → `premise_record` |
 | `carrier_id` | string | — | yes | PK part | → `carrier`. The carrier as metered |
 | `connection_id` | string | — | no | PK part → `premise_connection` | **Optional.** The metered connection this quantity came through (§3.1.3). Absent ⇒ the premise's default connection |
-| `vector` | enum{electricity, gas, oil, coal, biomass, other} | — | yes | — | The grouping used to join `activity_process_duty_profile` (§3.3). Must be consistent with the carrier's `carrier_kind` (§3.4) |
 | `quantity` | real | PJ/yr | yes | — | ≥ 0 |
 | `data_status` | enum{measured, estimated, modelled, not_consumed} | — | yes | — | See the absence rule below |
 | `data_year` | integer | year | yes | PK part | The year this quantity was measured. One row per carrier per connection **per year**. See the base-year rule below |
@@ -285,8 +284,10 @@ decarbonisation options. So:
 - A carrier that was **not assessed** is simply absent, and any result for that premise
   is reported as having incomplete carrier coverage (§8).
 
-The stock model should aim to state all five main vectors for every premise, whether by a
-positive quantity or an explicit zero. Absence is a last resort, not the default.
+A row's vector is its carrier's `vector` (§3.4), looked up rather than restated, so a row
+cannot disagree with its carrier. The stock model should aim to state all five main vectors
+for every premise, whether by a positive quantity or an explicit zero. Absence is a last
+resort, not the default.
 
 **Rule (one row per carrier per connection per year).** `(premise_id, carrier_id,
 connection_id, data_year)` is unique. Two meters on the *same* connection are one row —
@@ -579,7 +580,7 @@ Populated by
 | `carb3_activity` | string | — | yes | PK part | → `activity_process_register` |
 | `process_set_id` | string | — | yes | PK part | → `activity_process_register` |
 | `process_id` | string | — | yes | PK part | → `activity_process_register` |
-| `vector` | enum{electricity, gas, oil, coal, biomass, other} | — | yes | PK part | The grouping `premise_energy` (§3.1.1) carries on every row |
+| `vector` | enum{electricity, gas, oil, coal, biomass, other} | — | yes | PK part | The grouping `carrier` (§3.4) carries on every `primary` carrier |
 | `energy_share` | real | fraction | yes | — | ∈ [0, 1]. Share of the premise's quantity **of this vector** taken by this process |
 | `share_low` | real | fraction | no | — | ≤ `energy_share` if present |
 | `share_high` | real | fraction | no | — | ≥ `energy_share` if present |
@@ -594,8 +595,8 @@ are independent checks.
 
 **Rule (keyed on vector, not carrier).** Which share of a site's gas the dryer takes does not
 depend on whether that gas is natural gas or biomethane. Keying on `vector` also keeps the
-table at hundreds of rows rather than thousands, and it is the same grouping §3.1.1 already
-requires every `premise_energy` row to carry.
+table at hundreds of rows rather than thousands, and it is the same grouping §3.4 gives every
+`primary` carrier, so each `premise_energy` row has one through its `carrier_id`.
 
 **Rule (a process consuming several sources gets several rows).** One row per
 `(process, vector)`. A cement kiln takes all of the coal, gas, biomass and waste fuel, a fifth
@@ -643,6 +644,7 @@ Anything that flows and balances: a fuel, electricity, hydrogen, CO₂, or heat 
 | `may_dispose` | boolean | — | yes | — | Whether $d_{c,t}$ exists for this carrier (§5.2). **Derived from `carrier_kind`, not free**: true for `intermediate` and `emission`, false for `primary` and `product`. Stated as a column so the LP builder reads it rather than re-deriving it |
 | `may_import` | boolean | — | yes | — | Whether the carrier may cross the site boundary inwards (D16), and the only thing that decides whether an import exists. A **networked** carrier a `premise_connection` row carries takes the connection-indexed $m_{c,k,t}$; a **delivered** fuel with no connection row takes the site-level $m_{c,t}$ (§5.2). True on every `primary` fuel and on `electricity`; false on `intermediate`, `emission` and `product` carriers |
 | `may_export` | boolean | — | yes | — | Whether the carrier may cross the site boundary outwards (D16). $x_{c,k,t}$ is declared only where this is true **and** a `premise_connection` row carries $c$ (§5.2) — an export always goes onto a network. True on `electricity`, on a `product` with an outside market, and on `co2_captured`, which leaves through the CO₂ transport network under C9 (infrastructure availability); false on `intermediate`, `emission` and internal `product` carriers |
+| `vector` | enum{electricity, gas, oil, coal, biomass, other} | — | no | — | Required on a `primary` carrier, absent otherwise. The broad grouping §3.3.1's energy shares are keyed on, and the only place a premise's metered energy gets one: `premise_energy` (§3.1.1) reads it from here |
 
 **Grades are carriers, not an attribute of one.** `heat@60-150C` and `heat@150-400C` are two
 `carrier` rows with different `grade_rank`, and so are `cooling@<0C` and `cooling@0-15C`. This
@@ -1426,8 +1428,8 @@ evidence about the meters, not a rounding error to be normalised away.
 
 **Rule (keyed on carrier, while the default is keyed on vector).** A sub-meter reads a
 specific supply, and a site metering LPG separately from natural gas should be able to say so.
-The join to §3.3.1 is through `premise_energy.vector`, which §3.1.1 already requires to agree
-with the carrier's kind. Evidence therefore degrades cleanly: carrier-level where the site
+The join to §3.3.1 is through the metered carrier's `vector` (§3.4), so a carrier-level
+reading always has a vector to fall back on. Evidence therefore degrades cleanly: carrier-level where the site
 knows, vector-level where it does not.
 
 **Rule (partial coverage is the normal case).** A premise sub-metering one process is the
