@@ -9,7 +9,7 @@ names the report holding the full argument.
 
 **Everything here is open unless the item says otherwise.** Items 1 and 36 were settled on
 2026-09-15, items 2, 3, 4, 43 and 46 on 2026-09-16, items 5 and 16 on 2026-09-17, items
-51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, item 71 the same day, when Alexandre decided it on PR #81, items 72 and 73 the same day again, and item 74 the same day, when Alexandre decided note 23 and its phase 1 was built, and item 75 the same day again, when he chose the technical recoverable share – **twenty-nine of the seventy-six, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
+51, 53 and 56 on 2026-09-20, item 61 on 2026-09-24, item 24 on 2026-09-25, items 25, 65 and 66 and the unit half of item 27 on 2026-09-25, items 37, 62, 63 and 64 on 2026-09-26, when Alexandre decided them on PR #64, item 58 on 2026-10-01, items 69 and 70 on 2026-10-02, item 71 the same day, when Alexandre decided it on PR #81, items 72 and 73 the same day again, and item 74 the same day, when Alexandre decided note 23 and its phase 1 was built, and item 75 the same day again, when he chose the technical recoverable share – **twenty-nine of the seventy-seven, with item 27 half settled**: its unit question is answered, its band-placement rule is not (`TODOS.md`).
 Item 60 is **partly settled**: its specification side is done, and its data side is planned
 in [note 22](22_duty_family_gap_plan.md). Each carries the decision inline, with the work
 items 1 and 36 leave behind in items 1a and 1b, and the work item 4 leaves behind in items 44
@@ -1356,3 +1356,26 @@ gap (58). **Items 51 and 53 are now closed** and carry their resolution inline.
     connections on one carrier arrives.** Neither holds today: C11 is outside the slice
     (`build.py:84-93`) and none of the three MVP premises has such a pair. §3.10's own
     paragraph on why the connection sits on the process already names the gap.
+
+77. **`premise_energy.vector` repeats `carrier.vector` and nothing reads it.** §3.1.1 makes
+    every `premise_energy` row state a `vector` and requires it to agree with the carrier
+    (live spec line 268), but `carrier.csv` already carries `vector` per carrier, so the
+    column is a lookup stored twice and the agreement rule exists only because of the copy.
+    Neither `carb3/src` nor `verify_premise_keys.py` reads it. The proposal is to drop the
+    column and derive the vector from `carrier.vector` wherever it is needed: §4's join to
+    §3.3.1 (`activity_process_energy_share`, live spec line 1429) and the "five main vectors"
+    coverage reading. `vector` stays in `carrier.csv` and as §3.3.1's key, where it is what
+    keeps that table at 489 rows. *Raised by Alexandre, 2026-10-16.*
+
+    The same field row also misstates its use: it says `vector` joins
+    `activity_process_duty_profile` (§3.3), which has no `vector` column, and that it must
+    agree with `carrier_kind`, when the column it should agree with is `carrier.vector`.
+    Either way that row needs correcting.
+
+    Priced 2026-10-16: the §3.1.1 field row and its line-1429 rule in the live spec; the
+    `premise_energy` table and two prose mentions in each worked example (cement lines 85 and
+    594, food and drink lines 74 and 926); one row of `carb3/data/premises/README.md`; one
+    column of the 16-row `carb3/data/premises/premise_energy.csv`. No validator or code
+    changes, since none reads it. All mechanical.
+
+    **Open, recommended: drop the column.**
