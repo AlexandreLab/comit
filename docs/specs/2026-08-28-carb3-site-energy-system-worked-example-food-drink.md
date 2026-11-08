@@ -71,7 +71,7 @@ that matters.
 
 ### 1.2 `premise_energy` (§3.1.1) — consumption by carrier per year
 
-| `carrier_id` | `vector` | `quantity` PJ/yr | `data_status` | `data_year` | Read as |
+| `carrier_id` | Vector (from `carrier`) | `quantity` PJ/yr | `data_status` | `data_year` | Read as |
 |---|---|---|---|---|---|
 | `natural_gas` | gas | 0.31500 | measured | 2022 | history |
 | `natural_gas` | gas | 0.30800 | measured | 2023 | history |
@@ -923,8 +923,8 @@ lands below a credible minimum.
 ## 4. `A3` — allocate premise energy onto carriers
 
 `premise_energy` already names its carriers, so `A3` is close to an identity here: it maps each
-row's `(carrier_id, vector)` onto a `carrier` row, checks that the vector agrees with
-`carrier_kind` (§3.1.1), and hands on the base-year quantities.
+row's `carrier_id` onto its `carrier` row, which supplies the vector (§3.4), and hands on the
+base-year quantities.
 
 | `carrier_id` | Base-year quantity | Source year | `year_evidence_tier` |
 |---|---|---|---|

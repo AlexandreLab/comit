@@ -166,7 +166,7 @@ One row per table, in the order §3 defines them.
 | Subject | Table | § | What it is | Columns |
 |---|---|---|---|---|
 | The premise | `premise_record` | §3.1 | the premise itself | `latitude`, `longitude`, `nation`, `cluster_id`, `floorspace`, `construction_year`, `construction_year_band`, `last_refurbishment_year`, `data_year`, `source` |
-|  | `premise_energy` | §3.1.1 | consumption by carrier | `vector`, `quantity`, `data_status`, `source` |
+|  | `premise_energy` | §3.1.1 | consumption by carrier | `quantity`, `data_status`, `source` |
 |  | `premise_throughput` | §3.1.2 | physical output by carrier | `quantity`, `data_status`, `source` |
 | Connections | `premise_connection` | §3.1.3 | — | `import_capacity`, `export_capacity`, `connection_voltage`, `available_area` |
 | Processes | `activity_process_register` | §3.2 | activity → processes | `set_name`, `is_default`, `process_name`, `is_optional`, `provenance` |
@@ -177,7 +177,7 @@ One row per table, in the order §3 defines them.
 | Duties | `activity_process_duty_profile` | §3.3 | — | `duty_share`, `share_low`, `share_high`, `evidence_tier`, `provenance`, `confidence` |
 |  | `process_duty` | §3.9 | — | `quantity`, `evidence_tier` |
 |  | `activity_process_energy_share` | §3.3.1 | how much energy each process takes | `energy_share`, `share_low`, `share_high`, `evidence_tier`, `provenance`, `confidence` |
-| Carriers | `carrier` | §3.4 | — | `carrier_name`, `carrier_kind`, `is_gradeable`, `grade_family`, `grade_rank`, `grade_label`, `is_indirect`, `biogenic_fraction`, `carbon_charge`, `denominator_kind`, `may_dispose`, `may_import`, `may_export` |
+| Carriers | `carrier` | §3.4 | — | `carrier_name`, `carrier_kind`, `is_gradeable`, `grade_family`, `grade_rank`, `grade_label`, `is_indirect`, `biogenic_fraction`, `carbon_charge`, `denominator_kind`, `may_dispose`, `may_import`, `may_export`, `vector` |
 | Units | `unit` | §3.5 | — | `unit_name`, `unit_class`, `spine`, `duty_family`, `capex`, `fixed_opex`, `lifetime`, `availability_factor`, `capacity_to_activity_factor`, `area_per_capacity`, `min_viable_scale`, `is_hybrid`, `draws_ambient`, `provenance`, `confidence` |
 |  | `unit_eligibility` | §3.5.1 | — | `min_duty`, `max_share`, `earliest_year`, `provenance` |
 |  | `unit_bill_of_materials` | §3.5.2 | — | `capacity_share`, `capex_share`, `component_lifetime`, `replacements_in_life` |
@@ -261,7 +261,6 @@ erDiagram
     string premise_id PK,FK "required"
     string carrier_id PK,FK "required"
     string connection_id PK,FK "optional"
-    enum vector "required"
     real quantity "required"
     enum data_status "required"
     integer data_year PK "required"
@@ -336,6 +335,7 @@ erDiagram
     boolean may_dispose "required"
     boolean may_import "required"
     boolean may_export "required"
+    enum vector "optional"
     }
     unit {
     string unit_id PK "required"

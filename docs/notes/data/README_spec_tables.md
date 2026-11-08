@@ -55,7 +55,6 @@ how to read a cell:
 
 | File | Column | Why |
 |---|---|---|
-| `carrier.csv` | `vector` | The §3.1.1 consistency hook: `premise_energy.vector` must agree with the carrier, and the spec names no column to check it against |
 | `carrier.csv` | `comit_commodity` | The COMIT commodity codes the carrier collapses, for the lineage |
 | `carrier.csv` | `provenance` | Citation |
 | `unit.csv` | `fuel_carrier_id` | D13 (a unit is family-or-node × fuel): the fuel is part of the identity, and a column is easier to key on than the `role = fuel_input` row of §3.6 |
