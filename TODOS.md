@@ -139,6 +139,16 @@ Each of these is in the data with `confidence` low and a provenance string sayin
   so the default cannot serve the `HTH` (high-temperature heat) duty; no electric unit reaches
   rank 6.
 
+- [ ] **Fill the 8 blank CaRB3 codes in `docs/notes/data/carb3_comit_crosswalk.csv`.** Exhaust
+  and tyre centre (FA04), Pumping Mines (FA46), Mineral Production - Brine (FA57) and five
+  other Mineral Production and Mill rows have no code, although Table 28 of the NBD phase 1
+  Part 1 report codes all 55 Factory activities. Anyone joining carb3 data on the code loses
+  them. The stock model keeps its own complete list (`uk_industrial_stock/lookups/
+  carb3_activities.csv`, eng review D3), so nothing there depends on this fix; it is a gap in
+  the carb3 reference data only. Where to start: `grep -n` each activity name in the
+  extracted report text. Depends on nothing. Raised 2026-11-08 by the stock-model plan's eng
+  review (D19).
+
 ## Done
 
 The duty-family and cooling work of note 22 is complete: Tasks 1–10 and note 20 items 24, 25,

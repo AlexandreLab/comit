@@ -35,9 +35,12 @@ non-commercial input.
 3. **Links are many to many.** UPRN, premises and building are joined through a bridge
    table with a method and score on every row. A multi-let shed with twelve units and a
    steelworks with eighty buildings are both normal cases.
-4. **Licence tiers are kept apart in storage, not only in documentation.** Columns derived
-   from restricted sources (VOA, the EA Pollution Inventory) live in a separate layer that
-   joins by `building_id`. The released table can be rebuilt without them.
+4. **Licence tiers are kept apart by building twice, not by deleting columns.** VOA data
+   also steers linking, unit grouping, classification and calibration, so deleting its
+   columns afterwards cannot remove its influence. The pipeline therefore runs as two
+   builds from the same code: an `open` build in which no restricted source (VOA, the EA
+   Pollution Inventory) is ever loaded, and a `full` build that uses everything. Only the
+   `open` build is released; the `full` build serves internal use and validation.
 5. **Reproducible from a manifest.** Every input is downloaded by a script that records URL,
    retrieval date, vintage, licence and SHA-256 in `config/sources.toml`. Raw files are
    never edited. Rebuilding from the same manifest gives byte-identical output (sorted rows,
@@ -100,9 +103,10 @@ computed as `scu_id` on `buildings` rather than as a separate table.
 - Partitioned by `lad_code` for the working copy, so a pilot or one authority can be
   rebuilt alone.
 - A **CaRB3 export** writes `premise_record` and `premise_energy` in the shape of the live
-  spec §3.1 and §3.1.1, for Factory-class premises only. Two gaps to settle there: the
-  spec's `nation` enum has no Northern Ireland, and `premise_throughput`, which the spec
-  requires, has no open source for most premises.
+  spec §3.1 and §3.1.1, for Factory-class premises only. Northern Ireland premises are not
+  exported: the spec rejects them with reason `out_of_scope_nation`. `premise_throughput`,
+  which the spec requires, has no open source for most premises (see the eng review, F2,
+  in 04).
 
 ## 4. Pipeline
 
