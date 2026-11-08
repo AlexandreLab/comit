@@ -82,6 +82,7 @@ computed as `scu_id` on `buildings` rather than as a separate table.
 | `oa_code`, `lsoa_code`, `msoa_code`, `lad_code`, `lad_name`, `nation` | string | 2021 LSOA/MSOA/OA (E&W), 2022 Data Zone (Scotland), 2021 Data Zone and SDZ (NI). `lsoa_code` holds the nation's equivalent; `geo_level` says which |
 | `carbe_class` | enum{FA, WA, UT, ...} | |
 | `carbe_group` | enum{FA_A, FA_B, FA_C, FA_D, FA_E, FA_F, FA_O, unknown} | |
+| `carbe_group_prior` | struct of probabilities per group | Area activity prior from ONS Business Counts, set only on buildings no record classes (step 6) |
 | `carb3_activity_code`, `carb3_activity` | string | For example `FA13`, "Food Processing Centre". Matches the CaRB3 site model's `carb3_activity` |
 | `class_source`, `class_confidence` | enum, real 0-1 | Strongest evidence used; see §4 step 6 |
 | `premise_count` | integer | |
@@ -161,7 +162,7 @@ of their UPRNs.
 3. **Nearest within 15 m.** Only inside an industrial land-use or site polygon, and only
    when the second-nearest building is more than twice as far.
 
-**Records to UPRN or building** (VOA, EPC, FSA, NAEI, ETS, SPRI):
+**Records to UPRN or building** (VOA, EPC, FSA, UK PRTR, NAEI, ETS, SPRI, Climate TRACE):
 
 - **EPC:** use the UPRN where the record has one; otherwise match its address to another EPC
   record that does. The EPC register therefore also serves as an open address-to-UPRN
@@ -170,8 +171,11 @@ of their UPRNs.
   then to OSM `addr:*` and `name` tags. Where several candidates remain within the postcode,
   assign by **size consistency**: the VOA floor area against each candidate's geometric GIA,
   solved as an assignment across all VOA records in that postcode, not one at a time.
-- **FSA, NAEI, ETS, SPRI:** they have coordinates, so use point in polygon, then the nearest
-  building inside the same site polygon.
+- **FSA, UK PRTR, NAEI, ETS, SPRI, Climate TRACE:** they have coordinates, so use point in
+  polygon, then the nearest building inside the same site polygon. UK PRTR also carries a
+  postcode and street address, which confirm the match. These registers describe the same
+  large sites several times over, so they are first deduplicated into one `installation`
+  record per site (matched on coordinates within 250 m plus a normalised operator name).
 
 Every link is written to `building_premise` with `link_method` and `link_score`.
 **Check:** match rate per source and LAD. The pilot sets the acceptance threshold (§6); the
@@ -185,13 +189,24 @@ where possible to a group and a CaRB3 activity:
 | Evidence | Maps to | Default weight |
 |---|---|---|
 | VOA SCat plus PD code (restricted layer) | CaRB3 activity, through the rebuilt lookup | highest |
-| NAEI, UK ETS or SPRI installation sector | activity for the high-energy and mineral activities (cement, steel, refinery, chemicals, paper) | high |
+| UK PRTR NACE activity code | CaRB3 activity through a NACE-to-CaRB3 lookup (for example NACE 23.51 to `FA45` Cement Works) | high |
+| NAEI, UK ETS, SPRI or Climate TRACE installation sector | activity for the high-energy and mineral activities (cement, steel, refinery, chemicals, paper) | high |
+| HSE COMAH establishment | class `FA`, chemicals or storage, as a supporting signal | medium |
 | FSA approved establishment activity (meat, dairy, fish and so on) | `FA_F` activities, for example `FA16` Abattoir, `FA35` Creamery, `FA13` Food Processing Centre | high |
 | EPC building type (for example "B2 to B7 General Industrial", "B8 Storage or Distribution") | class only | medium |
 | OSM `industrial=*`, `product=*`, `man_made=works`, `craft=*` | activity where the tag is specific (for example `industrial=brewery`); class otherwise | medium |
 | OSM `building=industrial`, `factory`, `manufacture`, `warehouse` | class only | low |
 | Inside `landuse=industrial` | candidate flag only | low |
 | Morphology classifier | "industrial or not" only | lowest |
+
+**Area activity prior.** After record evidence is applied, each MSOA still holds unclassed
+industrial buildings. ONS Business Counts (local units by SIC) say how many sites of each
+industry the MSOA has; subtracting the sites already classed leaves a residual mix. Each
+unclassed building gets that residual mix as a probability per CaRBE group (stored in
+`carbe_group_prior`, a struct of probabilities) and `carbe_group` takes the most likely group
+only if its probability is at least 0.5; otherwise it stays `unknown`. Larger sheds are
+weighted toward industries with larger sites, using the employment size bands. The prior is
+never written as `class_source = record`.
 
 **Resolution:** take the highest-weight evidence. Record the second-best where it disagrees,
 and lower `class_confidence` when it does. A building with no record but a positive
@@ -204,6 +219,8 @@ classifier result gets `carbe_class = FA`, `carbe_group = unknown`.
 2. CaRB3 activity (`FA01` to `FA99`) to CaRBE group (`FA_A` to `FA_O`). The NBD's group
    floor areas are the check on it.
 3. FSA activity, EPC building type, OSM tag and NAEI/ETS sector to CaRB3 activity.
+4. NACE (UK PRTR) and SIC 2007 (Business Counts) to CaRB3 activity and CaRBE group. SIC 2007
+   and NACE Rev. 2 agree to four digits, so one lookup serves both.
 
 Ask UCL for lookups 1 and 2 before building them (§7, milestone 0).
 **Check:** class totals against NBD phase 2 (§6).
@@ -250,10 +267,17 @@ flags the link for review.
 
 Energy is built in tiers, and every value records which tier produced it:
 
-1. **Reported site:** NAEI point sources, UK ETS and SPRI emissions converted to energy by
-   fuel with emission factors, using the method COMIT already uses (repo note 04). The
-   energy is attached to the site, then spread over its buildings by GIA share.
-   Uncertainty: low at site level, high per building.
+1. **Reported site:** CO₂ from the deduplicated installation record (UK PRTR, NAEI, UK ETS,
+   SPRI; Climate TRACE as a cross-check only) is turned into fuel in three moves:
+   - remove **process CO₂** with a per-sector share from published factors (cement, lime,
+     steel, glass, ammonia and other chemistry). Without this, a cement works' fuel would
+     come out about 2.5 times too high;
+   - split the remaining combustion CO₂ into fuels with the sector fuel mix from ECUK and
+     DUKES, as COMIT does (repo note 04), and convert with fuel emission factors;
+   - leave **electricity** to tier 2, since grid electricity leaves no on-site emissions.
+   The fuel is attached to the site, then spread over its buildings by GIA share.
+   Uncertainty: medium at site level (it is a back-derivation, not a meter), high per
+   building.
 2. **Group benchmark:** GIA × the NBD phase 2 median EUI for the building's CaRBE group,
    split by carrier using the NBD gas and electricity medians. A building whose MSOA has no
    non-domestic gas meters in the DESNZ data gets no gas.
@@ -301,7 +325,8 @@ validation results.
 | Footprint completeness | OS OpenMap Local area per LSOA | Reported per LSOA, with no pass mark |
 | Group totals | NBD phase 2 Factory tables: premises, floor area and percentiles per group (Table 3_3), regional shares (Table 3_2) | Within ±20% per group for E&W, once the CaRB3-to-CaRBE lookup is settled |
 | Area counts | VOA Stock of Properties by LSOA and SCat (OGL) | Correlation per LSOA reported; outliers reviewed |
-| Large-site coverage | Every UK ETS and NAEI industrial installation | 100% linked to at least one building, or explained |
+| Area activity mix | ONS Business Counts local units by SIC per MSOA | Classed plus prior-weighted counts per MSOA and group reported against the counts |
+| Large-site coverage | Every UK PRTR, UK ETS and NAEI industrial installation | 100% linked to at least one building, or explained |
 | Height | OSM `height` tags; a LiDAR hold-out for the modelled heights | Median absolute error reported per source |
 | Floor area | EPC floor area where a building has exactly one EPC premises | Ratio distribution reported |
 | Energy | DESNZ MSOA non-domestic totals; synthetic population MSOA Factory energy; NBD group medians | Never above the DESNZ total; group medians within ±25% |
@@ -311,7 +336,7 @@ validation results.
 
 | Milestone | Contents | Done when |
 |---|---|---|
-| 0. Access and licences | Read the VOA download terms and the EPC address terms; confirm the ONSUD and OS licence texts; write to UCL (NBD team) for the SCat/PD-to-activity lookup and the CaRB3-to-CaRBE mapping; ask the VOA whether derived, aggregated classification may be released | Each restricted source has a written decision: open, restricted layer, or excluded |
+| 0. Access and licences | Read the VOA download terms and the EPC address terms; confirm the ONSUD and OS licence texts; write to UCL (NBD team) for the SCat/PD-to-activity lookup and the CaRB3-to-CaRBE mapping; ask the VOA whether derived, aggregated classification may be released; confirm UK PRTR's Scotland and NI coverage, Business Counts' finest geography and the Nomis terms | Each restricted source has a written decision: open, restricted layer, or excluded |
 | 1. Pilot | North Lincolnshire and North East Lincolnshire: steel at Scunthorpe, refineries and chemicals at Immingham, food at Grimsby, plus ordinary workshop estates. Steps 1 to 10 end to end, plus a 150-building hand check | Every column populated or explained; thresholds and floor-to-floor heights fixed; match rates known |
 | 2. England and Wales | Scale out by LAD | Validation table (§6) produced for E&W |
 | 3. Scotland | Data Zones, Scottish EPC, SPRI, partial LiDAR | Same checks, with the missing VOA layer stated |

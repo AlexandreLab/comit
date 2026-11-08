@@ -64,7 +64,13 @@ non-commercial may enter the released table.
 | Scottish non-domestic EPC | Open, except address and postcode fields | OGL | Scotland, quarterly | address restricted | Floor area, fuel. Weak join | https://data.gov.scot/ |
 | FSA Food Hygiene Rating Scheme | Open (terms on FSA page; data.gov.uk lists OGL) | | E, W, NI; Scotland via FHIS. Daily | FHRSID, coordinates, address | Food premises with business type | https://ratings.food.gov.uk/open-data |
 | FSA approved establishments | Open | OGL | E and W monthly; NI and Scotland separate | approval number, address | **Food manufacturers, abattoirs, dairies** (evidence for `FA_F`) | https://www.data.gov.uk/dataset/2c80e0ce-ee1c-4f26-ba6f-1e1ae1bd8ee9 |
-| NAEI point sources | Open | OGL | UK, 2023 file | site, grid reference | Large emitting sites, sector | https://naei.energysecurity.gov.uk/data/maps/emissions-point-sources |
+| **UK PRTR** (Pollutant Release and Transfer Register) | Open | OGL v3.0 (gov.uk page) | UK register; annual CSV and XML 2007 to 2024. The 2023 preview shows E and W regions only, so Scotland and NI coverage is to be confirmed | facility name, street, building number, **postcode**, lat/long, `NACEMainEconomicActivityCode`, `TotalEmployeeQuantity`, `OperationHours`, pollutant, quantity | **Activity (NACE) and size for every large regulated site**, and a postcode for address matching | https://www.gov.uk/government/publications/download-industrial-emissions-and-waste-transfer-uk-prtr-data |
+| NAEI point sources | Open | OGL | UK, 2023 file. COMIT's cleaned 2023 table holds about 950 industrial sites | site, grid reference | Large emitting sites, sector, CO₂ (see §6 for what it cannot give) | https://naei.energysecurity.gov.uk/data/maps/emissions-point-sources |
+| **ONS UK Business Counts, local units** (Nomis) | Open (Nomis terms; licence to confirm) | UK. Sites by 5-digit SIC 2007 and employment size band, down to MSOA (LSOA unconfirmed). Counts rounded to 5 | MSOA, SIC | **Per-area activity mix:** how many sites of each industry an MSOA holds, so that unclassed sheds get an area-level activity prior | https://nmweb.dur.ac.uk/datasets/idbrlu |
+| Business Register and Employment Survey (BRES) | Open at broad level (Nomis; LSOA detail and licence to confirm) | GB, employee counts by SIC and LSOA | LSOA, SIC | Employment by industry per area, a second activity-mix prior | https://www.nomisweb.co.uk/ |
+| **Climate TRACE** asset-level emissions | Open | CC BY 4.0 by default, with listed external datasets excepted (EDGAR and FAOSTAT categories) | Global, per plant, monthly from 2021, with confidence | coordinates, asset id | Cross-check for cement, steel, refineries and similar. UK asset coverage not checked | https://climatetrace.org/terms ; https://zenodo.org/records/20414751 |
+| HSE COMAH establishments | Open to view; no bulk download | public information | GB via HSE; NI via HSENI and DAERA | operator, address | Chemical and storage sites holding hazardous substances. Needs scraping or an information request | https://www.hse.gov.uk/Comah/comah-establishments.htm |
+| Not yet checked | | | | | Trade association site lists (Mineral Products Association, British Glass, Confederation of Paper Industries, UK Steel, Scotch Whisky Association distilleries, Maltsters' Association); Wikidata (CC0); Global Energy Monitor steel and cement trackers; Renewable Energy Planning Database and DNO Embedded Capacity Registers (on-site CHP and generation); Urban Waste Water Treatment Directive works (Utilities) | |
 | UK ETS allocation table | Open | OGL | UK installations | installation id | Installation list, free allocation | https://www.gov.uk/government/publications/uk-ets-allocation-table-for-operators-of-installations |
 | SEPA SPRI | Open (sources conflict) | OGL | Scotland | site | Scottish emitting sites | https://sepa.org.uk/environment/environmental-data/spri |
 | Climate Change Agreements facilities | Unclear ("No licence provided") | | UK | facility | Industrial facility list. Use only after checking | https://ckan.publishing.service.gov.uk/dataset/climate-change-agreements |
@@ -96,7 +102,21 @@ non-commercial may enter the released table.
 | ND-NEED 2026 | Open | OGL | England and Wales | Intensity by use and size | https://www.gov.uk/government/statistics/non-domestic-national-energy-efficiency-data-framework-nd-need-2026 |
 | BEES | Open (reports) | OGL | England and Wales, 2014-15 | Building-services intensity benchmarks | https://www.gov.uk/government/publications/building-energy-efficiency-survey-bees |
 | NAEI point sources, UK ETS | Open | OGL | UK | Site energy back-derived from emissions (method as COMIT note 04) | see §4 |
+| NAEI 1 km emission maps (industrial combustion) | Open | OGL | UK | A check on where small industry burns fuel. Spread with surrogate statistics (fuel use), not measured, so not a calibration target | https://uk-air.defra.gov.uk/assets/documents/reports/cat07/1403100906_UK_Emission_Mapping_Methodology_2010-Issue_1.pdf |
 | National Heat Map (2012) | Excluded | not available | | | |
+
+**What NAEI, UK PRTR and UK ETS can and cannot give for energy.** They report CO₂ per
+site, not fuel. Three corrections are needed before any energy number comes out:
+
+1. **Fuel from CO₂ is a back-derivation.** COMIT's method (repo note 04) splits national
+   sector fuel totals (ECUK and DUKES) between sites by their share of sector CO₂. It is an
+   estimate, and is labelled as one.
+2. **Process CO₂ must come off first.** Cement, lime, steel, glass and ammonia emit CO₂
+   from chemistry as well as from combustion. About 60% of a cement works' CO₂ is from
+   calcination, so converting its total CO₂ to fuel overstates energy by more than double.
+   The process share is set per sector from published factors.
+3. **Electricity is invisible.** Grid electricity produces no on-site emissions, so every
+   site's electricity comes from the benchmark tier, whatever its fuel tier.
 
 ## 7. Gaps and traps
 
@@ -114,4 +134,9 @@ non-commercial may enter the released table.
 - **Scotland** has no open valuation data and only partial open LiDAR.
 - **Looks open, is not:** VOA list downloads, EA Pollution Inventory and permits API,
   Scottish roll, NI LPS, NISRA postcode directory, HMLR CCOD/OCOD, GlobalBuildingAtlas.
-- **Licence unclear, check before use:** ONSUD, Climate Change Agreements, Companies House.
+- **Licence unclear, check before use:** ONSUD, Climate Change Agreements, Companies House,
+  Nomis Business Counts and BRES.
+- **The long tail of small industry has no open site-level activity source.** Without VOA,
+  generic workshops and factories (`FA01`, `FA02`) are classed only to area level, through
+  the Business Counts and BRES activity mix. That is a probability per area, not a fact per
+  building, and the output says so.
