@@ -350,9 +350,7 @@ open evidence, and the plan is revised before scaling out.
 5. **Where the code lives.** In this folder for now, then its own repository once code
    starts (recommended, since its ODbL data and licence obligations differ from COMIT's), or
    in this repository for good?
-6. **A language-model step for the semantic judgements in steps 5 and 6.** Two steps need
-   judgement that rules handle poorly: mapping free-text VOA descriptions, business names
-   and OSM tags to a CaRB3 activity, and choosing which candidate building a VOA record
-   belongs to. These could use a model that returns a typed choice with a probability (for
-   example TypeSafe's Jev), at a cost per call and with an API dependency. To be decided
-   before step 6 is designed.
+6. **Semantic judgements stay in code (settled 2026-11-08).** Mapping free-text VOA
+   descriptions, names and OSM tags to a CaRB3 activity, and choosing a VOA record's
+   building, are done with rules, lookups and the size-consistent assignment in step 5. No
+   language-model step.
